@@ -1,4 +1,3 @@
-// src/ai-chat/ai-chat.controller.ts
 import { Body, Controller, Post } from '@nestjs/common';
 import { AiChatService } from './ai-chat.service';
 
