@@ -32,16 +32,21 @@ export class AiChatService {
     let movieTitle: string;
 
     try {
-      this.logger.log('Attempting to guess movie with Gemini...');
-      movieTitle = await this.getMovieTitleFromGemini(prompt);
-    } catch (error: any) {
-      this.logger.warn(`Gemini failed. Switching to Groq...`);
+      this.logger.log('Attempting to guess movie with Groq (Primary)...');
+      movieTitle = await this.getMovieTitleFromGroq(prompt);
+    } catch {
+      this.logger.warn(`Groq failed. Switching to Gemini (Fallback)...`);
       try {
-        movieTitle = await this.getMovieTitleFromGroq(prompt);
-      } catch (groqError) {
+        movieTitle = await this.getMovieTitleFromGemini(prompt);
+      } catch (geminiError: any) {
+        const geminiMessage =
+          geminiError instanceof Error
+            ? geminiError.message
+            : 'Unknown Gemini error';
+        this.logger.error('Both AI services failed.');
         throw new InternalServerErrorException(
           'All AI services are currently unavailable',
-          groqError.message,
+          geminiMessage,
         );
       }
     }
