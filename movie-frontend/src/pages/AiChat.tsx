@@ -42,11 +42,10 @@ export default function AiChat() {
     setInput("");
     setMessages((prev) => [...prev, { role: "user", text: userText }]);
 
-    // ВИПРАВЛЕНО: тепер використовуємо правильний сеттер
     setIsLoading(true);
 
     try {
-      const response = await api.post("/ai-chat/search", { prompt: userText });
+      const response = await api.post("/ai/search", { prompt: userText });
 
       if (response.data && response.data.title) {
         setMessages((prev) => [
@@ -83,7 +82,7 @@ export default function AiChat() {
 
   const handleAddFromChat = async (movie: MovieResult) => {
     try {
-      await api.post("/movies/watchlist", {
+      await api.post("movies/watchlist", {
         tmdbId: movie.id,
         title: movie.title,
       });

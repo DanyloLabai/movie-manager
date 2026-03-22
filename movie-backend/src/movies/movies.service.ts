@@ -27,7 +27,7 @@ export class MoviesService {
   ) {
     this.tmdbToken = this.configService.get<string>('TMDB_API_TOKEN') as string;
     if (this.tmdbToken === undefined || this.tmdbToken === '') {
-      throw new Error('Api key is not set in enviroment variable');
+      throw new Error('Api key is not set in environment variable');
     }
   }
 
@@ -37,7 +37,7 @@ export class MoviesService {
         this.httpService.get<TmdbSearchResponseDto>(
           `${this.baseUrl}/search/movie`,
           {
-            params: { query: title, language: 'uk-UA' },
+            params: { query: title, language: 'en-US' },
             headers: { Authorization: `Bearer ${this.tmdbToken}` },
           },
         ),
@@ -63,34 +63,48 @@ export class MoviesService {
     }
   }
 
-  async findMovieByTitle(title: string): Promise<MovieResultDto | null> {
-    const { data } = await firstValueFrom(
-      this.httpService.get<TmdbSearchResponseDto>(
-        `${this.baseUrl}/search/movie`,
-        {
-          params: { query: title, language: 'uk-UA' },
-          headers: { Authorization: `Bearer ${this.tmdbToken}` },
-        },
-      ),
-    );
+  async findMovieByTitle(
+    title: string,
+    year?: number,
+  ): Promise<MovieResultDto | null> {
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get<TmdbSearchResponseDto>(
+          `${this.baseUrl}/search/movie`,
+          {
+            params: {
+              query: title,
+              primary_release_year: year,
+              language: 'en-US',
+            },
+            headers: { Authorization: `Bearer ${this.tmdbToken}` },
+          },
+        ),
+      );
 
-    if (!data.results?.length) return null;
+      if (!data.results || data.results.length === 0) return null;
 
-    const movie = data.results[0];
+      const movie = data.results[0];
 
-    return {
-      id: movie.id,
-      title: movie.title,
-      originalTitle: movie.original_title,
-      description: movie.overview,
-      releaseYear: movie.release_date
-        ? movie.release_date.split('-')[0]
-        : 'N/A',
-      rating: movie.vote_average,
-      posterUrl: movie.poster_path
-        ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-        : null,
-    };
+      return {
+        id: movie.id,
+        title: movie.title,
+        originalTitle: movie.original_title,
+        description: movie.overview,
+        releaseYear: movie.release_date
+          ? movie.release_date.split('-')[0]
+          : 'N/A',
+        rating: movie.vote_average,
+        posterUrl: movie.poster_path
+          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+          : null,
+      };
+    } catch (error: any) {
+      this.logger.error(
+        `Error finding movie by title in TMDB: ${error.message}`,
+      );
+      return null;
+    }
   }
 
   async addToWatchlist(userId: string, tmdbId: number, title: string) {

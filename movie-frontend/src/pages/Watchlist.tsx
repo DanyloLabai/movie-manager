@@ -37,10 +37,8 @@ export default function Watchlist() {
       return;
 
     try {
-      // Викликаємо твій DELETE ендпоінт на бекенді
       await api.delete(`/movies/watchlist/${tmdbId}`);
 
-      // Оновлюємо локальний стейт, щоб фільм зник миттєво без перезавантаження
       setWatchlist((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
     } catch (error) {
       alert("Не вдалося видалити фільм. Спробуй пізніше.");

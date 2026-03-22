@@ -9,6 +9,12 @@ import Groq from 'groq-sdk';
 import { MoviesService } from '../movies/movies.service';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
 
+interface ParsedAiResponse {
+  title?: string;
+  year?: number;
+  error?: string;
+}
+
 @Injectable()
 export class AiChatService {
   private genAI: GoogleGenerativeAI;
@@ -29,21 +35,27 @@ export class AiChatService {
   async searchMovieByDescription(
     prompt: string,
   ): Promise<MovieResultDto | { message: string }> {
-    let movieTitle: string;
+    let aiResponse: { title?: string; year?: number; error?: string };
 
     try {
       this.logger.log('Attempting to guess movie with Groq (Primary)...');
-      movieTitle = await this.getMovieTitleFromGroq(prompt);
+      const rawText = await this.getMovieTitleFromGroq(prompt);
+      aiResponse = this.parseJson(rawText) as ParsedAiResponse;
     } catch {
-      this.logger.warn(`Groq failed. Switching to Gemini (Fallback)...`);
+      this.logger.warn(
+        `Groq failed or returned invalid data. Switching to Gemini (Fallback)...`,
+      );
       try {
-        movieTitle = await this.getMovieTitleFromGemini(prompt);
+        const rawText = await this.getMovieTitleFromGemini(prompt);
+        aiResponse = this.parseJson(rawText) as ParsedAiResponse;
       } catch (geminiError: any) {
         const geminiMessage =
           geminiError instanceof Error
             ? geminiError.message
             : 'Unknown Gemini error';
-        this.logger.error('Both AI services failed.');
+        this.logger.error(
+          `Both AI services failed. Last error: ${geminiMessage}`,
+        );
         throw new InternalServerErrorException(
           'All AI services are currently unavailable',
           geminiMessage,
@@ -51,19 +63,40 @@ export class AiChatService {
       }
     }
 
-    if (movieTitle === 'ERROR_NOT_FOUND') {
-      return { message: "Sorry, I couldn't recognize this movie." };
+    if (aiResponse.error === 'ERROR_NOT_FOUND' || !aiResponse.title) {
+      return {
+        message:
+          'На жаль, я не зміг впізнати цей фільм. Спробуй описати його інакше або додати більше деталей!',
+      };
     }
 
-    const movieData = await this.moviesService.findMovieByTitle(movieTitle);
+    this.logger.log(
+      `AI Guessed: ${aiResponse.title} (${aiResponse.year || 'рік невідомий'})`,
+    );
+    const movieData = await this.moviesService.findMovieByTitle(
+      aiResponse.title,
+      aiResponse.year,
+    );
 
     if (!movieData) {
       return {
-        message: `Movie "${movieTitle}" recognized but not found in the database.`,
+        message: `Я зрозумів, що це фільм "${aiResponse.title}" (${aiResponse.year || '?'}), але не зміг знайти його постер та опис у базі даних.`,
       };
     }
 
     return movieData;
+  }
+
+  private parseJson(raw: string): any {
+    try {
+      const cleanRaw = raw.replace(/```json|```/gi, '').trim();
+      return JSON.parse(cleanRaw);
+    } catch {
+      this.logger.error(
+        `Failed to parse AI response as JSON. Raw text: ${raw}`,
+      );
+      throw new Error('Invalid JSON format from AI');
+    }
   }
 
   private async getMovieTitleFromGemini(prompt: string): Promise<string> {
@@ -71,7 +104,10 @@ export class AiChatService {
       model: 'gemini-1.5-flash',
       systemInstruction: this.getSystemPrompt(),
     });
-    const result = await model.generateContent(prompt);
+    const result = await model.generateContent({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1 },
+    });
     return result.response.text().trim();
   }
 
@@ -82,12 +118,21 @@ export class AiChatService {
         { role: 'user', content: prompt },
       ],
       model: 'llama-3.3-70b-versatile',
+      temperature: 0.1,
     });
-    return completion.choices[0]?.message?.content?.trim() || 'ERROR_NOT_FOUND';
+    return (
+      completion.choices[0]?.message?.content?.trim() ||
+      '{"error": "ERROR_NOT_FOUND"}'
+    );
   }
 
   private getSystemPrompt(): string {
     return `You are a movie expert. Identify the movie by description. 
-    Return ONLY the English title. If not found, return ERROR_NOT_FOUND.`;
+    Return your answer ONLY as a valid JSON object with the following keys:
+    "title": the exact official English title,
+    "year": the release year as a number.
+    
+    If the movie is not found, or if the user prompt is not about a movie, return {"error": "ERROR_NOT_FOUND"}.
+    Do not include any other text, greetings, markdown formatting, or explanations. Output STRICTLY JSON.`;
   }
 }
