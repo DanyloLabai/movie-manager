@@ -38,10 +38,15 @@ export class MoviesController {
   @Post('watchlist')
   async addToWatchlist(
     @Req() req: RequestWithUser,
-    @Body() body: { tmdbId: number; title: string },
+    @Body() body: { tmdbId: number; title: string; posterUrl?: string },
   ) {
     const userId = req.user.userId;
-    return this.moviesService.addToWatchlist(userId, body.tmdbId, body.title);
+    return this.moviesService.addToWatchlist(
+      userId,
+      body.tmdbId,
+      body.title,
+      body.posterUrl,
+    );
   }
 
   @UseGuards(AuthGuard('jwt'))
