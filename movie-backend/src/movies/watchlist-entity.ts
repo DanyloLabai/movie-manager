@@ -10,13 +10,16 @@ import { User } from '../users/users.entity';
 @Entity('watchlist')
 export class WatchlistItem {
   @PrimaryGeneratedColumn()
-  id: string;
+  id: number;
 
   @Column()
   tmdbId: number;
 
   @Column()
   title: string;
+
+  @Column({ nullable: true })
+  posterUrl: string;
 
   @CreateDateColumn()
   addedAt: Date;

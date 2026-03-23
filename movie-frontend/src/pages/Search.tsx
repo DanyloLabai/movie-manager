@@ -38,6 +38,7 @@ export default function Search() {
       await api.post("/movies/watchlist", {
         tmdbId: movie.id,
         title: movie.title,
+        posterUrl: movie.posterUrl,
       });
       alert(`✅ "${movie.title}" додано!`);
     } catch (error) {

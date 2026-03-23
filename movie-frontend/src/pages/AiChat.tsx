@@ -85,6 +85,7 @@ export default function AiChat() {
       await api.post("movies/watchlist", {
         tmdbId: movie.id,
         title: movie.title,
+        posterUrl: movie.posterUrl,
       });
       alert(`✅ "${movie.title}" додано у список!`);
     } catch (error) {

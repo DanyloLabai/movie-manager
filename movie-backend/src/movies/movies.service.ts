@@ -107,7 +107,12 @@ export class MoviesService {
     }
   }
 
-  async addToWatchlist(userId: string, tmdbId: number, title: string) {
+  async addToWatchlist(
+    userId: string,
+    tmdbId: number,
+    title: string,
+    posterUrl?: string,
+  ) {
     const existing = await this.watchlistRepo.findOne({
       where: { user: { id: userId }, tmdbId },
     });
@@ -119,6 +124,7 @@ export class MoviesService {
     const newItem = this.watchlistRepo.create({
       tmdbId,
       title,
+      posterUrl,
       user: { id: userId },
     });
 
