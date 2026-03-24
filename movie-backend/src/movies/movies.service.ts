@@ -12,6 +12,18 @@ import { TmdbSearchResponseDto } from './dto/tmdb-response.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
 import { Repository } from 'typeorm';
+export interface MovieDetailsResponse {
+  id: number;
+  title: string;
+  overview: string;
+  release_date: string;
+  vote_average: number;
+  poster_path: string | null;
+  backdrop_path: string | null;
+  runtime: number;
+  genres: { id: number; name: string }[];
+  [key: string]: unknown;
+}
 
 @Injectable()
 export class MoviesService {
@@ -132,12 +144,102 @@ export class MoviesService {
   }
 
   async getWatchlist(userId: string) {
-    const items = await this.watchlistRepo.find({
-      where: { user: { id: userId } },
+    return this.watchlistRepo.find({
+      where: { user: { id: userId }, isWatched: false },
       order: { addedAt: 'DESC' },
     });
+  }
 
-    return items;
+  async getWatchedMovies(userId: string) {
+    return this.watchlistRepo.find({
+      where: { user: { id: userId }, isWatched: true },
+      order: { addedAt: 'DESC' },
+    });
+  }
+
+  async markAsWatched(userId: string, tmdbId: number) {
+    const item = await this.watchlistRepo.findOne({
+      where: { user: { id: userId }, tmdbId },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Фільм не знайдено у вашому списку');
+    }
+
+    item.isWatched = true;
+    return this.watchlistRepo.save(item);
+  }
+
+  async rateMovie(userId: string, tmdbId: number, rating: number) {
+    const item = await this.watchlistRepo.findOne({
+      where: { user: { id: userId }, tmdbId },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Фільм не знайдено у вашому списку');
+    }
+
+    item.rating = rating;
+    item.isWatched = true;
+
+    return this.watchlistRepo.save(item);
+  }
+
+  async getTrendingMovies(): Promise<MovieResultDto[]> {
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get<TmdbSearchResponseDto>(
+          `${this.baseUrl}/trending/movie/week`,
+          {
+            params: { language: 'en-US' },
+            headers: { Authorization: `Bearer ${this.tmdbToken}` },
+          },
+        ),
+      );
+
+      if (!data.results) return [];
+
+      return data.results.slice(0, 6).map((movie) => ({
+        id: movie.id,
+        title: movie.title,
+        originalTitle: movie.original_title || movie.title,
+        description: movie.overview,
+        releaseYear: movie.release_date
+          ? movie.release_date.split('-')[0]
+          : 'N/A',
+        rating: movie.vote_average,
+        posterUrl: movie.poster_path
+          ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+          : null,
+      }));
+    } catch (error: any) {
+      this.logger.error(`Error fetching trending movies: ${error.message}`);
+      return [];
+    }
+  }
+
+  async getMovieDetails(tmdbId: number): Promise<MovieDetailsResponse> {
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get<MovieDetailsResponse>(
+          `${this.baseUrl}/movie/${tmdbId}`,
+          {
+            params: { language: 'en-US' },
+            headers: { Authorization: `Bearer ${this.tmdbToken}` },
+          },
+        ),
+      );
+      return data;
+    } catch (error) {
+      throw new NotFoundException('Movie details not found');
+    }
+  }
+
+  async getMovieUserStatus(userId: string, tmdbId: number) {
+    const item = await this.watchlistRepo.findOne({
+      where: { user: { id: userId }, tmdbId },
+    });
+    return item || null;
   }
 
   async removeFromWatchlist(userId: string, tmdbId: number) {

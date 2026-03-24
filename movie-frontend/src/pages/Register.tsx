@@ -15,15 +15,12 @@ export default function Register() {
     setError("");
 
     try {
-      // Відправляємо запит на реєстрацію з трьома полями
       await api.post("/auth/signup", { username, email, password });
 
-      // Якщо все ок - перекидаємо на сторінку входу
       navigate("/login");
     } catch (err: any) {
-      // Якщо бекенд повернув помилку (наприклад, такий email вже є)
       setError(
-        err.response?.data?.message || "Помилка реєстрації. Спробуй ще раз!",
+        err.response?.data?.message || "Registration error. Please try again!",
       );
     }
   };
@@ -32,7 +29,7 @@ export default function Register() {
     <div className="flex items-center justify-center min-h-screen bg-gray-900">
       <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-2xl shadow-xl">
         <h2 className="text-3xl font-bold text-center text-white">
-          Створити акаунт
+          Create an account
         </h2>
 
         {error && (
@@ -73,7 +70,7 @@ export default function Register() {
 
           <div>
             <label className="block text-sm font-medium text-gray-300">
-              Пароль
+              Password
             </label>
             <input
               type="password"
@@ -90,13 +87,12 @@ export default function Register() {
             type="submit"
             className="w-full py-3 font-semibold text-white transition bg-green-600 rounded-lg hover:bg-green-700 active:scale-95"
           >
-            Зареєструватися
+            Sign up
           </button>
         </form>
 
-        {/* Посилання для переходу на логін, якщо акаунт вже є */}
         <p className="text-sm text-center text-gray-400">
-          Вже маєте акаунт?{" "}
+          Already have an account?{" "}
           <Link to="/login" className="text-green-400 hover:underline">
             Увійти
           </Link>

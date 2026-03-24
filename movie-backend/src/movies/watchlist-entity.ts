@@ -15,8 +15,14 @@ export class WatchlistItem {
   @Column()
   tmdbId: number;
 
+  @Column({ type: 'int', nullable: true })
+  rating: number;
+
   @Column()
   title: string;
+
+  @Column({ default: false })
+  isWatched: boolean;
 
   @Column({ nullable: true })
   posterUrl: string;

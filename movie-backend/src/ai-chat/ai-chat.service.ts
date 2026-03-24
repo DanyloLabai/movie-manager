@@ -65,8 +65,7 @@ export class AiChatService {
 
     if (aiResponse.error === 'ERROR_NOT_FOUND' || !aiResponse.title) {
       return {
-        message:
-          'На жаль, я не зміг впізнати цей фільм. Спробуй описати його інакше або додати більше деталей!',
+        message: `Unfortunately, I couldn't recognize this movie. Try describing it differently or adding more details!`,
       };
     }
 
@@ -80,7 +79,7 @@ export class AiChatService {
 
     if (!movieData) {
       return {
-        message: `Я зрозумів, що це фільм "${aiResponse.title}" (${aiResponse.year || '?'}), але не зміг знайти його постер та опис у базі даних.`,
+        message: `I realized that this is the movie “${aiResponse.title}” (${aiResponse.year || '?'}), but I couldn't find its poster or description in the database.`,
       };
     }
 
@@ -89,8 +88,13 @@ export class AiChatService {
 
   private parseJson(raw: string): any {
     try {
-      const cleanRaw = raw.replace(/```json|```/gi, '').trim();
-      return JSON.parse(cleanRaw);
+      const match = raw.match(/\{[\s\S]*\}/);
+
+      if (!match) {
+        throw new Error('No JSON object found in response');
+      }
+
+      return JSON.parse(match[0]);
     } catch {
       this.logger.error(
         `Failed to parse AI response as JSON. Raw text: ${raw}`,
@@ -98,7 +102,6 @@ export class AiChatService {
       throw new Error('Invalid JSON format from AI');
     }
   }
-
   private async getMovieTitleFromGemini(prompt: string): Promise<string> {
     const model = this.genAI.getGenerativeModel({
       model: 'gemini-1.5-flash',
@@ -132,7 +135,8 @@ export class AiChatService {
     "title": the exact official English title,
     "year": the release year as a number.
     
-    If the movie is not found, or if the user prompt is not about a movie, return {"error": "ERROR_NOT_FOUND"}.
-    Do not include any other text, greetings, markdown formatting, or explanations. Output STRICTLY JSON.`;
+    CRITICAL RULE: Output ABSOLUTELY NOTHING EXCEPT THE JSON OBJECT. No markdown formatting (\`\`\`json), no greetings, no explanations. Just the raw { } object.
+    
+    If the movie is not found, or if the user prompt is not about a movie, return {"error": "ERROR_NOT_FOUND"}.`;
   }
 }

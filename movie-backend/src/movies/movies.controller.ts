@@ -1,4 +1,3 @@
-// src/movies/movies.controller.ts
 import {
   Body,
   Controller,
@@ -6,6 +5,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -64,5 +64,55 @@ export class MoviesController {
   ) {
     const userId = req.user.userId;
     return this.moviesService.removeFromWatchlist(userId, tmdbId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('watched')
+  async getWatchedMovies(@Req() req: RequestWithUser) {
+    const userId = req.user.userId;
+    return this.moviesService.getWatchedMovies(userId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('watchlist/:tmdbId/watched')
+  async markAsWatched(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.markAsWatched(userId, tmdbId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('watchlist/:tmdbId/rate')
+  async rateMovie(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+    @Body('rating', ParseIntPipe) rating: number,
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.rateMovie(userId, tmdbId, rating);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('trending')
+  async getTrendingMovies(): Promise<MovieResultDto[]> {
+    return this.moviesService.getTrendingMovies();
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':tmdbId/details')
+  async getMovieDetails(@Param('tmdbId', ParseIntPipe) tmdbId: number) {
+    return this.moviesService.getMovieDetails(tmdbId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':tmdbId/status')
+  async getMovieStatus(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.getMovieUserStatus(userId, tmdbId);
   }
 }

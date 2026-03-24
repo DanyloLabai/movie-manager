@@ -22,17 +22,22 @@ export default function AiChat() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "ai",
-      text: "Привіт! Я твій кіно-експерт. Опиши фільм, який шукаєш, або просто розкажи про свій настрій.",
+      text: "Hi! I'm your movie expert. Describe the movie you're looking for, or just tell me about your mood.",
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // Автопрокрутка до останнього повідомлення
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +46,6 @@ export default function AiChat() {
     const userText = input;
     setInput("");
     setMessages((prev) => [...prev, { role: "user", text: userText }]);
-
     setIsLoading(true);
 
     try {
@@ -52,7 +56,7 @@ export default function AiChat() {
           ...prev,
           {
             role: "ai",
-            text: `Я гадаю, це фільм "${response.data.title}". Ось що я знайшов:`,
+            text: `I think it's "${response.data.title}". Here is what I found:`,
             movie: response.data,
           },
         ]);
@@ -63,7 +67,7 @@ export default function AiChat() {
             role: "ai",
             text:
               response.data.message ||
-              "На жаль, я не зміг впізнати цей фільм. Спробуй описати інакше!",
+              "Unfortunately, I couldn't recognize this movie.",
           },
         ]);
       }
@@ -72,7 +76,7 @@ export default function AiChat() {
         ...prev,
         {
           role: "ai",
-          text: "Упс, сталася помилка з моїми мізками... Спробуй ще раз пізніше.",
+          text: "Oops, something went wrong with my AI brain... Please try again later.",
         },
       ]);
     } finally {
@@ -82,34 +86,60 @@ export default function AiChat() {
 
   const handleAddFromChat = async (movie: MovieResult) => {
     try {
-      await api.post("movies/watchlist", {
+      await api.post("/movies/watchlist", {
         tmdbId: movie.id,
         title: movie.title,
         posterUrl: movie.posterUrl,
       });
-      alert(`✅ "${movie.title}" додано у список!`);
-    } catch (error) {
-      alert("Помилка додавання.");
+      showToast(`✅ "${movie.title}" successfully added!`);
+    } catch (error: any) {
+      if (error.response?.status === 400) {
+        showToast("This movie is already in your list.");
+      } else {
+        showToast("Error adding movie.");
+      }
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/login");
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-gray-100 font-sans">
-      {/* МІНІ-ХЕДЕР */}
+    <div className="flex flex-col h-screen bg-gray-900 text-gray-100 font-sans relative">
       <header className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-10">
-        <Link
-          to="/search"
-          className="text-gray-400 hover:text-white transition-colors"
-        >
-          ← Назад
-        </Link>
-        <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-blue-500 bg-clip-text text-transparent">
-          AI Assistant
+        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent ml-4">
+          Movie Tracker 🎬
         </h1>
-        <div className="w-10"></div>
+        <nav className="flex gap-6 items-center mr-4">
+          <Link
+            to="/ai-chat"
+            className="text-purple-400 font-bold border-b-2 border-purple-400 transition-colors"
+          >
+            AI Chat
+          </Link>
+          <Link
+            to="/search"
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            Search
+          </Link>
+          <Link
+            to="/watchlist"
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            My List
+          </Link>
+          <button
+            onClick={handleLogout}
+            className="text-sm px-4 py-2 bg-red-900/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition"
+          >
+            Logout
+          </button>
+        </nav>
       </header>
 
-      {/* ЧАТ-ЗОНА */}
       <div className="flex-grow overflow-y-auto p-4 space-y-6">
         <div className="max-w-3xl mx-auto space-y-6">
           {messages.map((msg, idx) => (
@@ -118,29 +148,31 @@ export default function AiChat() {
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}
             >
               <div
-                className={`max-w-[85%] p-4 rounded-2xl shadow-lg ${
-                  msg.role === "user"
-                    ? "bg-blue-600 text-white rounded-tr-none"
-                    : "bg-gray-800 border border-gray-700 rounded-tl-none"
-                }`}
+                className={`max-w-[85%] p-4 rounded-2xl shadow-lg ${msg.role === "user" ? "bg-blue-600 text-white rounded-tr-none" : "bg-gray-800 border border-gray-700 rounded-tl-none"}`}
               >
                 <p className="leading-relaxed text-sm md:text-base">
                   {msg.text}
                 </p>
-
-                {/* КАРТКА ФІЛЬМУ */}
                 {msg.movie && (
                   <div className="mt-4 p-3 bg-gray-900/40 rounded-xl border border-purple-500/30 flex gap-4 animate-in zoom-in duration-500">
-                    <img
-                      src={msg.movie.posterUrl || ""}
-                      className="w-20 h-28 object-cover rounded-lg shadow-md border border-gray-700"
-                      alt="poster"
-                    />
+                    <Link
+                      to={`/movie/${msg.movie.id}`}
+                      className="flex-shrink-0"
+                    >
+                      <img
+                        src={msg.movie.posterUrl || ""}
+                        className="w-20 h-28 object-cover rounded-lg shadow-md border border-gray-700 hover:opacity-80 transition-opacity"
+                        alt="poster"
+                      />
+                    </Link>
+
                     <div className="flex flex-col justify-between py-1">
                       <div>
-                        <h4 className="font-bold text-white leading-tight">
-                          {msg.movie.title}
-                        </h4>
+                        <Link to={`/movie/${msg.movie.id}`}>
+                          <h4 className="font-bold text-white leading-tight hover:text-purple-400 transition-colors">
+                            {msg.movie.title}
+                          </h4>
+                        </Link>
                         <p className="text-xs text-gray-400 mt-1">
                           {msg.movie.releaseYear} • ⭐{" "}
                           {msg.movie.rating.toFixed(1)}
@@ -148,9 +180,9 @@ export default function AiChat() {
                       </div>
                       <button
                         onClick={() => handleAddFromChat(msg.movie!)}
-                        className="text-xs bg-purple-600 px-4 py-2 rounded-lg font-bold hover:bg-purple-500 transition-colors active:scale-95 shadow-lg"
+                        className="text-xs bg-purple-600 px-4 py-2 rounded-lg font-bold hover:bg-purple-500 transition-colors active:scale-95 shadow-lg w-fit"
                       >
-                        + ДОДАТИ
+                        + ADD
                       </button>
                     </div>
                   </div>
@@ -158,8 +190,6 @@ export default function AiChat() {
               </div>
             </div>
           ))}
-
-          {/* ІНДИКАТОР ЗАВАНТАЖЕННЯ */}
           {isLoading && (
             <div className="flex justify-start animate-in fade-in duration-300">
               <div className="bg-gray-800 border border-gray-700 p-4 rounded-2xl rounded-tl-none">
@@ -175,7 +205,6 @@ export default function AiChat() {
         </div>
       </div>
 
-      {/* ПОЛЕ ВВОДУ */}
       <div className="p-4 bg-gray-900 border-t border-gray-800">
         <form onSubmit={handleSend} className="max-w-3xl mx-auto relative">
           <input
@@ -184,7 +213,7 @@ export default function AiChat() {
             disabled={isLoading}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
-              isLoading ? "ШІ аналізує запит..." : "Опишіть фільм..."
+              isLoading ? "AI is analyzing..." : "Describe a movie..."
             }
             className="w-full pl-6 pr-16 py-4 bg-gray-800 border border-gray-700 rounded-full focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 shadow-2xl transition-all disabled:opacity-50"
           />
@@ -196,10 +225,13 @@ export default function AiChat() {
             {isLoading ? "..." : "→"}
           </button>
         </form>
-        <p className="text-center text-[10px] text-gray-500 mt-2 italic">
-          AI може помилятися, але він дуже старається.
-        </p>
       </div>
+
+      {toastMessage && (
+        <div className="fixed bottom-10 right-10 bg-gray-800 border border-gray-700 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50">
+          <span className="font-semibold">{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }
