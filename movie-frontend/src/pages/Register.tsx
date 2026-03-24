@@ -48,7 +48,7 @@ export default function Register() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-2 mt-1 text-white bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
-              placeholder="ViktorMak17"
+              placeholder="Test17"
               minLength={3}
               required
             />
