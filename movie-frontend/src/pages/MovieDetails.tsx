@@ -108,7 +108,6 @@ export default function MovieDetails() {
 
   const handleRate = async (clickedStar: number) => {
     if (!movie) return;
-
     const newRating = status?.rating === clickedStar ? 0 : clickedStar;
 
     try {
@@ -121,6 +120,7 @@ export default function MovieDetails() {
       showToast("Error saving rating.");
     }
   };
+
   const handleRemove = async () => {
     if (!movie) return;
     try {
@@ -163,6 +163,7 @@ export default function MovieDetails() {
         Loading...
       </div>
     );
+
   if (!movie)
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
@@ -179,22 +180,22 @@ export default function MovieDetails() {
 
   return (
     <div className="min-h-screen bg-gray-900 font-sans text-gray-100 relative pb-20">
-      <header className="flex items-center justify-between p-6 border-b border-gray-800 bg-gray-900/80 backdrop-blur-md sticky top-0 z-40">
+      <header className="flex flex-col sm:flex-row items-center justify-between p-4 sm:p-6 gap-4 border-b border-gray-800 bg-gray-900/80 backdrop-blur-md sticky top-0 z-40">
         <Link
           to="/search"
-          className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent"
+          className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent"
         >
           Movie Tracker 🎬
         </Link>
         <button
           onClick={() => navigate(-1)}
-          className="text-gray-400 hover:text-white transition font-bold"
+          className="text-gray-400 hover:text-white transition font-bold text-sm sm:text-base"
         >
           ← Back
         </button>
       </header>
 
-      <div className="relative w-full h-[40vh] sm:h-[50vh] bg-gray-800">
+      <div className="relative w-full h-[35vh] sm:h-[50vh] bg-gray-800">
         {backdropUrl && (
           <>
             <img
@@ -202,13 +203,13 @@ export default function MovieDetails() {
               alt="Backdrop"
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent"></div>
           </>
         )}
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 -mt-32 relative z-10 flex flex-col md:flex-row gap-8">
-        <div className="flex-shrink-0 mx-auto md:mx-0 w-48 sm:w-64">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 -mt-24 sm:-mt-32 relative z-10 flex flex-col md:flex-row gap-6 md:gap-10">
+        <div className="flex-shrink-0 mx-auto md:mx-0 w-44 sm:w-64">
           {posterUrl ? (
             <img
               src={posterUrl}
@@ -216,15 +217,18 @@ export default function MovieDetails() {
               className="w-full rounded-2xl shadow-2xl border border-gray-700"
             />
           ) : (
-            <div className="w-full h-96 bg-gray-800 rounded-2xl flex items-center justify-center border border-gray-700">
+            <div className="w-full h-64 sm:h-96 bg-gray-800 rounded-2xl flex items-center justify-center border border-gray-700 text-gray-500 italic">
               No poster
             </div>
           )}
         </div>
 
-        <div className="flex-grow flex flex-col pt-4 md:pt-32">
-          <h1 className="text-4xl font-bold text-white mb-2">{movie.title}</h1>
-          <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-6 items-center">
+        <div className="flex-grow flex flex-col pt-2 md:pt-32 text-center md:text-left">
+          <h1 className="text-3xl sm:text-5xl font-bold text-white mb-3">
+            {movie.title}
+          </h1>
+
+          <div className="flex flex-wrap justify-center md:justify-start gap-3 sm:gap-4 text-xs sm:text-sm text-gray-400 mb-6 items-center">
             <span>{movie.release_date?.split("-")[0]}</span>
             <span>•</span>
             <span>{movie.runtime} min</span>
@@ -232,12 +236,11 @@ export default function MovieDetails() {
             <span className="flex items-center gap-1 text-yellow-500 font-bold">
               ⭐ {movie.vote_average.toFixed(1)}
             </span>
-            <span>•</span>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap justify-center md:justify-start">
               {movie.genres.map((g) => (
                 <span
                   key={g.id}
-                  className="bg-gray-800 px-3 py-1 rounded-md border border-gray-700"
+                  className="bg-gray-800 px-2 py-1 rounded-md border border-gray-700 text-[10px] sm:text-xs"
                 >
                   {g.name}
                 </span>
@@ -245,40 +248,40 @@ export default function MovieDetails() {
             </div>
           </div>
 
-          <p className="text-gray-300 text-lg leading-relaxed mb-8">
+          <p className="text-gray-300 text-sm sm:text-lg leading-relaxed mb-8 max-w-3xl">
             {movie.overview}
           </p>
 
-          <div className="bg-gray-800/60 border border-gray-700 p-6 rounded-2xl max-w-lg shadow-xl">
-            <h3 className="text-lg font-bold text-white mb-5">Your List</h3>
+          <div className="bg-gray-800/60 border border-gray-700 p-5 sm:p-7 rounded-3xl w-full max-w-lg mx-auto md:mx-0 shadow-2xl backdrop-blur-sm">
+            <h3 className="text-md sm:text-lg font-bold text-white mb-5 uppercase tracking-wider">
+              Your Progress
+            </h3>
 
             {!status ? (
-              <div className="space-y-5">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={() => handleAddNewMovie(false)}
-                    className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition active:scale-95 shadow-md"
-                  >
-                    + Watchlist
-                  </button>
-                  <button
-                    onClick={() => {
-                      setPendingAction("new_watched");
-                      setIsRatingModalOpen(true);
-                    }}
-                    className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl transition active:scale-95 shadow-md"
-                  >
-                    ✓ Watched
-                  </button>
-                </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => handleAddNewMovie(false)}
+                  className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition active:scale-95 text-sm"
+                >
+                  + Watchlist
+                </button>
+                <button
+                  onClick={() => {
+                    setPendingAction("new_watched");
+                    setIsRatingModalOpen(true);
+                  }}
+                  className="flex-1 py-3.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl transition active:scale-95 text-sm"
+                >
+                  ✓ Watched
+                </button>
               </div>
             ) : (
               <div className="space-y-6">
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                   <span
-                    className={`border px-4 py-2 rounded-lg font-bold ${status.isWatched ? "bg-green-500/20 text-green-400 border-green-500/50" : "bg-blue-500/20 text-blue-400 border-blue-500/50"}`}
+                    className={`border px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest ${status.isWatched ? "bg-green-500/10 text-green-400 border-green-500/30" : "bg-blue-500/10 text-blue-400 border-blue-500/30"}`}
                   >
-                    {status.isWatched ? "Watched" : "📌 In Plans"}
+                    {status.isWatched ? "Status: Watched" : "Status: In Plans"}
                   </span>
 
                   {!status.isWatched && (
@@ -287,32 +290,30 @@ export default function MovieDetails() {
                         setPendingAction("update_watched");
                         setIsRatingModalOpen(true);
                       }}
-                      className="text-sm px-4 py-2 bg-gray-700 hover:bg-green-600 text-white font-bold rounded-lg transition border border-gray-600"
+                      className="text-xs px-4 py-2 bg-gray-700 hover:bg-green-600 text-white font-bold rounded-xl transition border border-gray-600"
                     >
-                      ✓ Mark as Watched
+                      Mark as Watched
                     </button>
                   )}
 
                   <button
                     onClick={handleRemove}
-                    className="text-sm px-4 py-2 bg-red-900/30 text-red-400 hover:bg-red-600 hover:text-white font-bold rounded-lg transition"
+                    className="text-xs px-4 py-2 bg-red-900/20 text-red-400 hover:bg-red-600 hover:text-white font-bold rounded-xl transition"
                   >
                     Remove
                   </button>
                 </div>
 
                 <div className="pt-2">
-                  <p className="text-sm text-gray-400 mb-2">Your Rating:</p>
-                  <div className="flex gap-2">
+                  <p className="text-xs text-gray-500 mb-3 uppercase font-semibold tracking-tighter">
+                    Personal Rating:
+                  </p>
+                  <div className="flex justify-center md:justify-start gap-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
                         onClick={() => handleRate(star)}
-                        className={`text-3xl transition-transform hover:scale-125 ${
-                          (status.rating || 0) >= star
-                            ? "text-yellow-400"
-                            : "text-gray-600 hover:text-yellow-400/50"
-                        }`}
+                        className={`text-3xl sm:text-4xl transition-all hover:scale-125 ${(status.rating || 0) >= star ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.3)]" : "text-gray-700 hover:text-yellow-400/40"}`}
                       >
                         ★
                       </button>
@@ -326,47 +327,42 @@ export default function MovieDetails() {
       </div>
 
       {isRatingModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-gray-800 border border-gray-700 p-8 rounded-3xl shadow-2xl max-w-sm w-full text-center relative animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="bg-gray-800 border border-gray-700 p-8 rounded-[2rem] shadow-2xl max-w-sm w-full text-center relative animate-in zoom-in-95">
             <button
               onClick={handleModalCancel}
-              className="absolute top-4 right-5 text-gray-500 hover:text-white text-xl transition"
+              className="absolute top-5 right-6 text-gray-500 hover:text-white text-xl transition"
             >
               ✕
             </button>
-
-            <h3 className="text-2xl font-bold text-white mb-2">
-              Rate this movie
-            </h3>
-            <p className="text-gray-400 mb-8 text-sm">
-              How many stars would you give "{movie.title}"?
+            <h3 className="text-2xl font-bold text-white mb-2">How was it?</h3>
+            <p className="text-gray-400 mb-8 text-sm px-4">
+              Rate "{movie.title}" or skip to just mark as watched.
             </p>
-
             <div className="flex justify-center gap-2 mb-8">
               {[1, 2, 3, 4, 5].map((star) => (
                 <button
                   key={star}
                   onClick={() => handleModalRate(star)}
-                  className="text-4xl text-gray-600 hover:text-yellow-400 transition-transform hover:scale-125"
+                  className="text-4xl text-gray-700 hover:text-yellow-400 transition-transform hover:scale-125"
                 >
                   ★
                 </button>
               ))}
             </div>
-
             <button
               onClick={handleModalSkip}
-              className="text-gray-500 hover:text-white transition text-sm underline underline-offset-4"
+              className="text-gray-500 hover:text-blue-400 transition text-xs font-bold uppercase tracking-widest"
             >
-              Skip and just mark as watched
+              Skip Rating
             </button>
           </div>
         </div>
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-10 right-10 bg-gray-800 border border-gray-700 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-[60]">
-          <span className="font-semibold">{toastMessage}</span>
+        <div className="fixed bottom-5 left-5 right-5 sm:left-auto sm:right-10 sm:bottom-10 bg-gray-800 border border-gray-700 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center justify-center sm:justify-start gap-3 animate-in slide-in-from-bottom-5 z-[60]">
+          <span className="font-bold text-sm">{toastMessage}</span>
         </div>
       )}
     </div>

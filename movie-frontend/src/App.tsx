@@ -5,21 +5,66 @@ import Watchlist from "./pages/Watchlist";
 import Search from "./pages/Search";
 import AiChat from "./pages/AiChat";
 import MovieDetails from "./pages/MovieDetails";
+import ChangePassword from "./pages/ChangePassword";
+import type { JSX } from "react";
+
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
 function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-gray-900 text-white font-sans">
         <Routes>
-          <Route path="/" element={<Navigate to="/search" replace />} />
-
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/change-password" element={<ChangePassword />} />
 
-          <Route path="/search" element={<Search />} />
-          <Route path="/watchlist" element={<Watchlist />} />
-          <Route path="/ai-chat" element={<AiChat />} />
+          <Route
+            path="/search"
+            element={
+              <ProtectedRoute>
+                <Search />
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/movie/:id" element={<MovieDetails />} />
+          <Route
+            path="/watchlist"
+            element={
+              <ProtectedRoute>
+                <Watchlist />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/ai-chat"
+            element={
+              <ProtectedRoute>
+                <AiChat />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/movie/:id"
+            element={
+              <ProtectedRoute>
+                <MovieDetails />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route path="/" element={<Navigate to="/search" replace />} />
+          <Route path="*" element={<Navigate to="/search" replace />} />
         </Routes>
       </div>
     </BrowserRouter>

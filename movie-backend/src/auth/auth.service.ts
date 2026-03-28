@@ -3,6 +3,7 @@ import {
   ConflictException,
   InternalServerErrorException,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,6 +12,10 @@ import { User } from '../users/users.entity';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { JwtService } from '@nestjs/jwt';
+import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { firstValueFrom } from 'rxjs';
+import { UpdatePasswordDto } from './dto/update-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -18,12 +23,19 @@ export class AuthService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private jwtService: JwtService,
+    private httpService: HttpService,
+    private configService: ConfigService,
   ) {}
 
   async signUp(
     signUpDto: SignUpDto,
   ): Promise<{ id: string; username: string; email: string }> {
-    const { email, password, username } = signUpDto;
+    const { email, password, username, captchaToken } = signUpDto;
+
+    const isCaptchaValid = await this.verifyCaptcha(captchaToken);
+    if (!isCaptchaValid) {
+      throw new BadRequestException('Invalid captcha verification');
+    }
 
     const existingUser = await this.usersRepository.findOne({
       where: [{ email }, { username }],
@@ -54,6 +66,27 @@ export class AuthService {
       throw new InternalServerErrorException('Registration failed');
     }
   }
+
+  async changePassword(userId: string, dto: UpdatePasswordDto) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    const isMatch = await bcrypt.compare(dto.oldPassword, user.password);
+    if (!isMatch) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const salt = await bcrypt.genSalt();
+    const hashedPath = await bcrypt.hash(dto.newPassword, salt);
+
+    user.password = hashedPath;
+    await this.usersRepository.save(user);
+
+    return { message: 'Password updated successfully' };
+  }
+
   async signIn(signInDto: SignInDto): Promise<{ accessToken: string }> {
     const { email, password } = signInDto;
 
@@ -72,5 +105,20 @@ export class AuthService {
     return {
       accessToken: await this.jwtService.signAsync(payload),
     };
+  }
+
+  private async verifyCaptcha(token: string): Promise<boolean> {
+    const secret = this.configService.get<string>('RECAPTCHA_SECRET_KEY');
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.post(
+          `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`,
+        ),
+      );
+      return data.success;
+    } catch {
+      return false;
+    }
   }
 }
