@@ -6,61 +6,68 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
     try {
       const response = await api.post("/auth/signin", { email, password });
-
       localStorage.setItem("token", response.data.accessToken);
-
       navigate("/watchlist");
     } catch (err) {
       setError("Invalid email or password. Please try again!");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900">
-      <div className="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-2xl shadow-xl">
-        <h2 className="text-3xl font-bold text-center text-white">
-          Log in to Movie Tracker
-        </h2>
+    <div className="flex items-center justify-center min-h-screen bg-gray-900 px-4 sm:px-6">
+      <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-gray-800 rounded-3xl shadow-2xl border border-gray-700">
+        <div className="text-center">
+          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+            Welcome Back
+          </h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Log in to your Movie Tracker account
+          </p>
+        </div>
 
         {error && (
-          <div className="p-3 text-sm text-red-200 bg-red-900/50 rounded-lg">
+          <div className="p-4 text-sm text-red-200 bg-red-900/40 border border-red-500/50 rounded-xl text-center">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-300">
-              Email
+            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+              Email Address
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 mt-1 text-white bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              placeholder="test@example.com"
+              className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              placeholder="name@example.com"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300">
-              Пароль
+            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+              Password
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-2 mt-1 text-white bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
               placeholder="••••••••"
               required
             />
@@ -68,14 +75,28 @@ export default function Login() {
 
           <button
             type="submit"
-            className="w-full py-3 font-semibold text-white transition bg-blue-600 rounded-lg hover:bg-blue-700 active:scale-95"
+            disabled={isLoading}
+            className="w-full py-4 font-bold text-white transition bg-blue-600 rounded-xl hover:bg-blue-500 active:scale-[0.98] disabled:bg-gray-700 disabled:text-gray-500 shadow-lg shadow-blue-900/20"
           >
-            Sign in
+            {isLoading ? "Signing in..." : "Sign In"}
           </button>
         </form>
-        <p className="text-sm text-center text-gray-400">
-          Ще не зареєстровані?{" "}
-          <Link to="/register" className="text-blue-400 hover:underline">
+
+        <div className="text-center">
+          <Link
+            to="/change-password"
+            className="text-sm text-gray-400 hover:text-blue-400 transition-colors underline underline-offset-4"
+          >
+            Forgot or want to change password?
+          </Link>
+        </div>
+
+        <p className="text-sm text-center text-gray-400 pt-2 border-t border-gray-700/50">
+          New here?{" "}
+          <Link
+            to="/register"
+            className="text-blue-400 font-bold hover:text-blue-300 transition-colors"
+          >
             Create an account
           </Link>
         </p>

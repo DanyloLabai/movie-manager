@@ -51,8 +51,8 @@ export default function Watchlist() {
     try {
       await api.delete(`/movies/watchlist/${tmdbId}`);
       setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
-      showToast("🗑️ Movie removed successfully!");
-    } catch (error) {
+      showToast("🗑️ Movie removed!");
+    } catch {
       showToast("❌ Error removing movie.");
     }
   };
@@ -61,28 +61,33 @@ export default function Watchlist() {
     try {
       await api.post(`/movies/watchlist/${tmdbId}/watched`);
       setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
-      showToast("✅ Marked as watched!");
-    } catch (error) {
+      showToast("✅ Moved to Watched!");
+    } catch {
       showToast("❌ Failed to update status.");
     }
   };
 
-  const handleRateMovie = async (tmdbId: number, rating: number) => {
+  const handleRateMovie = async (tmdbId: number, clickedStar: number) => {
+    const targetMovie = movies.find((m) => m.tmdbId === tmdbId);
+    const newRating = targetMovie?.rating === clickedStar ? 0 : clickedStar;
+
     try {
-      await api.patch(`/movies/watchlist/${tmdbId}/rate`, { rating });
+      await api.patch(`/movies/watchlist/${tmdbId}/rate`, {
+        rating: newRating,
+      });
 
       if (activeTab === "watchlist") {
         setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
-        showToast("⭐ Rating saved! Moved to Watched.");
+        showToast(newRating === 0 ? "✅ Moved to Watched" : "⭐ Rating saved!");
       } else {
         setMovies((prev) =>
           prev.map((item) =>
-            item.tmdbId === tmdbId ? { ...item, rating } : item,
+            item.tmdbId === tmdbId ? { ...item, rating: newRating } : item,
           ),
         );
-        showToast("⭐ Rating updated!");
+        showToast(newRating === 0 ? "🗑️ Rating cleared" : "⭐ Rating updated!");
       }
-    } catch (error) {
+    } catch {
       showToast("❌ Failed to save rating.");
     }
   };
@@ -93,44 +98,44 @@ export default function Watchlist() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-gray-900 font-sans text-gray-100 relative">
-      <div className="max-w-4xl mx-auto">
-        <header className="flex items-center justify-between pb-6 mb-8 border-b border-gray-800">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+    <div className="min-h-screen p-4 sm:p-8 bg-gray-900 font-sans text-gray-100 relative">
+      <div className="max-w-7xl mx-auto">
+        <header className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 mb-8 border-b border-gray-800">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-center md:text-left">
             Movie Tracker 🎬
           </h1>
-          <nav className="flex gap-6 items-center">
+          <nav className="flex flex-wrap justify-center gap-4 sm:gap-8 items-center">
             <Link
               to="/ai-chat"
-              className="text-purple-400 font-bold hover:text-purple-300 transition"
+              className="text-purple-400 font-bold hover:text-purple-300 transition text-sm sm:text-base"
             >
               AI Chat
             </Link>
             <Link
               to="/search"
-              className="text-gray-400 hover:text-white transition"
+              className="text-gray-400 hover:text-white transition text-sm sm:text-base"
             >
               Search
             </Link>
             <Link
               to="/watchlist"
-              className="text-blue-400 font-bold border-b-2 border-blue-400"
+              className="text-blue-400 font-bold border-b-2 border-blue-400 text-sm sm:text-base"
             >
               My List
             </Link>
             <button
               onClick={handleLogout}
-              className="text-sm px-4 py-2 bg-red-900/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition"
+              className="text-xs sm:text-sm px-4 py-2 bg-red-900/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition"
             >
               Logout
             </button>
           </nav>
         </header>
 
-        <div className="flex gap-4 mb-8">
+        <div className="flex justify-center md:justify-start gap-4 mb-8">
           <button
             onClick={() => setActiveTab("watchlist")}
-            className={`px-6 py-2 rounded-full font-bold transition-all ${
+            className={`px-5 sm:px-8 py-2.5 rounded-full font-bold transition-all text-sm sm:text-base ${
               activeTab === "watchlist"
                 ? "bg-blue-600 text-white shadow-lg"
                 : "bg-gray-800 text-gray-400 hover:bg-gray-700"
@@ -140,7 +145,7 @@ export default function Watchlist() {
           </button>
           <button
             onClick={() => setActiveTab("watched")}
-            className={`px-6 py-2 rounded-full font-bold transition-all ${
+            className={`px-5 sm:px-8 py-2.5 rounded-full font-bold transition-all text-sm sm:text-base ${
               activeTab === "watched"
                 ? "bg-green-600 text-white shadow-lg"
                 : "bg-gray-800 text-gray-400 hover:bg-gray-700"
@@ -150,17 +155,18 @@ export default function Watchlist() {
           </button>
         </div>
 
-        {/* Списки */}
         {isLoading ? (
-          <p className="text-center text-gray-500 animate-pulse text-lg">
+          <p className="text-center text-gray-500 animate-pulse text-lg mt-10">
             Loading your list...
           </p>
         ) : movies.length === 0 ? (
-          <div className="text-center p-12 bg-gray-800/50 rounded-3xl border border-gray-700 shadow-2xl">
-            <p className="text-gray-400 text-xl">It's empty here.</p>
+          <div className="text-center p-12 bg-gray-800/50 rounded-3xl border border-gray-700 shadow-2xl mt-10">
+            <p className="text-gray-400 text-xl italic">
+              It's empty here. Add some movies!
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {movies.map((item) => (
               <div
                 key={item.id}
@@ -168,21 +174,21 @@ export default function Watchlist() {
               >
                 <Link
                   to={`/movie/${item.tmdbId}`}
-                  className="relative w-full h-80 bg-gray-900 block"
+                  className="relative w-full h-80 sm:h-72 md:h-80 bg-gray-900 block"
                 >
                   {item.posterUrl ? (
                     <img
                       src={item.posterUrl}
                       alt={item.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="flex items-center justify-center w-full h-full text-gray-600">
+                    <div className="flex items-center justify-center w-full h-full text-gray-600 italic">
                       No poster
                     </div>
                   )}
                   {activeTab === "watched" && (
-                    <div className="absolute top-2 right-2 bg-green-500/90 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm">
+                    <div className="absolute top-2 right-2 bg-green-500/90 text-white text-[10px] font-bold px-3 py-1 rounded-full backdrop-blur-sm uppercase tracking-wider">
                       Watched
                     </div>
                   )}
@@ -191,23 +197,23 @@ export default function Watchlist() {
                 <div className="p-5 flex flex-col flex-grow">
                   <Link
                     to={`/movie/${item.tmdbId}`}
-                    className="text-xl font-bold text-white truncate hover:text-blue-400 transition"
+                    className="text-lg font-bold text-white truncate hover:text-blue-400 transition"
                     title={item.title}
                   >
                     {item.title}
                   </Link>
-                  <p className="mt-1 text-xs text-gray-500 mb-4">
+                  <p className="mt-1 text-[10px] uppercase tracking-tighter text-gray-500 mb-4 font-semibold">
                     Added: {new Date(item.addedAt).toLocaleDateString("en-US")}
                   </p>
 
-                  <div className="flex justify-center gap-1 mb-4 mt-auto">
+                  <div className="flex justify-center gap-1.5 mb-6 mt-auto">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
                         onClick={() => handleRateMovie(item.tmdbId, star)}
-                        className={`text-2xl transition-transform hover:scale-125 ${
+                        className={`text-2xl transition-all duration-200 active:scale-150 ${
                           (item.rating || 0) >= star
-                            ? "text-yellow-400"
+                            ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]"
                             : "text-gray-600 hover:text-yellow-400/50"
                         }`}
                       >
@@ -220,21 +226,21 @@ export default function Watchlist() {
                     {activeTab === "watchlist" ? (
                       <button
                         onClick={() => handleMarkWatched(item.tmdbId)}
-                        className="text-sm font-bold text-green-400 hover:text-green-300 transition"
+                        className="text-xs font-bold text-green-400 hover:text-green-300 transition uppercase tracking-wider"
                       >
-                        ✓ Watched
+                        ✓ Mark Watched
                       </button>
                     ) : (
                       <Link
                         to={`/movie/${item.tmdbId}`}
-                        className="text-sm font-bold text-blue-400 hover:text-blue-300 transition"
+                        className="text-xs font-bold text-blue-400 hover:text-blue-300 transition uppercase tracking-wider"
                       >
                         Details
                       </Link>
                     )}
                     <button
                       onClick={() => handleDelete(item.tmdbId)}
-                      className="text-sm font-semibold text-red-400/70 hover:text-red-400 transition"
+                      className="text-xs font-bold text-red-400/60 hover:text-red-400 transition uppercase tracking-wider"
                     >
                       Remove
                     </button>
@@ -247,8 +253,10 @@ export default function Watchlist() {
       </div>
 
       {toastMessage && (
-        <div className="fixed bottom-10 right-10 bg-gray-800 border border-gray-700 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50">
-          <span className="font-semibold">{toastMessage}</span>
+        <div className="fixed bottom-5 left-5 right-5 sm:left-auto sm:right-10 sm:bottom-10 bg-gray-800 border border-gray-700 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center justify-center sm:justify-start gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50">
+          <span className="font-semibold text-sm sm:text-base">
+            {toastMessage}
+          </span>
         </div>
       )}
     </div>

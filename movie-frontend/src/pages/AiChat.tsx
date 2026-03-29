@@ -71,12 +71,12 @@ export default function AiChat() {
           },
         ]);
       }
-    } catch (error) {
+    } catch {
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          text: "Oops, something went wrong with my AI brain... Please try again later.",
+          text: "Oops, something went wrong. Please try again later.",
         },
       ]);
     } finally {
@@ -91,13 +91,13 @@ export default function AiChat() {
         title: movie.title,
         posterUrl: movie.posterUrl,
       });
-      showToast(`✅ "${movie.title}" successfully added!`);
+      showToast(`✅ "${movie.title}" added!`);
     } catch (error: any) {
-      if (error.response?.status === 400) {
-        showToast("This movie is already in your list.");
-      } else {
-        showToast("Error adding movie.");
-      }
+      showToast(
+        error.response?.status === 400
+          ? "Already in list."
+          : "Error adding movie.",
+      );
     }
   };
 
@@ -108,39 +108,39 @@ export default function AiChat() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-100 font-sans relative">
-      <header className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-10">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent ml-4">
+      <header className="flex flex-col sm:flex-row items-center justify-between p-4 gap-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-20">
+        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
           Movie Tracker 🎬
         </h1>
-        <nav className="flex gap-6 items-center mr-4">
+        <nav className="flex flex-wrap justify-center gap-3 sm:gap-6 items-center">
           <Link
             to="/ai-chat"
-            className="text-purple-400 font-bold border-b-2 border-purple-400 transition-colors"
+            className="text-purple-400 font-bold border-b-2 border-purple-400 transition-all text-sm sm:text-base px-1"
           >
             AI Chat
           </Link>
           <Link
             to="/search"
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white transition-colors text-sm sm:text-base px-1"
           >
             Search
           </Link>
           <Link
             to="/watchlist"
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white transition-colors text-sm sm:text-base px-1"
           >
             My List
           </Link>
           <button
             onClick={handleLogout}
-            className="text-sm px-4 py-2 bg-red-900/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition"
+            className="text-[10px] sm:text-xs px-3 py-1.5 bg-red-900/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold"
           >
             Logout
           </button>
         </nav>
       </header>
 
-      <div className="flex-grow overflow-y-auto p-4 space-y-6">
+      <div className="flex-grow overflow-y-auto p-3 sm:p-6 space-y-6 scrollbar-hide">
         <div className="max-w-3xl mx-auto space-y-6">
           {messages.map((msg, idx) => (
             <div
@@ -148,39 +148,43 @@ export default function AiChat() {
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}
             >
               <div
-                className={`max-w-[85%] p-4 rounded-2xl shadow-lg ${msg.role === "user" ? "bg-blue-600 text-white rounded-tr-none" : "bg-gray-800 border border-gray-700 rounded-tl-none"}`}
+                className={`max-w-[90%] sm:max-w-[80%] p-4 rounded-2xl shadow-lg ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white rounded-tr-none shadow-blue-900/20"
+                    : "bg-gray-800 border border-gray-700 rounded-tl-none shadow-black/40"
+                }`}
               >
-                <p className="leading-relaxed text-sm md:text-base">
+                <p className="leading-relaxed text-sm sm:text-base">
                   {msg.text}
                 </p>
                 {msg.movie && (
-                  <div className="mt-4 p-3 bg-gray-900/40 rounded-xl border border-purple-500/30 flex gap-4 animate-in zoom-in duration-500">
+                  <div className="mt-4 p-2 sm:p-3 bg-gray-900/50 rounded-xl border border-purple-500/30 flex gap-3 sm:gap-4 animate-in zoom-in duration-500 overflow-hidden">
                     <Link
                       to={`/movie/${msg.movie.id}`}
                       className="flex-shrink-0"
                     >
                       <img
                         src={msg.movie.posterUrl || ""}
-                        className="w-20 h-28 object-cover rounded-lg shadow-md border border-gray-700 hover:opacity-80 transition-opacity"
+                        className="w-16 h-24 sm:w-20 sm:h-28 object-cover rounded-lg shadow-md border border-gray-700"
                         alt="poster"
                       />
                     </Link>
 
-                    <div className="flex flex-col justify-between py-1">
-                      <div>
+                    <div className="flex flex-col justify-between py-0.5 min-w-0">
+                      <div className="min-w-0">
                         <Link to={`/movie/${msg.movie.id}`}>
-                          <h4 className="font-bold text-white leading-tight hover:text-purple-400 transition-colors">
+                          <h4 className="font-bold text-white text-sm sm:text-base truncate hover:text-purple-400 transition-colors">
                             {msg.movie.title}
                           </h4>
                         </Link>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-[10px] sm:text-xs text-gray-400 mt-1 uppercase font-semibold">
                           {msg.movie.releaseYear} • ⭐{" "}
                           {msg.movie.rating.toFixed(1)}
                         </p>
                       </div>
                       <button
                         onClick={() => handleAddFromChat(msg.movie!)}
-                        className="text-xs bg-purple-600 px-4 py-2 rounded-lg font-bold hover:bg-purple-500 transition-colors active:scale-95 shadow-lg w-fit"
+                        className="text-[10px] sm:text-xs bg-purple-600 px-3 py-2 rounded-lg font-bold hover:bg-purple-500 transition-all active:scale-95 shadow-lg w-fit mt-2 uppercase tracking-wider"
                       >
                         + ADD
                       </button>
@@ -193,10 +197,10 @@ export default function AiChat() {
           {isLoading && (
             <div className="flex justify-start animate-in fade-in duration-300">
               <div className="bg-gray-800 border border-gray-700 p-4 rounded-2xl rounded-tl-none">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                <div className="flex gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
                 </div>
               </div>
             </div>
@@ -205,22 +209,23 @@ export default function AiChat() {
         </div>
       </div>
 
-      <div className="p-4 bg-gray-900 border-t border-gray-800">
-        <form onSubmit={handleSend} className="max-w-3xl mx-auto relative">
+      <div className="p-3 sm:p-4 bg-gray-900 border-t border-gray-800 sticky bottom-0">
+        <form
+          onSubmit={handleSend}
+          className="max-w-3xl mx-auto relative flex items-center gap-2"
+        >
           <input
             type="text"
             value={input}
             disabled={isLoading}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              isLoading ? "AI is analyzing..." : "Describe a movie..."
-            }
-            className="w-full pl-6 pr-16 py-4 bg-gray-800 border border-gray-700 rounded-full focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 shadow-2xl transition-all disabled:opacity-50"
+            placeholder={isLoading ? "Thinking..." : "Describe a movie..."}
+            className="w-full pl-5 pr-14 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-2xl focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 shadow-2xl transition-all disabled:opacity-50 text-sm sm:text-base"
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="absolute right-2 top-2 bottom-2 px-6 bg-purple-600 text-white rounded-full font-bold hover:bg-purple-500 transition-all active:scale-95 disabled:bg-gray-700 disabled:text-gray-500"
+            className="absolute right-1.5 sm:right-2 top-1.5 bottom-1.5 px-4 sm:px-6 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-500 transition-all active:scale-95 disabled:bg-gray-700 disabled:text-gray-500 text-lg"
           >
             {isLoading ? "..." : "→"}
           </button>
@@ -228,8 +233,8 @@ export default function AiChat() {
       </div>
 
       {toastMessage && (
-        <div className="fixed bottom-10 right-10 bg-gray-800 border border-gray-700 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50">
-          <span className="font-semibold">{toastMessage}</span>
+        <div className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-10 sm:bottom-10 bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center justify-center sm:justify-start gap-3 animate-in slide-in-from-bottom-5 z-50">
+          <span className="font-bold text-xs sm:text-sm">{toastMessage}</span>
         </div>
       )}
     </div>
