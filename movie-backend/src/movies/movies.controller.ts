@@ -95,6 +95,23 @@ export class MoviesController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @Patch('watchlist/:tmdbId/favorite')
+  async toggleFavorite(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.toggleFavorite(userId, tmdbId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('profile')
+  async getProfileData(@Req() req: RequestWithUser) {
+    const userId = req.user.userId;
+    return this.moviesService.getProfileData(userId);
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Get('trending')
   async getTrendingMovies(): Promise<MovieResultDto[]> {
     return this.moviesService.getTrendingMovies();

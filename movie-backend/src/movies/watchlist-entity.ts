@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   ManyToOne,
 } from 'typeorm';
 import { User } from '../users/users.entity';
@@ -24,11 +25,17 @@ export class WatchlistItem {
   @Column({ default: false })
   isWatched: boolean;
 
+  @Column({ default: false })
+  isFavorite: boolean;
+
   @Column({ nullable: true })
   posterUrl: string;
 
   @CreateDateColumn()
   addedAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   user: User;

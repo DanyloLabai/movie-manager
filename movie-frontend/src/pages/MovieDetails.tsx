@@ -17,6 +17,7 @@ interface MovieDetailsData {
 interface UserMovieStatus {
   id: number;
   isWatched: boolean;
+  isFavorite: boolean;
   rating: number | null;
 }
 
@@ -24,9 +25,30 @@ export default function MovieDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [movie, setMovie] = useState<MovieDetailsData | null>(null);
-  const [status, setStatus] = useState<UserMovieStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Кешування деталей фільму
+  const [movie, setMovie] = useState<MovieDetailsData | null>(() => {
+    try {
+      if (!id) return null;
+      const cached = localStorage.getItem(`movie_details_${id}`);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Кешування статусу (в планах/переглянуто/оцінка)
+  const [status, setStatus] = useState<UserMovieStatus | null>(() => {
+    try {
+      if (!id) return null;
+      const cached = localStorage.getItem(`movie_status_${id}`);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Лоадер активний тільки якщо немає кешованих даних
+  const [isLoading, setIsLoading] = useState(!movie);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
@@ -36,6 +58,10 @@ export default function MovieDetails() {
 
   useEffect(() => {
     if (id) {
+      // Якщо id змінився (наприклад, перехід на інший фільм), перевіряємо чи треба показувати лоадер
+      if (!movie || movie.id !== Number(id)) {
+        setIsLoading(true);
+      }
       fetchData(Number(id));
     }
   }, [id]);
@@ -46,18 +72,44 @@ export default function MovieDetails() {
   };
 
   const fetchData = async (tmdbId: number) => {
-    setIsLoading(true);
     try {
       const [detailsRes, statusRes] = await Promise.all([
         api.get(`/movies/${tmdbId}/details`),
         api.get(`/movies/${tmdbId}/status`),
       ]);
+
       setMovie(detailsRes.data);
       setStatus(statusRes.data ? statusRes.data : null);
+
+      // Оновлюємо кеш
+      localStorage.setItem(
+        `movie_details_${tmdbId}`,
+        JSON.stringify(detailsRes.data),
+      );
+      if (statusRes.data) {
+        localStorage.setItem(
+          `movie_status_${tmdbId}`,
+          JSON.stringify(statusRes.data),
+        );
+      } else {
+        localStorage.removeItem(`movie_status_${tmdbId}`);
+      }
     } catch (error) {
       showToast("Failed to load movie details.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const updateStatusCache = (newStatus: UserMovieStatus | null) => {
+    setStatus(newStatus);
+    if (newStatus && movie) {
+      localStorage.setItem(
+        `movie_status_${movie.id}`,
+        JSON.stringify(newStatus),
+      );
+    } else if (movie) {
+      localStorage.removeItem(`movie_status_${movie.id}`);
     }
   };
 
@@ -106,6 +158,18 @@ export default function MovieDetails() {
     }
   };
 
+  const handleToggleFavorite = async () => {
+    if (!movie || !status) return;
+    try {
+      await api.patch(`/movies/watchlist/${movie.id}/favorite`);
+      const newStatus = { ...status, isFavorite: !status.isFavorite };
+      updateStatusCache(newStatus);
+      showToast("Favorite status updated");
+    } catch (error) {
+      showToast("Failed to update favorite status");
+    }
+  };
+
   const handleRate = async (clickedStar: number) => {
     if (!movie) return;
     const newRating = status?.rating === clickedStar ? 0 : clickedStar;
@@ -126,7 +190,7 @@ export default function MovieDetails() {
     try {
       await api.delete(`/movies/watchlist/${movie.id}`);
       showToast("Removed from your list.");
-      setStatus(null);
+      updateStatusCache(null);
     } catch (error) {
       showToast("Error removing movie.");
     }
@@ -159,15 +223,25 @@ export default function MovieDetails() {
 
   if (isLoading)
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        Loading...
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="flex gap-2">
+          <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+          <div
+            className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+            style={{ animationDelay: "0.1s" }}
+          ></div>
+          <div
+            className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+            style={{ animationDelay: "0.2s" }}
+          ></div>
+        </div>
       </div>
     );
 
   if (!movie)
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        Movie not found.
+        <p className="text-gray-400 text-xl italic">Movie not found.</p>
       </div>
     );
 
@@ -185,13 +259,13 @@ export default function MovieDetails() {
           to="/search"
           className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent"
         >
-          Movie Tracker 🎬
+          Movie Tracker
         </Link>
         <button
           onClick={() => navigate(-1)}
           className="text-gray-400 hover:text-white transition font-bold text-sm sm:text-base"
         >
-          ← Back
+          Back
         </button>
       </header>
 
@@ -234,7 +308,7 @@ export default function MovieDetails() {
             <span>{movie.runtime} min</span>
             <span>•</span>
             <span className="flex items-center gap-1 text-yellow-500 font-bold">
-              ⭐ {movie.vote_average.toFixed(1)}
+              ★ {movie.vote_average.toFixed(1)}
             </span>
             <div className="flex gap-2 flex-wrap justify-center md:justify-start">
               {movie.genres.map((g) => (
@@ -263,7 +337,7 @@ export default function MovieDetails() {
                   onClick={() => handleAddNewMovie(false)}
                   className="flex-1 py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition active:scale-95 text-sm"
                 >
-                  + Watchlist
+                  Watchlist
                 </button>
                 <button
                   onClick={() => {
@@ -272,7 +346,7 @@ export default function MovieDetails() {
                   }}
                   className="flex-1 py-3.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl transition active:scale-95 text-sm"
                 >
-                  ✓ Watched
+                  Watched
                 </button>
               </div>
             ) : (
@@ -301,6 +375,33 @@ export default function MovieDetails() {
                     className="text-xs px-4 py-2 bg-red-900/20 text-red-400 hover:bg-red-600 hover:text-white font-bold rounded-xl transition"
                   >
                     Remove
+                  </button>
+
+                  <button
+                    onClick={handleToggleFavorite}
+                    className={`flex items-center justify-center w-8 h-8 rounded-full transition group/heart ${
+                      status.isFavorite
+                        ? "bg-red-500/20"
+                        : "bg-gray-700 hover:bg-gray-600"
+                    }`}
+                  >
+                    <svg
+                      className={`w-4 h-4 transition ${
+                        status.isFavorite
+                          ? "text-red-500 fill-red-500"
+                          : "text-gray-400 group-hover/heart:text-red-500"
+                      }`}
+                      fill={status.isFavorite ? "currentColor" : "none"}
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      ></path>
+                    </svg>
                   </button>
                 </div>
 

@@ -11,24 +11,68 @@ interface MovieResult {
   posterUrl: string | null;
 }
 
+const TRENDING_CACHE_KEY = "movie_tracker_trending_cache";
+const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
+
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<MovieResult[]>([]);
-  const [trending, setTrending] = useState<MovieResult[]>([]);
+
+  // Ініціалізуємо тренди з кешу
+  const [trending, setTrending] = useState<MovieResult[]>(() => {
+    try {
+      const cached = localStorage.getItem(TRENDING_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Ініціалізуємо сердечка з кешу
+  const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
+    try {
+      const cached = localStorage.getItem(FAVORITES_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Лоадер потрібен ТІЛЬКИ якщо кеш порожній
+  const [isLoadingTrends, setIsLoadingTrends] = useState(trending.length === 0);
+
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchTrending = async () => {
+    const fetchData = async () => {
       try {
-        const response = await api.get("/movies/trending");
-        setTrending(response.data);
+        const [trendingRes, profileRes] = await Promise.all([
+          api.get("/movies/trending"),
+          api.get("/movies/profile"),
+        ]);
+
+        // Оновлюємо стан і зберігаємо в кеш
+        setTrending(trendingRes.data);
+        localStorage.setItem(
+          TRENDING_CACHE_KEY,
+          JSON.stringify(trendingRes.data),
+        );
+
+        if (profileRes.data?.favorites) {
+          const ids = profileRes.data.favorites.map((f: any) => f.tmdbId);
+          setFavoriteIds(ids);
+          localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(ids));
+        }
       } catch (error) {
-        console.error("Failed to fetch trending movies", error);
+        console.error("Error fetching background data:", error);
+      } finally {
+        setIsLoadingTrends(false);
       }
     };
-    fetchTrending();
+
+    fetchData();
   }, []);
 
   const showToast = (message: string) => {
@@ -59,18 +103,57 @@ export default function Search() {
         title: movie.title,
         posterUrl: movie.posterUrl,
       });
-      showToast(`"${movie.title}" successfully added!`);
+      showToast("Successfully added");
     } catch (error: any) {
       if (error.response?.status === 400) {
-        showToast("This movie is already in your list.");
+        showToast("Already in your list");
       } else {
-        showToast("Error adding movie.");
+        showToast("Error adding movie");
+      }
+    }
+  };
+
+  const handleToggleFavorite = async (movie: MovieResult) => {
+    const isFav = favoriteIds.includes(movie.id);
+    try {
+      await api.patch(`/movies/watchlist/${movie.id}/favorite`);
+
+      const newIds = isFav
+        ? favoriteIds.filter((id) => id !== movie.id)
+        : [...favoriteIds, movie.id];
+      setFavoriteIds(newIds);
+      localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds)); // Оновлюємо кеш одразу
+
+      showToast("Favorite status updated");
+    } catch (error: any) {
+      if (error.response?.status === 404 && !isFav) {
+        try {
+          await api.post("/movies/watchlist", {
+            tmdbId: movie.id,
+            title: movie.title,
+            posterUrl: movie.posterUrl,
+          });
+          await api.patch(`/movies/watchlist/${movie.id}/favorite`);
+
+          const newIds = [...favoriteIds, movie.id];
+          setFavoriteIds(newIds);
+          localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
+
+          showToast("Added to list and favorites");
+        } catch (innerError) {
+          showToast("Failed to favorite movie");
+        }
+      } else {
+        showToast("Failed to update favorite status");
       }
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    // За бажанням: можна очищати кеш при логауті
+    // localStorage.removeItem(TRENDING_CACHE_KEY);
+    // localStorage.removeItem(FAVORITES_CACHE_KEY);
     navigate("/login");
   };
 
@@ -79,8 +162,31 @@ export default function Search() {
       {movies.map((movie) => (
         <div
           key={movie.id}
-          className="group overflow-hidden transition bg-gray-800 border border-gray-700 shadow-lg rounded-2xl flex flex-col hover:shadow-2xl hover:border-blue-500/30 hover:-translate-y-1"
+          className="group relative overflow-hidden transition bg-gray-800 border border-gray-700 shadow-lg rounded-2xl flex flex-col hover:shadow-2xl hover:border-blue-500/30 hover:-translate-y-1"
         >
+          <button
+            className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center bg-gray-900/60 rounded-full backdrop-blur-sm border border-gray-600/50 hover:bg-gray-800 transition group/heart"
+            onClick={() => handleToggleFavorite(movie)}
+          >
+            <svg
+              className={`w-4 h-4 transition ${
+                favoriteIds.includes(movie.id)
+                  ? "text-red-500"
+                  : "text-gray-400 group-hover/heart:text-red-500"
+              }`}
+              fill={favoriteIds.includes(movie.id) ? "currentColor" : "none"}
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              ></path>
+            </svg>
+          </button>
+
           <Link
             to={`/movie/${movie.id}`}
             className="relative w-full h-80 sm:h-72 md:h-80 bg-gray-900 block"
@@ -98,7 +204,7 @@ export default function Search() {
             )}
           </Link>
 
-          <div className="p-4 sm:p-5 flex flex-col flex-grow">
+          <div className="p-4 sm:p-5 flex flex-col flex-grow relative z-10 bg-gray-800">
             <Link to={`/movie/${movie.id}`}>
               <h4
                 className="text-lg sm:text-xl font-bold mb-1 truncate text-white hover:text-blue-400 transition-colors"
@@ -107,7 +213,7 @@ export default function Search() {
                 {movie.title}
               </h4>
             </Link>
-            <p className="text-xs text-gray-500 mb-3 italic">
+            <p className="text-xs text-gray-500 mb-3 uppercase tracking-tighter">
               {movie.releaseYear} • IMDB: {movie.rating}
             </p>
             <p className="text-sm text-gray-400 line-clamp-3 mb-6 flex-grow">
@@ -115,7 +221,7 @@ export default function Search() {
             </p>
             <button
               onClick={() => handleAdd(movie)}
-              className="w-full py-2.5 bg-gray-700 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors active:scale-95"
+              className="w-full py-2.5 bg-gray-700 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors active:scale-95 uppercase text-sm tracking-wider"
             >
               + Add
             </button>
@@ -141,7 +247,7 @@ export default function Search() {
             </Link>
             <Link
               to="/search"
-              className="text-blue-400 font-bold border-b-2 border-blue-400 text-sm sm:text-base"
+              className="text-blue-400 font-bold border-b-2 border-blue-400 text-sm sm:text-base pb-1"
             >
               Search
             </Link>
@@ -149,7 +255,7 @@ export default function Search() {
               to="/watchlist"
               className="text-gray-400 hover:text-white transition text-sm sm:text-base"
             >
-              My List
+              My Profile
             </Link>
             <button
               onClick={handleLogout}
@@ -199,13 +305,29 @@ export default function Search() {
             )
           ) : (
             <>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-300 mb-6 flex items-center gap-2 border-b border-gray-800 pb-2">
+              <h2 className="text-lg sm:text-xl font-bold text-gray-300 mb-6 border-b border-gray-800 pb-2">
                 Trending This Week
               </h2>
-              {trending.length > 0 ? (
+              {isLoadingTrends ? (
+                <div className="flex justify-center items-center h-48">
+                  <div className="flex gap-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+                    <div
+                      className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.1s" }}
+                    ></div>
+                    <div
+                      className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.2s" }}
+                    ></div>
+                  </div>
+                </div>
+              ) : trending.length > 0 ? (
                 renderMovieGrid(trending)
               ) : (
-                <p className="text-gray-500">Loading trends...</p>
+                <p className="text-gray-500 text-center">
+                  Failed to load trends.
+                </p>
               )}
             </>
           )}

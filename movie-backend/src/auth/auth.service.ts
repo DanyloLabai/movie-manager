@@ -67,8 +67,10 @@ export class AuthService {
     }
   }
 
-  async changePassword(userId: string, dto: UpdatePasswordDto) {
-    const user = await this.usersRepository.findOne({ where: { id: userId } });
+  async changePassword(dto: UpdatePasswordDto) {
+    const user = await this.usersRepository.findOne({
+      where: { email: dto.email },
+    });
     if (!user) {
       throw new UnauthorizedException('User not found');
     }

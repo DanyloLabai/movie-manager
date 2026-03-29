@@ -1,6 +1,9 @@
-import { IsString, MinLength, MaxLength } from 'class-validator';
+import { IsString, MinLength, MaxLength, IsEmail } from 'class-validator';
 
 export class UpdatePasswordDto {
+  @IsEmail()
+  email: string;
+
   @IsString()
   oldPassword: string;
 

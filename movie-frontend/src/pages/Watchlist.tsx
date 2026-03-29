@@ -7,22 +7,59 @@ interface WatchlistItem {
   tmdbId: number;
   title: string;
   addedAt: string;
+  updatedAt?: string;
   posterUrl?: string | null;
   isWatched: boolean;
+  isFavorite: boolean;
   rating?: number | null;
 }
 
+interface ProfileData {
+  favorites: WatchlistItem[];
+  recent: WatchlistItem[];
+}
+
+const PROFILE_CACHE_KEY = "movie_tracker_profile_cache";
+
 export default function Watchlist() {
   const [movies, setMovies] = useState<WatchlistItem[]>([]);
+
+  // Ініціалізуємо стан профілю з localStorage, щоб уникнути блимання
+  const [profileData, setProfileData] = useState<ProfileData | null>(() => {
+    try {
+      const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"watchlist" | "watched">(
-    "watchlist",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "profile" | "watchlist" | "watched"
+  >("profile");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [username, setUsername] = useState<string>("User");
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchMovies();
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        setUsername(payload.username || payload.email?.split("@")[0] || "User");
+      } catch (e) {
+        console.error("Token parse error");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "watchlist" || activeTab === "watched") {
+      fetchMovies();
+    } else if (activeTab === "profile") {
+      fetchProfile();
+    }
   }, [activeTab]);
 
   const showToast = (message: string) => {
@@ -39,11 +76,52 @@ export default function Watchlist() {
       setMovies(response.data);
     } catch (error: any) {
       if (error.response?.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/login");
+        handleLogout();
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchProfile = async () => {
+    // Вмикаємо лоадер ТІЛЬКИ якщо даних ще немає в кеші
+    if (!profileData) {
+      setIsLoading(true);
+    }
+
+    try {
+      const response = await api.get("/movies/profile");
+      setProfileData(response.data);
+      // Зберігаємо свіжі дані в кеш
+      localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(response.data));
+    } catch (error: any) {
+      if (error.response?.status === 401) {
+        handleLogout();
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleFavorite = async (tmdbId: number) => {
+    try {
+      await api.patch(`/movies/watchlist/${tmdbId}/favorite`);
+
+      setMovies((prev) =>
+        prev.map((item) =>
+          item.tmdbId === tmdbId
+            ? { ...item, isFavorite: !item.isFavorite }
+            : item,
+        ),
+      );
+
+      if (activeTab === "profile") {
+        fetchProfile();
+      }
+
+      showToast("Favorite status updated");
+    } catch {
+      showToast("Failed to update favorite status");
     }
   };
 
@@ -51,9 +129,9 @@ export default function Watchlist() {
     try {
       await api.delete(`/movies/watchlist/${tmdbId}`);
       setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
-      showToast("🗑️ Movie removed!");
+      showToast("Movie removed");
     } catch {
-      showToast("❌ Error removing movie.");
+      showToast("Error removing movie");
     }
   };
 
@@ -61,9 +139,9 @@ export default function Watchlist() {
     try {
       await api.post(`/movies/watchlist/${tmdbId}/watched`);
       setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
-      showToast("✅ Moved to Watched!");
+      showToast("Moved to Watched");
     } catch {
-      showToast("❌ Failed to update status.");
+      showToast("Failed to update status");
     }
   };
 
@@ -78,31 +156,161 @@ export default function Watchlist() {
 
       if (activeTab === "watchlist") {
         setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
-        showToast(newRating === 0 ? "✅ Moved to Watched" : "⭐ Rating saved!");
+        showToast(newRating === 0 ? "Moved to Watched" : "Rating saved");
       } else {
         setMovies((prev) =>
           prev.map((item) =>
             item.tmdbId === tmdbId ? { ...item, rating: newRating } : item,
           ),
         );
-        showToast(newRating === 0 ? "🗑️ Rating cleared" : "⭐ Rating updated!");
+        showToast(newRating === 0 ? "Rating cleared" : "Rating updated");
       }
     } catch {
-      showToast("❌ Failed to save rating.");
+      showToast("Failed to save rating");
     }
   };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem(PROFILE_CACHE_KEY); // Очищаємо кеш при виході
     navigate("/login");
   };
+
+  const renderProfileTab = () => (
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex items-center gap-6 p-6 bg-gray-800 rounded-2xl border border-gray-700 shadow-lg">
+        <div className="w-20 h-20 bg-gradient-to-tr from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-3xl font-bold shadow-lg uppercase">
+          {username.charAt(0)}
+        </div>
+        <div>
+          <h2 className="text-3xl font-bold text-white">{username}</h2>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-xl font-bold text-white mb-4">Achievements</h3>
+        <div className="flex flex-wrap gap-4">
+          <div className="px-4 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-yellow-400 font-semibold shadow-sm">
+            First Blood (Added a movie)
+          </div>
+          <div className="px-4 py-2 bg-pink-500/10 border border-pink-500/30 rounded-xl text-pink-400 font-semibold shadow-sm">
+            Critic (Liked 5 movies)
+          </div>
+        </div>
+      </div>
+
+      {/* Якщо йде завантаження і немає кешу - показуємо анімацію */}
+      {isLoading && !profileData ? (
+        <div className="flex justify-center items-center h-48">
+          <div className="flex gap-2">
+            <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+            <div
+              className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+              style={{ animationDelay: "0.1s" }}
+            ></div>
+            <div
+              className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+              style={{ animationDelay: "0.2s" }}
+            ></div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="p-6 bg-gray-800 rounded-2xl border border-gray-700 shadow-lg min-h-[250px]">
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              Favorites (Top 5)
+            </h3>
+            {!profileData?.favorites || profileData.favorites.length === 0 ? (
+              <p className="text-gray-500 text-sm italic mt-10 text-center">
+                You haven't liked any movies yet. Add some from your lists!
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {profileData.favorites.map((fav) => (
+                  <div
+                    key={fav.id}
+                    className="flex items-center justify-between bg-gray-900/50 p-3 rounded-xl border border-gray-700/50 relative"
+                  >
+                    <Link
+                      to={`/movie/${fav.tmdbId}`}
+                      className="relative w-12 h-16 sm:w-16 sm:h-24 bg-gray-900 block rounded overflow-hidden"
+                    >
+                      {fav.posterUrl ? (
+                        <img
+                          src={fav.posterUrl}
+                          alt={fav.title}
+                          className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center w-full h-full text-[10px] text-gray-600 italic">
+                          No poster
+                        </div>
+                      )}
+                    </Link>
+                    <Link
+                      to={`/movie/${fav.tmdbId}`}
+                      className="font-semibold text-white hover:text-blue-400 transition truncate pr-4 flex-1 ml-4"
+                    >
+                      {fav.title}
+                    </Link>
+                    <button
+                      onClick={() => handleToggleFavorite(fav.tmdbId)}
+                      className="text-red-500 hover:text-red-400 text-sm font-semibold transition"
+                    >
+                      Unlike
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 bg-gray-800 rounded-2xl border border-gray-700 shadow-lg min-h-[250px]">
+            <h3 className="text-xl font-bold text-white mb-6">
+              Recent Activity
+            </h3>
+            {!profileData?.recent || profileData.recent.length === 0 ? (
+              <p className="text-gray-500 text-sm italic mt-10 text-center">
+                No recent activity.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {profileData.recent.map((act) => (
+                  <div
+                    key={act.id}
+                    className="flex flex-col bg-gray-900/50 p-3 rounded-xl border border-gray-700/50"
+                  >
+                    <Link
+                      to={`/movie/${act.tmdbId}`}
+                      className="font-semibold text-white hover:text-blue-400 transition truncate"
+                    >
+                      {act.title}
+                    </Link>
+                    <span className="text-xs text-gray-500 mt-1">
+                      Added: {new Date(act.addedAt).toLocaleDateString("en-US")}
+                    </span>
+                    {act.updatedAt && act.updatedAt !== act.addedAt && (
+                      <span className="text-xs text-gray-500 mt-1">
+                        Updated:{" "}
+                        {new Date(act.updatedAt).toLocaleDateString("en-US")}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen p-4 sm:p-8 bg-gray-900 font-sans text-gray-100 relative">
       <div className="max-w-7xl mx-auto">
         <header className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 mb-8 border-b border-gray-800">
           <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-center md:text-left">
-            Movie Tracker 🎬
+            Movie Tracker
           </h1>
           <nav className="flex flex-wrap justify-center gap-4 sm:gap-8 items-center">
             <Link
@@ -119,9 +327,9 @@ export default function Watchlist() {
             </Link>
             <Link
               to="/watchlist"
-              className="text-blue-400 font-bold border-b-2 border-blue-400 text-sm sm:text-base"
+              className="text-blue-400 font-bold border-b-2 border-blue-400 text-sm sm:text-base pb-1"
             >
-              My List
+              My Profile
             </Link>
             <button
               onClick={handleLogout}
@@ -133,6 +341,16 @@ export default function Watchlist() {
         </header>
 
         <div className="flex justify-center md:justify-start gap-4 mb-8">
+          <button
+            onClick={() => setActiveTab("profile")}
+            className={`px-5 sm:px-8 py-2.5 rounded-full font-bold transition-all text-sm sm:text-base ${
+              activeTab === "profile"
+                ? "bg-blue-600 text-white shadow-lg"
+                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+            }`}
+          >
+            Profile
+          </button>
           <button
             onClick={() => setActiveTab("watchlist")}
             className={`px-5 sm:px-8 py-2.5 rounded-full font-bold transition-all text-sm sm:text-base ${
@@ -155,22 +373,30 @@ export default function Watchlist() {
           </button>
         </div>
 
-        {isLoading ? (
+        {activeTab === "profile" ? (
+          renderProfileTab()
+        ) : isLoading ? (
           <p className="text-center text-gray-500 animate-pulse text-lg mt-10">
             Loading your list...
           </p>
         ) : movies.length === 0 ? (
           <div className="text-center p-12 bg-gray-800/50 rounded-3xl border border-gray-700 shadow-2xl mt-10">
-            <p className="text-gray-400 text-xl italic">
+            <p className="text-gray-400 text-xl italic mb-4">
               It's empty here. Add some movies!
             </p>
+            <Link
+              to="/search"
+              className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-purple-500 transition shadow-lg"
+            >
+              Discover Movies
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {movies.map((item) => (
               <div
                 key={item.id}
-                className="group overflow-hidden transition bg-gray-800 border border-gray-700 shadow-lg rounded-2xl flex flex-col hover:border-blue-500/30 hover:-translate-y-1 hover:shadow-2xl"
+                className="group overflow-hidden transition bg-gray-800 border border-gray-700 shadow-lg rounded-2xl flex flex-col hover:border-blue-500/30 hover:-translate-y-1 hover:shadow-2xl relative"
               >
                 <Link
                   to={`/movie/${item.tmdbId}`}
@@ -194,7 +420,7 @@ export default function Watchlist() {
                   )}
                 </Link>
 
-                <div className="p-5 flex flex-col flex-grow">
+                <div className="p-5 flex flex-col flex-grow z-10 bg-gray-800">
                   <Link
                     to={`/movie/${item.tmdbId}`}
                     className="text-lg font-bold text-white truncate hover:text-blue-400 transition"
@@ -228,7 +454,7 @@ export default function Watchlist() {
                         onClick={() => handleMarkWatched(item.tmdbId)}
                         className="text-xs font-bold text-green-400 hover:text-green-300 transition uppercase tracking-wider"
                       >
-                        ✓ Mark Watched
+                        Mark Watched
                       </button>
                     ) : (
                       <Link
@@ -238,12 +464,37 @@ export default function Watchlist() {
                         Details
                       </Link>
                     )}
-                    <button
-                      onClick={() => handleDelete(item.tmdbId)}
-                      className="text-xs font-bold text-red-400/60 hover:text-red-400 transition uppercase tracking-wider"
-                    >
-                      Remove
-                    </button>
+
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => handleDelete(item.tmdbId)}
+                        className="text-xs font-bold text-red-400/60 hover:text-red-400 transition uppercase tracking-wider"
+                      >
+                        Remove
+                      </button>
+                      <button
+                        onClick={() => handleToggleFavorite(item.tmdbId)}
+                        className="group/heart flex items-center gap-1.5"
+                      >
+                        <svg
+                          className={`w-4 h-4 transition ${
+                            item.isFavorite
+                              ? "text-red-500"
+                              : "text-gray-400 group-hover/heart:text-red-500"
+                          }`}
+                          fill={item.isFavorite ? "currentColor" : "none"}
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                          ></path>
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

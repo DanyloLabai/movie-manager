@@ -8,10 +8,11 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 import { MoviesService } from '../movies/movies.service';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
+import { ChatMessage } from './ai-chat.controller';
 
 interface ParsedAiResponse {
-  title?: string;
-  year?: number;
+  message: string;
+  movies: { title: string; year?: number }[];
   error?: string;
 }
 
@@ -33,20 +34,22 @@ export class AiChatService {
   }
 
   async searchMovieByDescription(
-    prompt: string,
-  ): Promise<MovieResultDto | { message: string }> {
-    let aiResponse: { title?: string; year?: number; error?: string };
+    messages: ChatMessage[],
+  ): Promise<{ message: string; movies?: MovieResultDto[] }> {
+    let aiResponse: ParsedAiResponse;
 
     try {
       this.logger.log('Attempting to guess movie with Groq (Primary)...');
-      const rawText = await this.getMovieTitleFromGroq(prompt);
+      const rawText = await this.getMovieTitleFromGroq(messages);
       aiResponse = this.parseJson(rawText) as ParsedAiResponse;
-    } catch {
-      this.logger.warn(
-        `Groq failed or returned invalid data. Switching to Gemini (Fallback)...`,
+    } catch (groqError: any) {
+      this.logger.error(
+        `Groq Failed. Reason: ${groqError.message || groqError}`,
       );
+      this.logger.warn(`Switching to Gemini (Fallback)...`);
+
       try {
-        const rawText = await this.getMovieTitleFromGemini(prompt);
+        const rawText = await this.getMovieTitleFromGemini(messages);
         aiResponse = this.parseJson(rawText) as ParsedAiResponse;
       } catch (geminiError: any) {
         const geminiMessage =
@@ -63,37 +66,48 @@ export class AiChatService {
       }
     }
 
-    if (aiResponse.error === 'ERROR_NOT_FOUND' || !aiResponse.title) {
+    if (
+      aiResponse.error === 'ERROR_NOT_FOUND' ||
+      !aiResponse.movies ||
+      aiResponse.movies.length === 0
+    ) {
       return {
-        message: `Unfortunately, I couldn't recognize this movie. Try describing it differently or adding more details!`,
+        message:
+          aiResponse.message ||
+          "Unfortunately, I couldn't find relevant movies for this request.",
       };
     }
 
-    this.logger.log(
-      `AI Guessed: ${aiResponse.title} (${aiResponse.year || 'рік невідомий'})`,
-    );
-    const movieData = await this.moviesService.findMovieByTitle(
-      aiResponse.title,
-      aiResponse.year,
-    );
+    const foundMovies: MovieResultDto[] = [];
 
-    if (!movieData) {
+    for (const movie of aiResponse.movies.slice(0, 3)) {
+      const movieData = await this.moviesService.findMovieByTitle(
+        movie.title,
+        movie.year,
+      );
+      if (movieData) {
+        foundMovies.push(movieData);
+      }
+    }
+
+    if (foundMovies.length === 0) {
       return {
-        message: `I realized that this is the movie “${aiResponse.title}” (${aiResponse.year || '?'}), but I couldn't find its poster or description in the database.`,
+        message: `I found some titles, but couldn't locate their details in the database.`,
       };
     }
 
-    return movieData;
+    return {
+      message: aiResponse.message,
+      movies: foundMovies,
+    };
   }
 
   private parseJson(raw: string): any {
     try {
       const match = raw.match(/\{[\s\S]*\}/);
-
       if (!match) {
         throw new Error('No JSON object found in response');
       }
-
       return JSON.parse(match[0]);
     } catch {
       this.logger.error(
@@ -102,27 +116,46 @@ export class AiChatService {
       throw new Error('Invalid JSON format from AI');
     }
   }
-  private async getMovieTitleFromGemini(prompt: string): Promise<string> {
+
+  private async getMovieTitleFromGemini(
+    messages: ChatMessage[],
+  ): Promise<string> {
     const model = this.genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-1.5-flash-latest',
       systemInstruction: this.getSystemPrompt(),
+      generationConfig: {
+        temperature: 0.3,
+        responseMimeType: 'application/json',
+      },
     });
-    const result = await model.generateContent({
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.1 },
-    });
+
+    const contents = messages.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    }));
+
+    const result = await model.generateContent({ contents });
     return result.response.text().trim();
   }
 
-  private async getMovieTitleFromGroq(prompt: string): Promise<string> {
+  private async getMovieTitleFromGroq(
+    messages: ChatMessage[],
+  ): Promise<string> {
+    const formattedMessages = [
+      { role: 'system', content: this.getSystemPrompt() },
+      ...messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+    ];
+
     const completion = await this.groq.chat.completions.create({
-      messages: [
-        { role: 'system', content: this.getSystemPrompt() },
-        { role: 'user', content: prompt },
-      ],
+      messages: formattedMessages as any,
       model: 'llama-3.3-70b-versatile',
-      temperature: 0.1,
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
     });
+
     return (
       completion.choices[0]?.message?.content?.trim() ||
       '{"error": "ERROR_NOT_FOUND"}'
@@ -130,13 +163,21 @@ export class AiChatService {
   }
 
   private getSystemPrompt(): string {
-    return `You are a movie expert. Identify the movie by description. 
-    Return your answer ONLY as a valid JSON object with the following keys:
-    "title": the exact official English title,
-    "year": the release year as a number.
+    return `You are a movie expert assistant. Analyze the conversation history and the user's latest request.
+    If the user asks for a movie, or asks for alternatives, suggest up to 3 relevant movies.
     
-    CRITICAL RULE: Output ABSOLUTELY NOTHING EXCEPT THE JSON OBJECT. No markdown formatting (\`\`\`json), no greetings, no explanations. Just the raw { } object.
+    Return your answer ONLY as a valid JSON object with the following structure:
+    {
+      "message": "A short, friendly conversational reply explaining your choices.",
+      "movies": [
+        {
+          "title": "Exact official English title",
+          "year": 2023
+        }
+      ]
+    }
     
-    If the movie is not found, or if the user prompt is not about a movie, return {"error": "ERROR_NOT_FOUND"}.`;
+    CRITICAL RULE: Output ABSOLUTELY NOTHING EXCEPT THE JSON OBJECT. No markdown formatting.
+    If no movies match, return {"message": "Sorry, I couldn't find anything matching that.", "movies": [], "error": "ERROR_NOT_FOUND"}.`;
   }
 }

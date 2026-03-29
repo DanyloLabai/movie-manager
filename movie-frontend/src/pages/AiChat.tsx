@@ -14,29 +14,100 @@ interface MovieResult {
 interface Message {
   role: "user" | "ai";
   text: string;
-  movie?: MovieResult;
+  movies?: MovieResult[];
 }
+
+const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
+const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache"; // Додали ключ для сердечок
+const CHAT_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 години у мілісекундах
 
 export default function AiChat() {
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "ai",
-      text: "Hi! I'm your movie expert. Describe the movie you're looking for, or just tell me about your mood.",
-    },
-  ]);
+
+  // Ініціалізуємо сердечка з кешу (щоб не блимали при F5)
+  const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
+    try {
+      const cached = localStorage.getItem(FAVORITES_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [isLoading, setIsLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
+  // Функція для завантаження історії з localStorage
+  const loadSavedMessages = (): Message[] => {
+    const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+    if (saved) {
+      try {
+        const { messages, timestamp } = JSON.parse(saved);
+        if (Date.now() - timestamp < CHAT_EXPIRATION_MS) {
+          return messages;
+        } else {
+          localStorage.removeItem(CHAT_STORAGE_KEY);
+        }
+      } catch (e) {
+        console.error("Error parsing chat history", e);
+      }
+    }
+    return [
+      {
+        role: "ai",
+        text: "Hi! I'm your movie expert. Describe the movie you're looking for.",
+      },
+    ];
+  };
+
+  const [messages, setMessages] = useState<Message[]>(loadSavedMessages);
+
+  // Зберігаємо історію в localStorage при кожній зміні messages
+  useEffect(() => {
+    localStorage.setItem(
+      CHAT_STORAGE_KEY,
+      JSON.stringify({ messages, timestamp: Date.now() }),
+    );
+  }, [messages]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Фонове оновлення сердечок
+  useEffect(() => {
+    const fetchFavoriteIds = async () => {
+      try {
+        const response = await api.get("/movies/profile");
+        if (response.data?.favorites) {
+          const ids = response.data.favorites.map((f: any) => f.tmdbId);
+          setFavoriteIds(ids);
+          localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(ids)); // Оновлюємо кеш
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    fetchFavoriteIds();
+  }, []);
+
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleClearChat = () => {
+    const initialMessage: Message[] = [
+      {
+        role: "ai",
+        text: "Chat cleared! Let's start fresh. What are you looking for?",
+      },
+    ];
+    setMessages(initialMessage);
+    localStorage.removeItem(CHAT_STORAGE_KEY);
+    showToast("Chat history cleared");
   };
 
   const handleSend = async (e: React.FormEvent) => {
@@ -45,19 +116,33 @@ export default function AiChat() {
 
     const userText = input;
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", text: userText }]);
+
+    const newMessages: Message[] = [
+      ...messages,
+      { role: "user", text: userText },
+    ];
+    setMessages(newMessages);
     setIsLoading(true);
 
     try {
-      const response = await api.post("/ai/search", { prompt: userText });
+      const chatHistory = newMessages.map((msg) => ({
+        role: msg.role === "ai" ? "assistant" : "user",
+        content: msg.text,
+      }));
 
-      if (response.data && response.data.title) {
+      const response = await api.post("/ai/search", { messages: chatHistory });
+
+      if (
+        response.data &&
+        response.data.movies &&
+        response.data.movies.length > 0
+      ) {
         setMessages((prev) => [
           ...prev,
           {
             role: "ai",
-            text: `I think it's "${response.data.title}". Here is what I found:`,
-            movie: response.data,
+            text: response.data.message || "Here is what I found:",
+            movies: response.data.movies,
           },
         ]);
       } else {
@@ -91,13 +176,49 @@ export default function AiChat() {
         title: movie.title,
         posterUrl: movie.posterUrl,
       });
-      showToast(`✅ "${movie.title}" added!`);
+      showToast(`Added!`);
     } catch (error: any) {
       showToast(
         error.response?.status === 400
           ? "Already in list."
           : "Error adding movie.",
       );
+    }
+  };
+
+  const handleToggleFavorite = async (movie: MovieResult) => {
+    const isFav = favoriteIds.includes(movie.id);
+    try {
+      await api.patch(`/movies/watchlist/${movie.id}/favorite`);
+
+      const newIds = isFav
+        ? favoriteIds.filter((id) => id !== movie.id)
+        : [...favoriteIds, movie.id];
+      setFavoriteIds(newIds);
+      localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds)); // Одразу зберігаємо в кеш
+
+      showToast("Favorite status updated");
+    } catch (error: any) {
+      if (error.response?.status === 404 && !isFav) {
+        try {
+          await api.post("/movies/watchlist", {
+            tmdbId: movie.id,
+            title: movie.title,
+            posterUrl: movie.posterUrl,
+          });
+          await api.patch(`/movies/watchlist/${movie.id}/favorite`);
+
+          const newIds = [...favoriteIds, movie.id];
+          setFavoriteIds(newIds);
+          localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
+
+          showToast("Added to list and favorites");
+        } catch (innerError) {
+          showToast("Failed to favorite movie");
+        }
+      } else {
+        showToast("Failed to update favorite status");
+      }
     }
   };
 
@@ -109,9 +230,18 @@ export default function AiChat() {
   return (
     <div className="flex flex-col h-screen bg-gray-900 text-gray-100 font-sans relative">
       <header className="flex flex-col sm:flex-row items-center justify-between p-4 gap-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-20">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-          Movie Tracker 🎬
-        </h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            Movie Tracker
+          </h1>
+          <button
+            onClick={handleClearChat}
+            className="text-[10px] sm:text-xs text-gray-500 hover:text-gray-300 transition uppercase tracking-wider font-semibold border border-gray-700 px-2 py-1 rounded-md hover:bg-gray-800"
+            title="Clear chat history"
+          >
+            Clear Chat
+          </button>
+        </div>
         <nav className="flex flex-wrap justify-center gap-3 sm:gap-6 items-center">
           <Link
             to="/ai-chat"
@@ -129,7 +259,7 @@ export default function AiChat() {
             to="/watchlist"
             className="text-gray-400 hover:text-white transition-colors text-sm sm:text-base px-1"
           >
-            My List
+            My Profile
           </Link>
           <button
             onClick={handleLogout}
@@ -141,54 +271,91 @@ export default function AiChat() {
       </header>
 
       <div className="flex-grow overflow-y-auto p-3 sm:p-6 space-y-6 scrollbar-hide">
-        <div className="max-w-3xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-6">
           {messages.map((msg, idx) => (
             <div
               key={idx}
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}
             >
               <div
-                className={`max-w-[90%] sm:max-w-[80%] p-4 rounded-2xl shadow-lg ${
+                className={`max-w-[95%] sm:max-w-[85%] p-4 rounded-2xl shadow-lg ${
                   msg.role === "user"
                     ? "bg-blue-600 text-white rounded-tr-none shadow-blue-900/20"
                     : "bg-gray-800 border border-gray-700 rounded-tl-none shadow-black/40"
                 }`}
               >
-                <p className="leading-relaxed text-sm sm:text-base">
+                <p className="leading-relaxed text-sm sm:text-base mb-2">
                   {msg.text}
                 </p>
-                {msg.movie && (
-                  <div className="mt-4 p-2 sm:p-3 bg-gray-900/50 rounded-xl border border-purple-500/30 flex gap-3 sm:gap-4 animate-in zoom-in duration-500 overflow-hidden">
-                    <Link
-                      to={`/movie/${msg.movie.id}`}
-                      className="flex-shrink-0"
-                    >
-                      <img
-                        src={msg.movie.posterUrl || ""}
-                        className="w-16 h-24 sm:w-20 sm:h-28 object-cover rounded-lg shadow-md border border-gray-700"
-                        alt="poster"
-                      />
-                    </Link>
 
-                    <div className="flex flex-col justify-between py-0.5 min-w-0">
-                      <div className="min-w-0">
-                        <Link to={`/movie/${msg.movie.id}`}>
-                          <h4 className="font-bold text-white text-sm sm:text-base truncate hover:text-purple-400 transition-colors">
-                            {msg.movie.title}
-                          </h4>
-                        </Link>
-                        <p className="text-[10px] sm:text-xs text-gray-400 mt-1 uppercase font-semibold">
-                          {msg.movie.releaseYear} • ⭐{" "}
-                          {msg.movie.rating.toFixed(1)}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleAddFromChat(msg.movie!)}
-                        className="text-[10px] sm:text-xs bg-purple-600 px-3 py-2 rounded-lg font-bold hover:bg-purple-500 transition-all active:scale-95 shadow-lg w-fit mt-2 uppercase tracking-wider"
+                {msg.movies && msg.movies.length > 0 && (
+                  <div className="flex gap-4 overflow-x-auto pb-2 pt-2 scrollbar-hide">
+                    {msg.movies.map((movie) => (
+                      <div
+                        key={movie.id}
+                        className="flex-shrink-0 w-64 bg-gray-900/50 rounded-xl border border-gray-700/50 overflow-hidden relative group"
                       >
-                        + ADD
-                      </button>
-                    </div>
+                        <button
+                          className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center bg-gray-900/60 rounded-full backdrop-blur-sm border border-gray-600/50 hover:bg-gray-800 transition group/heart"
+                          onClick={() => handleToggleFavorite(movie)}
+                        >
+                          <svg
+                            className={`w-4 h-4 transition ${
+                              favoriteIds.includes(movie.id)
+                                ? "text-red-500"
+                                : "text-gray-400 group-hover/heart:text-red-500"
+                            }`}
+                            fill={
+                              favoriteIds.includes(movie.id)
+                                ? "currentColor"
+                                : "none"
+                            }
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            ></path>
+                          </svg>
+                        </button>
+
+                        <div className="flex p-3 gap-3">
+                          <Link
+                            to={`/movie/${movie.id}`}
+                            className="flex-shrink-0"
+                          >
+                            <img
+                              src={movie.posterUrl || ""}
+                              className="w-20 h-28 object-cover rounded-lg shadow-md border border-gray-700"
+                              alt="poster"
+                            />
+                          </Link>
+
+                          <div className="flex flex-col justify-between min-w-0">
+                            <div>
+                              <Link to={`/movie/${movie.id}`}>
+                                <h4 className="font-bold text-white text-sm truncate hover:text-blue-400 transition-colors">
+                                  {movie.title}
+                                </h4>
+                              </Link>
+                              <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold">
+                                {movie.releaseYear} • ⭐{" "}
+                                {movie.rating.toFixed(1)}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleAddFromChat(movie)}
+                              className="text-[10px] bg-gray-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-600 text-white transition-all active:scale-95 uppercase tracking-wider"
+                            >
+                              + Add
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -198,9 +365,9 @@ export default function AiChat() {
             <div className="flex justify-start animate-in fade-in duration-300">
               <div className="bg-gray-800 border border-gray-700 p-4 rounded-2xl rounded-tl-none">
                 <div className="flex gap-1.5">
-                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce"></div>
-                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                  <div className="w-1.5 h-1.5 bg-purple-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
                 </div>
               </div>
             </div>
@@ -220,12 +387,12 @@ export default function AiChat() {
             disabled={isLoading}
             onChange={(e) => setInput(e.target.value)}
             placeholder={isLoading ? "Thinking..." : "Describe a movie..."}
-            className="w-full pl-5 pr-14 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-2xl focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 shadow-2xl transition-all disabled:opacity-50 text-sm sm:text-base"
+            className="w-full pl-5 pr-14 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 shadow-2xl transition-all disabled:opacity-50 text-sm sm:text-base"
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="absolute right-1.5 sm:right-2 top-1.5 bottom-1.5 px-4 sm:px-6 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-500 transition-all active:scale-95 disabled:bg-gray-700 disabled:text-gray-500 text-lg"
+            className="absolute right-1.5 sm:right-2 top-1.5 bottom-1.5 px-4 sm:px-6 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-all active:scale-95 disabled:bg-gray-700 disabled:text-gray-500 text-lg"
           >
             {isLoading ? "..." : "→"}
           </button>

@@ -12,6 +12,7 @@ import { TmdbSearchResponseDto } from './dto/tmdb-response.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
 import { Repository } from 'typeorm';
+
 export interface MovieDetailsResponse {
   id: number;
   title: string;
@@ -163,10 +164,11 @@ export class MoviesService {
     });
 
     if (!item) {
-      throw new NotFoundException('Фільм не знайдено у вашому списку');
+      throw new NotFoundException('Movie not found in your list');
     }
 
     item.isWatched = true;
+    item.updatedAt = new Date();
     return this.watchlistRepo.save(item);
   }
 
@@ -176,13 +178,44 @@ export class MoviesService {
     });
 
     if (!item) {
-      throw new NotFoundException('Фільм не знайдено у вашому списку');
+      throw new NotFoundException('Movie not found in your list');
     }
 
     item.rating = rating;
     item.isWatched = true;
+    item.updatedAt = new Date();
 
     return this.watchlistRepo.save(item);
+  }
+
+  async toggleFavorite(userId: string, tmdbId: number) {
+    const item = await this.watchlistRepo.findOne({
+      where: { user: { id: userId }, tmdbId },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Movie not found in your list');
+    }
+
+    item.isFavorite = !item.isFavorite;
+    item.updatedAt = new Date();
+    return this.watchlistRepo.save(item);
+  }
+
+  async getProfileData(userId: string) {
+    const favorites = await this.watchlistRepo.find({
+      where: { user: { id: userId }, isFavorite: true },
+      order: { updatedAt: 'DESC' },
+      take: 5,
+    });
+
+    const recent = await this.watchlistRepo.find({
+      where: { user: { id: userId } },
+      order: { updatedAt: 'DESC' },
+      take: 5,
+    });
+
+    return { favorites, recent };
   }
 
   async getTrendingMovies(): Promise<MovieResultDto[]> {
@@ -230,7 +263,7 @@ export class MoviesService {
         ),
       );
       return data;
-    } catch (error) {
+    } catch {
       throw new NotFoundException('Movie details not found');
     }
   }
