@@ -39,7 +39,7 @@ export class AiChatService {
     let aiResponse: ParsedAiResponse;
 
     try {
-      this.logger.log('Attempting to guess movie with Groq (Primary)...');
+      this.logger.log('Attempting to guess media with Groq (Primary)...');
       const rawText = await this.getMovieTitleFromGroq(messages);
       aiResponse = this.parseJson(rawText) as ParsedAiResponse;
     } catch (groqError: any) {
@@ -74,19 +74,19 @@ export class AiChatService {
       return {
         message:
           aiResponse.message ||
-          "Unfortunately, I couldn't find relevant movies for this request.",
+          "Unfortunately, I couldn't find relevant media for this request.",
       };
     }
 
     const foundMovies: MovieResultDto[] = [];
 
-    for (const movie of aiResponse.movies.slice(0, 3)) {
-      const movieData = await this.moviesService.findMovieByTitle(
-        movie.title,
-        movie.year,
+    for (const item of aiResponse.movies.slice(0, 3)) {
+      const mediaData = await this.moviesService.findMovieByTitle(
+        item.title,
+        item.year,
       );
-      if (movieData) {
-        foundMovies.push(movieData);
+      if (mediaData) {
+        foundMovies.push(mediaData);
       }
     }
 
@@ -141,16 +141,29 @@ export class AiChatService {
   private async getMovieTitleFromGroq(
     messages: ChatMessage[],
   ): Promise<string> {
-    const formattedMessages = [
-      { role: 'system', content: this.getSystemPrompt() },
-      ...messages.map((m) => ({
-        role: m.role,
+    type GroqMessage = {
+      role: 'system' | 'user' | 'assistant';
+      content: string;
+    };
+
+    const systemMsg: GroqMessage = {
+      role: 'system',
+      content: this.getSystemPrompt(),
+    };
+
+    const userMsgs: GroqMessage[] = messages.map((m) => {
+      const groqRole: 'user' | 'assistant' =
+        m.role === 'assistant' ? 'assistant' : 'user';
+      return {
+        role: groqRole,
         content: m.content,
-      })),
-    ];
+      };
+    });
+
+    const formattedMessages: GroqMessage[] = [systemMsg, ...userMsgs];
 
     const completion = await this.groq.chat.completions.create({
-      messages: formattedMessages as any,
+      messages: formattedMessages,
       model: 'llama-3.3-70b-versatile',
       temperature: 0.3,
       response_format: { type: 'json_object' },
@@ -163,21 +176,24 @@ export class AiChatService {
   }
 
   private getSystemPrompt(): string {
-    return `You are a movie expert assistant. Analyze the conversation history and the user's latest request.
-    If the user asks for a movie, or asks for alternatives, suggest up to 3 relevant movies.
+    return `You are an elite movie, TV series, anime, and pop-culture expert assistant. You perfectly understand all languages, including Ukrainian.
     
-    Return your answer ONLY as a valid JSON object with the following structure:
+    Analyze the conversation history and the user's latest request carefully. Users might describe plots, character appearances (e.g., 'a boy with an arrow on his head' -> The Last Airbender), memes, or vague memories. 
+    Internally translate the request to English to find the absolute best match across global cinema, TV series, live-action adaptations, and anime.
+    Suggest up to 3 highly relevant titles.
+    
+    Return your answer ONLY as a valid JSON object with the exact following structure (NOTE: put TV shows and anime in the "movies" array as well):
     {
-      "message": "A short, friendly conversational reply explaining your choices.",
+      "message": "A short, friendly conversational reply explaining your choices. THIS MESSAGE MUST BE IN THE SAME LANGUAGE AS THE USER'S PROMPT.",
       "movies": [
         {
-          "title": "Exact official English title",
-          "year": 2023
+          "title": "Exact official English title on TMDB",
+          "year": 2010
         }
       ]
     }
     
-    CRITICAL RULE: Output ABSOLUTELY NOTHING EXCEPT THE JSON OBJECT. No markdown formatting.
-    If no movies match, return {"message": "Sorry, I couldn't find anything matching that.", "movies": [], "error": "ERROR_NOT_FOUND"}.`;
+    CRITICAL RULE: Output ABSOLUTELY NOTHING EXCEPT THE JSON OBJECT. No markdown formatting. 
+    If no titles match, return {"message": "A polite message IN THE USER'S LANGUAGE stating you couldn't find a match.", "movies": [], "error": "ERROR_NOT_FOUND"}.`;
   }
 }
