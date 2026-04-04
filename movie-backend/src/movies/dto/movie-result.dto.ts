@@ -6,4 +6,5 @@ export class MovieResultDto {
   releaseYear: string;
   rating: number;
   posterUrl: string | null;
+  mediaType: 'movie' | 'tv';
 }

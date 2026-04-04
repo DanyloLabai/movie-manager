@@ -80,7 +80,8 @@ export class AiChatService {
 
     const foundMovies: MovieResultDto[] = [];
 
-    for (const item of aiResponse.movies.slice(0, 3)) {
+    // Цикл вже розрахований на 10 результатів
+    for (const item of aiResponse.movies.slice(0, 10)) {
       const mediaData = await this.moviesService.findMovieByTitle(
         item.title,
         item.year,
@@ -180,7 +181,7 @@ export class AiChatService {
     
     Analyze the conversation history and the user's latest request carefully. Users might describe plots, character appearances (e.g., 'a boy with an arrow on his head' -> The Last Airbender), memes, or vague memories. 
     Internally translate the request to English to find the absolute best match across global cinema, TV series, live-action adaptations, and anime.
-    Suggest up to 3 highly relevant titles.
+    Suggest up to 10 highly relevant titles.
     
     Return your answer ONLY as a valid JSON object with the exact following structure (NOTE: put TV shows and anime in the "movies" array as well):
     {

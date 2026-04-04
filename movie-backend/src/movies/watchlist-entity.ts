@@ -19,6 +19,9 @@ export class WatchlistItem {
   @Column({ type: 'int', nullable: true })
   rating: number;
 
+  @Column({ default: 'movie' })
+  mediaType: string;
+
   @Column()
   title: string;
 

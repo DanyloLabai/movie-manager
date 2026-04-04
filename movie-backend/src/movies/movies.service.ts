@@ -7,7 +7,6 @@ import {
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
-import { MovieResultDto } from './dto/movie-result.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
 import { Repository } from 'typeorm';
@@ -15,9 +14,10 @@ import {
   TmdbMultiSearchResponseDto,
   TmdbMultiSearchResultDto,
 } from './dto/multi-search-res.dto';
+import { MovieResultDto } from './dto/movie-result.dto';
 import { MovieDetailsResponse } from './dto/movies-details-response.dto';
-import { TmdbTvDetailsResponse } from './dto/tv-details-response.dto';
 import { isAxiosError } from 'axios';
+import { TmdbTvDetailsResponse } from './dto/tv-details-response.dto';
 
 @Injectable()
 export class MoviesService {
@@ -51,7 +51,6 @@ export class MoviesService {
 
       if (!data.results) return [];
 
-      // ФІКС: Використовуємо правильний тип для item
       const mediaResults = data.results.filter(
         (item: TmdbMultiSearchResultDto) =>
           item.media_type === 'movie' || item.media_type === 'tv',
@@ -60,7 +59,6 @@ export class MoviesService {
       return mediaResults.map((media: TmdbMultiSearchResultDto) => ({
         id: media.id,
         title: media.title || media.name || 'Unknown',
-        // ФІКС: Гарантуємо, що це завжди буде string, навіть якщо все undefined
         originalTitle:
           media.original_title ||
           media.original_name ||
@@ -75,6 +73,7 @@ export class MoviesService {
         posterUrl: media.poster_path
           ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
           : null,
+        mediaType: media.media_type as 'movie' | 'tv',
       }));
     } catch {
       return [];
@@ -134,6 +133,7 @@ export class MoviesService {
         posterUrl: media.poster_path
           ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
           : null,
+        mediaType: media.media_type as 'movie' | 'tv',
       };
     } catch (error: any) {
       this.logger.error(`Error finding media in TMDB: ${error.message}`);
@@ -146,6 +146,7 @@ export class MoviesService {
     tmdbId: number,
     title: string,
     posterUrl?: string,
+    mediaType: 'movie' | 'tv' = 'movie',
   ) {
     const existing = await this.watchlistRepo.findOne({
       where: { user: { id: userId }, tmdbId },
@@ -159,6 +160,7 @@ export class MoviesService {
       tmdbId,
       title,
       posterUrl,
+      mediaType,
       user: { id: userId },
     });
 
@@ -243,6 +245,7 @@ export class MoviesService {
       totalCount,
     };
   }
+
   async getTrendingMovies(): Promise<MovieResultDto[]> {
     try {
       const { data } = await firstValueFrom(
@@ -281,6 +284,7 @@ export class MoviesService {
           posterUrl: media.poster_path
             ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
             : null,
+          mediaType: media.media_type as 'movie' | 'tv',
         }));
     } catch (error: any) {
       this.logger.error(`Error fetching trending: ${error.message}`);
@@ -288,47 +292,49 @@ export class MoviesService {
     }
   }
 
-  async getMovieDetails(tmdbId: number): Promise<MovieDetailsResponse> {
+  async getMovieDetails(
+    tmdbId: number,
+    type: string = 'movie',
+  ): Promise<MovieDetailsResponse> {
     try {
+      const endpoint = type === 'tv' ? 'tv' : 'movie';
+
       const { data } = await firstValueFrom(
-        this.httpService.get<MovieDetailsResponse>(
-          `${this.baseUrl}/movie/${tmdbId}`,
+        this.httpService.get<TmdbTvDetailsResponse | MovieDetailsResponse>(
+          `${this.baseUrl}/${endpoint}/${tmdbId}`,
           {
             params: { language: 'en-US' },
             headers: { Authorization: `Bearer ${this.tmdbToken}` },
           },
         ),
       );
-      return data;
-    } catch (error: unknown) {
-      if (isAxiosError(error) && error.response?.status === 404) {
-        try {
-          const { data } = await firstValueFrom(
-            this.httpService.get<TmdbTvDetailsResponse>(
-              `${this.baseUrl}/tv/${tmdbId}`,
-              {
-                params: { language: 'en-US' },
-                headers: { Authorization: `Bearer ${this.tmdbToken}` },
-              },
-            ),
-          );
 
-          return {
-            id: data.id,
-            title: data.name,
-            overview: data.overview,
-            release_date: data.first_air_date,
-            vote_average: data.vote_average,
-            poster_path: data.poster_path,
-            backdrop_path: data.backdrop_path,
-            runtime: data.episode_run_time?.[0] || 0,
-            genres: data.genres,
-          };
-        } catch {
-          throw new NotFoundException('Media details not found');
-        }
+      if (endpoint === 'tv') {
+        const tvData = data as TmdbTvDetailsResponse;
+
+        return {
+          id: tvData.id,
+          title: tvData.name,
+          overview: tvData.overview,
+          release_date: tvData.first_air_date,
+          vote_average: tvData.vote_average,
+          poster_path: tvData.poster_path,
+          backdrop_path: tvData.backdrop_path,
+          runtime: tvData.episode_run_time?.[0] || 0,
+          genres: tvData.genres,
+          mediaType: 'tv',
+        };
       }
-      throw new NotFoundException('Error fetching details');
+
+      const movieData = data as MovieDetailsResponse;
+      return { ...movieData, mediaType: 'movie' };
+    } catch (error: unknown) {
+      if (isAxiosError(error)) {
+        this.logger.error(
+          `TMDB Error: ${error.response?.status} - ${error.message}`,
+        );
+      }
+      throw new NotFoundException('Media details not found');
     }
   }
 

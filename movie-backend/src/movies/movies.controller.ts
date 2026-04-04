@@ -14,6 +14,7 @@ import {
 import { MoviesService } from './movies.service';
 import { MovieResultDto } from './dto/movie-result.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { MovieDetailsResponse } from './dto/movies-details-response.dto'; // Не забудь додати цей імпорт, якщо його немає
 
 interface RequestWithUser extends Request {
   user: {
@@ -34,11 +35,18 @@ export class MoviesController {
     return this.moviesService.searchMovies(title);
   }
 
+  // ОНОВЛЕНО: Тепер приймає mediaType
   @UseGuards(AuthGuard('jwt'))
   @Post('watchlist')
   async addToWatchlist(
     @Req() req: RequestWithUser,
-    @Body() body: { tmdbId: number; title: string; posterUrl?: string },
+    @Body()
+    body: {
+      tmdbId: number;
+      title: string;
+      posterUrl?: string;
+      mediaType: 'movie' | 'tv';
+    },
   ) {
     const userId = req.user.userId;
     return this.moviesService.addToWatchlist(
@@ -46,6 +54,7 @@ export class MoviesController {
       body.tmdbId,
       body.title,
       body.posterUrl,
+      body.mediaType,
     );
   }
 
@@ -117,10 +126,14 @@ export class MoviesController {
     return this.moviesService.getTrendingMovies();
   }
 
+  // ОНОВЛЕНО: Додано @Query('type')
   @UseGuards(AuthGuard('jwt'))
   @Get(':tmdbId/details')
-  async getMovieDetails(@Param('tmdbId', ParseIntPipe) tmdbId: number) {
-    return this.moviesService.getMovieDetails(tmdbId);
+  async getMovieDetails(
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+    @Query('type') type?: string, // Зчитуємо тип з URL
+  ): Promise<MovieDetailsResponse> {
+    return this.moviesService.getMovieDetails(tmdbId, type);
   }
 
   @UseGuards(AuthGuard('jwt'))

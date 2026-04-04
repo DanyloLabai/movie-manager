@@ -9,6 +9,7 @@ interface MovieResult {
   releaseYear: string;
   rating: number;
   posterUrl: string | null;
+  mediaType: "movie" | "tv";
 }
 
 interface Message {
@@ -18,13 +19,12 @@ interface Message {
 }
 
 const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
-const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache"; // Додали ключ для сердечок
-const CHAT_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 години у мілісекундах
+const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
+const CHAT_EXPIRATION_MS = 24 * 60 * 60 * 1000;
 
 export default function AiChat() {
   const [input, setInput] = useState("");
 
-  // Ініціалізуємо сердечка з кешу (щоб не блимали при F5)
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     try {
       const cached = localStorage.getItem(FAVORITES_CACHE_KEY);
@@ -39,7 +39,6 @@ export default function AiChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  // Функція для завантаження історії з localStorage
   const loadSavedMessages = (): Message[] => {
     const saved = localStorage.getItem(CHAT_STORAGE_KEY);
     if (saved) {
@@ -57,14 +56,13 @@ export default function AiChat() {
     return [
       {
         role: "ai",
-        text: "Hi! I'm your movie expert. Describe the movie you're looking for.",
+        text: "Hi! I'm your movie expert. Describe the movie or TV show you're looking for.",
       },
     ];
   };
 
   const [messages, setMessages] = useState<Message[]>(loadSavedMessages);
 
-  // Зберігаємо історію в localStorage при кожній зміні messages
   useEffect(() => {
     localStorage.setItem(
       CHAT_STORAGE_KEY,
@@ -76,7 +74,6 @@ export default function AiChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Фонове оновлення сердечок
   useEffect(() => {
     const fetchFavoriteIds = async () => {
       try {
@@ -84,7 +81,7 @@ export default function AiChat() {
         if (response.data?.favorites) {
           const ids = response.data.favorites.map((f: any) => f.tmdbId);
           setFavoriteIds(ids);
-          localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(ids)); // Оновлюємо кеш
+          localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(ids));
         }
       } catch (error) {
         console.error(error);
@@ -152,7 +149,7 @@ export default function AiChat() {
             role: "ai",
             text:
               response.data.message ||
-              "Unfortunately, I couldn't recognize this movie.",
+              "Unfortunately, I couldn't recognize this media.",
           },
         ]);
       }
@@ -175,6 +172,7 @@ export default function AiChat() {
         tmdbId: movie.id,
         title: movie.title,
         posterUrl: movie.posterUrl,
+        mediaType: movie.mediaType, // <-- Передаємо тип на бекенд
       });
       showToast(`Added!`);
     } catch (error: any) {
@@ -195,7 +193,7 @@ export default function AiChat() {
         ? favoriteIds.filter((id) => id !== movie.id)
         : [...favoriteIds, movie.id];
       setFavoriteIds(newIds);
-      localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds)); // Одразу зберігаємо в кеш
+      localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
 
       showToast("Favorite status updated");
     } catch (error: any) {
@@ -205,6 +203,7 @@ export default function AiChat() {
             tmdbId: movie.id,
             title: movie.title,
             posterUrl: movie.posterUrl,
+            mediaType: movie.mediaType,
           });
           await api.patch(`/movies/watchlist/${movie.id}/favorite`);
 
@@ -284,7 +283,7 @@ export default function AiChat() {
                     : "bg-gray-800 border border-gray-700 rounded-tl-none shadow-black/40"
                 }`}
               >
-                <p className="leading-relaxed text-sm sm:text-base mb-2">
+                <p className="leading-relaxed text-sm sm:text-base mb-2 whitespace-pre-wrap">
                   {msg.text}
                 </p>
 
@@ -324,19 +323,21 @@ export default function AiChat() {
 
                         <div className="flex p-3 gap-3">
                           <Link
-                            to={`/movie/${movie.id}`}
+                            to={`/movie/${movie.id}?type=${movie.mediaType}`}
                             className="flex-shrink-0"
                           >
                             <img
                               src={movie.posterUrl || ""}
-                              className="w-20 h-28 object-cover rounded-lg shadow-md border border-gray-700"
+                              className="w-20 h-28 object-cover rounded-lg shadow-md border border-gray-700 hover:scale-105 transition-transform"
                               alt="poster"
                             />
                           </Link>
 
                           <div className="flex flex-col justify-between min-w-0">
                             <div>
-                              <Link to={`/movie/${movie.id}`}>
+                              <Link
+                                to={`/movie/${movie.id}?type=${movie.mediaType}`}
+                              >
                                 <h4 className="font-bold text-white text-sm truncate hover:text-blue-400 transition-colors">
                                   {movie.title}
                                 </h4>
@@ -344,11 +345,14 @@ export default function AiChat() {
                               <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold">
                                 {movie.releaseYear} • ⭐{" "}
                                 {movie.rating.toFixed(1)}
+                                <span className="ml-1 inline-block bg-gray-700 px-1 py-0.5 rounded text-[8px]">
+                                  {movie.mediaType === "tv" ? "TV" : "MOVIE"}
+                                </span>
                               </p>
                             </div>
                             <button
                               onClick={() => handleAddFromChat(movie)}
-                              className="text-[10px] bg-gray-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-600 text-white transition-all active:scale-95 uppercase tracking-wider"
+                              className="text-[10px] bg-gray-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-600 text-white transition-all active:scale-95 uppercase tracking-wider mt-2"
                             >
                               + Add
                             </button>
@@ -386,7 +390,9 @@ export default function AiChat() {
             value={input}
             disabled={isLoading}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isLoading ? "Thinking..." : "Describe a movie..."}
+            placeholder={
+              isLoading ? "Thinking..." : "Describe a movie or TV show..."
+            }
             className="w-full pl-5 pr-14 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 shadow-2xl transition-all disabled:opacity-50 text-sm sm:text-base"
           />
           <button

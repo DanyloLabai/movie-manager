@@ -75,6 +75,8 @@ export default function Register() {
               minLength={3}
               maxLength={20}
               required
+              pattern="^[a-zA-Z0-9_]+$"
+              title="Username can only contain English letters, numbers and underscores."
             />
           </div>
 
@@ -90,6 +92,8 @@ export default function Register() {
               placeholder="name@example.com"
               maxLength={50}
               required
+              pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+              title="Please enter a valid email using only English characters."
             />
           </div>
 
@@ -106,6 +110,8 @@ export default function Register() {
               minLength={8}
               maxLength={32}
               required
+              pattern="^[a-zA-Z0-9!@#$%^&*()_+=\-\[\]{}|;:,.<>?]+$"
+              title="Password must contain only English letters, numbers and basic symbols."
             />
           </div>
 

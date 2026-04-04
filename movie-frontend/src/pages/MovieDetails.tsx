@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import {
+  useParams,
+  useNavigate,
+  Link,
+  useSearchParams,
+} from "react-router-dom";
 import { api } from "../api";
 
 interface MovieDetailsData {
@@ -12,6 +17,7 @@ interface MovieDetailsData {
   backdrop_path: string | null;
   runtime: number;
   genres: { id: number; name: string }[];
+  mediaType?: "movie" | "tv";
 }
 
 interface UserMovieStatus {
@@ -23,20 +29,21 @@ interface UserMovieStatus {
 
 export default function MovieDetails() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const mediaType = searchParams.get("type") || "movie";
+
   const navigate = useNavigate();
 
-  // Кешування деталей фільму
   const [movie, setMovie] = useState<MovieDetailsData | null>(() => {
     try {
       if (!id) return null;
-      const cached = localStorage.getItem(`movie_details_${id}`);
+      const cached = localStorage.getItem(`movie_details_${id}_${mediaType}`);
       return cached ? JSON.parse(cached) : null;
     } catch {
       return null;
     }
   });
 
-  // Кешування статусу (в планах/переглянуто/оцінка)
   const [status, setStatus] = useState<UserMovieStatus | null>(() => {
     try {
       if (!id) return null;
@@ -47,7 +54,6 @@ export default function MovieDetails() {
     }
   });
 
-  // Лоадер активний тільки якщо немає кешованих даних
   const [isLoading, setIsLoading] = useState(!movie);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -58,13 +64,12 @@ export default function MovieDetails() {
 
   useEffect(() => {
     if (id) {
-      // Якщо id змінився (наприклад, перехід на інший фільм), перевіряємо чи треба показувати лоадер
       if (!movie || movie.id !== Number(id)) {
         setIsLoading(true);
       }
       fetchData(Number(id));
     }
-  }, [id]);
+  }, [id, mediaType]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -74,16 +79,15 @@ export default function MovieDetails() {
   const fetchData = async (tmdbId: number) => {
     try {
       const [detailsRes, statusRes] = await Promise.all([
-        api.get(`/movies/${tmdbId}/details`),
+        api.get(`/movies/${tmdbId}/details?type=${mediaType}`),
         api.get(`/movies/${tmdbId}/status`),
       ]);
 
       setMovie(detailsRes.data);
       setStatus(statusRes.data ? statusRes.data : null);
 
-      // Оновлюємо кеш
       localStorage.setItem(
-        `movie_details_${tmdbId}`,
+        `movie_details_${tmdbId}_${mediaType}`,
         JSON.stringify(detailsRes.data),
       );
       if (statusRes.data) {
@@ -94,7 +98,7 @@ export default function MovieDetails() {
       } else {
         localStorage.removeItem(`movie_status_${tmdbId}`);
       }
-    } catch (error) {
+    } catch {
       showToast("Failed to load movie details.");
     } finally {
       setIsLoading(false);
@@ -127,6 +131,7 @@ export default function MovieDetails() {
         tmdbId: movie.id,
         title: movie.title,
         posterUrl,
+        mediaType: mediaType,
       });
 
       if (initialRating) {
@@ -142,7 +147,7 @@ export default function MovieDetails() {
       }
 
       fetchData(movie.id);
-    } catch (error) {
+    } catch {
       showToast("Error updating movie.");
     }
   };
@@ -153,7 +158,7 @@ export default function MovieDetails() {
       await api.post(`/movies/watchlist/${movie.id}/watched`);
       showToast("Marked as Watched!");
       fetchData(movie.id);
-    } catch (error) {
+    } catch {
       showToast("Error updating status.");
     }
   };
@@ -165,7 +170,7 @@ export default function MovieDetails() {
       const newStatus = { ...status, isFavorite: !status.isFavorite };
       updateStatusCache(newStatus);
       showToast("Favorite status updated");
-    } catch (error) {
+    } catch {
       showToast("Failed to update favorite status");
     }
   };
@@ -180,7 +185,7 @@ export default function MovieDetails() {
       });
       showToast(newRating === 0 ? "Rating cleared!" : "Rating saved!");
       fetchData(movie.id);
-    } catch (error) {
+    } catch {
       showToast("Error saving rating.");
     }
   };
@@ -191,7 +196,7 @@ export default function MovieDetails() {
       await api.delete(`/movies/watchlist/${movie.id}`);
       showToast("Removed from your list.");
       updateStatusCache(null);
-    } catch (error) {
+    } catch {
       showToast("Error removing movie.");
     }
   };
@@ -300,18 +305,21 @@ export default function MovieDetails() {
         <div className="flex-grow flex flex-col pt-2 md:pt-32 text-center md:text-left">
           <h1 className="text-3xl sm:text-5xl font-bold text-white mb-3">
             {movie.title}
+            <span className="ml-3 inline-block px-2 py-1 bg-gray-800 border border-gray-700 rounded-lg text-sm sm:text-base align-middle text-gray-400 font-normal">
+              {mediaType === "tv" ? "TV SHOW" : "MOVIE"}
+            </span>
           </h1>
 
           <div className="flex flex-wrap justify-center md:justify-start gap-3 sm:gap-4 text-xs sm:text-sm text-gray-400 mb-6 items-center">
             <span>{movie.release_date?.split("-")[0]}</span>
             <span>•</span>
-            <span>{movie.runtime} min</span>
+            <span>{movie.runtime || "?"} min</span>
             <span>•</span>
             <span className="flex items-center gap-1 text-yellow-500 font-bold">
-              ★ {movie.vote_average.toFixed(1)}
+              ★ {movie.vote_average?.toFixed(1) || "0.0"}
             </span>
             <div className="flex gap-2 flex-wrap justify-center md:justify-start">
-              {movie.genres.map((g) => (
+              {movie.genres?.map((g) => (
                 <span
                   key={g.id}
                   className="bg-gray-800 px-2 py-1 rounded-md border border-gray-700 text-[10px] sm:text-xs"
@@ -323,7 +331,7 @@ export default function MovieDetails() {
           </div>
 
           <p className="text-gray-300 text-sm sm:text-lg leading-relaxed mb-8 max-w-3xl">
-            {movie.overview}
+            {movie.overview || "No overview available."}
           </p>
 
           <div className="bg-gray-800/60 border border-gray-700 p-5 sm:p-7 rounded-3xl w-full max-w-lg mx-auto md:mx-0 shadow-2xl backdrop-blur-sm">

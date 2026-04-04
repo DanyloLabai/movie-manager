@@ -30,7 +30,6 @@ export default function Watchlist() {
 
   const [profileData, setProfileData] = useState<ProfileData | null>(() => {
     if (!ENABLE_CACHE) return null;
-
     try {
       const cached = localStorage.getItem(PROFILE_CACHE_KEY);
       return cached ? JSON.parse(cached) : null;
@@ -45,6 +44,18 @@ export default function Watchlist() {
   >("profile");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [username, setUsername] = useState<string>("User");
+
+  // Стейт для модального вікна оцінки
+  const [ratingModalData, setRatingModalData] = useState<{
+    isOpen: boolean;
+    tmdbId: number | null;
+    title: string;
+  }>({
+    isOpen: false,
+    tmdbId: null,
+    title: "",
+  });
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -131,11 +142,7 @@ export default function Watchlist() {
           newRecent = newRecent.slice(0, 10);
         }
 
-        return {
-          ...prev,
-          favorites: newFavorites,
-          recent: newRecent,
-        };
+        return { ...prev, favorites: newFavorites, recent: newRecent };
       });
     } else {
       setMovies((prev) =>
@@ -150,9 +157,7 @@ export default function Watchlist() {
     try {
       await api.patch(`/movies/watchlist/${tmdbId}/favorite`);
       showToast("Favorite status updated");
-      if (activeTab === "profile") {
-        fetchProfile();
-      }
+      if (activeTab === "profile") fetchProfile();
     } catch {
       showToast("Failed to update favorite status");
       if (activeTab === "profile") fetchProfile();
@@ -181,6 +186,7 @@ export default function Watchlist() {
   };
 
   const handleMarkWatched = async (tmdbId: number) => {
+    const targetMovie = movies.find((m) => m.tmdbId === tmdbId);
     setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
 
     setProfileData((prev) => {
@@ -211,6 +217,15 @@ export default function Watchlist() {
     try {
       await api.post(`/movies/watchlist/${tmdbId}/watched`);
       showToast("Moved to Watched");
+
+      // Відкриваємо модалку оцінки після успішного переміщення
+      if (targetMovie) {
+        setRatingModalData({
+          isOpen: true,
+          tmdbId: targetMovie.tmdbId,
+          title: targetMovie.title,
+        });
+      }
     } catch {
       showToast("Failed to update status");
     }
@@ -259,6 +274,18 @@ export default function Watchlist() {
     } catch {
       showToast("Failed to save rating");
     }
+  };
+
+  // Обробник для модалки
+  const handleModalRate = async (star: number) => {
+    if (ratingModalData.tmdbId) {
+      await handleRateMovie(ratingModalData.tmdbId, star);
+    }
+    setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
+  };
+
+  const closeRatingModal = () => {
+    setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
   };
 
   const handleLogout = () => {
@@ -488,7 +515,11 @@ export default function Watchlist() {
                   {profileData.recent.map((act) => {
                     const addedStr = new Date(act.addedAt).toLocaleDateString(
                       "en-US",
-                      { month: "short", day: "numeric", year: "numeric" },
+                      {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      },
                     );
                     const updatedStr = act.updatedAt
                       ? new Date(act.updatedAt).toLocaleDateString("en-US", {
@@ -619,55 +650,56 @@ export default function Watchlist() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {movies.map((item) => (
               <div
                 key={item.id}
-                className="group overflow-hidden transition bg-gray-800 border border-gray-700 shadow-lg rounded-3xl flex flex-col hover:border-blue-500/30 hover:-translate-y-1 hover:shadow-2xl relative"
+                className="group overflow-hidden transition bg-gray-800 border border-gray-700 shadow-md rounded-2xl flex flex-col hover:border-blue-500/30 hover:-translate-y-1 hover:shadow-xl relative"
               >
                 <Link
                   to={`/movie/${item.tmdbId}`}
-                  className="relative w-full h-80 sm:h-72 md:h-80 bg-gray-900 block"
+                  className="relative w-full aspect-[2/3] bg-gray-900 block overflow-hidden"
                 >
                   {item.posterUrl ? (
                     <img
                       src={item.posterUrl}
                       alt={item.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                   ) : (
-                    <div className="flex items-center justify-center w-full h-full text-gray-600 italic">
+                    <div className="flex items-center justify-center w-full h-full text-gray-600 text-xs italic">
                       No poster
                     </div>
                   )}
                   {activeTab === "watched" && (
-                    <div className="absolute top-3 right-3 bg-green-500/90 text-white text-[10px] font-bold px-3 py-1 rounded-full backdrop-blur-sm uppercase tracking-wider">
+                    <div className="absolute top-2 right-2 bg-green-500/90 text-white text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm uppercase tracking-wider">
                       Watched
                     </div>
                   )}
                 </Link>
 
-                <div className="p-5 flex flex-col flex-grow z-10 bg-gray-800">
+                <div className="p-3 flex flex-col flex-grow z-10 bg-gray-800">
                   <Link
                     to={`/movie/${item.tmdbId}`}
-                    className="text-lg font-bold text-white truncate hover:text-blue-400 transition"
+                    className="text-sm sm:text-base font-bold text-white truncate hover:text-blue-400 transition"
                     title={item.title}
                   >
                     {item.title}
                   </Link>
-                  <p className="mt-1 text-[10px] uppercase tracking-tighter text-gray-500 mb-4 font-semibold">
+
+                  <p className="hidden sm:block mt-0.5 text-[10px] uppercase tracking-tighter text-gray-500 mb-2 font-semibold">
                     Added: {new Date(item.addedAt).toLocaleDateString("en-US")}
                   </p>
 
-                  <div className="flex justify-center gap-1.5 mb-6 mt-auto">
+                  <div className="flex justify-center gap-0.5 sm:gap-1 mb-3 mt-auto pt-2">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
                         onClick={() => handleRateMovie(item.tmdbId, star)}
-                        className={`text-2xl transition-all duration-200 active:scale-150 ${
+                        className={`text-lg sm:text-xl transition-all duration-200 active:scale-150 ${
                           (item.rating || 0) >= star
-                            ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]"
-                            : "text-gray-600 hover:text-yellow-400/50"
+                            ? "text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.3)]"
+                            : "text-gray-700 hover:text-yellow-400/50"
                         }`}
                       >
                         ★
@@ -675,48 +707,51 @@ export default function Watchlist() {
                     ))}
                   </div>
 
-                  <div className="flex justify-between items-center pt-4 border-t border-gray-700/50">
-                    {activeTab === "watchlist" ? (
-                      <button
-                        onClick={() => handleMarkWatched(item.tmdbId)}
-                        className="text-xs font-bold text-green-400 hover:text-green-300 transition uppercase tracking-wider"
-                      >
-                        Mark Watched
-                      </button>
-                    ) : (
-                      <Link
-                        to={`/movie/${item.tmdbId}`}
-                        className="text-xs font-bold text-blue-400 hover:text-blue-300 transition uppercase tracking-wider"
-                      >
-                        Details
-                      </Link>
-                    )}
-
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={() => handleDelete(item.tmdbId)}
-                        className="text-xs font-bold text-red-400/60 hover:text-red-400 transition uppercase tracking-wider"
-                      >
-                        Remove
-                      </button>
-                      <button
-                        onClick={() => handleToggleFavorite(item.tmdbId)}
-                        className="group/heart flex items-center gap-1.5"
-                      >
-                        <svg
-                          className={`w-5 h-5 transition ${item.isFavorite ? "text-red-500 fill-red-500" : "text-gray-400 group-hover/heart:text-red-500"}`}
-                          fill={item.isFavorite ? "currentColor" : "none"}
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                  <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-2 border-t border-gray-700/50">
+                    <div className="flex w-full justify-between sm:justify-start sm:gap-4 items-center">
+                      {activeTab === "watchlist" ? (
+                        <button
+                          onClick={() => handleMarkWatched(item.tmdbId)}
+                          className="text-[10px] font-bold text-green-400 hover:text-green-300 transition uppercase tracking-tighter"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                          ></path>
-                        </svg>
-                      </button>
+                          Watched
+                        </button>
+                      ) : (
+                        <Link
+                          to={`/movie/${item.tmdbId}`}
+                          className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition uppercase tracking-tighter"
+                        >
+                          Details
+                        </Link>
+                      )}
+
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleDelete(item.tmdbId)}
+                          className="text-[10px] font-bold text-red-400/60 hover:text-red-400 transition uppercase"
+                        >
+                          Delete
+                        </button>
+
+                        <button
+                          onClick={() => handleToggleFavorite(item.tmdbId)}
+                          className="group/heart"
+                        >
+                          <svg
+                            className={`w-4 h-4 transition ${item.isFavorite ? "text-red-500 fill-red-500" : "text-gray-500 group-hover/heart:text-red-500"}`}
+                            fill={item.isFavorite ? "currentColor" : "none"}
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -725,6 +760,63 @@ export default function Watchlist() {
           </div>
         )}
       </div>
+
+      {/* Модальне вікно для оцінки */}
+      {ratingModalData.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            className="bg-gray-800 border border-gray-700 rounded-3xl p-8 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={closeRatingModal}
+              className="absolute top-4 right-4 text-gray-500 hover:text-white transition"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                ></path>
+              </svg>
+            </button>
+
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-white mb-2">
+                How was it?
+              </h3>
+              <p className="text-sm text-gray-400 mb-8">
+                Rate "{ratingModalData.title}" or skip to just mark as watched.
+              </p>
+
+              <div className="flex justify-center gap-2 mb-8">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    onClick={() => handleModalRate(star)}
+                    className="text-4xl text-gray-600 hover:text-yellow-400 hover:scale-110 transition-all duration-200"
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={closeRatingModal}
+                className="text-xs font-bold text-gray-500 hover:text-white uppercase tracking-widest transition"
+              >
+                Skip Rating
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {toastMessage && (
         <div className="fixed bottom-5 left-5 right-5 sm:left-auto sm:right-10 sm:bottom-10 bg-gray-800 border border-gray-700 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center justify-center sm:justify-start gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50">

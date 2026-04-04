@@ -8,5 +8,6 @@ export class MovieDetailsResponse {
   backdrop_path: string | null;
   runtime: number;
   genres: { id: number; name: string }[];
+  mediaType?: 'movie' | 'tv';
   [key: string]: unknown;
 }

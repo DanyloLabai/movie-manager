@@ -9,16 +9,43 @@ interface MovieResult {
   releaseYear: string;
   rating: number;
   posterUrl: string | null;
+  mediaType: "movie" | "tv";
 }
 
-const TRENDING_CACHE_KEY = "movie_tracker_trending_cache";
-const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
+const TRENDING_CACHE_KEY = import.meta.env.VITE_TRENDING_CACHE_KEY;
+const FAVORITES_CACHE_KEY = import.meta.env.VITE_FAVORITES_CACHE_KEY;
+const SEARCH_QUERY_CACHE_KEY = import.meta.env.VITE_SEARCH_QUERY_CACHE_KEY;
+const SEARCH_RESULTS_CACHE_KEY = import.meta.env.VITE_SEARCH_RESULTS_CACHE_KEY;
+const SEARCH_TIMESTAMP_KEY = import.meta.env.VITE_SEARCH_TIMESTAMP_KEY;
+const CACHE_EXPIRATION_MS =
+  Number(import.meta.env.VITE_CACHE_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
 
 export default function Search() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [results, setResults] = useState<MovieResult[]>([]);
+  const [searchQuery, setSearchQuery] = useState(() => {
+    try {
+      const timestamp = localStorage.getItem(SEARCH_TIMESTAMP_KEY);
+      if (timestamp && Date.now() - parseInt(timestamp) < CACHE_EXPIRATION_MS) {
+        return localStorage.getItem(SEARCH_QUERY_CACHE_KEY) || "";
+      }
+      return "";
+    } catch {
+      return "";
+    }
+  });
 
-  // Ініціалізуємо тренди з кешу
+  const [results, setResults] = useState<MovieResult[]>(() => {
+    try {
+      const timestamp = localStorage.getItem(SEARCH_TIMESTAMP_KEY);
+      if (timestamp && Date.now() - parseInt(timestamp) < CACHE_EXPIRATION_MS) {
+        const cached = localStorage.getItem(SEARCH_RESULTS_CACHE_KEY);
+        return cached ? JSON.parse(cached) : [];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  });
+
   const [trending, setTrending] = useState<MovieResult[]>(() => {
     try {
       const cached = localStorage.getItem(TRENDING_CACHE_KEY);
@@ -28,7 +55,6 @@ export default function Search() {
     }
   });
 
-  // Ініціалізуємо сердечка з кешу
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     try {
       const cached = localStorage.getItem(FAVORITES_CACHE_KEY);
@@ -38,9 +64,7 @@ export default function Search() {
     }
   });
 
-  // Лоадер потрібен ТІЛЬКИ якщо кеш порожній
   const [isLoadingTrends, setIsLoadingTrends] = useState(trending.length === 0);
-
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -53,7 +77,6 @@ export default function Search() {
           api.get("/movies/profile"),
         ]);
 
-        // Оновлюємо стан і зберігаємо в кеш
         setTrending(trendingRes.data);
         localStorage.setItem(
           TRENDING_CACHE_KEY,
@@ -75,25 +98,45 @@ export default function Search() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem(SEARCH_QUERY_CACHE_KEY, searchQuery);
+    localStorage.setItem(SEARCH_TIMESTAMP_KEY, Date.now().toString());
+  }, [searchQuery]);
+
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!searchQuery.trim()) return;
+
     setIsSearching(true);
     try {
       const response = await api.get("/movies/search", {
         params: { title: searchQuery },
       });
       setResults(response.data);
+
+      localStorage.setItem(
+        SEARCH_RESULTS_CACHE_KEY,
+        JSON.stringify(response.data),
+      );
+      localStorage.setItem(SEARCH_TIMESTAMP_KEY, Date.now().toString());
     } catch (error) {
       console.error(error);
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    setResults([]);
+    localStorage.removeItem(SEARCH_QUERY_CACHE_KEY);
+    localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
+    localStorage.removeItem(SEARCH_TIMESTAMP_KEY);
   };
 
   const handleAdd = async (movie: MovieResult) => {
@@ -122,7 +165,7 @@ export default function Search() {
         ? favoriteIds.filter((id) => id !== movie.id)
         : [...favoriteIds, movie.id];
       setFavoriteIds(newIds);
-      localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds)); // Оновлюємо кеш одразу
+      localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
 
       showToast("Favorite status updated");
     } catch (error: any) {
@@ -140,7 +183,7 @@ export default function Search() {
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
 
           showToast("Added to list and favorites");
-        } catch (innerError) {
+        } catch {
           showToast("Failed to favorite movie");
         }
       } else {
@@ -151,27 +194,29 @@ export default function Search() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    // За бажанням: можна очищати кеш при логауті
-    // localStorage.removeItem(TRENDING_CACHE_KEY);
-    // localStorage.removeItem(FAVORITES_CACHE_KEY);
+    localStorage.removeItem(TRENDING_CACHE_KEY);
+    localStorage.removeItem(FAVORITES_CACHE_KEY);
+    localStorage.removeItem(SEARCH_QUERY_CACHE_KEY);
+    localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
+    localStorage.removeItem(SEARCH_TIMESTAMP_KEY);
     navigate("/login");
   };
 
   const renderMovieGrid = (movies: MovieResult[]) => (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {movies.map((movie) => (
         <div
           key={movie.id}
-          className="group relative overflow-hidden transition bg-gray-800 border border-gray-700 shadow-lg rounded-2xl flex flex-col hover:shadow-2xl hover:border-blue-500/30 hover:-translate-y-1"
+          className="group relative overflow-hidden transition bg-gray-800 border border-gray-700 shadow-md rounded-2xl flex flex-col hover:shadow-xl hover:border-blue-500/30 hover:-translate-y-1"
         >
           <button
-            className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center bg-gray-900/60 rounded-full backdrop-blur-sm border border-gray-600/50 hover:bg-gray-800 transition group/heart"
+            className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center bg-gray-900/60 rounded-full backdrop-blur-sm border border-gray-600/50 hover:bg-gray-800 transition group/heart"
             onClick={() => handleToggleFavorite(movie)}
           >
             <svg
-              className={`w-4 h-4 transition ${
+              className={`w-3 h-3 sm:w-4 sm:h-4 transition ${
                 favoriteIds.includes(movie.id)
-                  ? "text-red-500"
+                  ? "text-red-500 fill-red-500"
                   : "text-gray-400 group-hover/heart:text-red-500"
               }`}
               fill={favoriteIds.includes(movie.id) ? "currentColor" : "none"}
@@ -188,54 +233,55 @@ export default function Search() {
           </button>
 
           <Link
-            to={`/movie/${movie.id}`}
-            className="relative w-full h-80 sm:h-72 md:h-80 bg-gray-900 block"
+            to={`/movie/${movie.id}?type=${movie.mediaType}`}
+            className="relative w-full aspect-[2/3] bg-gray-900 block"
           >
             {movie.posterUrl ? (
               <img
                 src={movie.posterUrl}
                 alt={movie.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             ) : (
-              <div className="flex items-center justify-center w-full h-full text-gray-600">
+              <div className="flex items-center justify-center w-full h-full text-xs text-gray-600">
                 No poster
               </div>
             )}
           </Link>
 
-          <div className="p-4 sm:p-5 flex flex-col flex-grow relative z-10 bg-gray-800">
-            <Link to={`/movie/${movie.id}`}>
+          <div className="p-3 sm:p-4 flex flex-col flex-grow relative z-10 bg-gray-800">
+            <Link to={`/movie/${movie.id}?type=${movie.mediaType}`}>
               <h4
-                className="text-lg sm:text-xl font-bold mb-1 truncate text-white hover:text-blue-400 transition-colors"
+                className="text-sm sm:text-lg font-bold mb-1 truncate text-white hover:text-blue-400 transition-colors"
                 title={movie.title}
               >
                 {movie.title}
               </h4>
             </Link>
-            <p className="text-xs text-gray-500 mb-3 uppercase tracking-tighter">
+            <p className="text-[10px] sm:text-xs text-gray-500 mb-4 uppercase tracking-tighter">
               {movie.releaseYear} • IMDB: {movie.rating}
+              <span className="ml-2 inline-block px-1.5 py-0.5 bg-gray-700 rounded-md text-[8px] sm:text-[9px]">
+                {movie.mediaType === "tv" ? "TV SHOW" : "MOVIE"}
+              </span>
             </p>
-            <p className="text-sm text-gray-400 line-clamp-3 mb-6 flex-grow">
-              {movie.description}
-            </p>
-            <button
-              onClick={() => handleAdd(movie)}
-              className="w-full py-2.5 bg-gray-700 hover:bg-blue-600 text-white font-bold rounded-xl transition-colors active:scale-95 uppercase text-sm tracking-wider"
-            >
-              + Add
-            </button>
+            <div className="mt-auto pt-2 border-t border-gray-700/50">
+              <button
+                onClick={() => handleAdd(movie)}
+                className="w-full py-1.5 sm:py-2 bg-gray-700 hover:bg-blue-600 text-white font-bold rounded-lg sm:rounded-xl transition-colors active:scale-95 uppercase text-[10px] sm:text-xs tracking-wider"
+              >
+                + Add
+              </button>
+            </div>
           </div>
         </div>
       ))}
     </div>
   );
-
   return (
     <div className="min-h-screen p-4 sm:p-8 bg-gray-900 font-sans text-gray-100 relative">
       <div className="max-w-7xl mx-auto">
-        <header className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 mb-10 border-b border-gray-800">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+        <header className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 mb-8 border-b border-gray-800">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-center md:text-left">
             Movie Tracker
           </h1>
           <nav className="flex flex-wrap justify-center gap-4 sm:gap-8 items-center">
@@ -268,40 +314,67 @@ export default function Search() {
 
         <form
           onSubmit={handleSearch}
-          className="mb-10 relative w-full max-w-2xl mx-auto"
+          className="mb-8 sm:mb-10 relative w-full max-w-2xl mx-auto"
         >
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              if (e.target.value === "") setResults([]);
             }}
             placeholder="Enter movie title..."
             className="w-full pl-6 pr-24 sm:pr-32 py-3.5 sm:py-4 bg-gray-800 border border-gray-700 rounded-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 shadow-xl transition-all text-sm sm:text-base"
           />
-          <button
-            type="submit"
-            disabled={isSearching || !searchQuery.trim()}
-            className="absolute right-1.5 top-1.5 bottom-1.5 px-4 sm:px-6 bg-blue-600 text-white rounded-full font-bold hover:bg-blue-500 transition-all active:scale-95 disabled:bg-gray-700 disabled:text-gray-500 text-sm sm:text-base"
-          >
-            {isSearching ? "..." : "Find"}
-          </button>
+
+          <div className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1">
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition"
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSearching || !searchQuery.trim()}
+              className="px-4 sm:px-6 h-full bg-blue-600 text-white rounded-full font-bold hover:bg-blue-500 transition-all active:scale-95 disabled:bg-gray-700 disabled:text-gray-500 text-sm sm:text-base"
+            >
+              {isSearching ? "..." : "Find"}
+            </button>
+          </div>
         </form>
 
         <main>
           {results.length > 0 ? (
             <>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-300 mb-6 border-b border-gray-800 pb-2">
-                Search Results
-              </h2>
+              <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-300">
+                  Search Results
+                </h2>
+                <button
+                  onClick={handleClearSearch}
+                  className="text-[10px] sm:text-sm font-bold text-gray-400 hover:text-blue-400 transition-colors uppercase tracking-wider"
+                >
+                  ← Back to Trends
+                </button>
+              </div>
               {renderMovieGrid(results)}
             </>
           ) : searchQuery.trim() !== "" ? (
             !isSearching && (
-              <p className="text-center text-gray-500 mt-12 text-lg">
-                No movies found.
-              </p>
+              <div className="text-center mt-12">
+                <p className="text-gray-500 text-lg mb-4">No movies found.</p>
+                <button
+                  onClick={handleClearSearch}
+                  className="text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  ← Back to Trends
+                </button>
+              </div>
             )
           ) : (
             <>
