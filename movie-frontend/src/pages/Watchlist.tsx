@@ -12,6 +12,7 @@ interface WatchlistItem {
   isWatched: boolean;
   isFavorite: boolean;
   rating?: number | null;
+  mediaType: string;
 }
 
 interface ProfileData {
@@ -45,7 +46,6 @@ export default function Watchlist() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [username, setUsername] = useState<string>("User");
 
-  // Стейт для модального вікна оцінки
   const [ratingModalData, setRatingModalData] = useState<{
     isOpen: boolean;
     tmdbId: number | null;
@@ -185,49 +185,33 @@ export default function Watchlist() {
     }
   };
 
-  const handleMarkWatched = async (tmdbId: number) => {
+  const handleMarkWatched = (tmdbId: number) => {
     const targetMovie = movies.find((m) => m.tmdbId === tmdbId);
+    if (targetMovie) {
+      setRatingModalData({
+        isOpen: true,
+        tmdbId: targetMovie.tmdbId,
+        title: targetMovie.title,
+      });
+    }
+  };
+
+  const confirmMarkWatched = async (tmdbId: number, rating: number | null) => {
     setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
-
-    setProfileData((prev) => {
-      if (!prev) return prev;
-
-      const targetItem =
-        prev.recent.find((r) => r.tmdbId === tmdbId) ||
-        movies.find((m) => m.tmdbId === tmdbId);
-
-      let newRecent = [...prev.recent];
-      if (targetItem) {
-        newRecent = newRecent.filter((r) => r.tmdbId !== tmdbId);
-        newRecent.unshift({
-          ...targetItem,
-          isWatched: true,
-          updatedAt: new Date().toISOString(),
-        });
-        newRecent = newRecent.slice(0, 10);
-      }
-
-      return {
-        ...prev,
-        recent: newRecent,
-        watchedCount: (prev.watchedCount || 0) + 1,
-      };
-    });
 
     try {
       await api.post(`/movies/watchlist/${tmdbId}/watched`);
+
+      if (rating !== null) {
+        await api.patch(`/movies/watchlist/${tmdbId}/rate`, { rating });
+      }
+
       showToast("Moved to Watched");
 
-      // Відкриваємо модалку оцінки після успішного переміщення
-      if (targetMovie) {
-        setRatingModalData({
-          isOpen: true,
-          tmdbId: targetMovie.tmdbId,
-          title: targetMovie.title,
-        });
-      }
+      fetchProfile();
     } catch {
       showToast("Failed to update status");
+      fetchMovies();
     }
   };
 
@@ -276,10 +260,9 @@ export default function Watchlist() {
     }
   };
 
-  // Обробник для модалки
   const handleModalRate = async (star: number) => {
     if (ratingModalData.tmdbId) {
-      await handleRateMovie(ratingModalData.tmdbId, star);
+      await confirmMarkWatched(ratingModalData.tmdbId, star);
     }
     setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
   };
@@ -449,7 +432,7 @@ export default function Watchlist() {
                       className="group relative flex flex-col items-center"
                     >
                       <Link
-                        to={`/movie/${fav.tmdbId}`}
+                        to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}`}
                         className="w-full aspect-[2/3] rounded-xl overflow-hidden shadow-lg border border-gray-700 bg-gray-900 relative"
                       >
                         {fav.posterUrl ? (
@@ -531,7 +514,7 @@ export default function Watchlist() {
 
                     return (
                       <Link
-                        to={`/movie/${act.tmdbId}`}
+                        to={`/movie/${act.tmdbId}?type=${act.mediaType || "movie"}`}
                         key={act.id}
                         className="flex items-center gap-4 bg-gray-900/50 p-3 rounded-2xl border border-gray-700/50 hover:border-blue-500/30 hover:bg-gray-800 transition group"
                       >
@@ -579,9 +562,11 @@ export default function Watchlist() {
     <div className="min-h-screen p-4 sm:p-8 bg-gray-900 font-sans text-gray-100 relative">
       <div className="max-w-7xl mx-auto">
         <header className="flex flex-col md:flex-row items-center justify-between gap-6 pb-6 mb-8 border-b border-gray-800">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-center md:text-left">
-            Movie Tracker
-          </h1>
+          <Link to="/search" className="hover:opacity-80 transition-opacity">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-center md:text-left">
+              Movie Tracker
+            </h1>
+          </Link>
           <nav className="flex flex-wrap justify-center gap-4 sm:gap-8 items-center">
             <Link
               to="/ai-chat"
@@ -657,7 +642,7 @@ export default function Watchlist() {
                 className="group overflow-hidden transition bg-gray-800 border border-gray-700 shadow-md rounded-2xl flex flex-col hover:border-blue-500/30 hover:-translate-y-1 hover:shadow-xl relative"
               >
                 <Link
-                  to={`/movie/${item.tmdbId}`}
+                  to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
                   className="relative w-full aspect-[2/3] bg-gray-900 block overflow-hidden"
                 >
                   {item.posterUrl ? (
@@ -680,7 +665,7 @@ export default function Watchlist() {
 
                 <div className="p-3 flex flex-col flex-grow z-10 bg-gray-800">
                   <Link
-                    to={`/movie/${item.tmdbId}`}
+                    to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
                     className="text-sm sm:text-base font-bold text-white truncate hover:text-blue-400 transition"
                     title={item.title}
                   >
@@ -718,7 +703,7 @@ export default function Watchlist() {
                         </button>
                       ) : (
                         <Link
-                          to={`/movie/${item.tmdbId}`}
+                          to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
                           className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition uppercase tracking-tighter"
                         >
                           Details

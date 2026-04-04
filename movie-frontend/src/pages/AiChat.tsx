@@ -230,9 +230,11 @@ export default function AiChat() {
     <div className="flex flex-col h-screen bg-gray-900 text-gray-100 font-sans relative">
       <header className="flex flex-col sm:flex-row items-center justify-between p-4 gap-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-20">
         <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            Movie Tracker
-          </h1>
+          <Link to="/search" className="hover:opacity-80 transition-opacity">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-center md:text-left">
+              Movie Tracker
+            </h1>
+          </Link>
           <button
             onClick={handleClearChat}
             className="text-[10px] sm:text-xs text-gray-500 hover:text-gray-300 transition uppercase tracking-wider font-semibold border border-gray-700 px-2 py-1 rounded-md hover:bg-gray-800"
@@ -342,10 +344,13 @@ export default function AiChat() {
                                   {movie.title}
                                 </h4>
                               </Link>
-                              <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold">
-                                {movie.releaseYear} • ⭐{" "}
-                                {movie.rating.toFixed(1)}
-                                <span className="ml-1 inline-block bg-gray-700 px-1 py-0.5 rounded text-[8px]">
+                              <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold flex items-center gap-1">
+                                <span>{movie.releaseYear}</span>
+                                <span>•</span>
+                                <span className="text-yellow-500 font-bold">
+                                  IMDB {Number(movie.rating || 0).toFixed(1)}
+                                </span>
+                                <span className="ml-1 inline-block bg-gray-700 px-1 py-0.5 rounded text-[8px] text-gray-300">
                                   {movie.mediaType === "tv" ? "TV" : "MOVIE"}
                                 </span>
                               </p>

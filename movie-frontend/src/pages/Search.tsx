@@ -145,6 +145,7 @@ export default function Search() {
         tmdbId: movie.id,
         title: movie.title,
         posterUrl: movie.posterUrl,
+        mediaType: movie.mediaType,
       });
       showToast("Successfully added");
     } catch (error: any) {
@@ -175,6 +176,7 @@ export default function Search() {
             tmdbId: movie.id,
             title: movie.title,
             posterUrl: movie.posterUrl,
+            mediaType: movie.mediaType,
           });
           await api.patch(`/movies/watchlist/${movie.id}/favorite`);
 
@@ -203,7 +205,7 @@ export default function Search() {
   };
 
   const renderMovieGrid = (movies: MovieResult[]) => (
-    <div className="grid grid-cols-2 gap-3 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
       {movies.map((movie) => (
         <div
           key={movie.id}
@@ -232,9 +234,10 @@ export default function Search() {
             </svg>
           </button>
 
+          {/* ПОСИЛАННЯ ДЛЯ КАРТИНКИ */}
           <Link
             to={`/movie/${movie.id}?type=${movie.mediaType}`}
-            className="relative w-full aspect-[2/3] bg-gray-900 block"
+            className="relative w-full aspect-[2/3] bg-gray-900 block overflow-hidden"
           >
             {movie.posterUrl ? (
               <img
@@ -258,9 +261,13 @@ export default function Search() {
                 {movie.title}
               </h4>
             </Link>
-            <p className="text-[10px] sm:text-xs text-gray-500 mb-4 uppercase tracking-tighter">
-              {movie.releaseYear} • IMDB: {movie.rating}
-              <span className="ml-2 inline-block px-1.5 py-0.5 bg-gray-700 rounded-md text-[8px] sm:text-[9px]">
+            <p className="text-[10px] sm:text-xs text-gray-500 mb-4 uppercase tracking-tighter flex items-center gap-1">
+              <span>{movie.releaseYear}</span>
+              <span>•</span>
+              <span className="text-yellow-500 font-bold">
+                IMDB: {Number(movie.rating || 0).toFixed(1)}
+              </span>
+              <span className="ml-auto inline-block px-1.5 py-0.5 bg-gray-700 rounded-md text-[8px] sm:text-[9px] text-gray-300">
                 {movie.mediaType === "tv" ? "TV SHOW" : "MOVIE"}
               </span>
             </p>
@@ -277,6 +284,7 @@ export default function Search() {
       ))}
     </div>
   );
+
   return (
     <div className="min-h-screen p-4 sm:p-8 bg-gray-900 font-sans text-gray-100 relative">
       <div className="max-w-7xl mx-auto">

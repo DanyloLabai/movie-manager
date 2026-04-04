@@ -266,7 +266,7 @@ export class MoviesService {
       );
 
       return mediaResults
-        .slice(0, 6)
+        .slice(0, 16)
         .map((media: TmdbMultiSearchResultDto) => ({
           id: media.id,
           title: media.title || media.name || 'Unknown',

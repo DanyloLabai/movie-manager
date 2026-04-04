@@ -316,7 +316,7 @@ export default function MovieDetails() {
             <span>{movie.runtime || "?"} min</span>
             <span>•</span>
             <span className="flex items-center gap-1 text-yellow-500 font-bold">
-              ★ {movie.vote_average?.toFixed(1) || "0.0"}
+              IMBD: {movie.vote_average?.toFixed(1) || "0.0"}
             </span>
             <div className="flex gap-2 flex-wrap justify-center md:justify-start">
               {movie.genres?.map((g) => (
