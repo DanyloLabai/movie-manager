@@ -52,7 +52,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const port = configService.get<number>('MAIL_PORT');
+        const port = Number(configService.get('MAIL_PORT'));
 
         return {
           transport: {
