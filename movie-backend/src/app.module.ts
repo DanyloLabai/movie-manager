@@ -51,27 +51,18 @@ import { MailerModule } from '@nestjs-modules/mailer';
     MailerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const port = Number(configService.get('MAIL_PORT'));
-
-        return {
-          transport: {
-            host: configService.get<string>('MAIL_HOST'),
-            port: port,
-            secure: port === 465,
-            auth: {
-              user: configService.get<string>('MAIL_USER'),
-              pass: configService.get<string>('MAIL_PASS'),
-            },
-            tls: {
-              rejectUnauthorized: false,
-            },
+      useFactory: (configService: ConfigService) => ({
+        transport: {
+          service: 'gmail',
+          auth: {
+            user: configService.get<string>('MAIL_USER'),
+            pass: configService.get<string>('MAIL_PASS'),
           },
-          defaults: {
-            from: `"Movie Tracker" <${configService.get<string>('MAIL_USER')}>`,
-          },
-        };
-      },
+        },
+        defaults: {
+          from: `"Movie Tracker" <${configService.get<string>('MAIL_USER')}>`,
+        },
+      }),
     }),
 
     AiChatModule,
