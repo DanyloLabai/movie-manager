@@ -20,6 +20,12 @@ export class User {
   @Column()
   password: string;
 
+  @Column({ default: false })
+  isVerified: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  verificationToken: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

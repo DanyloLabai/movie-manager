@@ -45,7 +45,9 @@ export default function Watchlist() {
   >("profile");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [username, setUsername] = useState<string>("User");
-
+  const [hoveredMovieId, setHoveredMovieId] = useState<number | null>(null);
+  const [hoveredStar, setHoveredStar] = useState(0);
+  const [modalHoveredStar, setModalHoveredStar] = useState(0);
   const [ratingModalData, setRatingModalData] = useState<{
     isOpen: boolean;
     tmdbId: number | null;
@@ -676,20 +678,37 @@ export default function Watchlist() {
                     Added: {new Date(item.addedAt).toLocaleDateString("en-US")}
                   </p>
 
-                  <div className="flex justify-center gap-0.5 sm:gap-1 mb-3 mt-auto pt-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        onClick={() => handleRateMovie(item.tmdbId, star)}
-                        className={`text-lg sm:text-xl transition-all duration-200 active:scale-150 ${
-                          (item.rating || 0) >= star
-                            ? "text-yellow-400 drop-shadow-[0_0_5px_rgba(250,204,21,0.3)]"
-                            : "text-gray-700 hover:text-yellow-400/50"
-                        }`}
-                      >
-                        ★
-                      </button>
-                    ))}
+                  <div
+                    className="flex justify-center gap-0.5 sm:gap-1 mb-3 mt-auto pt-2"
+                    onMouseLeave={() => {
+                      setHoveredMovieId(null);
+                      setHoveredStar(0);
+                    }}
+                  >
+                    {[1, 2, 3, 4, 5].map((star) => {
+                      const isActive =
+                        (hoveredMovieId === item.tmdbId
+                          ? hoveredStar
+                          : item.rating || 0) >= star;
+
+                      return (
+                        <button
+                          key={star}
+                          onMouseEnter={() => {
+                            setHoveredMovieId(item.tmdbId);
+                            setHoveredStar(star);
+                          }}
+                          onClick={() => handleRateMovie(item.tmdbId, star)}
+                          className={`text-lg sm:text-xl transition-all duration-200 active:scale-150 ${
+                            isActive
+                              ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]"
+                              : "text-gray-700 hover:text-yellow-400/40"
+                          }`}
+                        >
+                          ★
+                        </button>
+                      );
+                    })}
                   </div>
 
                   <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-2 border-t border-gray-700/50">
@@ -780,12 +799,20 @@ export default function Watchlist() {
                 Rate "{ratingModalData.title}" or skip to just mark as watched.
               </p>
 
-              <div className="flex justify-center gap-2 mb-8">
+              <div
+                className="flex justify-center gap-2 mb-8"
+                onMouseLeave={() => setModalHoveredStar(0)}
+              >
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
+                    onMouseEnter={() => setModalHoveredStar(star)}
                     onClick={() => handleModalRate(star)}
-                    className="text-4xl text-gray-600 hover:text-yellow-400 hover:scale-110 transition-all duration-200"
+                    className={`text-4xl transition-all duration-200 transform hover:scale-125 ${
+                      modalHoveredStar >= star
+                        ? "text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.5)]"
+                        : "text-gray-600"
+                    }`}
                   >
                     ★
                   </button>

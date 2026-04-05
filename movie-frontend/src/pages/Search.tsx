@@ -12,11 +12,17 @@ interface MovieResult {
   mediaType: "movie" | "tv";
 }
 
-const TRENDING_CACHE_KEY = import.meta.env.VITE_TRENDING_CACHE_KEY;
-const FAVORITES_CACHE_KEY = import.meta.env.VITE_FAVORITES_CACHE_KEY;
-const SEARCH_QUERY_CACHE_KEY = import.meta.env.VITE_SEARCH_QUERY_CACHE_KEY;
-const SEARCH_RESULTS_CACHE_KEY = import.meta.env.VITE_SEARCH_RESULTS_CACHE_KEY;
-const SEARCH_TIMESTAMP_KEY = import.meta.env.VITE_SEARCH_TIMESTAMP_KEY;
+const TRENDING_CACHE_KEY =
+  import.meta.env.VITE_TRENDING_CACHE_KEY || "trending_cache";
+const FAVORITES_CACHE_KEY =
+  import.meta.env.VITE_FAVORITES_CACHE_KEY || "favorites_cache";
+const SEARCH_QUERY_CACHE_KEY =
+  import.meta.env.VITE_SEARCH_QUERY_CACHE_KEY || "search_query_cache";
+const SEARCH_RESULTS_CACHE_KEY =
+  import.meta.env.VITE_SEARCH_RESULTS_CACHE_KEY || "search_results_cache";
+const RECOMMENDATIONS_CACHE_KEY = "recommendations_cache"; // Новий ключ для ШІ
+const SEARCH_TIMESTAMP_KEY =
+  import.meta.env.VITE_SEARCH_TIMESTAMP_KEY || "search_timestamp";
 const CACHE_EXPIRATION_MS =
   Number(import.meta.env.VITE_CACHE_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
 
@@ -55,6 +61,16 @@ export default function Search() {
     }
   });
 
+  // НОВИЙ СТАН ДЛЯ РЕКОМЕНДАЦІЙ
+  const [recommendations, setRecommendations] = useState<MovieResult[]>(() => {
+    try {
+      const cached = localStorage.getItem(RECOMMENDATIONS_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     try {
       const cached = localStorage.getItem(FAVORITES_CACHE_KEY);
@@ -64,7 +80,7 @@ export default function Search() {
     }
   });
 
-  const [isLoadingTrends, setIsLoadingTrends] = useState(trending.length === 0);
+  const [isLoadingHome, setIsLoadingHome] = useState(trending.length === 0);
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -72,16 +88,29 @@ export default function Search() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [trendingRes, profileRes] = await Promise.all([
-          api.get("/movies/trending"),
-          api.get("/movies/profile"),
+        // Завантажуємо тренди, профіль та рекомендації паралельно.
+        // Використовуємо .catch, щоб якщо ШІ впаде, тренди все одно завантажились
+        const [trendingRes, profileRes, recsRes] = await Promise.all([
+          api.get("/movies/trending").catch(() => ({ data: [] })),
+          api.get("/movies/profile").catch(() => ({ data: null })),
+          api.get("/movies/recommendations").catch(() => ({ data: [] })),
         ]);
 
-        setTrending(trendingRes.data);
-        localStorage.setItem(
-          TRENDING_CACHE_KEY,
-          JSON.stringify(trendingRes.data),
-        );
+        if (trendingRes.data?.length > 0) {
+          setTrending(trendingRes.data);
+          localStorage.setItem(
+            TRENDING_CACHE_KEY,
+            JSON.stringify(trendingRes.data),
+          );
+        }
+
+        if (recsRes.data?.length > 0) {
+          setRecommendations(recsRes.data);
+          localStorage.setItem(
+            RECOMMENDATIONS_CACHE_KEY,
+            JSON.stringify(recsRes.data),
+          );
+        }
 
         if (profileRes.data?.favorites) {
           const ids = profileRes.data.favorites.map((f: any) => f.tmdbId);
@@ -91,7 +120,7 @@ export default function Search() {
       } catch (error) {
         console.error("Error fetching background data:", error);
       } finally {
-        setIsLoadingTrends(false);
+        setIsLoadingHome(false);
       }
     };
 
@@ -201,6 +230,7 @@ export default function Search() {
     localStorage.removeItem(SEARCH_QUERY_CACHE_KEY);
     localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
     localStorage.removeItem(SEARCH_TIMESTAMP_KEY);
+    localStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
     navigate("/login");
   };
 
@@ -234,7 +264,6 @@ export default function Search() {
             </svg>
           </button>
 
-          {/* ПОСИЛАННЯ ДЛЯ КАРТИНКИ */}
           <Link
             to={`/movie/${movie.id}?type=${movie.mediaType}`}
             className="relative w-full aspect-[2/3] bg-gray-900 block overflow-hidden"
@@ -327,11 +356,9 @@ export default function Search() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-            }}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Enter movie title..."
-            className="w-full pl-6 pr-24 sm:pr-32 py-3.5 sm:py-4 bg-gray-800 border border-gray-700 rounded-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 shadow-xl transition-all text-sm sm:text-base"
+            className="w-full pl-6 pr-24 sm:pr-32 py-3.5 sm:py-4 bg-gray-800 border border-gray-700 rounded-full focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 shadow-xl transition-all text-base"
           />
 
           <div className="absolute right-1.5 top-1.5 bottom-1.5 flex items-center gap-1">
@@ -367,7 +394,7 @@ export default function Search() {
                   onClick={handleClearSearch}
                   className="text-[10px] sm:text-sm font-bold text-gray-400 hover:text-blue-400 transition-colors uppercase tracking-wider"
                 >
-                  ← Back to Trends
+                  ← Back to Home
                 </button>
               </div>
               {renderMovieGrid(results)}
@@ -380,37 +407,75 @@ export default function Search() {
                   onClick={handleClearSearch}
                   className="text-sm font-bold text-blue-400 hover:text-blue-300 transition-colors"
                 >
-                  ← Back to Trends
+                  ← Back to Home
                 </button>
               </div>
             )
           ) : (
-            <>
-              <h2 className="text-lg sm:text-xl font-bold text-gray-300 mb-6 border-b border-gray-800 pb-2">
-                Trending This Week
-              </h2>
-              {isLoadingTrends ? (
-                <div className="flex justify-center items-center h-48">
-                  <div className="flex gap-2">
-                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
-                    <div
-                      className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0.1s" }}
-                    ></div>
-                    <div
-                      className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
-                      style={{ animationDelay: "0.2s" }}
-                    ></div>
-                  </div>
+            <div className="space-y-12">
+              {/* СЕКЦІЯ 1: ТРЕНДИ */}
+              <section>
+                <div className="flex items-center gap-3 mb-6 border-b border-gray-800 pb-2">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-300">
+                    Trending This Week
+                  </h2>
+                  <span className="bg-red-500/20 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30">
+                    HOT
+                  </span>
                 </div>
-              ) : trending.length > 0 ? (
-                renderMovieGrid(trending)
-              ) : (
-                <p className="text-gray-500 text-center">
-                  Failed to load trends.
-                </p>
-              )}
-            </>
+
+                {isLoadingHome && trending.length === 0 ? (
+                  <div className="flex justify-center items-center h-48">
+                    <div className="flex gap-2">
+                      <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+                      <div
+                        className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.1s" }}
+                      ></div>
+                      <div
+                        className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+                        style={{ animationDelay: "0.2s" }}
+                      ></div>
+                    </div>
+                  </div>
+                ) : trending.length > 0 ? (
+                  renderMovieGrid(trending)
+                ) : (
+                  <p className="text-gray-500 text-center">
+                    Failed to load trends.
+                  </p>
+                )}
+              </section>
+
+              {/* СЕКЦІЯ 2: AI РЕКОМЕНДАЦІЇ */}
+              <section>
+                <div className="flex items-center gap-3 mb-6 border-b border-gray-800 pb-2">
+                  <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                    Recommended for You
+                  </h2>
+                  <span className="bg-purple-500/20 text-purple-400 text-[10px] font-bold px-2 py-0.5 rounded border border-purple-500/30">
+                    AI
+                  </span>
+                </div>
+
+                {isLoadingHome && recommendations.length === 0 ? (
+                  <div className="flex justify-center items-center h-32">
+                    <p className="text-gray-500 animate-pulse">
+                      AI is curating your personalized list...
+                    </p>
+                  </div>
+                ) : recommendations.length > 0 ? (
+                  renderMovieGrid(recommendations)
+                ) : (
+                  <div className="text-center p-8 bg-gray-800/40 rounded-2xl border border-gray-700 border-dashed">
+                    <p className="text-gray-400">
+                      Add a few movies to your Watchlist so AI can learn your
+                      taste and suggest similar titles!
+                    </p>
+                  </div>
+                )}
+              </section>
+            </div>
           )}
         </main>
       </div>

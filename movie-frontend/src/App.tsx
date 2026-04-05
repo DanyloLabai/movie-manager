@@ -6,6 +6,7 @@ import Search from "./pages/Search";
 import AiChat from "./pages/AiChat";
 import MovieDetails from "./pages/MovieDetails";
 import ChangePassword from "./pages/ChangePassword";
+import VerifyEmail from "./pages/VerifyEmail";
 import type { JSX } from "react";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -26,6 +27,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
           <Route
             path="/search"

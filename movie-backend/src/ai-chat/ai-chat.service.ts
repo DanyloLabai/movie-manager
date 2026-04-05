@@ -80,7 +80,6 @@ export class AiChatService {
 
     const foundMovies: MovieResultDto[] = [];
 
-    // Цикл вже розрахований на 10 результатів
     for (const item of aiResponse.movies.slice(0, 10)) {
       const mediaData = await this.moviesService.findMovieByTitle(
         item.title,

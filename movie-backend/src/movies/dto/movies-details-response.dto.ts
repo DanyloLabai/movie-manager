@@ -9,5 +9,6 @@ export class MovieDetailsResponse {
   runtime: number;
   genres: { id: number; name: string }[];
   mediaType?: 'movie' | 'tv';
+  trailerUrl?: string | null;
   [key: string]: unknown;
 }

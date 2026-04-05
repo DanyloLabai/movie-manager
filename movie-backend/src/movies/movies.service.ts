@@ -18,12 +18,14 @@ import { MovieResultDto } from './dto/movie-result.dto';
 import { MovieDetailsResponse } from './dto/movies-details-response.dto';
 import { isAxiosError } from 'axios';
 import { TmdbTvDetailsResponse } from './dto/tv-details-response.dto';
+import Groq from 'groq-sdk';
 
 @Injectable()
 export class MoviesService {
   private readonly logger = new Logger(MoviesService.name);
   private readonly tmdbToken: string;
   private readonly baseUrl = 'https://api.themoviedb.org/3';
+  private groq: Groq;
 
   constructor(
     private readonly httpService: HttpService,
@@ -35,6 +37,9 @@ export class MoviesService {
     if (!this.tmdbToken) {
       throw new Error('Api key is not set in environment variable');
     }
+
+    const groqKey = this.configService.get<string>('GROQ_API_KEY') || '';
+    this.groq = new Groq({ apiKey: groqKey });
   }
 
   async searchMovies(query: string): Promise<MovieResultDto[]> {
@@ -266,7 +271,7 @@ export class MoviesService {
       );
 
       return mediaResults
-        .slice(0, 16)
+        .slice(0, 12)
         .map((media: TmdbMultiSearchResultDto) => ({
           id: media.id,
           title: media.title || media.name || 'Unknown',
@@ -300,14 +305,22 @@ export class MoviesService {
       const endpoint = type === 'tv' ? 'tv' : 'movie';
 
       const { data } = await firstValueFrom(
-        this.httpService.get<TmdbTvDetailsResponse | MovieDetailsResponse>(
-          `${this.baseUrl}/${endpoint}/${tmdbId}`,
-          {
-            params: { language: 'en-US' },
-            headers: { Authorization: `Bearer ${this.tmdbToken}` },
-          },
-        ),
+        this.httpService.get<any>(`${this.baseUrl}/${endpoint}/${tmdbId}`, {
+          params: { language: 'en-US', append_to_response: 'videos' },
+          headers: { Authorization: `Bearer ${this.tmdbToken}` },
+        }),
       );
+
+      type TmdbVideo = { site: string; type: string; key: string };
+      const videoData = data as { videos?: { results: TmdbVideo[] } };
+      const videos = videoData.videos?.results || [];
+      const trailer = videos.find(
+        (v) => v.site === 'YouTube' && v.type === 'Trailer',
+      );
+
+      const trailerUrl = trailer
+        ? `https://www.youtube.com/embed/${trailer.key}`
+        : null;
 
       if (endpoint === 'tv') {
         const tvData = data as TmdbTvDetailsResponse;
@@ -323,11 +336,16 @@ export class MoviesService {
           runtime: tvData.episode_run_time?.[0] || 0,
           genres: tvData.genres,
           mediaType: 'tv',
+          trailerUrl,
         };
       }
 
       const movieData = data as MovieDetailsResponse;
-      return { ...movieData, mediaType: 'movie' };
+      return {
+        ...movieData,
+        mediaType: 'movie',
+        trailerUrl,
+      };
     } catch (error: unknown) {
       if (isAxiosError(error)) {
         this.logger.error(
@@ -359,5 +377,110 @@ export class MoviesService {
     }
 
     return { message: 'Successfully removed' };
+  }
+
+  async getRecommendationsForUser(userId: string): Promise<MovieResultDto[]> {
+    try {
+      let userItems = await this.watchlistRepo.find({
+        where: { user: { id: userId }, isFavorite: true },
+        take: 10,
+      });
+
+      if (!userItems || userItems.length === 0) {
+        userItems = await this.watchlistRepo.find({
+          where: { user: { id: userId } },
+          take: 10,
+        });
+      }
+
+      if (!userItems || userItems.length === 0) {
+        return [];
+      }
+
+      const favoriteTitles = userItems.map((item) => item.title).join(', ');
+
+      const prompt = `
+        You are an elite movie recommendation engine. The user likes these movies/shows: ${favoriteTitles}.
+        Suggest exactly 8 highly relevant movies or tv shows that they would love.
+        Do not include the ones they already like.
+        Return ONLY a raw JSON array of strings containing the titles. No markdown, no explanations, no backticks.
+        Example format: ["Title 1", "Title 2", "Title 3"]
+      `;
+
+      const chatCompletion = await this.groq.chat.completions.create({
+        messages: [{ role: 'user', content: prompt }],
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0.7,
+      });
+
+      const aiResponseText =
+        chatCompletion.choices[0]?.message?.content || '[]';
+
+      const cleanedText = aiResponseText
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
+      const recommendedTitles = JSON.parse(cleanedText) as string[];
+
+      const tmdbRequests = recommendedTitles.map(async (title) => {
+        return this.findMovieByTitle(title);
+      });
+
+      const tmdbResults = await Promise.all(tmdbRequests);
+
+      return tmdbResults
+        .filter((movie): movie is MovieResultDto => movie !== null)
+        .slice(0, 8);
+    } catch (error: any) {
+      this.logger.error(
+        `Error generating AI recommendations: ${error.message}`,
+      );
+      return [];
+    }
+  }
+  async getSimilarMovies(
+    tmdbId: number,
+    type: string = 'movie',
+  ): Promise<MovieResultDto[]> {
+    try {
+      const endpoint = type === 'tv' ? 'tv' : 'movie';
+
+      const { data } = await firstValueFrom(
+        this.httpService.get<TmdbMultiSearchResponseDto>(
+          `${this.baseUrl}/${endpoint}/${tmdbId}/recommendations`,
+          {
+            params: { language: 'en-US', page: 1 },
+            headers: { Authorization: `Bearer ${this.tmdbToken}` },
+          },
+        ),
+      );
+
+      if (!data.results) return [];
+
+      return data.results
+        .slice(0, 5)
+        .map((media: TmdbMultiSearchResultDto) => ({
+          id: media.id,
+          title: media.title || media.name || 'Unknown',
+          originalTitle:
+            media.original_title ||
+            media.original_name ||
+            media.title ||
+            media.name ||
+            'Unknown',
+          description: media.overview || '',
+          releaseYear:
+            (media.release_date || media.first_air_date || '').split('-')[0] ||
+            'N/A',
+          rating: media.vote_average || 0,
+          posterUrl: media.poster_path
+            ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
+            : null,
+          mediaType: type as 'movie' | 'tv',
+        }));
+    } catch (error: any) {
+      this.logger.error(`Error fetching similar movies: ${error.message}`);
+      return [];
+    }
   }
 }

@@ -6,6 +6,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AiChatModule } from './ai-chat/ai-chat.module';
 import { MoviesModule } from './movies/movies.module';
 import { AuthModule } from './auth/auth.module';
+import { MailerModule } from '@nestjs-modules/mailer';
 
 @Module({
   imports: [
@@ -46,6 +47,28 @@ import { AuthModule } from './auth/auth.module';
         limit: 10,
       },
     ]),
+
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        transport: {
+          host: configService.get<string>('MAIL_HOST'),
+          port: configService.get<number>('MAIL_PORT'),
+          secure: false,
+          auth: {
+            user: configService.get<string>('MAIL_USER'),
+            pass: configService.get<string>('MAIL_PASS'),
+          },
+          tls: {
+            rejectUnauthorized: false,
+          },
+        },
+        defaults: {
+          from: configService.get<string>('MAIL_FROM'),
+        },
+      }),
+    }),
 
     AiChatModule,
     MoviesModule,

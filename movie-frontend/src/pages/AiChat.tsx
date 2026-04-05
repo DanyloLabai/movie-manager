@@ -227,7 +227,7 @@ export default function AiChat() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gray-900 text-gray-100 font-sans relative">
+    <div className="flex flex-col fixed inset-0 h-[100dvh] w-full bg-gray-900 text-gray-100 font-sans overflow-hidden">
       <header className="flex flex-col sm:flex-row items-center justify-between p-4 gap-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-20">
         <div className="flex items-center gap-4">
           <Link to="/search" className="hover:opacity-80 transition-opacity">
@@ -271,7 +271,7 @@ export default function AiChat() {
         </nav>
       </header>
 
-      <div className="flex-grow overflow-y-auto p-3 sm:p-6 space-y-6 scrollbar-hide">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-6 scrollbar-hide overscroll-none">
         <div className="max-w-4xl mx-auto space-y-6">
           {messages.map((msg, idx) => (
             <div
@@ -385,10 +385,10 @@ export default function AiChat() {
         </div>
       </div>
 
-      <div className="p-3 sm:p-4 bg-gray-900 border-t border-gray-800 sticky bottom-0">
+      <div className="p-3 sm:p-4 bg-gray-900 border-t border-gray-800 shrink-0 pb-[max(env(safe-area-inset-bottom),12px)]">
         <form
           onSubmit={handleSend}
-          className="max-w-3xl mx-auto relative flex items-center gap-2"
+          className="max-w-3xl w-full mx-auto relative block"
         >
           <input
             type="text"
@@ -398,7 +398,7 @@ export default function AiChat() {
             placeholder={
               isLoading ? "Thinking..." : "Describe a movie or TV show..."
             }
-            className="w-full pl-5 pr-14 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 shadow-2xl transition-all disabled:opacity-50 text-sm sm:text-base"
+            className="w-full pl-5 pr-14 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 shadow-2xl transition-all disabled:opacity-50 text-base"
           />
           <button
             type="submit"

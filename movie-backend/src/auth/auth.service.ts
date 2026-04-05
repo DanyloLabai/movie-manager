@@ -8,6 +8,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { User } from '../users/users.entity';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
@@ -16,6 +17,7 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { UpdatePasswordDto } from './dto/update-password.dto';
+import { MailerService } from '@nestjs-modules/mailer';
 
 @Injectable()
 export class AuthService {
@@ -25,11 +27,11 @@ export class AuthService {
     private jwtService: JwtService,
     private httpService: HttpService,
     private configService: ConfigService,
+    private mailerService: MailerService, // <-- Інжектимо сервіс пошти
   ) {}
 
-  async signUp(
-    signUpDto: SignUpDto,
-  ): Promise<{ id: string; username: string; email: string }> {
+  async signUp(signUpDto: SignUpDto): Promise<{ message: string }> {
+    // Змінили return, бо тепер треба перевірити пошту
     const { email, password, username, captchaToken } = signUpDto;
 
     const isCaptchaValid = await this.verifyCaptcha(captchaToken);
@@ -48,22 +50,49 @@ export class AuthService {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // 1. Генеруємо унікальний токен для пошти
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+
     const user = this.usersRepository.create({
       username,
       email,
       password: hashedPassword,
+      verificationToken, // <-- Зберігаємо токен у базу
     });
 
     try {
       await this.usersRepository.save(user);
 
+      const frontendUrl =
+        this.configService.get<string>('FRONTEND_URL') ||
+        'http://localhost:5173';
+      const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+
+      await this.mailerService.sendMail({
+        to: user.email,
+        subject: 'Welcome to Movie Tracker! Please verify your email',
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; text-align: center;">
+            <h1 style="color: #3b82f6;">Hello ${user.username}!</h1>
+            <p>Thank you for signing up for Movie Tracker.</p>
+            <p>Please click the button below to verify your email address and activate your account:</p>
+            <a href="${verificationUrl}" style="display: inline-block; padding: 12px 24px; margin-top: 20px; background-color: #3b82f6; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
+              Verify Email
+            </a>
+            <p style="margin-top: 30px; font-size: 12px; color: #6b7280;">If you didn't create an account, you can safely ignore this email.</p>
+          </div>
+        `,
+      });
+
       return {
-        id: user.id,
-        username: user.username,
-        email: user.email,
+        message:
+          'Successfully registered! Please check your email to verify your account.',
       };
-    } catch {
-      throw new InternalServerErrorException('Registration failed');
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException(
+        'Registration failed. Mail server might be down.',
+      );
     }
   }
 
@@ -98,6 +127,12 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    if (!user.isVerified) {
+      throw new UnauthorizedException(
+        'Please verify your email before logging in',
+      );
+    }
+
     const payload = {
       sub: user.id,
       username: user.username,
@@ -122,5 +157,18 @@ export class AuthService {
     } catch {
       return false;
     }
+  }
+
+  async verifyEmail(token: string) {
+    const user = await this.usersRepository.findOne({
+      where: { verificationToken: token },
+    });
+    if (!user) throw new BadRequestException('Invalid token');
+
+    user.isVerified = true;
+    user.verificationToken = null;
+    await this.usersRepository.save(user);
+
+    return { message: 'Email verified successfully!' };
   }
 }
