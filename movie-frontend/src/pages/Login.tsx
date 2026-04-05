@@ -56,7 +56,7 @@ export default function Login() {
               className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
               placeholder="name@example.com"
               required
-              pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+              pattern="^[a-zA-Z0-9._%\+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$"
               title="Please enter your email using only English characters."
             />
           </div>
@@ -72,8 +72,7 @@ export default function Login() {
               className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
               placeholder="••••••••"
               required
-              pattern="^[a-zA-Z0-9!@#$%^&*()_+=\-\[\]{}|;:,.<>?]+$"
-              title="Password must contain only English letters, numbers and basic symbols."
+              title="Please enter your password."
             />
           </div>
 

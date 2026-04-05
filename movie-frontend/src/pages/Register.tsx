@@ -92,8 +92,8 @@ export default function Register() {
               placeholder="name@example.com"
               maxLength={50}
               required
-              pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-              title="Please enter a valid email using only English characters."
+              pattern="^[a-zA-Z0-9._%\+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$"
+              title="Please enter a valid email."
             />
           </div>
 
@@ -110,8 +110,7 @@ export default function Register() {
               minLength={8}
               maxLength={32}
               required
-              pattern="^[a-zA-Z0-9!@#$%^&*()_+=\-\[\]{}|;:,.<>?]+$"
-              title="Password must contain only English letters, numbers and basic symbols."
+              title="Password must be at least 8 characters."
             />
           </div>
 

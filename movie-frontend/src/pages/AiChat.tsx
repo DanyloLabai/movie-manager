@@ -172,7 +172,7 @@ export default function AiChat() {
         tmdbId: movie.id,
         title: movie.title,
         posterUrl: movie.posterUrl,
-        mediaType: movie.mediaType, // <-- Передаємо тип на бекенд
+        mediaType: movie.mediaType,
       });
       showToast(`Added!`);
     } catch (error: any) {
@@ -212,7 +212,7 @@ export default function AiChat() {
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
 
           showToast("Added to list and favorites");
-        } catch (innerError) {
+        } catch {
           showToast("Failed to favorite movie");
         }
       } else {
@@ -235,13 +235,6 @@ export default function AiChat() {
               Movie Tracker
             </h1>
           </Link>
-          <button
-            onClick={handleClearChat}
-            className="text-[10px] sm:text-xs text-gray-500 hover:text-gray-300 transition uppercase tracking-wider font-semibold border border-gray-700 px-2 py-1 rounded-md hover:bg-gray-800"
-            title="Clear chat history"
-          >
-            Clear Chat
-          </button>
         </div>
         <nav className="flex flex-wrap justify-center gap-3 sm:gap-6 items-center">
           <Link
@@ -386,28 +379,48 @@ export default function AiChat() {
       </div>
 
       <div className="p-3 sm:p-4 bg-gray-900 border-t border-gray-800 shrink-0 pb-[max(env(safe-area-inset-bottom),12px)]">
-        <form
-          onSubmit={handleSend}
-          className="max-w-3xl w-full mx-auto relative block"
-        >
-          <input
-            type="text"
-            value={input}
-            disabled={isLoading}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={
-              isLoading ? "Thinking..." : "Describe a movie or TV show..."
-            }
-            className="w-full pl-5 pr-14 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 shadow-2xl transition-all disabled:opacity-50 text-base"
-          />
+        <div className="max-w-3xl w-full mx-auto flex items-center gap-2 sm:gap-3">
           <button
-            type="submit"
-            disabled={isLoading || !input.trim()}
-            className="absolute right-1.5 sm:right-2 top-1.5 bottom-1.5 px-4 sm:px-6 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-all active:scale-95 disabled:bg-gray-700 disabled:text-gray-500 text-lg"
+            onClick={handleClearChat}
+            disabled={isLoading || messages.length <= 1}
+            title="Clear chat"
+            className="flex-shrink-0 p-3 sm:p-4 text-gray-500 bg-gray-800 border border-gray-700 rounded-2xl hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
-            {isLoading ? "..." : "→"}
+            <svg
+              className="w-5 h-5 group-active:scale-90 transition-transform"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
           </button>
-        </form>
+
+          <form onSubmit={handleSend} className="relative flex-grow">
+            <input
+              type="text"
+              value={input}
+              disabled={isLoading}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={
+                isLoading ? "Thinking..." : "Describe a movie or TV show..."
+              }
+              className="w-full pl-5 pr-14 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 shadow-2xl transition-all disabled:opacity-50 text-base"
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="absolute right-1.5 sm:right-2 top-1.5 bottom-1.5 px-4 sm:px-6 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-all active:scale-95 disabled:bg-gray-700 disabled:text-gray-500 text-lg"
+            >
+              {isLoading ? "..." : "→"}
+            </button>
+          </form>
+        </div>
       </div>
 
       {toastMessage && (
