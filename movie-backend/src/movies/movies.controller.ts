@@ -18,7 +18,7 @@ import { MovieDetailsResponse } from './dto/movies-details-response.dto';
 
 interface RequestWithUser extends Request {
   user: {
-    userId: string;
+    userId: number;
     username: string;
   };
 }
@@ -147,7 +147,7 @@ export class MoviesController {
   @UseGuards(AuthGuard('jwt'))
   @Get('recommendations')
   async getRecommendations(@Req() req: RequestWithUser) {
-    const userId = String(req.user.userId);
+    const userId = Number(req.user.userId);
     return this.moviesService.getRecommendationsForUser(userId);
   }
 

@@ -9,7 +9,7 @@ import {
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn()
-  id: string;
+  id: number;
 
   @Column({ unique: true })
   username: string;
@@ -19,6 +19,9 @@ export class User {
 
   @Column()
   password: string;
+
+  @Column({ nullable: true })
+  avatarUrl: string;
 
   @Column({ default: false })
   isVerified: boolean;

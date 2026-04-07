@@ -147,7 +147,7 @@ export class MoviesService {
   }
 
   async addToWatchlist(
-    userId: string,
+    userId: number,
     tmdbId: number,
     title: string,
     posterUrl?: string,
@@ -172,21 +172,21 @@ export class MoviesService {
     return this.watchlistRepo.save(newItem);
   }
 
-  async getWatchlist(userId: string) {
+  async getWatchlist(userId: number) {
     return this.watchlistRepo.find({
       where: { user: { id: userId }, isWatched: false },
       order: { addedAt: 'DESC' },
     });
   }
 
-  async getWatchedMovies(userId: string) {
+  async getWatchedMovies(userId: number) {
     return this.watchlistRepo.find({
       where: { user: { id: userId }, isWatched: true },
       order: { addedAt: 'DESC' },
     });
   }
 
-  async markAsWatched(userId: string, tmdbId: number) {
+  async markAsWatched(userId: number, tmdbId: number) {
     const item = await this.watchlistRepo.findOne({
       where: { user: { id: userId }, tmdbId },
     });
@@ -198,7 +198,7 @@ export class MoviesService {
     return this.watchlistRepo.save(item);
   }
 
-  async rateMovie(userId: string, tmdbId: number, rating: number) {
+  async rateMovie(userId: number, tmdbId: number, rating: number) {
     const item = await this.watchlistRepo.findOne({
       where: { user: { id: userId }, tmdbId },
     });
@@ -211,7 +211,7 @@ export class MoviesService {
     return this.watchlistRepo.save(item);
   }
 
-  async toggleFavorite(userId: string, tmdbId: number) {
+  async toggleFavorite(userId: number, tmdbId: number) {
     const item = await this.watchlistRepo.findOne({
       where: { user: { id: userId }, tmdbId },
     });
@@ -223,7 +223,7 @@ export class MoviesService {
     return this.watchlistRepo.save(item);
   }
 
-  async getProfileData(userId: string) {
+  async getProfileData(userId: number) {
     const [favorites, recent, watchedCount, totalCount] = await Promise.all([
       this.watchlistRepo.find({
         where: { user: { id: userId }, isFavorite: true },
@@ -356,7 +356,7 @@ export class MoviesService {
     }
   }
 
-  async getMovieUserStatus(userId: string, tmdbId: number) {
+  async getMovieUserStatus(userId: number, tmdbId: number) {
     return (
       (await this.watchlistRepo.findOne({
         where: { user: { id: userId }, tmdbId },
@@ -364,7 +364,7 @@ export class MoviesService {
     );
   }
 
-  async removeFromWatchlist(userId: string, tmdbId: number) {
+  async removeFromWatchlist(userId: number, tmdbId: number) {
     const result = await this.watchlistRepo.delete({
       user: { id: userId },
       tmdbId: tmdbId,
@@ -379,28 +379,55 @@ export class MoviesService {
     return { message: 'Successfully removed' };
   }
 
-  async getRecommendationsForUser(userId: string): Promise<MovieResultDto[]> {
+  async getRecommendationsForUser(userId: number): Promise<MovieResultDto[]> {
     try {
       let userItems = await this.watchlistRepo.find({
         where: { user: { id: userId }, isFavorite: true },
-        take: 10,
+        take: 30,
       });
 
-      if (!userItems || userItems.length === 0) {
-        userItems = await this.watchlistRepo.find({
-          where: { user: { id: userId } },
-          take: 10,
+      if (userItems.length < 10) {
+        const existingTmdbIds = userItems.map((item) => item.tmdbId);
+
+        const watchedItems = await this.watchlistRepo.find({
+          where: { user: { id: userId }, isWatched: true },
+          order: { rating: 'DESC', updatedAt: 'DESC' },
         });
+
+        for (const item of watchedItems) {
+          if (userItems.length >= 10) break;
+          if (!existingTmdbIds.includes(item.tmdbId)) {
+            userItems.push(item);
+            existingTmdbIds.push(item.tmdbId);
+          }
+        }
+      }
+
+      if (userItems.length < 3) {
+        const existingTmdbIds = userItems.map((item) => item.tmdbId);
+
+        const inPlansItems = await this.watchlistRepo.find({
+          where: { user: { id: userId }, isWatched: false },
+          order: { addedAt: 'DESC' },
+        });
+
+        for (const item of inPlansItems) {
+          if (userItems.length >= 10) break;
+          if (!existingTmdbIds.includes(item.tmdbId)) {
+            userItems.push(item);
+            existingTmdbIds.push(item.tmdbId);
+          }
+        }
       }
 
       if (!userItems || userItems.length === 0) {
         return [];
       }
 
-      const favoriteTitles = userItems.map((item) => item.title).join(', ');
+      const referenceTitles = userItems.map((item) => item.title).join(', ');
 
       const prompt = `
-        You are an elite movie recommendation engine. The user likes these movies/shows: ${favoriteTitles}.
+        You are an elite movie recommendation engine. The user likes these movies/shows: ${referenceTitles}.
         Suggest exactly 8 highly relevant movies or tv shows that they would love.
         Do not include the ones they already like.
         Return ONLY a raw JSON array of strings containing the titles. No markdown, no explanations, no backticks.
@@ -420,6 +447,7 @@ export class MoviesService {
         .replace(/```json/gi, '')
         .replace(/```/g, '')
         .trim();
+
       const recommendedTitles = JSON.parse(cleanedText) as string[];
 
       const tmdbRequests = recommendedTitles.map(async (title) => {
@@ -458,7 +486,7 @@ export class MoviesService {
       if (!data.results) return [];
 
       return data.results
-        .slice(0, 5)
+        .slice(0, 10)
         .map((media: TmdbMultiSearchResultDto) => ({
           id: media.id,
           title: media.title || media.name || 'Unknown',

@@ -7,6 +7,7 @@ import { AiChatModule } from './ai-chat/ai-chat.module';
 import { MoviesModule } from './movies/movies.module';
 import { AuthModule } from './auth/auth.module';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { MailerModule } from '@nestjs-modules/mailer';
     AiChatModule,
     MoviesModule,
     AuthModule,
+    UsersModule,
   ],
   providers: [
     {
