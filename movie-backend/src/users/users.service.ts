@@ -36,7 +36,10 @@ export class UsersService {
     }
 
     if (newUsername) {
-      user.username = newUsername.trim();
+      const trimmedUsername = newUsername.trim();
+      if (trimmedUsername.toLowerCase() !== user.username.toLowerCase()) {
+        user.username = trimmedUsername;
+      }
     }
 
     if (file) {
@@ -49,7 +52,7 @@ export class UsersService {
     } catch (error: any) {
       if (error.code === '23505') {
         throw new ConflictException(
-          'This username is already taken by another user',
+          'That username is already taken by another user!',
         );
       }
       throw error;
@@ -62,7 +65,6 @@ export class UsersService {
       avatarUrl: user.avatarUrl,
     };
   }
-
   uploadImage(file: Express.Multer.File): Promise<any> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
