@@ -255,7 +255,7 @@ export default function MovieDetails() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gray-900 font-sans text-gray-100 relative pb-24">
+    <div className="min-h-[100dvh] bg-gray-900 font-sans text-gray-100 relative pb-24 overscroll-none">
       <header className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-800 bg-gray-900/90 backdrop-blur-md sticky top-0 z-40">
         <Link
           to="/search"

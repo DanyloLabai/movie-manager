@@ -552,7 +552,7 @@ export default function Watchlist() {
   };
 
   return (
-    <div className="min-h-screen p-3 sm:p-8 bg-gray-900 font-sans text-gray-100 relative">
+    <div className="min-h-[100dvh] p-3 sm:p-8 bg-gray-900 font-sans text-gray-100 relative overscroll-none">
       <div className="max-w-7xl mx-auto">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4 mb-6 border-b border-gray-800">
           <Link to="/search" className="hover:opacity-80 transition-opacity">

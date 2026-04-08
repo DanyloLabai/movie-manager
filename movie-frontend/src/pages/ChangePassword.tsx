@@ -87,7 +87,7 @@ export default function ChangePassword() {
   };
 
   return (
-    <div className="relative flex items-center justify-center min-h-screen bg-gray-900 px-4 overflow-hidden">
+    <div className="relative flex items-center justify-center min-h-[100dvh] overscroll-none bg-gray-900 px-4 overflow-hidden">
       {successMsg && (
         <div className="absolute top-10 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-4 bg-green-500/20 border border-green-500/50 rounded-2xl shadow-2xl backdrop-blur-sm transition-all duration-500 ease-out animate-bounce">
           <div className="flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
