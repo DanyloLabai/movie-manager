@@ -880,9 +880,19 @@ function EditProfileModal({
     setError("");
     setIsLoading(true);
     const formData = new FormData();
-    formData.append("username", username.trim());
+
+    const trimmedUsername = username.trim();
+    if (trimmedUsername !== currentUsername) {
+      formData.append("username", trimmedUsername);
+    }
 
     if (selectedFile) formData.append("avatar", selectedFile);
+
+    if (!selectedFile && trimmedUsername === currentUsername) {
+      setIsLoading(false);
+      onClose();
+      return;
+    }
     try {
       const response = await api.patch("/users/profile", formData);
       onUpdate(response.data.username, response.data.avatarUrl);
