@@ -34,6 +34,8 @@ export default function AiChat() {
     }
   });
 
+  const [addedIds, setAddedIds] = useState<number[]>([]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -75,19 +77,24 @@ export default function AiChat() {
   }, [messages]);
 
   useEffect(() => {
-    const fetchFavoriteIds = async () => {
+    const fetchProfileData = async () => {
       try {
         const response = await api.get("/movies/profile");
-        if (response.data?.favorites) {
-          const ids = response.data.favorites.map((f: any) => f.tmdbId);
-          setFavoriteIds(ids);
-          localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(ids));
+        if (response.data) {
+          const favIds =
+            response.data.favorites?.map((f: any) => f.tmdbId) || [];
+          setFavoriteIds(favIds);
+          localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(favIds));
+
+          const recentIds =
+            response.data.recent?.map((r: any) => r.tmdbId) || [];
+          setAddedIds(Array.from(new Set([...favIds, ...recentIds])));
         }
       } catch (error) {
         console.error(error);
       }
     };
-    fetchFavoriteIds();
+    fetchProfileData();
   }, []);
 
   const showToast = (message: string) => {
@@ -174,13 +181,15 @@ export default function AiChat() {
         posterUrl: movie.posterUrl,
         mediaType: movie.mediaType,
       });
+      setAddedIds((prev) => [...prev, movie.id]);
       showToast(`Added!`);
     } catch (error: any) {
-      showToast(
-        error.response?.status === 400
-          ? "Already in list."
-          : "Error adding movie.",
-      );
+      if (error.response?.status === 400) {
+        setAddedIds((prev) => [...prev, movie.id]);
+        showToast("Already in list.");
+      } else {
+        showToast("Error adding movie.");
+      }
     }
   };
 
@@ -210,6 +219,8 @@ export default function AiChat() {
           const newIds = [...favoriteIds, movie.id];
           setFavoriteIds(newIds);
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
+
+          setAddedIds((prev) => Array.from(new Set([...prev, movie.id]))); // Оновлюємо addedIds
 
           showToast("Added to list and favorites");
         } catch {
@@ -328,7 +339,7 @@ export default function AiChat() {
                             />
                           </Link>
 
-                          <div className="flex flex-col justify-between min-w-0">
+                          <div className="flex flex-col justify-between min-w-0 w-full">
                             <div>
                               <Link
                                 to={`/movie/${movie.id}?type=${movie.mediaType}`}
@@ -337,23 +348,30 @@ export default function AiChat() {
                                   {movie.title}
                                 </h4>
                               </Link>
-                              <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold flex items-center gap-1">
+                              <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold flex items-center gap-1 flex-wrap">
                                 <span>{movie.releaseYear}</span>
                                 <span>•</span>
                                 <span className="text-yellow-500 font-bold">
                                   IMDB {Number(movie.rating || 0).toFixed(1)}
                                 </span>
-                                <span className="ml-1 inline-block bg-gray-700 px-1 py-0.5 rounded text-[8px] text-gray-300">
+                                <span className="mt-1 inline-block bg-gray-700 px-1 py-0.5 rounded text-[8px] text-gray-300">
                                   {movie.mediaType === "tv" ? "TV" : "MOVIE"}
                                 </span>
                               </p>
                             </div>
-                            <button
-                              onClick={() => handleAddFromChat(movie)}
-                              className="text-[10px] bg-gray-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-600 text-white transition-all active:scale-95 uppercase tracking-wider mt-2"
-                            >
-                              + Add
-                            </button>
+
+                            {addedIds.includes(movie.id) ? (
+                              <div className="text-[10px] bg-green-500/20 text-green-400 border border-green-500/30 px-3 py-2 rounded-lg font-bold text-center uppercase tracking-wider mt-2 flex items-center justify-center gap-1 cursor-default">
+                                <span>✓</span> Added
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => handleAddFromChat(movie)}
+                                className="text-[10px] bg-gray-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-600 text-white transition-all active:scale-95 uppercase tracking-wider mt-2 w-full"
+                              >
+                                + Add
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>

@@ -79,6 +79,8 @@ export default function Search() {
     }
   });
 
+  const [addedIds, setAddedIds] = useState<number[]>([]);
+
   const [isLoadingHome, setIsLoadingHome] = useState(trending.length === 0);
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -109,10 +111,15 @@ export default function Search() {
           );
         }
 
-        if (profileRes.data?.favorites) {
-          const ids = profileRes.data.favorites.map((f: any) => f.tmdbId);
-          setFavoriteIds(ids);
-          localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(ids));
+        if (profileRes.data) {
+          const favs =
+            profileRes.data.favorites?.map((f: any) => f.tmdbId) || [];
+          const recent =
+            profileRes.data.recent?.map((r: any) => r.tmdbId) || [];
+
+          setFavoriteIds(favs);
+          setAddedIds(Array.from(new Set([...favs, ...recent])));
+          localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(favs));
         }
       } catch (error) {
         console.error("Error fetching background data:", error);
@@ -172,9 +179,11 @@ export default function Search() {
         posterUrl: movie.posterUrl,
         mediaType: movie.mediaType,
       });
+      setAddedIds((prev) => [...prev, movie.id]);
       showToast("Successfully added");
     } catch (error: any) {
       if (error.response?.status === 400) {
+        setAddedIds((prev) => [...prev, movie.id]);
         showToast("Already in your list");
       } else {
         showToast("Error adding movie");
@@ -191,6 +200,10 @@ export default function Search() {
         : [...favoriteIds, movie.id];
       setFavoriteIds(newIds);
       localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
+
+      if (!isFav)
+        setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
+
       showToast("Favorite status updated");
     } catch (error: any) {
       if (error.response?.status === 404 && !isFav) {
@@ -204,6 +217,7 @@ export default function Search() {
           await api.patch(`/movies/watchlist/${movie.id}/favorite`);
           const newIds = [...favoriteIds, movie.id];
           setFavoriteIds(newIds);
+          setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
           showToast("Added to list and favorites");
         } catch {
@@ -292,13 +306,20 @@ export default function Search() {
                 {movie.mediaType === "tv" ? "TV" : "MOVIE"}
               </span>
             </p>
+
             <div className="mt-auto pt-2 border-t border-gray-700/50">
-              <button
-                onClick={() => handleAdd(movie)}
-                className="w-full py-2 sm:py-2.5 bg-gray-700 hover:bg-blue-600 text-white font-bold rounded-lg sm:rounded-xl transition-colors active:scale-95 uppercase text-[10px] sm:text-xs tracking-wider min-h-[36px]"
-              >
-                + Add
-              </button>
+              {addedIds.includes(movie.id) ? (
+                <div className="w-full py-2 sm:py-2.5 bg-green-500/10 text-green-400 font-bold rounded-lg sm:rounded-xl text-center uppercase text-[10px] sm:text-xs tracking-wider border border-green-500/20 flex items-center justify-center gap-1.5 min-h-[36px] cursor-default shadow-inner">
+                  <span className="text-sm">✓</span> Added
+                </div>
+              ) : (
+                <button
+                  onClick={() => handleAdd(movie)}
+                  className="w-full py-2 sm:py-2.5 bg-gray-700 hover:bg-blue-600 text-white font-bold rounded-lg sm:rounded-xl transition-colors active:scale-95 uppercase text-[10px] sm:text-xs tracking-wider min-h-[36px]"
+                >
+                  + Add
+                </button>
+              )}
             </div>
           </div>
         </div>

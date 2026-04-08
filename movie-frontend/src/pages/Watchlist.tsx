@@ -820,16 +820,17 @@ export default function Watchlist() {
           onClose={() => setIsEditModalOpen(false)}
           onUpdate={(newUsername, newAvatarUrl) => {
             setUsername(newUsername);
-            setAvatarUrl(newAvatarUrl);
 
-            // 4. ВИПРАВЛЕННЯ: Миттєво зберігаємо наші дані локально
-            localStorage.setItem("custom_username", newUsername);
             if (newAvatarUrl) {
+              setAvatarUrl(newAvatarUrl);
               localStorage.setItem("custom_avatarUrl", newAvatarUrl);
             }
 
+            localStorage.setItem("custom_username", newUsername);
             localStorage.removeItem(PROFILE_CACHE_KEY);
+
             fetchProfile();
+
             showToast("Profile updated successfully!");
           }}
         />
