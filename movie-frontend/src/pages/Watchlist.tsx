@@ -47,8 +47,34 @@ export default function Watchlist() {
   >("profile");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [username, setUsername] = useState<string>("User");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState<string>(() => {
+    const savedName = localStorage.getItem("custom_username");
+    if (savedName) return savedName;
+
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        return payload.username || payload.email?.split("@")[0] || "User";
+      } catch {}
+    }
+    return "User";
+  });
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
+    const savedAvatar = localStorage.getItem("custom_avatarUrl");
+    if (savedAvatar) return savedAvatar;
+
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        return payload.avatarUrl || null;
+      } catch {}
+    }
+    return null;
+  });
+
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const [hoveredMovieId, setHoveredMovieId] = useState<number | null>(null);
@@ -63,8 +89,12 @@ export default function Watchlist() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    if (activeTab === "watchlist" || activeTab === "watched") {
+      fetchMovies();
+    } else if (activeTab === "profile") {
+      fetchProfile();
+    }
+  }, [activeTab]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -90,8 +120,18 @@ export default function Watchlist() {
     try {
       const response = await api.get("/movies/profile");
       setProfileData(response.data);
-      setAvatarUrl(response.data.avatarUrl || null);
-      setUsername(response.data.username || "User");
+
+      // Оновлюємо стани тільки якщо немає локально збережених кастомних
+      if (
+        !localStorage.getItem("custom_avatarUrl") &&
+        response.data.avatarUrl
+      ) {
+        setAvatarUrl(response.data.avatarUrl);
+      }
+      if (!localStorage.getItem("custom_username") && response.data.username) {
+        setUsername(response.data.username);
+      }
+
       if (ENABLE_CACHE) {
         localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(response.data));
       }
@@ -236,6 +276,8 @@ export default function Watchlist() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("custom_username");
+    localStorage.removeItem("custom_avatarUrl");
     if (ENABLE_CACHE) localStorage.removeItem(PROFILE_CACHE_KEY);
     navigate("/login");
   };
@@ -311,11 +353,7 @@ export default function Watchlist() {
             <div className="w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-tr from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-3xl sm:text-5xl font-bold shadow-lg uppercase text-white shrink-0 overflow-hidden border-2 border-gray-600">
               {avatarUrl ? (
                 <img
-                  src={
-                    avatarUrl.includes("?")
-                      ? `${avatarUrl}&t=${new Date().getTime()}`
-                      : `${avatarUrl}?t=${new Date().getTime()}`
-                  }
+                  src={`${avatarUrl}${avatarUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`}
                   alt={username}
                   className="w-full h-full object-cover"
                 />
@@ -338,7 +376,6 @@ export default function Watchlist() {
                 </button>
               </div>
 
-              {/* Achievements grid */}
               <div className="grid grid-cols-2 xs:grid-cols-3 sm:flex sm:flex-wrap gap-2">
                 {achievementsList.map((achievement) => (
                   <div
@@ -359,7 +396,6 @@ export default function Watchlist() {
             </div>
           </div>
 
-          {/* Stats — 2 columns */}
           <div className="grid grid-cols-2 gap-3 w-full">
             <div className="text-center bg-gray-900/80 px-4 py-4 rounded-2xl border border-gray-700 shadow-inner">
               <div className="text-2xl sm:text-3xl font-black text-red-400">
@@ -380,7 +416,6 @@ export default function Watchlist() {
           </div>
         </div>
 
-        {/* Favorites & Recent */}
         {isLoading && !profileData ? (
           <div className="flex justify-center items-center h-48">
             <div className="flex gap-2">
@@ -397,7 +432,6 @@ export default function Watchlist() {
           </div>
         ) : (
           <div className="flex flex-col gap-5 sm:gap-8">
-            {/* Top 5 Favorites */}
             <div className="p-4 sm:p-8 bg-gray-800 rounded-3xl border border-gray-700 shadow-xl">
               <h3 className="text-base sm:text-xl font-bold text-white mb-4">
                 Top 5 Favorites
@@ -463,7 +497,6 @@ export default function Watchlist() {
               )}
             </div>
 
-            {/* Recent Activity */}
             <div className="p-4 sm:p-8 bg-gray-800 rounded-3xl border border-gray-700 shadow-xl">
               <h3 className="text-base sm:text-xl font-bold text-white mb-4">
                 Recent Activity
@@ -521,14 +554,12 @@ export default function Watchlist() {
   return (
     <div className="min-h-screen p-3 sm:p-8 bg-gray-900 font-sans text-gray-100 relative">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4 mb-6 border-b border-gray-800">
           <Link to="/search" className="hover:opacity-80 transition-opacity">
             <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               Movie Tracker
             </h1>
           </Link>
-          {/* Nav — horizontal scroll on mobile */}
           <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide">
             <Link
               to="/ai-chat"
@@ -557,7 +588,6 @@ export default function Watchlist() {
           </nav>
         </header>
 
-        {/* Tabs — horizontal scroll on mobile */}
         <div className="flex overflow-x-auto gap-2 sm:gap-4 mb-6 sm:mb-8 scrollbar-hide pb-1">
           <button
             onClick={() => setActiveTab("profile")}
@@ -639,7 +669,6 @@ export default function Watchlist() {
                     Added: {new Date(item.addedAt).toLocaleDateString("en-US")}
                   </p>
 
-                  {/* Stars — bigger tap area on mobile */}
                   <div
                     className="flex justify-center gap-0.5 sm:gap-1 mb-2 mt-auto pt-2"
                     onMouseLeave={() => {
@@ -723,7 +752,6 @@ export default function Watchlist() {
         )}
       </div>
 
-      {/* Rating modal */}
       {ratingModalData.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
           <div
@@ -794,23 +822,14 @@ export default function Watchlist() {
             setUsername(newUsername);
             setAvatarUrl(newAvatarUrl);
 
-            setProfileData((prev) =>
-              prev
-                ? { ...prev, username: newUsername, avatarUrl: newAvatarUrl }
-                : prev,
-            );
-
-            if (ENABLE_CACHE) {
-              localStorage.setItem(
-                PROFILE_CACHE_KEY,
-                JSON.stringify({
-                  ...profileData,
-                  username: newUsername,
-                  avatarUrl: newAvatarUrl,
-                }),
-              );
+            // 4. ВИПРАВЛЕННЯ: Миттєво зберігаємо наші дані локально
+            localStorage.setItem("custom_username", newUsername);
+            if (newAvatarUrl) {
+              localStorage.setItem("custom_avatarUrl", newAvatarUrl);
             }
 
+            localStorage.removeItem(PROFILE_CACHE_KEY);
+            fetchProfile();
             showToast("Profile updated successfully!");
           }}
         />
@@ -919,7 +938,11 @@ function EditProfileModal({
             >
               {previewUrl ? (
                 <img
-                  src={previewUrl}
+                  src={
+                    previewUrl.includes("blob:")
+                      ? previewUrl
+                      : `${previewUrl}${previewUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`
+                  }
                   alt="Profile Preview"
                   className="w-24 h-24 rounded-full object-cover border-4 border-gray-700 group-hover:border-blue-500 transition-colors"
                 />
@@ -976,7 +999,6 @@ function EditProfileModal({
               required
             />
           </div>
-
           <button
             type="submit"
             disabled={isLoading || !username}
