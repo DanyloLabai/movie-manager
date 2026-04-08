@@ -36,30 +36,7 @@ export class UsersService {
     }
 
     if (newUsername) {
-      const trimmedUsername = newUsername.trim();
-
-      if (trimmedUsername !== user.username) {
-        let qb = this.usersRepository
-          .createQueryBuilder('user')
-          .where('LOWER(user.username) = LOWER(:username)', {
-            username: trimmedUsername,
-          })
-          .andWhere('user.id != :id', { id: userId });
-
-        if (typeof qb.withDeleted === 'function') {
-          qb = qb.withDeleted();
-        }
-
-        const existingUser = await qb.getOne();
-
-        if (existingUser) {
-          throw new ConflictException(
-            'This username is already taken by another user',
-          );
-        }
-
-        user.username = trimmedUsername;
-      }
+      user.username = newUsername.trim();
     }
 
     if (file) {
@@ -67,7 +44,16 @@ export class UsersService {
       user.avatarUrl = cloudinaryResult.secure_url;
     }
 
-    await this.usersRepository.save(user);
+    try {
+      await this.usersRepository.save(user);
+    } catch (error: any) {
+      if (error.code === '23505') {
+        throw new ConflictException(
+          'This username is already taken by another user',
+        );
+      }
+      throw error;
+    }
 
     return {
       id: user.id,
