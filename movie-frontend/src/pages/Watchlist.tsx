@@ -884,7 +884,7 @@ function EditProfileModal({
 
     if (selectedFile) formData.append("avatar", selectedFile);
     try {
-      const response = await api.patch("users/profile", formData);
+      const response = await api.patch("/users/profile", formData);
       onUpdate(response.data.username, response.data.avatarUrl);
       onClose();
     } catch (err: any) {
