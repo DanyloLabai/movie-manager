@@ -880,7 +880,8 @@ function EditProfileModal({
     setError("");
     setIsLoading(true);
     const formData = new FormData();
-    formData.append("username", username);
+    formData.append("username", username.trim());
+
     if (selectedFile) formData.append("avatar", selectedFile);
     try {
       const response = await api.patch("users/profile", formData);
@@ -940,7 +941,7 @@ function EditProfileModal({
               {previewUrl ? (
                 <img
                   src={
-                    previewUrl.includes("blob:")
+                    previewUrl.startsWith("blob:")
                       ? previewUrl
                       : `${previewUrl}${previewUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`
                   }
@@ -1002,7 +1003,7 @@ function EditProfileModal({
           </div>
           <button
             type="submit"
-            disabled={isLoading || !username}
+            disabled={isLoading || !username.trim()}
             className="w-full py-4 font-bold text-white transition bg-blue-600 rounded-xl hover:bg-blue-500 active:scale-[0.98] disabled:bg-gray-700 disabled:text-gray-500 shadow-lg shadow-blue-900/20 min-h-[52px]"
           >
             {isLoading ? "Saving..." : "Save Changes"}

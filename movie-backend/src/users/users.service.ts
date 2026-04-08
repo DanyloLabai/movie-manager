@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Not } from 'typeorm';
+import { Repository } from 'typeorm';
 import { User } from './users.entity';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
@@ -38,22 +38,23 @@ export class UsersService {
     if (newUsername) {
       const trimmedUsername = newUsername.trim();
 
-      if (trimmedUsername !== user.username) {
-        const existingUser = await this.usersRepository.findOne({
-          where: {
+      if (trimmedUsername.toLowerCase() !== user.username.toLowerCase()) {
+        const existingUser = await this.usersRepository
+          .createQueryBuilder('user')
+          .where('LOWER(user.username) = LOWER(:username)', {
             username: trimmedUsername,
-            id: Not(userId),
-          },
-        });
+          })
+          .andWhere('user.id != :id', { id: userId })
+          .getOne();
 
         if (existingUser) {
           throw new ConflictException(
             'This username is already taken by another user',
           );
         }
-
-        user.username = trimmedUsername;
       }
+
+      user.username = trimmedUsername;
     }
 
     if (file) {
@@ -70,6 +71,7 @@ export class UsersService {
       avatarUrl: user.avatarUrl,
     };
   }
+
   uploadImage(file: Express.Multer.File): Promise<any> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(

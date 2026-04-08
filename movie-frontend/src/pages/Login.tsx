@@ -18,6 +18,16 @@ export default function Login() {
 
     try {
       const response = await api.post("/auth/signin", { email, password });
+      localStorage.removeItem(
+        import.meta.env.VITE_PROFILE_CACHE_KEY || "movie_tracker_profile_cache",
+      );
+      localStorage.removeItem("custom_username");
+      localStorage.removeItem("custom_avatarUrl");
+      localStorage.removeItem("movie_tracker_favorites_cache");
+      localStorage.removeItem("movie_tracker_chat_history");
+      localStorage.removeItem("trending_cache");
+      localStorage.removeItem("recommendations_cache");
+
       localStorage.setItem("token", response.data.accessToken);
       navigate("/watchlist");
     } catch (err) {

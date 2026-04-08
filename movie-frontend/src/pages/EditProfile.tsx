@@ -36,7 +36,7 @@ export default function EditProfile({
     setIsLoading(true);
 
     const formData = new FormData();
-    formData.append("username", username);
+    formData.append("username", username.trim());
 
     if (selectedFile) {
       formData.append("avatar", selectedFile);
@@ -61,13 +61,25 @@ export default function EditProfile({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md p-8 bg-gray-800 border border-gray-700 rounded-3xl shadow-2xl relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      <div className="w-full max-w-md p-8 bg-gray-800 border border-gray-700 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-5 text-gray-400 hover:text-white"
+          className="absolute top-4 right-5 text-gray-400 hover:text-white transition p-1"
         >
-          ✕
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
         </button>
 
         <h2 className="text-2xl font-bold text-white text-center mb-6">
@@ -88,7 +100,11 @@ export default function EditProfile({
             >
               {previewUrl ? (
                 <img
-                  src={previewUrl}
+                  src={
+                    previewUrl.startsWith("blob:")
+                      ? previewUrl
+                      : `${previewUrl}${previewUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`
+                  }
                   alt="Profile"
                   className="w-24 h-24 rounded-full object-cover border-4 border-gray-700 group-hover:border-blue-500 transition-colors"
                 />
@@ -141,7 +157,7 @@ export default function EditProfile({
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
               minLength={3}
               maxLength={20}
               required
@@ -149,8 +165,8 @@ export default function EditProfile({
           </div>
           <button
             type="submit"
-            disabled={isLoading || !username}
-            className="w-full py-3.5 font-bold text-white transition bg-blue-600 rounded-xl hover:bg-blue-500 active:scale-[0.98] disabled:bg-gray-700 disabled:text-gray-500"
+            disabled={isLoading || !username.trim()}
+            className="w-full py-3.5 font-bold text-white transition bg-blue-600 rounded-xl hover:bg-blue-500 active:scale-[0.98] disabled:bg-gray-700 disabled:text-gray-500 shadow-lg shadow-blue-900/20"
           >
             {isLoading ? "Saving..." : "Save Changes"}
           </button>
