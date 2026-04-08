@@ -38,20 +38,22 @@ export class UsersService {
     if (newUsername) {
       const trimmedUsername = newUsername.trim();
 
-      const existingUser = await this.usersRepository.findOne({
-        where: {
-          username: trimmedUsername,
-          id: Not(userId),
-        },
-      });
+      if (trimmedUsername !== user.username) {
+        const existingUser = await this.usersRepository.findOne({
+          where: {
+            username: trimmedUsername,
+            id: Not(userId),
+          },
+        });
 
-      if (existingUser) {
-        throw new ConflictException(
-          'This username is already taken by another user',
-        );
+        if (existingUser) {
+          throw new ConflictException(
+            'This username is already taken by another user',
+          );
+        }
+
+        user.username = trimmedUsername;
       }
-
-      user.username = trimmedUsername;
     }
 
     if (file) {
@@ -68,7 +70,6 @@ export class UsersService {
       avatarUrl: user.avatarUrl,
     };
   }
-
   uploadImage(file: Express.Multer.File): Promise<any> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
