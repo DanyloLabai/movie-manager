@@ -38,23 +38,28 @@ export class UsersService {
     if (newUsername) {
       const trimmedUsername = newUsername.trim();
 
-      if (trimmedUsername.toLowerCase() !== user.username.toLowerCase()) {
-        const existingUser = await this.usersRepository
+      if (trimmedUsername !== user.username) {
+        let qb = this.usersRepository
           .createQueryBuilder('user')
           .where('LOWER(user.username) = LOWER(:username)', {
             username: trimmedUsername,
           })
-          .andWhere('user.id != :id', { id: userId })
-          .getOne();
+          .andWhere('user.id != :id', { id: userId });
+
+        if (typeof qb.withDeleted === 'function') {
+          qb = qb.withDeleted();
+        }
+
+        const existingUser = await qb.getOne();
 
         if (existingUser) {
           throw new ConflictException(
             'This username is already taken by another user',
           );
         }
-      }
 
-      user.username = trimmedUsername;
+        user.username = trimmedUsername;
+      }
     }
 
     if (file) {
