@@ -22,7 +22,7 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-900 text-white font-sans">
+      <div className="min-h-[100dvh] bg-gray-900 text-white font-sans overscroll-none">
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
