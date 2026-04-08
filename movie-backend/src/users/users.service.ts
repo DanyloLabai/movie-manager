@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import { User } from './users.entity';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
@@ -35,9 +35,14 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    if (newUsername && newUsername !== user.username) {
+    if (newUsername) {
+      const trimmedUsername = newUsername.trim();
+
       const existingUser = await this.usersRepository.findOne({
-        where: { username: newUsername },
+        where: {
+          username: trimmedUsername,
+          id: Not(userId),
+        },
       });
 
       if (existingUser) {
@@ -45,7 +50,8 @@ export class UsersService {
           'This username is already taken by another user',
         );
       }
-      user.username = newUsername;
+
+      user.username = trimmedUsername;
     }
 
     if (file) {
