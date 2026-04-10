@@ -30,6 +30,9 @@ const SEARCH_QUERY_CACHE_KEY = `search_query_cache_${uid}`;
 const SEARCH_RESULTS_CACHE_KEY = `search_results_cache_${uid}`;
 const RECOMMENDATIONS_CACHE_KEY = `recommendations_cache_${uid}`;
 const SEARCH_TIMESTAMP_KEY = `search_timestamp_${uid}`;
+// 1. Додано новий ключ для кешування доданих фільмів
+const ADDED_CACHE_KEY = `added_cache_${uid}`;
+
 const CACHE_EXPIRATION_MS =
   Number(import.meta.env.VITE_CACHE_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
 
@@ -86,12 +89,25 @@ export default function Search() {
     }
   });
 
-  const [addedIds, setAddedIds] = useState<number[]>([]);
+  // 2. Ініціалізуємо addedIds одразу з кешу, щоб уникнути затримки 5 сек
+  const [addedIds, setAddedIds] = useState<number[]>(() => {
+    try {
+      const cached = localStorage.getItem(ADDED_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const [isLoadingHome, setIsLoadingHome] = useState(trending.length === 0);
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // 3. Зберігаємо addedIds у кеш кожного разу, коли вони змінюються
+  useEffect(() => {
+    localStorage.setItem(ADDED_CACHE_KEY, JSON.stringify(addedIds));
+  }, [addedIds]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -186,12 +202,11 @@ export default function Search() {
         posterUrl: movie.posterUrl,
         mediaType: movie.mediaType,
       });
-      setAddedIds((prev) => [...prev, movie.id]);
-      showToast("Successfully added");
+      setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
+      showToast("Added to list");
     } catch (error: any) {
       if (error.response?.status === 400) {
-        setAddedIds((prev) => [...prev, movie.id]);
-        showToast("Already in your list");
+        setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
       } else {
         showToast("Error adding movie");
       }
@@ -203,8 +218,10 @@ export default function Search() {
       await api.delete(`/movies/watchlist/${movie.id}`);
       setAddedIds((prev) => prev.filter((id) => id !== movie.id));
       setFavoriteIds((prev) => prev.filter((id) => id !== movie.id));
+
       const newFavs = favoriteIds.filter((id) => id !== movie.id);
       localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newFavs));
+
       showToast("Removed from list");
     } catch {
       showToast("Error removing movie");
@@ -257,6 +274,7 @@ export default function Search() {
     localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
     localStorage.removeItem(SEARCH_TIMESTAMP_KEY);
     localStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
+    localStorage.removeItem(ADDED_CACHE_KEY); // Очищаємо кеш доданих при виході
     navigate("/login");
   };
 
@@ -329,16 +347,12 @@ export default function Search() {
 
             <div className="mt-auto pt-2 border-t border-gray-700/50">
               {addedIds.includes(movie.id) ? (
+                // 4. Оновлена кнопка Added (без наведення "Remove", просто як перемикач)
                 <button
                   onClick={() => handleRemove(movie)}
-                  className="w-full py-2 sm:py-2.5 bg-green-500/10 text-green-400 font-bold rounded-lg sm:rounded-xl uppercase text-[10px] sm:text-xs tracking-wider border border-green-500/20 flex items-center justify-center gap-1.5 min-h-[36px] shadow-inner hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-colors group/btn"
+                  className="w-full py-2 sm:py-2.5 bg-green-500/10 text-green-400 font-bold rounded-lg sm:rounded-xl uppercase text-[10px] sm:text-xs tracking-wider border border-green-500/20 flex items-center justify-center gap-1.5 min-h-[36px] hover:bg-green-500/20 transition-colors active:scale-95"
                 >
-                  <span className="flex items-center gap-1.5 group-hover/btn:hidden">
-                    <span className="text-sm">✓</span> Added
-                  </span>
-                  <span className="hidden items-center gap-1.5 group-hover/btn:flex">
-                    <span className="text-sm">✕</span> Remove
-                  </span>
+                  <span className="text-sm">✓</span> Added
                 </button>
               ) : (
                 <button
