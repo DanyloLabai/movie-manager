@@ -24,17 +24,30 @@ interface ProfileData {
   username?: string;
 }
 
-const PROFILE_CACHE_KEY =
-  import.meta.env.VITE_PROFILE_CACHE_KEY || "movie_tracker_profile_cache";
+const getUserIdFromToken = (): string => {
+  const token = localStorage.getItem("token");
+  if (!token) return "guest";
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return String(payload.sub || payload.id || payload.userId || "guest");
+  } catch {
+    return "guest";
+  }
+};
+
+const getProfileCacheKey = () =>
+  `movie_tracker_profile_cache_${getUserIdFromToken()}`;
 const ENABLE_CACHE = import.meta.env.VITE_ENABLE_PROFILE_CACHE !== "false";
 
 export default function Watchlist() {
+  const getUsernameKey = () => `custom_username_${getUserIdFromToken()}`;
+  const getAvatarKey = () => `custom_avatarUrl_${getUserIdFromToken()}`;
   const [movies, setMovies] = useState<WatchlistItem[]>([]);
 
   const [profileData, setProfileData] = useState<ProfileData | null>(() => {
     if (!ENABLE_CACHE) return null;
     try {
-      const cached = localStorage.getItem(PROFILE_CACHE_KEY);
+      const cached = localStorage.getItem(getProfileCacheKey());
       return cached ? JSON.parse(cached) : null;
     } catch {
       return null;
@@ -48,7 +61,7 @@ export default function Watchlist() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [username, setUsername] = useState<string>(() => {
-    const savedName = localStorage.getItem("custom_username");
+    const savedName = localStorage.getItem(getUsernameKey());
     if (savedName) return savedName;
 
     const token = localStorage.getItem("token");
@@ -62,7 +75,7 @@ export default function Watchlist() {
   });
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
-    const savedAvatar = localStorage.getItem("custom_avatarUrl");
+    const savedAvatar = localStorage.getItem(getAvatarKey());
     if (savedAvatar) return savedAvatar;
 
     const token = localStorage.getItem("token");
@@ -121,19 +134,18 @@ export default function Watchlist() {
       const response = await api.get("/movies/profile");
       setProfileData(response.data);
 
-      // Оновлюємо стани тільки якщо немає локально збережених кастомних
-      if (
-        !localStorage.getItem("custom_avatarUrl") &&
-        response.data.avatarUrl
-      ) {
+      if (!localStorage.getItem(getAvatarKey()) && response.data.avatarUrl) {
         setAvatarUrl(response.data.avatarUrl);
       }
-      if (!localStorage.getItem("custom_username") && response.data.username) {
+      if (!localStorage.getItem(getUsernameKey()) && response.data.username) {
         setUsername(response.data.username);
       }
 
       if (ENABLE_CACHE) {
-        localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(response.data));
+        localStorage.setItem(
+          getProfileCacheKey(),
+          JSON.stringify(response.data),
+        );
       }
     } catch (error: any) {
       if (error.response?.status === 401) handleLogout();
@@ -276,9 +288,9 @@ export default function Watchlist() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    localStorage.removeItem("custom_username");
-    localStorage.removeItem("custom_avatarUrl");
-    if (ENABLE_CACHE) localStorage.removeItem(PROFILE_CACHE_KEY);
+    localStorage.removeItem(getUsernameKey());
+    localStorage.removeItem(getAvatarKey());
+    if (ENABLE_CACHE) localStorage.removeItem(getProfileCacheKey());
     navigate("/login");
   };
 
@@ -823,11 +835,11 @@ export default function Watchlist() {
 
             if (newAvatarUrl) {
               setAvatarUrl(newAvatarUrl);
-              localStorage.setItem("custom_avatarUrl", newAvatarUrl);
+              localStorage.setItem(getAvatarKey(), newAvatarUrl);
             }
 
-            localStorage.setItem("custom_username", newUsername);
-            localStorage.removeItem(PROFILE_CACHE_KEY);
+            localStorage.setItem(getUsernameKey(), newUsername);
+            localStorage.removeItem(getProfileCacheKey());
 
             fetchProfile();
 
@@ -878,10 +890,17 @@ function EditProfileModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    const trimmedUsername = username.trim();
+
+    if (!/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
+      setError("Username can only contain letters, numbers, and underscores.");
+      return;
+    }
+
     setIsLoading(true);
     const formData = new FormData();
 
-    const trimmedUsername = username.trim();
     if (trimmedUsername !== currentUsername) {
       formData.append("username", trimmedUsername);
     }
@@ -893,6 +912,7 @@ function EditProfileModal({
       onClose();
       return;
     }
+
     try {
       const response = await api.patch("/users/profile", formData);
       onUpdate(response.data.username, response.data.avatarUrl);

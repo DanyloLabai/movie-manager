@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -36,12 +37,22 @@ export class UsersService {
     }
 
     if (newUsername) {
-      const trimmedUsername = newUsername.trim();
-      if (trimmedUsername.toLowerCase() !== user.username.toLowerCase()) {
-        user.username = trimmedUsername;
+      const trimmed = newUsername.trim();
+      if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
+        throw new BadRequestException(
+          'Username can only contain letters, numbers, and underscores.',
+        );
+      }
+      if (trimmed.toLowerCase() !== user.username.toLowerCase()) {
+        const existing = await this.usersRepository.findOne({
+          where: { username: trimmed },
+        });
+        if (existing && existing.id !== userId) {
+          throw new ConflictException('That username is already taken!');
+        }
+        user.username = trimmed;
       }
     }
-
     if (file) {
       const cloudinaryResult = await this.uploadImage(file);
       user.avatarUrl = cloudinaryResult.secure_url;
