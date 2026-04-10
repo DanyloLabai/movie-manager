@@ -18,6 +18,7 @@ export default function Login() {
 
     try {
       const response = await api.post("/auth/signin", { email, password });
+
       localStorage.removeItem(
         import.meta.env.VITE_PROFILE_CACHE_KEY || "movie_tracker_profile_cache",
       );
@@ -30,8 +31,16 @@ export default function Login() {
 
       localStorage.setItem("token", response.data.accessToken);
       navigate("/watchlist");
-    } catch (err) {
-      setError("Invalid email or password. Please try again!");
+    } catch (err: any) {
+      const serverMessage = err.response?.data?.message;
+
+      if (typeof serverMessage === "string") {
+        setError(serverMessage);
+      } else if (Array.isArray(serverMessage)) {
+        setError(serverMessage[0]);
+      } else {
+        setError("Invalid email or password. Please try again!");
+      }
     } finally {
       setIsLoading(false);
     }

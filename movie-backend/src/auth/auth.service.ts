@@ -49,37 +49,57 @@ export class AuthService {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // Генеруємо випадковий токен (наприклад, 32 байти у hex-форматі)
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+
     const user = this.usersRepository.create({
       username,
       email,
       password: hashedPassword,
-      verificationToken: null,
-      isVerified: true,
+      verificationToken,
+      isVerified: false,
     });
 
     try {
       await this.usersRepository.save(user);
 
-      /* ТИМЧАСОВО ВИМИКАЄМО ВІДПРАВКУ ЛИСТІВ ЧЕРЕЗ БЛОКУВАННЯ RAILWAY
-      const frontendUrl = this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+      const frontendUrl =
+        this.configService.get<string>('FRONTEND_URL') ||
+        'http://localhost:5173';
       const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
       await this.mailerService.sendMail({
         to: user.email,
         subject: 'Welcome to Movie Tracker! Please verify your email',
-        html: `...`
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Welcome to Movie Tracker! 🎬</h2>
+            <p>Hi ${username},</p>
+            <p>Thanks for creating an account. To complete your registration and start tracking your favorite movies, please verify your email address by clicking the button below:</p>
+            <a href="${verificationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #2563EB; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0;">
+              Verify Email
+            </a>
+            <p>Or copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #6B7280; font-size: 14px;">${verificationUrl}</p>
+            <p>If you didn't create this account, you can safely ignore this email.</p>
+          </div>
+        `,
       });
-      */
 
       return {
         message:
-          'Successfully registered! (Email verification bypassed for development). You can now log in.',
+          'Successfully registered! Please check your email to verify your account.',
       };
     } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('Registration failed.');
+      console.error('Registration/Email sending error:', error);
+      // Якщо лист не відправився, можна видалити юзера або залишити його,
+      // але кидаємо 500 помилку, щоб фронтенд знав, що щось пішло не так.
+      throw new InternalServerErrorException(
+        'Registration successful, but failed to send verification email.',
+      );
     }
   }
+
   async changePassword(dto: UpdatePasswordDto) {
     const user = await this.usersRepository.findOne({
       where: { email: dto.email },
@@ -147,7 +167,10 @@ export class AuthService {
     const user = await this.usersRepository.findOne({
       where: { verificationToken: token },
     });
-    if (!user) throw new BadRequestException('Invalid token');
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired verification token');
+    }
 
     user.isVerified = true;
     user.verificationToken = null;

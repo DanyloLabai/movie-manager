@@ -30,7 +30,6 @@ const SEARCH_QUERY_CACHE_KEY = `search_query_cache_${uid}`;
 const SEARCH_RESULTS_CACHE_KEY = `search_results_cache_${uid}`;
 const RECOMMENDATIONS_CACHE_KEY = `recommendations_cache_${uid}`;
 const SEARCH_TIMESTAMP_KEY = `search_timestamp_${uid}`;
-// 1. Додано новий ключ для кешування доданих фільмів
 const ADDED_CACHE_KEY = `added_cache_${uid}`;
 
 const CACHE_EXPIRATION_MS =
@@ -89,7 +88,6 @@ export default function Search() {
     }
   });
 
-  // 2. Ініціалізуємо addedIds одразу з кешу, щоб уникнути затримки 5 сек
   const [addedIds, setAddedIds] = useState<number[]>(() => {
     try {
       const cached = localStorage.getItem(ADDED_CACHE_KEY);
@@ -104,7 +102,6 @@ export default function Search() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // 3. Зберігаємо addedIds у кеш кожного разу, коли вони змінюються
   useEffect(() => {
     localStorage.setItem(ADDED_CACHE_KEY, JSON.stringify(addedIds));
   }, [addedIds]);
@@ -274,7 +271,7 @@ export default function Search() {
     localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
     localStorage.removeItem(SEARCH_TIMESTAMP_KEY);
     localStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
-    localStorage.removeItem(ADDED_CACHE_KEY); // Очищаємо кеш доданих при виході
+    localStorage.removeItem(ADDED_CACHE_KEY);
     navigate("/login");
   };
 
@@ -347,7 +344,6 @@ export default function Search() {
 
             <div className="mt-auto pt-2 border-t border-gray-700/50">
               {addedIds.includes(movie.id) ? (
-                // 4. Оновлена кнопка Added (без наведення "Remove", просто як перемикач)
                 <button
                   onClick={() => handleRemove(movie)}
                   className="w-full py-2 sm:py-2.5 bg-green-500/10 text-green-400 font-bold rounded-lg sm:rounded-xl uppercase text-[10px] sm:text-xs tracking-wider border border-green-500/20 flex items-center justify-center gap-1.5 min-h-[36px] hover:bg-green-500/20 transition-colors active:scale-95"
