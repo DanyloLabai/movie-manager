@@ -11,8 +11,10 @@ export default function Register() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
   const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -32,7 +34,8 @@ export default function Register() {
         password,
         captchaToken,
       });
-      navigate("/login");
+
+      setIsSuccess(true);
     } catch (err: any) {
       setError(
         err.response?.data?.message || "Registration error. Please try again!",
@@ -81,6 +84,46 @@ export default function Register() {
       </svg>
     );
   };
+
+  if (isSuccess) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-900 px-4 py-8 sm:px-6 animate-fade-in">
+        <div className="w-full max-w-md p-8 sm:p-10 space-y-6 bg-gray-800 rounded-3xl shadow-2xl border border-green-500/50 text-center">
+          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg
+              className="w-10 h-10 text-green-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="3"
+                d="M5 13l4 4L19 7"
+              ></path>
+            </svg>
+          </div>
+          <h2 className="text-3xl font-extrabold text-white tracking-tight">
+            Check Your Email!
+          </h2>
+          <p className="text-gray-300 text-sm leading-relaxed">
+            We've sent a verification link to <br />
+            <strong className="text-green-400">{email}</strong>. <br />
+            <br />
+            Please check your inbox (and spam folder) to verify your account
+            before logging in.
+          </p>
+          <button
+            onClick={() => navigate("/login")}
+            className="w-full py-4 mt-4 font-bold text-white transition bg-green-600 rounded-xl hover:bg-green-500 active:scale-[0.98] shadow-lg shadow-green-900/20"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-900 px-4 py-8 sm:px-6">
