@@ -54,17 +54,16 @@ import { UsersModule } from './users/users.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         transport: {
-          host: 'smtp.gmail.com',
-          port: 587,
-          secure: false,
-          requireTLS: true,
+          host: 'smtp.resend.com',
+          port: 465,
+          secure: true,
           auth: {
-            user: configService.get<string>('MAIL_USER'),
-            pass: configService.get<string>('MAIL_PASS'),
+            user: 'resend',
+            pass: configService.get<string>('RESEND_API_KEY'),
           },
         },
         defaults: {
-          from: `"Movie Tracker" <${configService.get<string>('MAIL_USER')}>`,
+          from: `"Movie Tracker" <onboarding@resend.dev>`,
         },
       }),
     }),
