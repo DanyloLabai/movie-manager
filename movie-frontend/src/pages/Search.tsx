@@ -12,17 +12,24 @@ interface MovieResult {
   mediaType: "movie" | "tv";
 }
 
-const TRENDING_CACHE_KEY =
-  import.meta.env.VITE_TRENDING_CACHE_KEY || "trending_cache";
-const FAVORITES_CACHE_KEY =
-  import.meta.env.VITE_FAVORITES_CACHE_KEY || "favorites_cache";
-const SEARCH_QUERY_CACHE_KEY =
-  import.meta.env.VITE_SEARCH_QUERY_CACHE_KEY || "search_query_cache";
-const SEARCH_RESULTS_CACHE_KEY =
-  import.meta.env.VITE_SEARCH_RESULTS_CACHE_KEY || "search_results_cache";
-const RECOMMENDATIONS_CACHE_KEY = "recommendations_cache";
-const SEARCH_TIMESTAMP_KEY =
-  import.meta.env.VITE_SEARCH_TIMESTAMP_KEY || "search_timestamp";
+const getUserId = (): string => {
+  const token = localStorage.getItem("token");
+  if (!token) return "guest";
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return String(payload.sub || payload.id || payload.userId || "guest");
+  } catch {
+    return "guest";
+  }
+};
+
+const uid = getUserId();
+const TRENDING_CACHE_KEY = `trending_cache_${uid}`;
+const FAVORITES_CACHE_KEY = `favorites_cache_${uid}`;
+const SEARCH_QUERY_CACHE_KEY = `search_query_cache_${uid}`;
+const SEARCH_RESULTS_CACHE_KEY = `search_results_cache_${uid}`;
+const RECOMMENDATIONS_CACHE_KEY = `recommendations_cache_${uid}`;
+const SEARCH_TIMESTAMP_KEY = `search_timestamp_${uid}`;
 const CACHE_EXPIRATION_MS =
   Number(import.meta.env.VITE_CACHE_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
 
@@ -191,6 +198,19 @@ export default function Search() {
     }
   };
 
+  const handleRemove = async (movie: MovieResult) => {
+    try {
+      await api.delete(`/movies/watchlist/${movie.id}`);
+      setAddedIds((prev) => prev.filter((id) => id !== movie.id));
+      setFavoriteIds((prev) => prev.filter((id) => id !== movie.id));
+      const newFavs = favoriteIds.filter((id) => id !== movie.id);
+      localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newFavs));
+      showToast("Removed from list");
+    } catch {
+      showToast("Error removing movie");
+    }
+  };
+
   const handleToggleFavorite = async (movie: MovieResult) => {
     const isFav = favoriteIds.includes(movie.id);
     try {
@@ -309,9 +329,17 @@ export default function Search() {
 
             <div className="mt-auto pt-2 border-t border-gray-700/50">
               {addedIds.includes(movie.id) ? (
-                <div className="w-full py-2 sm:py-2.5 bg-green-500/10 text-green-400 font-bold rounded-lg sm:rounded-xl text-center uppercase text-[10px] sm:text-xs tracking-wider border border-green-500/20 flex items-center justify-center gap-1.5 min-h-[36px] cursor-default shadow-inner">
-                  <span className="text-sm">✓</span> Added
-                </div>
+                <button
+                  onClick={() => handleRemove(movie)}
+                  className="w-full py-2 sm:py-2.5 bg-green-500/10 text-green-400 font-bold rounded-lg sm:rounded-xl uppercase text-[10px] sm:text-xs tracking-wider border border-green-500/20 flex items-center justify-center gap-1.5 min-h-[36px] shadow-inner hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-colors group/btn"
+                >
+                  <span className="flex items-center gap-1.5 group-hover/btn:hidden">
+                    <span className="text-sm">✓</span> Added
+                  </span>
+                  <span className="hidden items-center gap-1.5 group-hover/btn:flex">
+                    <span className="text-sm">✕</span> Remove
+                  </span>
+                </button>
               ) : (
                 <button
                   onClick={() => handleAdd(movie)}

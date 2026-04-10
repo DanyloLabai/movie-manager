@@ -23,7 +23,7 @@ export class UsersController {
     @Body('username') newUsername: string,
     @UploadedFile() file?: Express.Multer.File,
   ) {
-    const userId = req.user.sub;
+    const userId = req.user.userId;
     return this.usersService.updateUserProfile(userId, newUsername, file);
   }
 }
