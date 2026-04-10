@@ -54,7 +54,9 @@ import { UsersModule } from './users/users.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         transport: {
-          service: 'gmail',
+          host: 'smtp.gmail.com',
+          port: 465,
+          secure: true,
           auth: {
             user: configService.get<string>('MAIL_USER'),
             pass: configService.get<string>('MAIL_PASS'),
