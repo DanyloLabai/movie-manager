@@ -85,33 +85,35 @@ export default function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900 px-4 sm:px-6">
-      <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-gray-800 rounded-3xl shadow-2xl border border-gray-700">
+    <div className="flex items-center justify-center min-h-screen bg-[#12100e] px-4 sm:px-6 selection:bg-[#c8963c] selection:text-[#12100e]">
+      <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/20 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
+
         <div className="text-center">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
             Welcome Back
           </h2>
-          <p className="mt-2 text-sm text-gray-400">
-            Log in to your Movie Tracker account
+          <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium tracking-wide">
+            Log in to your premium tracker
           </p>
         </div>
 
         {error && (
-          <div className="p-4 text-sm text-red-200 bg-red-900/40 border border-red-500/50 rounded-xl text-center">
+          <div className="p-4 text-xs font-bold text-red-500 bg-red-900/10 border border-red-500/20 rounded-xl text-center uppercase tracking-wider">
             {error}
           </div>
         )}
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               Email Address
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              className="w-full px-4 py-3.5 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
               placeholder="name@example.com"
               required
               pattern="^[a-zA-Z0-9._%\+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$"
@@ -120,7 +122,7 @@ export default function Login() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               Password
             </label>
             <div className="relative">
@@ -128,7 +130,7 @@ export default function Login() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 pr-12 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                className="w-full px-4 py-3.5 pr-12 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
                 placeholder="••••••••"
                 required
                 title="Please enter your password."
@@ -136,7 +138,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 hover:text-white transition-colors focus:outline-none"
+                className="absolute inset-y-0 right-0 flex items-center px-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition-colors focus:outline-none"
                 tabIndex={-1}
               >
                 <EyeIcon isOpen={showPassword} />
@@ -147,7 +149,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 font-bold text-white transition bg-blue-600 rounded-xl hover:bg-blue-500 active:scale-[0.98] disabled:bg-gray-700 disabled:text-gray-500 shadow-lg shadow-blue-900/20"
+            className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow-lg shadow-[#c8963c]/10"
           >
             {isLoading ? "Signing in..." : "Sign In"}
           </button>
@@ -156,17 +158,17 @@ export default function Login() {
         <div className="text-center">
           <Link
             to="/change-password"
-            className="text-sm text-gray-400 hover:text-blue-400 transition-colors underline underline-offset-4"
+            className="text-xs font-bold text-[#f0e6cc]/40 hover:text-[#c8963c] transition-colors uppercase tracking-wider underline underline-offset-4"
           >
-            Forgot or want to change password?
+            Forgot or change password?
           </Link>
         </div>
 
-        <p className="text-sm text-center text-gray-400 pt-2 border-t border-gray-700/50">
+        <p className="text-sm text-center text-[#f0e6cc]/60 pt-4 border-t border-[#c8963c]/20 font-medium">
           New here?{" "}
           <Link
             to="/register"
-            className="text-blue-400 font-bold hover:text-blue-300 transition-colors"
+            className="text-[#c8963c] font-black uppercase tracking-wider hover:text-[#e8c070] transition-colors ml-1"
           >
             Create an account
           </Link>

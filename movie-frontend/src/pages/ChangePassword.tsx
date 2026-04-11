@@ -87,12 +87,12 @@ export default function ChangePassword() {
   };
 
   return (
-    <div className="relative flex items-center justify-center min-h-[100dvh] overscroll-none bg-gray-900 px-4 overflow-hidden">
+    <div className="relative flex items-center justify-center min-h-[100dvh] overscroll-none bg-[#12100e] px-4 overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
       {successMsg && (
-        <div className="absolute top-10 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-4 bg-green-500/20 border border-green-500/50 rounded-2xl shadow-2xl backdrop-blur-sm transition-all duration-500 ease-out animate-bounce">
-          <div className="flex items-center justify-center w-8 h-8 bg-green-500 rounded-full">
+        <div className="absolute top-10 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-4 bg-[#1a1714] border border-[#c8963c]/50 rounded-2xl shadow-2xl backdrop-blur-sm transition-all duration-500 ease-out animate-bounce w-max max-w-[90vw]">
+          <div className="flex items-center justify-center w-8 h-8 bg-[#c8963c] rounded-full shadow-lg shrink-0">
             <svg
-              className="w-5 h-5 text-white"
+              className="w-5 h-5 text-[#12100e]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -100,48 +100,52 @@ export default function ChangePassword() {
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth="2"
+                strokeWidth="3"
                 d="M5 13l4 4L19 7"
               ></path>
             </svg>
           </div>
-          <p className="text-sm font-semibold text-green-400">{successMsg}</p>
+          <p className="text-xs sm:text-sm font-bold text-[#c8963c] uppercase tracking-wider">
+            {successMsg}
+          </p>
         </div>
       )}
 
-      <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-gray-800 rounded-3xl shadow-2xl border border-gray-700">
+      <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/20 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
+
         <div className="text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white">
+          <h2 className="text-2xl sm:text-3xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
             Security Settings
           </h2>
-          <p className="mt-2 text-sm text-gray-400">
+          <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium tracking-wide">
             Update your account password
           </p>
         </div>
 
         {error && (
-          <div className="p-4 text-sm text-red-200 bg-red-900/40 border border-red-500/50 rounded-xl text-center">
+          <div className="p-4 text-xs font-bold text-red-500 bg-red-900/10 border border-red-500/20 rounded-xl text-center uppercase tracking-wider">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               Email Address
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+              className="w-full px-4 py-3.5 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
               placeholder="name@example.com"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               Current Password
             </label>
             <div className="relative">
@@ -149,23 +153,23 @@ export default function ChangePassword() {
                 type={showOldPassword ? "text" : "password"}
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
-                className="w-full px-4 py-3 pr-12 text-white bg-gray-900 border border-gray-700 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className="w-full px-4 py-3.5 pr-12 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
                 placeholder="••••••••"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowOldPassword(!showOldPassword)}
-                className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 hover:text-white transition-colors focus:outline-none"
-                tabIndex={-1} // Щоб не фокусуватися клавіатурою (опціонально)
+                className="absolute inset-y-0 right-0 flex items-center px-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition-colors focus:outline-none"
+                tabIndex={-1}
               >
                 <EyeIcon isOpen={showOldPassword} />
               </button>
             </div>
           </div>
 
-          <div className="border-t border-gray-700 my-2 pt-4">
-            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+          <div className="border-t border-[#c8963c]/20 my-2 pt-5">
+            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               New Password
             </label>
             <div className="relative">
@@ -173,7 +177,7 @@ export default function ChangePassword() {
                 type={showNewPassword ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-3 pr-12 text-white bg-gray-900 border border-gray-700 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
+                className="w-full px-4 py-3.5 pr-12 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
                 placeholder="Min 8 characters"
                 minLength={8}
                 required
@@ -181,7 +185,7 @@ export default function ChangePassword() {
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 hover:text-white transition-colors focus:outline-none"
+                className="absolute inset-y-0 right-0 flex items-center px-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition-colors focus:outline-none"
                 tabIndex={-1}
               >
                 <EyeIcon isOpen={showNewPassword} />
@@ -190,7 +194,7 @@ export default function ChangePassword() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               Confirm New Password
             </label>
             <div className="relative">
@@ -198,14 +202,14 @@ export default function ChangePassword() {
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 pr-12 text-white bg-gray-900 border border-gray-700 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none"
+                className="w-full px-4 py-3.5 pr-12 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
                 placeholder="Re-enter new password"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 hover:text-white transition-colors focus:outline-none"
+                className="absolute inset-y-0 right-0 flex items-center px-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition-colors focus:outline-none"
                 tabIndex={-1}
               >
                 <EyeIcon isOpen={showConfirmPassword} />
@@ -216,7 +220,7 @@ export default function ChangePassword() {
           <button
             type="submit"
             disabled={isLoading || !!successMsg}
-            className="w-full py-4 font-bold text-white transition bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:from-blue-500 hover:to-purple-500 active:scale-95 disabled:opacity-50"
+            className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow-lg shadow-[#c8963c]/10 min-h-[52px]"
           >
             {isLoading ? "Updating..." : "Update Password"}
           </button>
@@ -224,7 +228,7 @@ export default function ChangePassword() {
 
         <button
           onClick={() => navigate(-1)}
-          className="w-full text-sm text-gray-500 hover:text-white transition"
+          className="w-full text-xs font-bold text-[#f0e6cc]/40 hover:text-[#c8963c] transition uppercase tracking-wider underline underline-offset-4"
           disabled={!!successMsg}
         >
           Cancel and go back

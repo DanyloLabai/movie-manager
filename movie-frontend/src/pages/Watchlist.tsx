@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 
@@ -305,7 +305,6 @@ export default function Watchlist() {
         isUnlocked: totalCount > 0,
         unlockedText: "🏆 First Blood",
         lockedText: "🔒 First Blood",
-        activeClasses: "bg-yellow-500/20 border-yellow-500/50 text-yellow-400",
         description: "Add your first movie or TV show to the tracker",
       },
       {
@@ -313,7 +312,6 @@ export default function Watchlist() {
         isUnlocked: favoritesCount >= 5,
         unlockedText: "⭐ Critic",
         lockedText: `🔒 Critic (${favoritesCount}/5)`,
-        activeClasses: "bg-pink-500/20 border-pink-500/50 text-pink-400",
         description: "Add 5 items to your favorites",
       },
       {
@@ -321,7 +319,6 @@ export default function Watchlist() {
         isUnlocked: watchedCount >= 10,
         unlockedText: "🍿 Cinephile",
         lockedText: `🔒 Cinephile (${watchedCount}/10)`,
-        activeClasses: "bg-purple-500/20 border-purple-500/50 text-purple-400",
         description: "Mark 10 items as watched",
       },
       {
@@ -329,7 +326,6 @@ export default function Watchlist() {
         isUnlocked: totalCount >= 20,
         unlockedText: "📚 Collector",
         lockedText: `🔒 Collector (${totalCount}/20)`,
-        activeClasses: "bg-teal-500/20 border-teal-500/50 text-teal-400",
         description: "Add 20 items to your tracker in total",
       },
       {
@@ -337,7 +333,6 @@ export default function Watchlist() {
         isUnlocked: favoritesCount >= 20,
         unlockedText: "💖 Tastemaker",
         lockedText: `🔒 Tastemaker (${favoritesCount}/20)`,
-        activeClasses: "bg-rose-500/20 border-rose-500/50 text-rose-400",
         description: "Add 20 items to your favorites",
       },
       {
@@ -345,7 +340,6 @@ export default function Watchlist() {
         isUnlocked: watchedCount >= 50,
         unlockedText: "🎬 Film Buff",
         lockedText: `🔒 Film Buff (${watchedCount}/50)`,
-        activeClasses: "bg-blue-500/20 border-blue-500/50 text-blue-400",
         description: "Mark 50 items as watched",
       },
       {
@@ -353,16 +347,15 @@ export default function Watchlist() {
         isUnlocked: totalCount >= 100,
         unlockedText: "🏛️ Librarian",
         lockedText: `🔒 Librarian (${totalCount}/100)`,
-        activeClasses: "bg-amber-500/20 border-amber-500/50 text-amber-400",
         description: "Add 100 items to your tracker in total",
       },
     ];
 
     return (
       <div className="space-y-5 sm:space-y-8 animate-fade-in px-1 sm:px-0">
-        <div className="flex flex-col p-4 sm:p-8 bg-gray-800 rounded-3xl border border-gray-700 shadow-xl gap-5">
+        <div className="flex flex-col p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl gap-5">
           <div className="flex flex-col sm:flex-row items-center gap-5">
-            <div className="w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-tr from-purple-500 to-blue-500 rounded-full flex items-center justify-center text-3xl sm:text-5xl font-bold shadow-lg uppercase text-white shrink-0 overflow-hidden border-2 border-gray-600">
+            <div className="w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-tr from-[#c8963c] to-[#9a732a] rounded-full flex items-center justify-center text-3xl sm:text-5xl font-black shadow-lg uppercase text-[#12100e] shrink-0 overflow-hidden border-2 border-[#c8963c]/50">
               {avatarUrl ? (
                 <img
                   src={`${avatarUrl}${avatarUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`}
@@ -376,12 +369,12 @@ export default function Watchlist() {
 
             <div className="flex-grow w-full">
               <div className="flex items-center justify-center sm:justify-start gap-3 mb-4">
-                <h2 className="text-xl sm:text-4xl font-bold text-white tracking-tight text-center sm:text-left">
+                <h2 className="text-xl sm:text-4xl font-black text-[#f0e6cc] tracking-tight text-center sm:text-left">
                   {username}
                 </h2>
                 <button
                   onClick={() => setIsEditModalOpen(true)}
-                  className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-gray-700 hover:bg-gray-600 rounded-full transition border border-gray-600 shadow-sm flex-shrink-0"
+                  className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full transition border border-[#c8963c]/30 shadow-sm flex-shrink-0 text-[#c8963c]"
                   title="Edit Profile"
                 >
                   <span className="text-sm">✏️</span>
@@ -395,8 +388,8 @@ export default function Watchlist() {
                     title={achievement.description}
                     className={`px-2 py-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all duration-500 border text-center flex items-center justify-center ${
                       achievement.isUnlocked
-                        ? `${achievement.activeClasses} scale-100 opacity-100 shadow-sm`
-                        : "bg-gray-900/40 border-gray-800 text-gray-600 scale-95 opacity-50 grayscale"
+                        ? "bg-[#c8963c]/10 border-[#c8963c]/40 text-[#c8963c] shadow-sm"
+                        : "bg-[#12100e] border-[#c8963c]/10 text-[#f0e6cc]/30 grayscale"
                     }`}
                   >
                     {achievement.isUnlocked
@@ -408,20 +401,20 @@ export default function Watchlist() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 w-full">
-            <div className="text-center bg-gray-900/80 px-4 py-4 rounded-2xl border border-gray-700 shadow-inner">
-              <div className="text-2xl sm:text-3xl font-black text-red-400">
+          <div className="grid grid-cols-2 gap-3 w-full mt-2">
+            <div className="text-center bg-[#12100e] px-4 py-4 rounded-2xl border border-[#c8963c]/20 shadow-inner">
+              <div className="text-2xl sm:text-3xl font-black text-[#c8963c]">
                 {favoritesCount}
               </div>
-              <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mt-1">
+              <div className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mt-1">
                 Favorites
               </div>
             </div>
-            <div className="text-center bg-gray-900/80 px-4 py-4 rounded-2xl border border-gray-700 shadow-inner">
-              <div className="text-2xl sm:text-3xl font-black text-green-400">
+            <div className="text-center bg-[#12100e] px-4 py-4 rounded-2xl border border-[#c8963c]/20 shadow-inner">
+              <div className="text-2xl sm:text-3xl font-black text-[#c8963c]">
                 {watchedCount}
               </div>
-              <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mt-1">
+              <div className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mt-1">
                 Watched
               </div>
             </div>
@@ -431,37 +424,37 @@ export default function Watchlist() {
         {isLoading && !profileData ? (
           <div className="flex justify-center items-center h-48">
             <div className="flex gap-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+              <div className="w-2.5 h-2.5 bg-[#c8963c] rounded-full animate-bounce"></div>
               <div
-                className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+                className="w-2.5 h-2.5 bg-[#c8963c] rounded-full animate-bounce"
                 style={{ animationDelay: "0.1s" }}
               ></div>
               <div
-                className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+                className="w-2.5 h-2.5 bg-[#c8963c] rounded-full animate-bounce"
                 style={{ animationDelay: "0.2s" }}
               ></div>
             </div>
           </div>
         ) : (
           <div className="flex flex-col gap-5 sm:gap-8">
-            <div className="p-4 sm:p-8 bg-gray-800 rounded-3xl border border-gray-700 shadow-xl">
-              <h3 className="text-base sm:text-xl font-bold text-white mb-4">
-                Top 5 Favorites
+            <div className="p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl">
+              <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
+                Top Favorites
               </h3>
               {!profileData?.favorites || profileData.favorites.length === 0 ? (
-                <div className="text-center py-8 bg-gray-900/30 rounded-2xl border border-gray-700/50 border-dashed text-gray-500 text-xs italic">
+                <div className="text-center py-8 bg-[#12100e] rounded-2xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
                   You haven't liked any movies yet.
                 </div>
               ) : (
                 <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-6">
-                  {profileData.favorites.map((fav) => (
+                  {profileData.favorites.slice(0, 5).map((fav) => (
                     <div
                       key={fav.id}
                       className="group relative flex flex-col items-center"
                     >
                       <Link
                         to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}`}
-                        className="w-full aspect-[2/3] rounded-xl overflow-hidden shadow-lg border border-gray-700 bg-gray-900 relative"
+                        className="w-full aspect-[2/3] rounded-xl overflow-hidden shadow-lg border border-[#c8963c]/20 bg-[#12100e] relative"
                       >
                         {fav.posterUrl ? (
                           <img
@@ -470,7 +463,7 @@ export default function Watchlist() {
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           />
                         ) : (
-                          <div className="flex items-center justify-center w-full h-full text-[10px] text-gray-600 italic">
+                          <div className="flex items-center justify-center w-full h-full text-[10px] text-[#f0e6cc]/30 italic">
                             No poster
                           </div>
                         )}
@@ -479,7 +472,7 @@ export default function Watchlist() {
                             e.preventDefault();
                             handleToggleFavorite(fav.tmdbId);
                           }}
-                          className="absolute top-2 right-2 w-8 h-8 bg-gray-900/80 rounded-full flex items-center justify-center border border-gray-600/50 hover:bg-red-500/20 transition backdrop-blur-sm"
+                          className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 hover:bg-[#1a1714] transition backdrop-blur-sm"
                         >
                           <svg
                             className="w-3.5 h-3.5 text-red-500 fill-red-500"
@@ -499,7 +492,7 @@ export default function Watchlist() {
                         to={`/movie/${fav.tmdbId}`}
                         className="mt-2 w-full text-center"
                       >
-                        <h4 className="text-[10px] sm:text-sm font-bold text-gray-200 truncate hover:text-blue-400 transition">
+                        <h4 className="text-[10px] sm:text-sm font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition">
                           {fav.title}
                         </h4>
                       </Link>
@@ -509,12 +502,12 @@ export default function Watchlist() {
               )}
             </div>
 
-            <div className="p-4 sm:p-8 bg-gray-800 rounded-3xl border border-gray-700 shadow-xl">
-              <h3 className="text-base sm:text-xl font-bold text-white mb-4">
+            <div className="p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl">
+              <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
                 Recent Activity
               </h3>
               {!profileData?.recent || profileData.recent.length === 0 ? (
-                <div className="text-center py-8 bg-gray-900/30 rounded-2xl border border-gray-700/50 border-dashed text-gray-500 text-xs italic">
+                <div className="text-center py-8 bg-[#12100e] rounded-2xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
                   No recent activity.
                 </div>
               ) : (
@@ -528,9 +521,9 @@ export default function Watchlist() {
                       <Link
                         to={`/movie/${act.tmdbId}?type=${act.mediaType || "movie"}`}
                         key={act.id}
-                        className="flex items-center gap-3 bg-gray-900/50 p-2.5 rounded-2xl border border-gray-700/50 hover:bg-gray-800 transition group"
+                        className="flex items-center gap-3 bg-[#12100e] p-2.5 rounded-2xl border border-[#c8963c]/10 hover:border-[#c8963c]/40 hover:bg-[#1a1714] transition group shadow-sm"
                       >
-                        <div className="w-10 h-14 rounded-lg bg-gray-800 overflow-hidden shrink-0 border border-gray-700">
+                        <div className="w-10 h-14 rounded-lg bg-[#1a1714] overflow-hidden shrink-0 border border-[#c8963c]/20">
                           {act.posterUrl ? (
                             <img
                               src={act.posterUrl}
@@ -538,16 +531,16 @@ export default function Watchlist() {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[7px] text-gray-600">
+                            <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/30">
                               No Img
                             </div>
                           )}
                         </div>
                         <div className="flex flex-col overflow-hidden">
-                          <h4 className="font-bold text-white group-hover:text-blue-400 transition truncate text-xs sm:text-sm">
+                          <h4 className="font-bold text-[#f0e6cc] group-hover:text-[#c8963c] transition truncate text-xs sm:text-sm">
                             {act.title}
                           </h4>
-                          <span className="text-[9px] text-gray-500 uppercase font-semibold mt-1">
+                          <span className="text-[9px] text-[#f0e6cc]/50 uppercase font-semibold mt-1">
                             Added: {addedStr}
                           </span>
                         </div>
@@ -564,36 +557,36 @@ export default function Watchlist() {
   };
 
   return (
-    <div className="min-h-[100dvh] p-3 sm:p-8 bg-gray-900 font-sans text-gray-100 relative overscroll-none">
+    <div className="min-h-[100dvh] p-3 sm:p-8 bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
       <div className="max-w-7xl mx-auto">
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4 mb-6 border-b border-gray-800">
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 pb-4 mb-6 border-b border-[#c8963c]/20">
           <Link to="/search" className="hover:opacity-80 transition-opacity">
-            <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-tight uppercase text-center md:text-left drop-shadow-md">
               Movie Tracker
             </h1>
           </Link>
           <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide">
             <Link
               to="/ai-chat"
-              className="text-purple-400 font-bold hover:text-purple-300 transition text-sm whitespace-nowrap flex-shrink-0"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-sm sm:text-base px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
               AI Chat
             </Link>
             <Link
               to="/search"
-              className="text-gray-400 hover:text-white transition text-sm whitespace-nowrap flex-shrink-0"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-sm sm:text-base px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
               Search
             </Link>
             <Link
               to="/watchlist"
-              className="text-blue-400 font-bold border-b-2 border-blue-400 text-sm pb-0.5 whitespace-nowrap flex-shrink-0"
+              className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-sm sm:text-base px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
             >
               My Profile
             </Link>
             <button
               onClick={handleLogout}
-              className="text-xs px-3 py-2 bg-red-900/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition whitespace-nowrap flex-shrink-0 min-h-[36px]"
+              className="text-[10px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0 min-h-[36px]"
             >
               Logout
             </button>
@@ -603,19 +596,31 @@ export default function Watchlist() {
         <div className="flex overflow-x-auto gap-2 sm:gap-4 mb-6 sm:mb-8 scrollbar-hide pb-1">
           <button
             onClick={() => setActiveTab("profile")}
-            className={`px-5 sm:px-8 py-2.5 rounded-full font-bold transition-all text-sm whitespace-nowrap flex-shrink-0 min-h-[40px] ${activeTab === "profile" ? "bg-blue-600 text-white shadow-lg" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+            className={`px-5 sm:px-8 py-2.5 rounded-full font-bold transition-all text-sm whitespace-nowrap flex-shrink-0 min-h-[40px] uppercase tracking-wider ${
+              activeTab === "profile"
+                ? "bg-[#c8963c] text-[#12100e] shadow-md"
+                : "bg-[#1a1714] text-[#f0e6cc]/50 hover:bg-[#c8963c]/10 hover:text-[#c8963c] border border-[#c8963c]/20"
+            }`}
           >
             Profile
           </button>
           <button
             onClick={() => setActiveTab("watchlist")}
-            className={`px-5 sm:px-8 py-2.5 rounded-full font-bold transition-all text-sm whitespace-nowrap flex-shrink-0 min-h-[40px] ${activeTab === "watchlist" ? "bg-blue-600 text-white shadow-lg" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+            className={`px-5 sm:px-8 py-2.5 rounded-full font-bold transition-all text-sm whitespace-nowrap flex-shrink-0 min-h-[40px] uppercase tracking-wider ${
+              activeTab === "watchlist"
+                ? "bg-[#c8963c] text-[#12100e] shadow-md"
+                : "bg-[#1a1714] text-[#f0e6cc]/50 hover:bg-[#c8963c]/10 hover:text-[#c8963c] border border-[#c8963c]/20"
+            }`}
           >
             In Plans
           </button>
           <button
             onClick={() => setActiveTab("watched")}
-            className={`px-5 sm:px-8 py-2.5 rounded-full font-bold transition-all text-sm whitespace-nowrap flex-shrink-0 min-h-[40px] ${activeTab === "watched" ? "bg-green-600 text-white shadow-lg" : "bg-gray-800 text-gray-400 hover:bg-gray-700"}`}
+            className={`px-5 sm:px-8 py-2.5 rounded-full font-bold transition-all text-sm whitespace-nowrap flex-shrink-0 min-h-[40px] uppercase tracking-wider ${
+              activeTab === "watched"
+                ? "bg-[#c8963c] text-[#12100e] shadow-md"
+                : "bg-[#1a1714] text-[#f0e6cc]/50 hover:bg-[#c8963c]/10 hover:text-[#c8963c] border border-[#c8963c]/20"
+            }`}
           >
             Watched
           </button>
@@ -624,31 +629,31 @@ export default function Watchlist() {
         {activeTab === "profile" ? (
           renderProfileTab()
         ) : isLoading ? (
-          <p className="text-center text-gray-500 animate-pulse text-lg mt-10">
+          <p className="text-center text-[#f0e6cc]/50 animate-pulse text-lg mt-10 font-semibold uppercase tracking-widest">
             Loading your list...
           </p>
         ) : movies.length === 0 ? (
-          <div className="text-center p-10 sm:p-12 bg-gray-800/50 rounded-3xl border border-gray-700 shadow-2xl mt-10">
-            <p className="text-gray-400 text-lg italic mb-4">
+          <div className="text-center p-10 sm:p-12 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-2xl mt-10 max-w-lg mx-auto">
+            <p className="text-[#f0e6cc]/60 text-lg font-medium mb-6">
               It's empty here. Add some movies!
             </p>
             <Link
               to="/search"
-              className="inline-block px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl hover:from-blue-500 hover:to-purple-500 transition shadow-lg"
+              className="inline-block px-8 py-3.5 bg-[#c8963c] text-[#12100e] font-black uppercase tracking-wider rounded-xl hover:bg-[#e8c070] transition shadow-lg"
             >
               Discover Movies
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {movies.map((item) => (
               <div
                 key={item.id}
-                className="group overflow-hidden transition bg-gray-800 border border-gray-700 shadow-md rounded-2xl flex flex-col hover:border-blue-500/30 hover:-translate-y-1 hover:shadow-xl relative"
+                className="group overflow-hidden transition bg-[#1a1714] border border-[#c8963c]/20 shadow-lg rounded-2xl flex flex-col hover:border-[#c8963c]/70 hover:shadow-[#c8963c]/10 hover:-translate-y-1 relative"
               >
                 <Link
                   to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                  className="relative w-full aspect-[2/3] bg-gray-900 block overflow-hidden"
+                  className="relative w-full aspect-[2/3] bg-[#12100e] block overflow-hidden"
                 >
                   {item.posterUrl ? (
                     <img
@@ -657,27 +662,27 @@ export default function Watchlist() {
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                   ) : (
-                    <div className="flex items-center justify-center w-full h-full text-gray-600 text-xs italic">
+                    <div className="flex items-center justify-center w-full h-full text-[#f0e6cc]/30 text-xs italic">
                       No poster
                     </div>
                   )}
                   {activeTab === "watched" && (
-                    <div className="absolute top-2 right-2 bg-green-500/90 text-white text-[8px] font-bold px-2 py-0.5 rounded-full backdrop-blur-sm uppercase tracking-wider">
+                    <div className="absolute top-2 right-2 bg-[#c8963c] text-[#12100e] text-[8px] font-black px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider">
                       Watched
                     </div>
                   )}
                 </Link>
 
-                <div className="p-2.5 sm:p-3 flex flex-col flex-grow z-10 bg-gray-800">
+                <div className="p-3 sm:p-4 flex flex-col flex-grow z-10 bg-[#1a1714]">
                   <Link
                     to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                    className="text-xs sm:text-base font-bold text-white truncate hover:text-blue-400 transition"
+                    className="text-xs sm:text-base font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition"
                     title={item.title}
                   >
                     {item.title}
                   </Link>
 
-                  <p className="hidden sm:block mt-0.5 text-[10px] uppercase tracking-tighter text-gray-500 mb-2 font-semibold">
+                  <p className="hidden sm:block mt-1 text-[10px] uppercase tracking-wider text-[#f0e6cc]/50 mb-2 font-semibold">
                     Added: {new Date(item.addedAt).toLocaleDateString("en-US")}
                   </p>
 
@@ -703,8 +708,8 @@ export default function Watchlist() {
                           onClick={() => handleRateMovie(item.tmdbId, star)}
                           className={`text-xl sm:text-2xl p-0.5 transition-all duration-200 active:scale-150 ${
                             isActive
-                              ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]"
-                              : "text-gray-700 hover:text-yellow-400/40"
+                              ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
+                              : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
                           }`}
                         >
                           ★
@@ -713,18 +718,18 @@ export default function Watchlist() {
                     })}
                   </div>
 
-                  <div className="flex justify-between items-center gap-1 pt-2 border-t border-gray-700/50">
+                  <div className="flex justify-between items-center gap-1 pt-3 border-t border-[#c8963c]/20">
                     {activeTab === "watchlist" ? (
                       <button
                         onClick={() => handleMarkWatched(item.tmdbId)}
-                        className="text-[10px] font-bold text-green-400 hover:text-green-300 transition uppercase tracking-tighter min-h-[32px] flex items-center"
+                        className="text-[10px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest min-h-[32px] flex items-center"
                       >
                         Watched
                       </button>
                     ) : (
                       <Link
                         to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                        className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition uppercase tracking-tighter min-h-[32px] flex items-center"
+                        className="text-[10px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest min-h-[32px] flex items-center"
                       >
                         Details
                       </Link>
@@ -733,7 +738,7 @@ export default function Watchlist() {
                     <div className="flex items-center gap-2 sm:gap-3">
                       <button
                         onClick={() => handleDelete(item.tmdbId)}
-                        className="text-[10px] font-bold text-red-400/60 hover:text-red-400 transition uppercase min-h-[32px] flex items-center px-1"
+                        className="text-[10px] font-bold text-red-500/60 hover:text-red-500 transition uppercase min-h-[32px] flex items-center px-1 tracking-widest"
                       >
                         Del
                       </button>
@@ -742,7 +747,11 @@ export default function Watchlist() {
                         className="group/heart p-1 min-h-[32px] flex items-center"
                       >
                         <svg
-                          className={`w-4 h-4 sm:w-5 sm:h-5 transition ${item.isFavorite ? "text-red-500 fill-red-500" : "text-gray-500 group-hover/heart:text-red-500"}`}
+                          className={`w-4 h-4 sm:w-5 sm:h-5 transition ${
+                            item.isFavorite
+                              ? "text-red-500 fill-red-500"
+                              : "text-[#f0e6cc]/30 group-hover/heart:text-red-500"
+                          }`}
                           fill={item.isFavorite ? "currentColor" : "none"}
                           stroke="currentColor"
                           strokeWidth="2.5"
@@ -765,14 +774,14 @@ export default function Watchlist() {
       </div>
 
       {ratingModalData.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div
-            className="bg-gray-800 border border-gray-700 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
+            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={closeRatingModal}
-              className="absolute top-4 right-4 text-gray-500 hover:text-white transition p-1"
+              className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
             >
               <svg
                 className="w-6 h-6"
@@ -789,10 +798,10 @@ export default function Watchlist() {
               </svg>
             </button>
             <div className="text-center">
-              <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
+              <h3 className="text-xl sm:text-2xl font-black text-[#c8963c] mb-2 uppercase tracking-wide">
                 How was it?
               </h3>
-              <p className="text-sm text-gray-400 mb-6 sm:mb-8">
+              <p className="text-sm text-[#f0e6cc]/60 mb-6 sm:mb-8">
                 Rate "{ratingModalData.title}" or skip to just mark as watched.
               </p>
               <div
@@ -806,8 +815,8 @@ export default function Watchlist() {
                     onClick={() => handleModalRate(star)}
                     className={`text-4xl sm:text-5xl transition-all duration-200 transform hover:scale-125 active:scale-150 p-1 ${
                       modalHoveredStar >= star
-                        ? "text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.5)]"
-                        : "text-gray-600"
+                        ? "text-[#c8963c] drop-shadow-[0_0_12px_rgba(200,150,60,0.5)]"
+                        : "text-[#f0e6cc]/20"
                     }`}
                   >
                     ★
@@ -816,7 +825,7 @@ export default function Watchlist() {
               </div>
               <button
                 onClick={closeRatingModal}
-                className="text-xs font-bold text-gray-500 hover:text-white uppercase tracking-widest transition py-2 px-4"
+                className="text-xs font-bold text-[#f0e6cc]/50 hover:text-[#c8963c] uppercase tracking-widest transition py-2 px-4"
               >
                 Skip Rating
               </button>
@@ -849,10 +858,8 @@ export default function Watchlist() {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-5 left-4 right-4 sm:left-auto sm:right-10 sm:bottom-10 bg-gray-800 border border-gray-700 text-white px-5 py-4 rounded-2xl shadow-2xl flex items-center justify-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50">
-          <span className="font-semibold text-sm sm:text-base">
-            {toastMessage}
-          </span>
+        <div className="fixed bottom-5 left-4 right-4 sm:left-auto sm:right-10 sm:bottom-10 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-6 py-4 rounded-xl shadow-2xl flex items-center justify-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50 uppercase tracking-widest font-bold">
+          <span className="text-xs sm:text-sm text-center">{toastMessage}</span>
         </div>
       )}
     </div>
@@ -932,10 +939,10 @@ function EditProfileModal({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-md p-6 sm:p-8 bg-gray-800 border border-gray-700 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+      <div className="w-full max-w-md p-6 sm:p-8 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition p-1"
+          className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
         >
           <svg
             className="w-6 h-6"
@@ -952,12 +959,12 @@ function EditProfileModal({
           </svg>
         </button>
 
-        <h2 className="text-xl sm:text-2xl font-bold text-white text-center mb-6">
+        <h2 className="text-xl sm:text-2xl font-black text-[#f0e6cc] uppercase tracking-widest text-center mb-6">
           Edit Profile
         </h2>
 
         {error && (
-          <div className="mb-5 p-3 text-sm text-red-200 bg-red-900/40 border border-red-500/50 rounded-xl text-center">
+          <div className="mb-5 p-3 text-sm text-red-500 bg-red-900/10 border border-red-500/30 rounded-xl text-center font-semibold">
             {error}
           </div>
         )}
@@ -976,16 +983,16 @@ function EditProfileModal({
                       : `${previewUrl}${previewUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`
                   }
                   alt="Profile Preview"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-gray-700 group-hover:border-blue-500 transition-colors"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-[#12100e] group-hover:border-[#c8963c] transition-colors shadow-lg"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500 flex items-center justify-center text-3xl font-bold text-white border-4 border-gray-700 group-hover:border-blue-500 transition-colors">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-3xl font-black text-[#12100e] border-4 border-[#12100e] group-hover:border-[#c8963c] transition-colors shadow-lg">
                   {username.charAt(0).toUpperCase()}
                 </div>
               )}
-              <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="absolute inset-0 bg-[#12100e]/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                 <svg
-                  className="w-8 h-8 text-white"
+                  className="w-8 h-8 text-[#c8963c]"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -1012,20 +1019,20 @@ function EditProfileModal({
               ref={fileInputRef}
               onChange={handleFileChange}
             />
-            <p className="text-xs text-gray-500 mt-3 font-semibold">
+            <p className="text-xs text-[#f0e6cc]/50 mt-3 font-semibold uppercase tracking-wider">
               Click image to change (Max 5MB)
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               Username
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+              className="w-full px-4 py-3 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all shadow-inner"
               minLength={3}
               maxLength={20}
               required
@@ -1034,7 +1041,7 @@ function EditProfileModal({
           <button
             type="submit"
             disabled={isLoading || !username.trim()}
-            className="w-full py-4 font-bold text-white transition bg-blue-600 rounded-xl hover:bg-blue-500 active:scale-[0.98] disabled:bg-gray-700 disabled:text-gray-500 shadow-lg shadow-blue-900/20 min-h-[52px]"
+            className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow-lg min-h-[52px]"
           >
             {isLoading ? "Saving..." : "Save Changes"}
           </button>

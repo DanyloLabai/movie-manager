@@ -87,11 +87,13 @@ export default function Register() {
 
   if (isSuccess) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900 px-4 py-8 sm:px-6 animate-fade-in">
-        <div className="w-full max-w-md p-8 sm:p-10 space-y-6 bg-gray-800 rounded-3xl shadow-2xl border border-green-500/50 text-center">
-          <div className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+      <div className="flex items-center justify-center min-h-screen bg-[#12100e] px-4 py-8 sm:px-6 animate-fade-in selection:bg-[#c8963c] selection:text-[#12100e]">
+        <div className="w-full max-w-md p-8 sm:p-10 space-y-6 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/30 text-center relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
+
+          <div className="w-20 h-20 bg-[#12100e] border border-[#c8963c]/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
             <svg
-              className="w-10 h-10 text-green-400"
+              className="w-10 h-10 text-[#c8963c]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -104,19 +106,21 @@ export default function Register() {
               ></path>
             </svg>
           </div>
-          <h2 className="text-3xl font-extrabold text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-[#c8963c] uppercase tracking-widest">
             Check Your Email!
           </h2>
-          <p className="text-gray-300 text-sm leading-relaxed">
+          <p className="text-[#f0e6cc]/80 text-sm leading-relaxed font-medium">
             We've sent a verification link to <br />
-            <strong className="text-green-400">{email}</strong>. <br />
+            <strong className="text-[#c8963c] block mt-1 text-base">
+              {email}
+            </strong>{" "}
             <br />
             Please check your inbox (and spam folder) to verify your account
             before logging in.
           </p>
           <button
             onClick={() => navigate("/login")}
-            className="w-full py-4 mt-4 font-bold text-white transition bg-green-600 rounded-xl hover:bg-green-500 active:scale-[0.98] shadow-lg shadow-green-900/20"
+            className="w-full py-4 mt-6 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] shadow-lg shadow-[#c8963c]/10"
           >
             Go to Login
           </button>
@@ -126,34 +130,36 @@ export default function Register() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-900 px-4 py-8 sm:px-6">
-      <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-gray-800 rounded-3xl shadow-2xl border border-gray-700">
+    <div className="flex items-center justify-center min-h-screen bg-[#12100e] px-4 py-8 sm:px-6 selection:bg-[#c8963c] selection:text-[#12100e]">
+      <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/20 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
+
         <div className="text-center">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+          <h2 className="text-3xl sm:text-4xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
             Join Us
           </h2>
-          <p className="mt-2 text-sm text-gray-400">
-            Create your movie tracking profile
+          <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium tracking-wide">
+            Create your premium tracking profile
           </p>
         </div>
 
         {error && (
-          <div className="p-4 text-sm text-red-200 bg-red-900/40 border border-red-500/50 rounded-xl text-center">
+          <div className="p-4 text-xs font-bold text-red-500 bg-red-900/10 border border-red-500/20 rounded-xl text-center uppercase tracking-wider">
             {error}
           </div>
         )}
 
         <form onSubmit={handleRegister} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               Username
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all"
-              placeholder="YourName"
+              className="w-full px-4 py-3.5 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
+              placeholder="Cinephile99"
               minLength={3}
               maxLength={20}
               required
@@ -163,14 +169,14 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               Email
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all"
+              className="w-full px-4 py-3.5 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
               placeholder="name@example.com"
               maxLength={50}
               required
@@ -180,7 +186,7 @@ export default function Register() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
+            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               Password
             </label>
             <div className="relative">
@@ -188,7 +194,7 @@ export default function Register() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 pr-12 text-white bg-gray-900 border border-gray-700 rounded-xl focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500 transition-all"
+                className="w-full px-4 py-3.5 pr-12 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
                 placeholder="••••••••"
                 minLength={8}
                 maxLength={32}
@@ -198,7 +204,7 @@ export default function Register() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-400 hover:text-white transition-colors focus:outline-none"
+                className="absolute inset-y-0 right-0 flex items-center px-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition-colors focus:outline-none"
                 tabIndex={-1}
               >
                 <EyeIcon isOpen={showPassword} />
@@ -207,7 +213,7 @@ export default function Register() {
           </div>
 
           <div className="flex justify-center py-2 overflow-hidden">
-            <div className="scale-[0.85] sm:scale-100 origin-center">
+            <div className="scale-[0.85] sm:scale-100 origin-center rounded-xl overflow-hidden border border-[#c8963c]/20">
               <ReCAPTCHA
                 ref={recaptchaRef}
                 sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
@@ -220,17 +226,17 @@ export default function Register() {
           <button
             type="submit"
             disabled={isLoading || !captchaToken}
-            className="w-full py-4 font-bold text-white transition bg-green-600 rounded-xl hover:bg-green-500 active:scale-[0.98] disabled:bg-gray-700 disabled:text-gray-500 shadow-lg shadow-green-900/20"
+            className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow-lg shadow-[#c8963c]/10"
           >
             {isLoading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
-        <p className="text-sm text-center text-gray-400 pt-2">
+        <p className="text-sm text-center text-[#f0e6cc]/60 pt-4 border-t border-[#c8963c]/20 font-medium">
           Already have an account?{" "}
           <Link
             to="/login"
-            className="text-green-400 font-bold hover:text-green-300 transition-colors"
+            className="text-[#c8963c] font-black uppercase tracking-wider hover:text-[#e8c070] transition-colors ml-1"
           >
             Log In
           </Link>

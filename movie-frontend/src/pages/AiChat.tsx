@@ -35,7 +35,6 @@ export default function AiChat() {
   });
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
-
   const [isLoading, setIsLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -58,7 +57,7 @@ export default function AiChat() {
     return [
       {
         role: "ai",
-        text: "Hi! I'm your movie expert. Describe the movie or TV show you're looking for.",
+        text: "Hi! I'm your movie expert. Ask me about any movie, or describe a plot you can't remember.",
       },
     ];
   };
@@ -136,36 +135,20 @@ export default function AiChat() {
 
       const response = await api.post("/ai/search", { messages: chatHistory });
 
-      if (
-        response.data &&
-        response.data.movies &&
-        response.data.movies.length > 0
-      ) {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "ai",
-            text: response.data.message || "Here is what I found:",
-            movies: response.data.movies,
-          },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "ai",
-            text:
-              response.data.message ||
-              "Unfortunately, I couldn't recognize this media.",
-          },
-        ]);
-      }
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "ai",
+          text: response.data.message || "Here is what I found:",
+          movies: response.data.movies,
+        },
+      ]);
     } catch {
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          text: "Oops, something went wrong. Please try again later.",
+          text: "Oops, something went wrong on the server. Please try again later.",
         },
       ]);
     } finally {
@@ -182,7 +165,7 @@ export default function AiChat() {
         mediaType: movie.mediaType,
       });
       setAddedIds((prev) => [...prev, movie.id]);
-      showToast(`Added!`);
+      showToast("Added!");
     } catch (error: any) {
       if (error.response?.status === 400) {
         setAddedIds((prev) => [...prev, movie.id]);
@@ -220,14 +203,14 @@ export default function AiChat() {
           setFavoriteIds(newIds);
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
 
-          setAddedIds((prev) => Array.from(new Set([...prev, movie.id]))); // Оновлюємо addedIds
+          setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
 
-          showToast("Added to list and favorites");
+          showToast("Added to favorites");
         } catch {
-          showToast("Failed to favorite movie");
+          showToast("Failed to add to favorites");
         }
       } else {
-        showToast("Failed to update favorite status");
+        showToast("Server error");
       }
     }
   };
@@ -238,11 +221,11 @@ export default function AiChat() {
   };
 
   return (
-    <div className="flex flex-col fixed inset-0 h-[100dvh] w-full bg-gray-900 text-gray-100 font-sans overflow-hidden">
-      <header className="flex flex-col sm:flex-row items-center justify-between p-4 gap-4 border-b border-gray-800 bg-gray-900/50 backdrop-blur-md sticky top-0 z-20">
+    <div className="flex flex-col fixed inset-0 h-[100dvh] w-full bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+      <header className="flex flex-col sm:flex-row items-center justify-between p-4 gap-4 border-b border-[#c8963c]/20 bg-[#12100e]/80 backdrop-blur-md sticky top-0 z-20 shadow-lg shadow-[#c8963c]/5">
         <div className="flex items-center gap-4">
           <Link to="/search" className="hover:opacity-80 transition-opacity">
-            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-center md:text-left">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-tight uppercase text-center md:text-left drop-shadow-md">
               Movie Tracker
             </h1>
           </Link>
@@ -250,32 +233,32 @@ export default function AiChat() {
         <nav className="flex flex-wrap justify-center gap-3 sm:gap-6 items-center">
           <Link
             to="/ai-chat"
-            className="text-purple-400 font-bold border-b-2 border-purple-400 transition-all text-sm sm:text-base px-1"
+            className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-sm sm:text-base px-1 tracking-wide"
           >
             AI Chat
           </Link>
           <Link
             to="/search"
-            className="text-gray-400 hover:text-white transition-colors text-sm sm:text-base px-1"
+            className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-sm sm:text-base px-1 tracking-wide uppercase font-semibold"
           >
             Search
           </Link>
           <Link
             to="/watchlist"
-            className="text-gray-400 hover:text-white transition-colors text-sm sm:text-base px-1"
+            className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-sm sm:text-base px-1 tracking-wide uppercase font-semibold"
           >
             My Profile
           </Link>
           <button
             onClick={handleLogout}
-            className="text-[10px] sm:text-xs px-3 py-1.5 bg-red-900/20 text-red-400 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold"
+            className="text-[10px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold"
           >
             Logout
           </button>
         </nav>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-6 scrollbar-hide overscroll-none">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-6 scrollbar-hide overscroll-none bg-[#12100e]">
         <div className="max-w-4xl mx-auto space-y-6">
           {messages.map((msg, idx) => (
             <div
@@ -283,96 +266,107 @@ export default function AiChat() {
               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-in fade-in slide-in-from-bottom-2 duration-300`}
             >
               <div
-                className={`max-w-[95%] sm:max-w-[85%] p-4 rounded-2xl shadow-lg ${
+                className={`max-w-[100%] sm:max-w-[85%] p-4 rounded-2xl shadow-xl ${
                   msg.role === "user"
-                    ? "bg-blue-600 text-white rounded-tr-none shadow-blue-900/20"
-                    : "bg-gray-800 border border-gray-700 rounded-tl-none shadow-black/40"
+                    ? "bg-[#c8963c] text-[#12100e] rounded-tr-none font-medium shadow-[#c8963c]/10"
+                    : "bg-[#1a1714] border border-[#c8963c]/30 text-[#f0e6cc] rounded-tl-none shadow-black/50"
                 }`}
               >
-                <p className="leading-relaxed text-sm sm:text-base mb-2 whitespace-pre-wrap">
+                <p className="leading-relaxed text-sm sm:text-base whitespace-pre-wrap">
                   {msg.text}
                 </p>
 
                 {msg.movies && msg.movies.length > 0 && (
-                  <div className="flex gap-4 overflow-x-auto pb-2 pt-2 scrollbar-hide">
+                  <div className="mt-4 flex flex-col gap-2 sm:gap-3 bg-[#12100e]/60 p-2 sm:p-3 rounded-xl border border-[#c8963c]/20 shadow-inner">
+                    <h5 className="text-[#c8963c] text-[10px] sm:text-xs font-bold uppercase tracking-widest px-2 pt-1 pb-2">
+                      Recommended for you
+                    </h5>
+
                     {msg.movies.map((movie) => (
                       <div
                         key={movie.id}
-                        className="flex-shrink-0 w-64 bg-gray-900/50 rounded-xl border border-gray-700/50 overflow-hidden relative group"
+                        className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-[#c8963c]/10 transition-colors group cursor-pointer border border-transparent hover:border-[#c8963c]/20"
+                        onClick={() =>
+                          navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
+                        }
                       >
-                        <button
-                          className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center bg-gray-900/60 rounded-full backdrop-blur-sm border border-gray-600/50 hover:bg-gray-800 transition group/heart"
-                          onClick={() => handleToggleFavorite(movie)}
-                        >
-                          <svg
-                            className={`w-4 h-4 transition ${
-                              favoriteIds.includes(movie.id)
-                                ? "text-red-500"
-                                : "text-gray-400 group-hover/heart:text-red-500"
-                            }`}
-                            fill={
-                              favoriteIds.includes(movie.id)
-                                ? "currentColor"
-                                : "none"
-                            }
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                            ></path>
-                          </svg>
-                        </button>
-
-                        <div className="flex p-3 gap-3">
-                          <Link
-                            to={`/movie/${movie.id}?type=${movie.mediaType}`}
-                            className="flex-shrink-0"
-                          >
-                            <img
-                              src={movie.posterUrl || ""}
-                              className="w-20 h-28 object-cover rounded-lg shadow-md border border-gray-700 hover:scale-105 transition-transform"
-                              alt="poster"
-                            />
-                          </Link>
-
-                          <div className="flex flex-col justify-between min-w-0 w-full">
-                            <div>
-                              <Link
-                                to={`/movie/${movie.id}?type=${movie.mediaType}`}
-                              >
-                                <h4 className="font-bold text-white text-sm truncate hover:text-blue-400 transition-colors">
-                                  {movie.title}
-                                </h4>
-                              </Link>
-                              <p className="text-[10px] text-gray-400 mt-1 uppercase font-semibold flex items-center gap-1 flex-wrap">
-                                <span>{movie.releaseYear}</span>
-                                <span>•</span>
-                                <span className="text-yellow-500 font-bold">
-                                  IMDB {Number(movie.rating || 0).toFixed(1)}
-                                </span>
-                                <span className="mt-1 inline-block bg-gray-700 px-1 py-0.5 rounded text-[8px] text-gray-300">
-                                  {movie.mediaType === "tv" ? "TV" : "MOVIE"}
-                                </span>
-                              </p>
-                            </div>
-
-                            {addedIds.includes(movie.id) ? (
-                              <div className="text-[10px] bg-green-500/20 text-green-400 border border-green-500/30 px-3 py-2 rounded-lg font-bold text-center uppercase tracking-wider mt-2 flex items-center justify-center gap-1 cursor-default">
-                                <span>✓</span> Added
-                              </div>
+                        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                          <div className="w-10 h-14 sm:w-12 sm:h-16 bg-[#12100e] rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20 shadow-md">
+                            {movie.posterUrl ? (
+                              <img
+                                src={movie.posterUrl}
+                                alt={movie.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
                             ) : (
-                              <button
-                                onClick={() => handleAddFromChat(movie)}
-                                className="text-[10px] bg-gray-700 px-3 py-2 rounded-lg font-bold hover:bg-blue-600 text-white transition-all active:scale-95 uppercase tracking-wider mt-2 w-full"
-                              >
-                                + Add
-                              </button>
+                              <div className="w-full h-full flex items-center justify-center text-[8px] text-[#f0e6cc]/30">
+                                No Img
+                              </div>
                             )}
                           </div>
+
+                          <div className="flex flex-col min-w-0 pr-2">
+                            <h4 className="font-bold text-[#f0e6cc] text-xs sm:text-sm truncate group-hover:text-[#c8963c] transition-colors">
+                              {movie.title}{" "}
+                              <span className="font-normal text-[#f0e6cc]/60">
+                                ({movie.releaseYear})
+                              </span>
+                            </h4>
+                            <p className="text-[10px] sm:text-xs text-[#f0e6cc]/50 mt-1 uppercase font-semibold tracking-wider">
+                              {movie.mediaType === "tv" ? "TV Show" : "Movie"} •{" "}
+                              {Number(movie.rating || 0).toFixed(1)} IMDb
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 flex items-center gap-1 sm:gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleFavorite(movie);
+                            }}
+                            className="p-1.5 sm:p-2 rounded-md hover:bg-[#c8963c]/20 transition-colors"
+                            title="Favorite"
+                          >
+                            <svg
+                              className={`w-4 h-4 sm:w-5 sm:h-5 transition ${
+                                favoriteIds.includes(movie.id)
+                                  ? "text-red-500"
+                                  : "text-[#f0e6cc]/30 hover:text-red-500"
+                              }`}
+                              fill={
+                                favoriteIds.includes(movie.id)
+                                  ? "currentColor"
+                                  : "none"
+                              }
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                              ></path>
+                            </svg>
+                          </button>
+
+                          {addedIds.includes(movie.id) ? (
+                            <div className="text-[10px] sm:text-xs text-[#c8963c] px-2 sm:px-3 py-1 sm:py-1.5 font-bold flex items-center gap-1 cursor-default opacity-70">
+                              <span>✓</span>{" "}
+                              <span className="hidden sm:inline">Added</span>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddFromChat(movie);
+                              }}
+                              className="text-[10px] sm:text-xs border border-[#c8963c]/50 text-[#c8963c] px-3 py-1.5 rounded-lg font-bold hover:bg-[#c8963c] hover:text-[#12100e] transition-all active:scale-95 whitespace-nowrap shadow-sm"
+                            >
+                              + Add
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -381,13 +375,14 @@ export default function AiChat() {
               </div>
             </div>
           ))}
+
           {isLoading && (
             <div className="flex justify-start animate-in fade-in duration-300">
-              <div className="bg-gray-800 border border-gray-700 p-4 rounded-2xl rounded-tl-none">
-                <div className="flex gap-1.5">
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]"></div>
+              <div className="bg-[#1a1714] border border-[#c8963c]/30 p-5 rounded-2xl rounded-tl-none shadow-lg">
+                <div className="flex gap-2">
+                  <div className="w-2 h-2 bg-[#c8963c] rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.2s]"></div>
+                  <div className="w-2 h-2 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.4s]"></div>
                 </div>
               </div>
             </div>
@@ -396,13 +391,13 @@ export default function AiChat() {
         </div>
       </div>
 
-      <div className="p-3 sm:p-4 bg-gray-900 border-t border-gray-800 shrink-0 pb-[max(env(safe-area-inset-bottom),12px)]">
+      <div className="p-3 sm:p-5 bg-[#12100e] border-t border-[#c8963c]/20 shrink-0 pb-[max(env(safe-area-inset-bottom),16px)] shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
         <div className="max-w-3xl w-full mx-auto flex items-center gap-2 sm:gap-3">
           <button
             onClick={handleClearChat}
             disabled={isLoading || messages.length <= 1}
             title="Clear chat"
-            className="flex-shrink-0 p-3 sm:p-4 text-gray-500 bg-gray-800 border border-gray-700 rounded-2xl hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-all group disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            className="flex-shrink-0 p-3 sm:p-4 text-[#c8963c]/50 bg-[#1a1714] border border-[#c8963c]/20 rounded-2xl hover:text-red-400 hover:bg-red-900/20 hover:border-red-500/30 transition-all group disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
           >
             <svg
               className="w-5 h-5 group-active:scale-90 transition-transform"
@@ -419,21 +414,23 @@ export default function AiChat() {
             </svg>
           </button>
 
-          <form onSubmit={handleSend} className="relative flex-grow">
+          <form onSubmit={handleSend} className="relative flex-grow group">
             <input
               type="text"
               value={input}
               disabled={isLoading}
               onChange={(e) => setInput(e.target.value)}
               placeholder={
-                isLoading ? "Thinking..." : "Describe a movie or TV show..."
+                isLoading
+                  ? "Thinking..."
+                  : "Describe a movie, ask a question..."
               }
-              className="w-full pl-5 pr-14 py-3 sm:py-4 bg-gray-800 border border-gray-700 rounded-2xl text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30 shadow-2xl transition-all disabled:opacity-50 text-base"
+              className="w-full pl-5 pr-14 py-3 sm:py-4 bg-[#1a1714] border border-[#c8963c]/30 rounded-2xl text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 shadow-inner transition-all disabled:opacity-50 text-base"
             />
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="absolute right-1.5 sm:right-2 top-1.5 bottom-1.5 px-4 sm:px-6 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-500 transition-all active:scale-95 disabled:bg-gray-700 disabled:text-gray-500 text-lg"
+              className="absolute right-1.5 sm:right-2 top-1.5 bottom-1.5 px-4 sm:px-6 bg-[#c8963c] text-[#12100e] rounded-xl font-black hover:bg-[#e8c070] transition-all active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 text-lg shadow-md"
             >
               {isLoading ? "..." : "→"}
             </button>
@@ -442,8 +439,8 @@ export default function AiChat() {
       </div>
 
       {toastMessage && (
-        <div className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-10 sm:bottom-10 bg-gray-800 border border-gray-700 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center justify-center sm:justify-start gap-3 animate-in slide-in-from-bottom-5 z-50">
-          <span className="font-bold text-xs sm:text-sm">{toastMessage}</span>
+        <div className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-10 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-6 py-4 rounded-xl shadow-2xl flex items-center justify-center sm:justify-start gap-3 animate-in slide-in-from-bottom-5 z-50 uppercase tracking-widest font-bold">
+          <span className="text-xs sm:text-sm">{toastMessage}</span>
         </div>
       )}
     </div>

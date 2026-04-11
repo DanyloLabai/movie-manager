@@ -12,7 +12,7 @@ import { ChatMessage } from './ai-chat.controller';
 
 interface ParsedAiResponse {
   message: string;
-  movies: { title: string; year?: number }[];
+  movies?: { title: string; year?: number }[];
   error?: string;
 }
 
@@ -35,12 +35,44 @@ export class AiChatService {
 
   async searchMovieByDescription(
     messages: ChatMessage[],
+    userId: number,
   ): Promise<{ message: string; movies?: MovieResultDto[] }> {
     let aiResponse: ParsedAiResponse;
 
+    let userContext = 'No specific user preferences available.';
+    try {
+      const profile = await this.moviesService.getProfileData(userId);
+      const favs =
+        profile.favorites?.map((f: any) => f.title).join(', ') || 'None';
+      const inPlans =
+        profile.recent?.map((r: any) => r.title).join(', ') || 'None';
+
+      const watched = await this.moviesService.getWatchedMovies(userId);
+
+      const highlyRated =
+        watched
+          .filter((m: any) => m.rating >= 4)
+          .map((m: any) => m.title)
+          .slice(0, 15)
+          .join(', ') || 'None';
+
+      userContext = `
+        User Data is split into two categories:
+        1. PROVEN TASTES (Movies the user absolutely loves - added to favorites or rated 4-5 stars): ${favs}, ${highlyRated}.
+        2. CURRENT INTEREST (Movies in their "To Watch" list. They haven't seen these yet, but are currently interested in them): ${inPlans}.
+        
+        RECOMMENDATION RULES:
+        - Use "PROVEN TASTES" as the baseline for what genres/styles the user enjoys.
+        - Use "CURRENT INTEREST" to understand what mood or genre they are currently leaning towards.
+        - STRICT RULE: NEVER recommend movies that are already in ANY of these lists (${favs}, ${highlyRated}, ${inPlans}). The user already knows about them. Suggest new, similar content.
+      `;
+    } catch (e) {
+      this.logger.warn('Could not fetch user profile for AI context');
+    }
+
     try {
       this.logger.log('Attempting to guess media with Groq (Primary)...');
-      const rawText = await this.getMovieTitleFromGroq(messages);
+      const rawText = await this.getMovieTitleFromGroq(messages, userContext);
       aiResponse = this.parseJson(rawText) as ParsedAiResponse;
     } catch (groqError: any) {
       this.logger.error(
@@ -49,16 +81,16 @@ export class AiChatService {
       this.logger.warn(`Switching to Gemini (Fallback)...`);
 
       try {
-        const rawText = await this.getMovieTitleFromGemini(messages);
+        const rawText = await this.getMovieTitleFromGemini(
+          messages,
+          userContext,
+        );
         aiResponse = this.parseJson(rawText) as ParsedAiResponse;
       } catch (geminiError: any) {
         const geminiMessage =
           geminiError instanceof Error
             ? geminiError.message
             : 'Unknown Gemini error';
-        this.logger.error(
-          `Both AI services failed. Last error: ${geminiMessage}`,
-        );
         throw new InternalServerErrorException(
           'All AI services are currently unavailable',
           geminiMessage,
@@ -66,20 +98,15 @@ export class AiChatService {
       }
     }
 
-    if (
-      aiResponse.error === 'ERROR_NOT_FOUND' ||
-      !aiResponse.movies ||
-      aiResponse.movies.length === 0
-    ) {
+    if (!aiResponse.movies || aiResponse.movies.length === 0) {
       return {
         message:
           aiResponse.message ||
-          "Unfortunately, I couldn't find relevant media for this request.",
+          'Я не знайшов конкретних фільмів, але завжди готовий поговорити!',
       };
     }
 
     const foundMovies: MovieResultDto[] = [];
-
     for (const item of aiResponse.movies.slice(0, 10)) {
       const mediaData = await this.moviesService.findMovieByTitle(
         item.title,
@@ -92,7 +119,7 @@ export class AiChatService {
 
     if (foundMovies.length === 0) {
       return {
-        message: `I found some titles, but couldn't locate their details in the database.`,
+        message: `${aiResponse.message}\n\n(P.S. Я знайшов кілька назв, але не зміг підтягнути їхні постери з бази).`,
       };
     }
 
@@ -105,26 +132,22 @@ export class AiChatService {
   private parseJson(raw: string): any {
     try {
       const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) {
-        throw new Error('No JSON object found in response');
-      }
+      if (!match) throw new Error('No JSON object found in response');
       return JSON.parse(match[0]);
     } catch {
-      this.logger.error(
-        `Failed to parse AI response as JSON. Raw text: ${raw}`,
-      );
       throw new Error('Invalid JSON format from AI');
     }
   }
 
   private async getMovieTitleFromGemini(
     messages: ChatMessage[],
+    userContext: string,
   ): Promise<string> {
     const model = this.genAI.getGenerativeModel({
       model: 'gemini-1.5-flash-latest',
-      systemInstruction: this.getSystemPrompt(),
+      systemInstruction: this.getSystemPrompt(userContext),
       generationConfig: {
-        temperature: 0.3,
+        temperature: 0.5,
         responseMimeType: 'application/json',
       },
     });
@@ -140,51 +163,45 @@ export class AiChatService {
 
   private async getMovieTitleFromGroq(
     messages: ChatMessage[],
+    userContext: string,
   ): Promise<string> {
-    type GroqMessage = {
-      role: 'system' | 'user' | 'assistant';
-      content: string;
-    };
-
-    const systemMsg: GroqMessage = {
-      role: 'system',
-      content: this.getSystemPrompt(),
-    };
-
-    const userMsgs: GroqMessage[] = messages.map((m) => {
-      const groqRole: 'user' | 'assistant' =
-        m.role === 'assistant' ? 'assistant' : 'user';
-      return {
-        role: groqRole,
+    const formattedMessages = [
+      { role: 'system' as const, content: this.getSystemPrompt(userContext) },
+      ...messages.map((m) => ({
+        role: (m.role === 'assistant' ? 'assistant' : 'user') as
+          | 'user'
+          | 'assistant',
         content: m.content,
-      };
-    });
-
-    const formattedMessages: GroqMessage[] = [systemMsg, ...userMsgs];
+      })),
+    ];
 
     const completion = await this.groq.chat.completions.create({
       messages: formattedMessages,
       model: 'llama-3.3-70b-versatile',
-      temperature: 0.3,
+      temperature: 0.5,
       response_format: { type: 'json_object' },
     });
 
     return (
       completion.choices[0]?.message?.content?.trim() ||
-      '{"error": "ERROR_NOT_FOUND"}'
+      '{"message": "Error connecting to AI.", "movies": []}'
     );
   }
 
-  private getSystemPrompt(): string {
+  private getSystemPrompt(userContext: string): string {
     return `You are an elite movie, TV series, anime, and pop-culture expert assistant. You perfectly understand all languages, including Ukrainian.
     
-    Analyze the conversation history and the user's latest request carefully. Users might describe plots, character appearances (e.g., 'a boy with an arrow on his head' -> The Last Airbender), memes, or vague memories. 
-    Internally translate the request to English to find the absolute best match across global cinema, TV series, live-action adaptations, and anime.
-    Suggest up to 10 highly relevant titles.
+    Here is the data about the current user's preferences:
+    ${userContext}
+    If the user asks for recommendations "based on my taste", "for me", or something similar, use this data to tailor your suggestions.
+
+    You have TWO modes of answering, depending on the user's request:
+    MODE 1 (Conversational): If the user asks a general question (e.g., "Who directed Inception?", "Hello", "How are you?"), answer their question accurately and friendly in the 'message' field, and leave the 'movies' array EMPTY [].
+    MODE 2 (Recommendations/Search): If the user describes a plot, asks for recommendations, or tries to remember a title, act as a search engine. Suggest up to 10 highly relevant titles in the 'movies' array, and provide a short friendly intro in the 'message' field.
     
-    Return your answer ONLY as a valid JSON object with the exact following structure (NOTE: put TV shows and anime in the "movies" array as well):
+    Return your answer ONLY as a valid JSON object with the exact following structure:
     {
-      "message": "A short, friendly conversational reply explaining your choices. THIS MESSAGE MUST BE IN THE SAME LANGUAGE AS THE USER'S PROMPT.",
+      "message": "Your friendly reply. THIS MUST BE IN THE SAME LANGUAGE AS THE USER'S PROMPT.",
       "movies": [
         {
           "title": "Exact official English title on TMDB",
@@ -193,7 +210,6 @@ export class AiChatService {
       ]
     }
     
-    CRITICAL RULE: Output ABSOLUTELY NOTHING EXCEPT THE JSON OBJECT. No markdown formatting. 
-    If no titles match, return {"message": "A polite message IN THE USER'S LANGUAGE stating you couldn't find a match.", "movies": [], "error": "ERROR_NOT_FOUND"}.`;
+    CRITICAL RULE: Output ABSOLUTELY NOTHING EXCEPT THE JSON OBJECT. No markdown formatting outside the JSON.`;
   }
 }

@@ -233,15 +233,15 @@ export default function MovieDetails() {
 
   if (isLoading)
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#12100e] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#c8963c] border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
 
   if (!movie)
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-        <Link to="/search" className="text-blue-500 font-bold hover:underline">
+      <div className="min-h-screen bg-[#12100e] text-[#f0e6cc] flex items-center justify-center">
+        <Link to="/search" className="text-[#c8963c] font-bold hover:underline">
           Movie not found. Back to Search
         </Link>
       </div>
@@ -255,17 +255,17 @@ export default function MovieDetails() {
     : null;
 
   return (
-    <div className="min-h-[100dvh] bg-gray-900 font-sans text-gray-100 relative pb-24 overscroll-none">
-      <header className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-gray-800 bg-gray-900/90 backdrop-blur-md sticky top-0 z-40">
+    <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative pb-24 overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
+      <header className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5">
         <Link
           to="/search"
-          className="text-lg sm:text-xl font-black bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent uppercase tracking-tighter"
+          className="text-lg sm:text-xl font-black text-[#c8963c] uppercase tracking-tighter drop-shadow-md"
         >
           Movie Tracker
         </Link>
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-xs font-black uppercase text-gray-500 hover:text-white transition active:scale-95"
+          className="flex items-center gap-1.5 text-xs font-black uppercase text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"
         >
           <svg
             className="w-4 h-4"
@@ -284,15 +284,15 @@ export default function MovieDetails() {
         </button>
       </header>
 
-      <div className="relative w-full h-[35vh] sm:h-[50vh] bg-gray-800">
+      <div className="relative w-full h-[35vh] sm:h-[50vh] bg-[#1a1714]">
         {backdropUrl && (
           <>
             <img
               src={backdropUrl}
               alt="Backdrop"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover opacity-80"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#12100e] via-[#12100e]/50 to-transparent" />
           </>
         )}
       </div>
@@ -304,27 +304,27 @@ export default function MovieDetails() {
               <img
                 src={posterUrl}
                 alt={movie.title}
-                className="w-full rounded-2xl shadow-2xl border border-gray-700"
+                className="w-full rounded-2xl shadow-2xl border border-[#c8963c]/30"
               />
             ) : (
-              <div className="w-full aspect-[2/3] rounded-2xl bg-gray-800 border border-gray-700" />
+              <div className="w-full aspect-[2/3] rounded-2xl bg-[#1a1714] border border-[#c8963c]/20" />
             )}
           </div>
 
           <div className="flex-1 min-w-0 pb-1">
-            <span className="inline-block mb-2 px-2 py-0.5 bg-gray-800 border border-gray-700 rounded-md text-[9px] text-gray-500 font-black uppercase tracking-widest">
+            <span className="inline-block mb-2 px-2 py-0.5 bg-[#1a1714] border border-[#c8963c]/30 rounded-md text-[9px] text-[#f0e6cc]/60 font-black uppercase tracking-widest">
               {mediaType === "tv" ? "TV Show" : "Movie"}
             </span>
-            <h1 className="text-xl font-black text-white tracking-tight leading-tight mb-2 line-clamp-3">
+            <h1 className="text-xl font-black text-[#f0e6cc] tracking-tight leading-tight mb-2 line-clamp-3">
               {movie.title}
             </h1>
-            <div className="flex flex-wrap gap-2 text-[10px] text-gray-400 font-bold items-center">
-              <span className="text-white">
+            <div className="flex flex-wrap gap-2 text-[10px] text-[#f0e6cc]/60 font-bold items-center">
+              <span className="text-[#f0e6cc]">
                 {movie.release_date?.split("-")[0]}
               </span>
-              <span className="text-gray-700">•</span>
+              <span className="text-[#c8963c]/50">•</span>
               <span>{movie.runtime || "0"} min</span>
-              <span className="text-yellow-500 px-2 py-0.5 bg-yellow-500/10 rounded-md border border-yellow-500/20 font-black">
+              <span className="text-[#c8963c] px-2 py-0.5 bg-[#c8963c]/10 rounded-md border border-[#c8963c]/20 font-black">
                 ★ {movie.vote_average?.toFixed(1)}
               </span>
             </div>
@@ -332,7 +332,7 @@ export default function MovieDetails() {
               {movie.genres?.slice(0, 3).map((g) => (
                 <span
                   key={g.id}
-                  className="text-[9px] text-gray-600 uppercase tracking-widest font-black"
+                  className="text-[9px] text-[#f0e6cc]/50 uppercase tracking-widest font-black"
                 >
                   {g.name}
                 </span>
@@ -344,11 +344,11 @@ export default function MovieDetails() {
         <div className="hidden sm:grid grid-cols-12 gap-8 lg:gap-12">
           <div className="col-span-4 lg:col-span-3 flex flex-col gap-6">
             <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-b from-blue-500/20 to-purple-500/20 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000" />
+              <div className="absolute -inset-1 bg-gradient-to-b from-[#c8963c]/20 to-[#9a732a]/20 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000" />
               <img
                 src={posterUrl || ""}
                 alt={movie.title}
-                className="relative w-full rounded-[2rem] shadow-2xl border border-gray-700 bg-gray-800 transition-transform duration-500 group-hover:scale-[1.02]"
+                className="relative w-full rounded-[2rem] shadow-2xl border border-[#c8963c]/30 bg-[#1a1714] transition-transform duration-500 group-hover:scale-[1.02]"
               />
             </div>
             <ActionPanel
@@ -367,53 +367,51 @@ export default function MovieDetails() {
           </div>
 
           <div className="col-span-8 lg:col-span-9 flex flex-col pt-32 md:pt-40">
-            <h1 className="text-4xl sm:text-6xl font-black text-white mb-4 tracking-tighter">
+            <h1 className="text-4xl sm:text-6xl font-black text-[#f0e6cc] mb-4 tracking-tighter">
               {movie.title}
-              <span className="ml-4 inline-block px-2.5 py-1 bg-gray-800 border border-gray-700 rounded-lg text-xs align-middle text-gray-500 font-bold uppercase tracking-widest">
+              <span className="ml-4 inline-block px-2.5 py-1 bg-[#1a1714] border border-[#c8963c]/30 rounded-lg text-xs align-middle text-[#f0e6cc]/60 font-bold uppercase tracking-widest">
                 {mediaType === "tv" ? "TV SHOW" : "MOVIE"}
               </span>
             </h1>
-            <div className="flex flex-wrap gap-4 text-xs sm:text-sm text-gray-400 mb-8 items-center font-bold">
-              <span className="text-white">
+            <div className="flex flex-wrap gap-4 text-xs sm:text-sm text-[#f0e6cc]/60 mb-8 items-center font-bold">
+              <span className="text-[#f0e6cc]">
                 {movie.release_date?.split("-")[0]}
               </span>
-              <span className="w-1.5 h-1.5 bg-gray-700 rounded-full" />
+              <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
               <span>{movie.runtime || "0"} min</span>
-              <span className="w-1.5 h-1.5 bg-gray-700 rounded-full" />
-              <span className="text-yellow-500 px-2 py-1 bg-yellow-500/10 rounded-lg border border-yellow-500/20 tracking-tighter font-black">
+              <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
+              <span className="text-[#c8963c] px-2 py-1 bg-[#c8963c]/10 rounded-lg border border-[#c8963c]/20 tracking-tighter font-black">
                 IMDB: {movie.vote_average?.toFixed(1)}
               </span>
               <div className="flex gap-2">
                 {movie.genres?.slice(0, 3).map((g) => (
                   <span
                     key={g.id}
-                    className="text-[10px] text-gray-500 uppercase tracking-widest"
+                    className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest"
                   >
                     {g.name}
                   </span>
                 ))}
               </div>
             </div>
-            <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-12 max-w-4xl font-medium">
+            <p className="text-[#f0e6cc]/80 text-base sm:text-lg leading-relaxed mb-12 max-w-4xl font-medium">
               {movie.overview}
             </p>
             {movie.trailerUrl && <TrailerBlock trailerUrl={movie.trailerUrl} />}
           </div>
         </div>
 
-        {/* MOBILE: overview + actions */}
         <div className="sm:hidden mt-4 flex flex-col gap-4">
-          <p className="text-gray-400 text-sm leading-relaxed font-medium">
+          <p className="text-[#f0e6cc]/80 text-sm leading-relaxed font-medium">
             {movie.overview}
           </p>
 
-          {/* Mobile Action Panel */}
-          <div className="bg-gray-800/60 border border-gray-700/50 p-4 rounded-3xl shadow-xl backdrop-blur-md">
+          <div className="bg-[#1a1714]/80 border border-[#c8963c]/20 p-4 rounded-3xl shadow-xl backdrop-blur-md">
             {!status ? (
               <div className="flex gap-3">
                 <button
                   onClick={() => handleAddNewMovie(false)}
-                  className="flex-1 py-3 bg-blue-600 rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-blue-500 transition active:scale-95 shadow-lg shadow-blue-900/20"
+                  className="flex-1 py-3 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg"
                 >
                   + Watchlist
                 </button>
@@ -422,7 +420,7 @@ export default function MovieDetails() {
                     setPendingAction("new_watched");
                     setIsRatingModalOpen(true);
                   }}
-                  className="flex-1 py-3 bg-green-600 rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-green-500 transition active:scale-95 shadow-lg shadow-green-900/20"
+                  className="flex-1 py-3 bg-[#c8963c] text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 shadow-lg"
                 >
                   ✓ Watched
                 </button>
@@ -431,13 +429,21 @@ export default function MovieDetails() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span
-                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${status.isWatched ? "text-green-400 bg-green-400/10" : "text-blue-400 bg-blue-400/10"}`}
+                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
+                      status.isWatched
+                        ? "text-[#c8963c] bg-[#c8963c]/10 border-[#c8963c]/30"
+                        : "text-[#f0e6cc]/60 bg-[#12100e] border-[#c8963c]/20"
+                    }`}
                   >
                     {status.isWatched ? "✓ Watched" : "⋯ In Plans"}
                   </span>
                   <button
                     onClick={handleToggleFavorite}
-                    className={`p-2.5 rounded-xl transition active:scale-90 ${status.isFavorite ? "bg-red-500 text-white shadow-lg shadow-red-900/40" : "bg-gray-700 text-gray-400"}`}
+                    className={`p-2.5 rounded-xl transition active:scale-90 border ${
+                      status.isFavorite
+                        ? "bg-red-500/20 text-red-500 border-red-500/30 shadow-lg"
+                        : "bg-[#12100e] text-[#f0e6cc]/30 border-[#c8963c]/20 hover:text-red-500"
+                    }`}
                   >
                     <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                       <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
@@ -446,7 +452,7 @@ export default function MovieDetails() {
                 </div>
 
                 <div>
-                  <p className="text-[9px] font-black text-gray-500 mb-2 uppercase tracking-widest">
+                  <p className="text-[9px] font-black text-[#f0e6cc]/50 mb-2 uppercase tracking-widest">
                     Your Rating
                   </p>
                   <div
@@ -458,7 +464,11 @@ export default function MovieDetails() {
                         key={s}
                         onMouseEnter={() => setHoveredStar(s)}
                         onClick={() => handleRate(s)}
-                        className={`text-3xl transition-all duration-150 active:scale-90 ${(hoveredStar || status.rating || 0) >= s ? "text-yellow-400" : "text-gray-700"}`}
+                        className={`text-3xl transition-all duration-150 active:scale-90 ${
+                          (hoveredStar || status.rating || 0) >= s
+                            ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
+                            : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
+                        }`}
                       >
                         ★
                       </button>
@@ -468,7 +478,7 @@ export default function MovieDetails() {
 
                 <button
                   onClick={handleRemove}
-                  className="w-full py-2 bg-red-900/20 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/20 hover:bg-red-600 hover:text-white transition active:scale-95"
+                  className="w-full py-2 bg-red-900/20 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/30 hover:bg-red-600 hover:text-[#f0e6cc] transition active:scale-95"
                 >
                   Remove from list
                 </button>
@@ -476,16 +486,15 @@ export default function MovieDetails() {
             )}
           </div>
 
-          {/* Mobile Trailer */}
           {movie.trailerUrl && (
             <div className="mt-2">
               <div className="flex items-center gap-3 mb-3">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest italic">
+                <h3 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest italic">
                   Trailer
                 </h3>
-                <div className="h-px flex-grow bg-gradient-to-r from-gray-700 to-transparent" />
+                <div className="h-px flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent" />
               </div>
-              <div className="relative aspect-video rounded-2xl overflow-hidden border border-gray-700/50 bg-black shadow-xl">
+              <div className="relative aspect-video rounded-2xl overflow-hidden border border-[#c8963c]/30 bg-[#12100e] shadow-xl">
                 <iframe
                   src={`${movie.trailerUrl}?rel=0&showinfo=0&modestbranding=1&autoplay=0`}
                   title="Trailer"
@@ -502,16 +511,20 @@ export default function MovieDetails() {
         <div className="mt-10 sm:mt-20 max-w-7xl mx-auto">
           <div className="flex items-center justify-between px-4 sm:px-6 mb-4 sm:mb-8">
             <div className="flex items-center gap-4">
-              <h3 className="text-lg sm:text-2xl font-black text-white uppercase tracking-tighter italic">
+              <h3 className="text-lg sm:text-2xl font-black text-[#f0e6cc] uppercase tracking-tighter italic">
                 More Like This
               </h3>
-              <div className="hidden sm:block h-[1px] w-24 bg-gray-800" />
+              <div className="hidden sm:block h-[1px] w-24 bg-[#c8963c]/20" />
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => scrollSlider("left")}
                 disabled={!canScrollLeft}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center border transition active:scale-90 ${canScrollLeft ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700" : "bg-gray-900 border-gray-800 text-gray-700 cursor-not-allowed"}`}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center border transition active:scale-90 ${
+                  canScrollLeft
+                    ? "bg-[#1a1714] border-[#c8963c]/30 text-[#c8963c] hover:bg-[#c8963c]/10"
+                    : "bg-[#12100e] border-[#c8963c]/10 text-[#f0e6cc]/20 cursor-not-allowed"
+                }`}
               >
                 <svg
                   className="w-4 h-4"
@@ -530,7 +543,11 @@ export default function MovieDetails() {
               <button
                 onClick={() => scrollSlider("right")}
                 disabled={!canScrollRight}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center border transition active:scale-90 ${canScrollRight ? "bg-gray-800 border-gray-700 text-white hover:bg-gray-700" : "bg-gray-900 border-gray-800 text-gray-700 cursor-not-allowed"}`}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center border transition active:scale-90 ${
+                  canScrollRight
+                    ? "bg-[#1a1714] border-[#c8963c]/30 text-[#c8963c] hover:bg-[#c8963c]/10"
+                    : "bg-[#12100e] border-[#c8963c]/10 text-[#f0e6cc]/20 cursor-not-allowed"
+                }`}
               >
                 <svg
                   className="w-4 h-4"
@@ -559,7 +576,7 @@ export default function MovieDetails() {
               <Link
                 key={m.id}
                 to={`/movie/${m.id}?type=${mediaType}`}
-                className="group flex-shrink-0 w-36 sm:w-44 snap-start bg-gray-800/40 rounded-2xl sm:rounded-[2rem] overflow-hidden border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-1 shadow-lg"
+                className="group flex-shrink-0 w-36 sm:w-44 snap-start bg-[#1a1714] rounded-2xl sm:rounded-[2rem] overflow-hidden border border-[#c8963c]/20 hover:border-[#c8963c]/70 transition-all duration-300 hover:-translate-y-1 shadow-lg"
               >
                 <div className="aspect-[2/3] relative overflow-hidden">
                   {m.posterUrl ? (
@@ -569,19 +586,19 @@ export default function MovieDetails() {
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gray-900 flex items-center justify-center text-[9px] text-gray-700 font-bold uppercase tracking-widest">
+                    <div className="w-full h-full bg-[#12100e] flex items-center justify-center text-[9px] text-[#f0e6cc]/30 font-bold uppercase tracking-widest">
                       No Image
                     </div>
                   )}
-                  <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md px-1.5 py-0.5 rounded-md text-[9px] text-yellow-500 font-black border border-yellow-500/20">
+                  <div className="absolute top-2 right-2 bg-[#12100e]/80 backdrop-blur-md px-1.5 py-0.5 rounded-md text-[9px] text-[#c8963c] font-black border border-[#c8963c]/30">
                     ★ {m.rating?.toFixed(1) || "0.0"}
                   </div>
                 </div>
                 <div className="p-3 sm:p-4">
-                  <h4 className="text-[10px] sm:text-xs font-bold text-white truncate group-hover:text-blue-400 transition-colors uppercase tracking-tight">
+                  <h4 className="text-[10px] sm:text-xs font-bold text-[#f0e6cc] truncate group-hover:text-[#c8963c] transition-colors uppercase tracking-tight">
                     {m.title}
                   </h4>
-                  <p className="text-[8px] sm:text-[9px] text-gray-600 mt-0.5 font-black uppercase tracking-widest">
+                  <p className="text-[8px] sm:text-[9px] text-[#f0e6cc]/50 mt-0.5 font-black uppercase tracking-widest">
                     {m.releaseYear}
                   </p>
                 </div>
@@ -592,19 +609,19 @@ export default function MovieDetails() {
       )}
 
       {isRatingModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/90 backdrop-blur-xl p-4">
-          <div className="bg-gray-800 border border-gray-700 p-8 sm:p-10 rounded-[2.5rem] sm:rounded-[3.5rem] shadow-2xl w-full max-w-sm text-center relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500" />
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#12100e]/90 backdrop-blur-xl p-4">
+          <div className="bg-[#1a1714] border border-[#c8963c]/30 p-8 sm:p-10 rounded-[2.5rem] sm:rounded-[3.5rem] shadow-2xl w-full max-w-sm text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
             <button
               onClick={() => setIsRatingModalOpen(false)}
-              className="absolute top-5 right-6 text-gray-500 hover:text-white transition text-xl active:scale-90"
+              className="absolute top-5 right-6 text-[#f0e6cc]/50 hover:text-[#c8963c] transition text-xl active:scale-90"
             >
               ✕
             </button>
-            <h3 className="text-xl sm:text-2xl font-black text-white mb-2 uppercase tracking-tighter">
+            <h3 className="text-xl sm:text-2xl font-black text-[#c8963c] mb-2 uppercase tracking-tighter">
               How was it?
             </h3>
-            <p className="text-gray-500 text-[10px] mb-8 uppercase tracking-[0.2em] font-bold px-4">
+            <p className="text-[#f0e6cc]/60 text-[10px] mb-8 uppercase tracking-[0.2em] font-bold px-4">
               Rate to mark as watched
             </p>
             <div
@@ -616,7 +633,11 @@ export default function MovieDetails() {
                   key={s}
                   onMouseEnter={() => setModalHoveredStar(s)}
                   onClick={() => handleModalRate(s)}
-                  className={`text-4xl sm:text-5xl transition-all duration-150 active:scale-90 ${modalHoveredStar >= s ? "text-yellow-400 drop-shadow-[0_0_12px_rgba(250,204,21,0.6)]" : "text-gray-700"}`}
+                  className={`text-4xl sm:text-5xl transition-all duration-150 active:scale-90 ${
+                    modalHoveredStar >= s
+                      ? "text-[#c8963c] drop-shadow-[0_0_12px_rgba(200,150,60,0.5)]"
+                      : "text-[#f0e6cc]/20"
+                  }`}
                 >
                   ★
                 </button>
@@ -624,7 +645,7 @@ export default function MovieDetails() {
             </div>
             <button
               onClick={handleModalSkip}
-              className="text-[10px] text-gray-500 hover:text-blue-400 transition font-black uppercase tracking-[0.3em] border-b border-transparent hover:border-blue-400/50 pb-1"
+              className="text-[10px] text-[#f0e6cc]/50 hover:text-[#c8963c] transition font-black uppercase tracking-[0.3em] border-b border-transparent hover:border-[#c8963c]/50 pb-1"
             >
               Skip Rating
             </button>
@@ -633,8 +654,8 @@ export default function MovieDetails() {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 sm:w-auto bg-gray-800 border border-gray-700 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 z-[60] backdrop-blur-md">
-          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse flex-shrink-0" />
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 sm:w-auto bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 z-[60] backdrop-blur-md">
+          <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-pulse flex-shrink-0" />
           <span className="font-bold text-[10px] uppercase tracking-[0.2em]">
             {toastMessage}
           </span>
@@ -664,18 +685,18 @@ function ActionPanel({
   onRemove: () => void;
 }) {
   return (
-    <div className="bg-gray-800/40 border border-gray-700/50 p-6 rounded-[2rem] shadow-2xl backdrop-blur-md">
+    <div className="bg-[#1a1714] border border-[#c8963c]/20 p-6 rounded-[2rem] shadow-2xl backdrop-blur-md">
       {!status ? (
         <div className="flex flex-col gap-3">
           <button
             onClick={onAddWatchlist}
-            className="w-full py-3.5 bg-blue-600 rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-blue-500 transition active:scale-95 shadow-lg shadow-blue-900/20"
+            className="w-full py-3.5 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg"
           >
             Watchlist
           </button>
           <button
             onClick={onWatched}
-            className="w-full py-3.5 bg-green-600 rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-green-500 transition active:scale-95 shadow-lg shadow-green-900/20"
+            className="w-full py-3.5 bg-[#c8963c] text-[#12100e] rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 shadow-lg"
           >
             Watched
           </button>
@@ -684,21 +705,29 @@ function ActionPanel({
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <span
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${status.isWatched ? "text-green-400 bg-green-400/10" : "text-blue-400 bg-blue-400/10"}`}
+              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
+                status.isWatched
+                  ? "text-[#c8963c] bg-[#c8963c]/10 border-[#c8963c]/30"
+                  : "text-[#f0e6cc]/60 bg-[#12100e] border-[#c8963c]/20"
+              }`}
             >
               {status.isWatched ? "Watched" : "In Plans"}
             </span>
             <button
               onClick={onToggleFavorite}
-              className={`p-2.5 rounded-xl transition ${status.isFavorite ? "bg-red-500 text-white shadow-lg shadow-red-900/40" : "bg-gray-700 text-gray-400"}`}
+              className={`p-2.5 rounded-xl transition border ${
+                status.isFavorite
+                  ? "bg-red-500/20 text-red-500 border-red-500/30 shadow-lg"
+                  : "bg-[#12100e] text-[#f0e6cc]/30 border-[#c8963c]/20 hover:text-red-500"
+              }`}
             >
               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               </svg>
             </button>
           </div>
-          <div className="pt-4 border-t border-gray-700/50">
-            <p className="text-[10px] font-black text-gray-500 mb-3 uppercase tracking-widest">
+          <div className="pt-4 border-t border-[#c8963c]/20">
+            <p className="text-[10px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
               Rate this media
             </p>
             <div
@@ -710,7 +739,11 @@ function ActionPanel({
                   key={s}
                   onMouseEnter={() => setHoveredStar(s)}
                   onClick={() => onRate(s)}
-                  className={`text-2xl transition-all duration-200 transform hover:scale-125 ${(hoveredStar || status.rating || 0) >= s ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" : "text-gray-700"}`}
+                  className={`text-2xl transition-all duration-200 transform hover:scale-125 ${
+                    (hoveredStar || status.rating || 0) >= s
+                      ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
+                      : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
+                  }`}
                 >
                   ★
                 </button>
@@ -719,7 +752,7 @@ function ActionPanel({
           </div>
           <button
             onClick={onRemove}
-            className="w-full py-2.5 bg-red-900/20 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/20 hover:bg-red-600 hover:text-white transition"
+            className="w-full py-2.5 bg-red-900/20 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/30 hover:bg-red-600 hover:text-[#f0e6cc] transition active:scale-95"
           >
             Remove from list
           </button>
@@ -733,14 +766,14 @@ function TrailerBlock({ trailerUrl }: { trailerUrl: string }) {
   return (
     <div className="w-full max-w-2xl">
       <div className="flex items-center gap-4 mb-6">
-        <h3 className="text-lg font-black text-white uppercase tracking-widest italic">
+        <h3 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest italic">
           Trailer
         </h3>
-        <div className="h-[1px] flex-grow bg-gradient-to-r from-gray-800 to-transparent" />
+        <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent" />
       </div>
       <div className="relative group">
-        <div className="absolute -inset-1 bg-blue-500/10 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-700" />
-        <div className="relative aspect-video rounded-[2rem] overflow-hidden border border-gray-700/50 bg-black shadow-2xl transition-transform duration-500 group-hover:scale-[1.01]">
+        <div className="absolute -inset-1 bg-[#c8963c]/10 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-700" />
+        <div className="relative aspect-video rounded-[2rem] overflow-hidden border border-[#c8963c]/30 bg-[#12100e] shadow-2xl transition-transform duration-500 group-hover:scale-[1.01]">
           <iframe
             src={`${trailerUrl}?rel=0&showinfo=0&modestbranding=1&autoplay=0`}
             title="Trailer"
