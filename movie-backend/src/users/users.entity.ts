@@ -4,7 +4,11 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToMany,
+  JoinTable,
+  OneToMany,
 } from 'typeorm';
+import { WatchlistItem } from '../movies/watchlist-entity';
 
 @Entity('users')
 export class User {
@@ -34,4 +38,15 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => WatchlistItem, (watchlistItem) => watchlistItem.user)
+  watchlist: WatchlistItem[];
+
+  @ManyToMany(() => User)
+  @JoinTable({
+    name: 'user_friends',
+    joinColumn: { name: 'userId', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'friendId', referencedColumnName: 'id' },
+  })
+  friends: User[];
 }

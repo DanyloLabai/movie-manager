@@ -78,6 +78,7 @@ export class UsersService {
       avatarUrl: user.avatarUrl,
     };
   }
+
   uploadImage(file: Express.Multer.File): Promise<any> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -97,8 +98,11 @@ export class UsersService {
     });
   }
 
-  async getPublicProfile(username: string) {
-    const user = await this.usersRepository.findOne({ where: { username } });
+  async getPublicProfile(targetUserId: number, currentUserId: number) {
+    const user = await this.usersRepository.findOne({
+      where: { id: targetUserId },
+      relations: ['friends'],
+    });
 
     if (!user) {
       throw new NotFoundException('Profile not found');
@@ -106,10 +110,64 @@ export class UsersService {
 
     const profileStats = await this.moviesService.getProfileData(user.id);
 
+    const isFriend =
+      user.friends?.some((friend) => friend.id === currentUserId) || false;
+
     return {
+      id: user.id,
       username: user.username,
       avatarUrl: user.avatarUrl,
+      isFriend: isFriend,
       ...profileStats,
     };
+  }
+
+  async addFriend(currentUserId: number, friendId: number) {
+    if (currentUserId === friendId) {
+      throw new BadRequestException('You cannot add yourself as a friend');
+    }
+
+    const currentUser = await this.usersRepository.findOne({
+      where: { id: currentUserId },
+      relations: ['friends'],
+    });
+
+    const friendToAdd = await this.usersRepository.findOne({
+      where: { id: friendId },
+      relations: ['friends'],
+    });
+
+    if (!currentUser || !friendToAdd) {
+      throw new NotFoundException('User not found');
+    }
+
+    const alreadyFriends = currentUser.friends.some((f) => f.id === friendId);
+    if (alreadyFriends) {
+      throw new BadRequestException('You are already friends');
+    }
+
+    currentUser.friends.push(friendToAdd);
+    friendToAdd.friends.push(currentUser);
+
+    await this.usersRepository.save([currentUser, friendToAdd]);
+
+    return { message: 'Friend added successfully' };
+  }
+
+  async getFriends(userId: number) {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      relations: ['friends'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user.friends.map((friend) => ({
+      id: friend.id,
+      username: friend.username,
+      avatarUrl: friend.avatarUrl,
+    }));
   }
 }

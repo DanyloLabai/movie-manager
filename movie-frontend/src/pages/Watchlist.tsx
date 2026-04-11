@@ -19,6 +19,7 @@ interface WatchlistItem {
 }
 
 interface ProfileData {
+  id?: number; // Додали ID для профілю
   favorites: WatchlistItem[];
   recent: WatchlistItem[];
   watchedCount?: number;
@@ -38,6 +39,7 @@ const getUserIdFromToken = (): string => {
   if (!token) return "guest";
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
+    // payload.sub або payload.id зазвичай зберігають ID юзера в токені
     return String(payload.sub || payload.id || payload.userId || "guest");
   } catch {
     return "guest";
@@ -135,6 +137,7 @@ export default function Watchlist() {
   });
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
 
   const [hoveredMovieId, setHoveredMovieId] = useState<number | null>(null);
   const [hoveredStar, setHoveredStar] = useState(0);
@@ -356,55 +359,17 @@ export default function Watchlist() {
     const userRank = getUserRank(watchedCount);
 
     const achievementsList = [
-      {
-        id: "first_blood",
-        isUnlocked: totalCount > 0,
-        unlockedText: "🏆 First Blood",
-        lockedText: "🔒 First Blood",
-        description: "Add your first movie or TV show to the tracker",
-      },
-      {
-        id: "critic",
-        isUnlocked: favoritesCount >= 5,
-        unlockedText: "⭐ Critic",
-        lockedText: `🔒 Critic (${favoritesCount}/5)`,
-        description: "Add 5 items to your favorites",
-      },
-      {
-        id: "cinephile",
-        isUnlocked: watchedCount >= 10,
-        unlockedText: "🍿 Cinephile",
-        lockedText: `🔒 Cinephile (${watchedCount}/10)`,
-        description: "Mark 10 items as watched",
-      },
-      {
-        id: "collector",
-        isUnlocked: totalCount >= 20,
-        unlockedText: "📚 Collector",
-        lockedText: `🔒 Collector (${totalCount}/20)`,
-        description: "Add 20 items to your tracker in total",
-      },
+      { id: "first_blood", isUnlocked: totalCount > 0, text: "🏆 First Blood" },
+      { id: "critic", isUnlocked: favoritesCount >= 5, text: "⭐ Critic" },
+      { id: "cinephile", isUnlocked: watchedCount >= 10, text: "🍿 Cinephile" },
+      { id: "collector", isUnlocked: totalCount >= 20, text: "📚 Collector" },
       {
         id: "tastemaker",
         isUnlocked: favoritesCount >= 20,
-        unlockedText: "💖 Tastemaker",
-        lockedText: `🔒 Tastemaker (${favoritesCount}/20)`,
-        description: "Add 20 items to your favorites",
+        text: "💖 Tastemaker",
       },
-      {
-        id: "filmbuff",
-        isUnlocked: watchedCount >= 50,
-        unlockedText: "🎬 Film Buff",
-        lockedText: `🔒 Film Buff (${watchedCount}/50)`,
-        description: "Mark 50 items as watched",
-      },
-      {
-        id: "librarian",
-        isUnlocked: totalCount >= 100,
-        unlockedText: "🏛️ Librarian",
-        lockedText: `🔒 Librarian (${totalCount}/100)`,
-        description: "Add 100 items to your tracker in total",
-      },
+      { id: "filmbuff", isUnlocked: watchedCount >= 50, text: "🎬 Film Buff" },
+      { id: "librarian", isUnlocked: totalCount >= 100, text: "🏛️ Librarian" },
     ];
 
     return (
@@ -426,10 +391,11 @@ export default function Watchlist() {
             </div>
 
             <div className="flex-grow w-full">
-              <div className="flex items-center justify-center sm:justify-start gap-3 mb-1">
-                <h2 className="text-xl sm:text-4xl font-black text-[#f0e6cc] tracking-tight text-center sm:text-left">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 sm:gap-3 mb-1">
+                <h2 className="text-xl sm:text-4xl font-black text-[#f0e6cc] tracking-tight text-center sm:text-left w-full sm:w-auto mb-2 sm:mb-0">
                   {username}
                 </h2>
+
                 <button
                   onClick={() => setIsEditModalOpen(true)}
                   className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full transition border border-[#c8963c]/30 shadow-sm flex-shrink-0 text-[#c8963c]"
@@ -437,16 +403,25 @@ export default function Watchlist() {
                 >
                   <span className="text-sm">✏️</span>
                 </button>
+
                 <button
                   onClick={() => {
-                    const url = `${window.location.origin}/user/${username}`;
+                    const currentId = profileData?.id || getUserIdFromToken();
+                    const url = `${window.location.origin}/user/${currentId}`;
                     navigator.clipboard.writeText(url);
-                    showToast("Profile link copied to clipboard! 🔗");
+                    showToast("Invite link copied! Send it to a friend 🔗");
                   }}
                   className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full transition border border-[#c8963c]/30 shadow-sm flex-shrink-0 text-[#c8963c]"
-                  title="Share Profile"
+                  title="Share Invite Link"
                 >
                   <span className="text-sm">🔗</span>
+                </button>
+
+                <button
+                  onClick={() => setIsFriendsModalOpen(true)}
+                  className="flex items-center justify-center h-9 sm:h-10 px-4 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full transition border border-[#c8963c]/30 shadow-sm flex-shrink-0 text-[#c8963c] font-black text-[10px] sm:text-xs uppercase tracking-widest"
+                >
+                  👥 Friends
                 </button>
               </div>
 
@@ -454,20 +429,17 @@ export default function Watchlist() {
                 {userRank}
               </p>
 
-              <div className="grid grid-cols-2 xs:grid-cols-3 sm:flex sm:flex-wrap gap-2">
-                {achievementsList.map((achievement) => (
+              <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                {achievementsList.map((ach) => (
                   <div
-                    key={achievement.id}
-                    title={achievement.description}
-                    className={`px-2 py-2 rounded-xl text-[10px] sm:text-xs font-bold transition-all duration-500 border text-center flex items-center justify-center ${
-                      achievement.isUnlocked
+                    key={ach.id}
+                    className={`px-2 py-1.5 rounded-lg text-[9px] font-bold transition-all border uppercase tracking-wider ${
+                      ach.isUnlocked
                         ? "bg-[#c8963c]/10 border-[#c8963c]/40 text-[#c8963c] shadow-sm"
                         : "bg-[#12100e] border-[#c8963c]/10 text-[#f0e6cc]/30 grayscale"
                     }`}
                   >
-                    {achievement.isUnlocked
-                      ? achievement.unlockedText
-                      : achievement.lockedText}
+                    {ach.isUnlocked ? ach.text : `🔒 ${ach.text.split(" ")[1]}`}
                   </div>
                 ))}
               </div>
@@ -674,14 +646,15 @@ export default function Watchlist() {
                               className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 hover:bg-[#1a1714] transition backdrop-blur-sm z-10"
                             >
                               <svg
-                                className="w-3.5 h-3.5 text-red-500 fill-red-500"
+                                className={`w-3.5 h-3.5 ${fav.isFavorite ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30 hover:text-red-500"}`}
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
+                                fill={fav.isFavorite ? "currentColor" : "none"}
                               >
                                 <path
                                   strokeLinecap="round"
                                   strokeLinejoin="round"
-                                  strokeWidth="2"
+                                  strokeWidth="2.5"
                                   d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                                 />
                               </svg>
@@ -885,8 +858,8 @@ export default function Watchlist() {
                       </div>
                     )}
                     {activeTab === "watchlist" && !released && (
-                      <div className="absolute top-2 left-2 bg-blue-500/90 text-white text-[8px] font-black px-2 py-1 rounded shadow-md uppercase tracking-wider pointer-events-none">
-                        UPCOMING
+                      <div className="absolute top-2 left-2 bg-blue-500/90 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider pointer-events-none">
+                        Upcoming
                       </div>
                     )}
 
@@ -927,16 +900,16 @@ export default function Watchlist() {
                     )}
                   </div>
 
-                  <div className="p-3 sm:p-4 flex flex-col flex-grow bg-[#1a1714]">
+                  <div className="p-3 sm:p-4 flex flex-col flex-grow z-10 bg-[#1a1714]">
                     <Link
                       to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                      className="text-xs sm:text-base font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition mb-1"
+                      className="text-xs sm:text-base font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition"
                       title={item.title}
                     >
                       {item.title}
                     </Link>
 
-                    <p className="text-[10px] uppercase tracking-wider text-[#f0e6cc]/50 font-semibold mb-2">
+                    <p className="hidden sm:block mt-1 text-[10px] uppercase tracking-wider text-[#f0e6cc]/50 mb-2 font-semibold">
                       {activeTab === "watchlist" &&
                       !released &&
                       item.releaseDate
@@ -944,15 +917,15 @@ export default function Watchlist() {
                         : `Added: ${new Date(item.addedAt).toLocaleDateString("en-US")}`}
                     </p>
 
-                    <div
-                      className="flex justify-center items-center gap-0.5 sm:gap-1 mb-2 mt-auto min-h-[28px]"
-                      onMouseLeave={() => {
-                        setHoveredMovieId(null);
-                        setHoveredStar(0);
-                      }}
-                    >
-                      {released || activeTab === "watched" ? (
-                        [1, 2, 3, 4, 5].map((star) => {
+                    {released || activeTab === "watched" ? (
+                      <div
+                        className="flex justify-center gap-0.5 sm:gap-1 mb-2 mt-auto pt-2"
+                        onMouseLeave={() => {
+                          setHoveredMovieId(null);
+                          setHoveredStar(0);
+                        }}
+                      >
+                        {[1, 2, 3, 4, 5].map((star) => {
                           const isActive =
                             (hoveredMovieId === item.tmdbId
                               ? hoveredStar
@@ -974,15 +947,19 @@ export default function Watchlist() {
                               ★
                             </button>
                           );
-                        })
-                      ) : (
-                        <span className="text-[9px] font-black text-[#f0e6cc]/20 uppercase tracking-[0.2em]">
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex justify-center mb-2 mt-auto pt-2">
+                        <span className="text-[9px] font-black text-[#f0e6cc]/20 uppercase tracking-[0.2em] py-2">
                           Unreleased
                         </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
-                    <div className="flex justify-between items-center gap-1 pt-3 border-t border-[#c8963c]/20">
+                    <div
+                      className={`flex justify-between items-center gap-1 pt-3 border-t border-[#c8963c]/20 ${!released && activeTab === "watchlist" ? "mt-auto" : ""}`}
+                    >
                       {activeTab === "watchlist" ? (
                         released ? (
                           <button
@@ -992,7 +969,20 @@ export default function Watchlist() {
                             Watched
                           </button>
                         ) : (
-                          <span className="text-[10px] font-black text-[#c8963c]/40 uppercase tracking-widest min-h-[32px] flex items-center cursor-default">
+                          <span className="text-[10px] font-black text-[#c8963c]/40 uppercase tracking-widest min-h-[32px] flex items-center gap-1 cursor-default">
+                            <svg
+                              className="w-3 h-3"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
                             Upcoming
                           </span>
                         )
@@ -1005,12 +995,14 @@ export default function Watchlist() {
                         </Link>
                       )}
 
-                      <button
-                        onClick={() => handleDelete(item.tmdbId)}
-                        className="text-[10px] font-bold text-red-500/60 hover:text-red-500 transition uppercase min-h-[32px] px-1 tracking-widest flex items-center"
-                      >
-                        Del
-                      </button>
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <button
+                          onClick={() => handleDelete(item.tmdbId)}
+                          className="text-[10px] font-bold text-red-500/60 hover:text-red-500 transition uppercase min-h-[32px] flex items-center px-1 tracking-widest"
+                        >
+                          Del
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1100,11 +1092,116 @@ export default function Watchlist() {
         />
       )}
 
+      {isFriendsModalOpen && (
+        <FriendsModal onClose={() => setIsFriendsModalOpen(false)} />
+      )}
+
       {toastMessage && (
         <div className="fixed bottom-5 left-4 right-4 sm:left-auto sm:right-10 sm:bottom-10 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-6 py-4 rounded-xl shadow-2xl flex items-center justify-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50 uppercase tracking-widest font-bold">
           <span className="text-xs sm:text-sm text-center">{toastMessage}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+interface Friend {
+  id: number;
+  username: string;
+  avatarUrl: string | null;
+}
+
+interface FriendsModalProps {
+  onClose: () => void;
+}
+
+function FriendsModal({ onClose }: FriendsModalProps) {
+  const [friends, setFriends] = useState<Friend[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const response = await api.get("/users/friends");
+        setFriends(response.data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchFriends();
+  }, []);
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md p-6 sm:p-8 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+
+        <h2 className="text-xl sm:text-2xl font-black text-[#f0e6cc] uppercase tracking-widest text-center mb-6">
+          Friends List
+        </h2>
+
+        {isLoading ? (
+          <div className="text-center text-[#c8963c] animate-pulse font-bold uppercase tracking-widest py-8">
+            Loading...
+          </div>
+        ) : friends.length === 0 ? (
+          <div className="text-center text-[#f0e6cc]/50 text-sm py-8 italic border border-[#c8963c]/20 rounded-xl border-dashed">
+            You haven't added any friends yet.
+          </div>
+        ) : (
+          <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+            {friends.map((friend) => (
+              <Link
+                key={friend.id}
+                to={`/user/${friend.id}`}
+                onClick={onClose}
+                className="flex items-center gap-4 bg-[#12100e] p-3 rounded-2xl border border-[#c8963c]/20 hover:border-[#c8963c]/60 transition-colors shadow-md"
+              >
+                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-lg font-black text-[#12100e] overflow-hidden shrink-0 border-2 border-[#12100e]">
+                  {friend.avatarUrl ? (
+                    <img
+                      src={friend.avatarUrl}
+                      className="w-full h-full object-cover"
+                      alt={friend.username}
+                    />
+                  ) : (
+                    friend.username[0].toUpperCase()
+                  )}
+                </div>
+                <span className="font-black text-[#f0e6cc] text-base truncate">
+                  {friend.username}
+                </span>
+                <span className="ml-auto text-[#c8963c] opacity-50">→</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

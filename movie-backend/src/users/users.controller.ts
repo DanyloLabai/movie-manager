@@ -8,6 +8,8 @@ import {
   Req,
   Get,
   Param,
+  Post,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
@@ -29,8 +31,27 @@ export class UsersController {
     return this.usersService.updateUserProfile(userId, newUsername, file);
   }
 
-  @Get('public/profile/:username')
-  async getPublicProfile(@Param('username') username: string) {
-    return this.usersService.getPublicProfile(username);
+  @Get('public/:id')
+  @UseGuards(AuthGuard('jwt'))
+  async getPublicProfile(
+    @Req() req,
+    @Param('id', ParseIntPipe) targetUserId: number,
+  ) {
+    const currentUserId = req.user.userId;
+    return this.usersService.getPublicProfile(targetUserId, currentUserId);
+  }
+
+  @Get('friends')
+  @UseGuards(AuthGuard('jwt'))
+  async getFriends(@Req() req) {
+    const userId = req.user.userId;
+    return this.usersService.getFriends(userId);
+  }
+
+  @Post('friends/:id')
+  @UseGuards(AuthGuard('jwt'))
+  async addFriend(@Req() req, @Param('id', ParseIntPipe) friendId: number) {
+    const currentUserId = req.user.userId;
+    return this.usersService.addFriend(currentUserId, friendId);
   }
 }

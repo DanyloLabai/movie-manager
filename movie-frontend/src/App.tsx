@@ -30,7 +30,7 @@ function App() {
           <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
-          <Route path="/user/:username" element={<PublicProfile />} />
+          <Route path="/user/:id" element={<PublicProfile />} />
 
           <Route
             path="/search"

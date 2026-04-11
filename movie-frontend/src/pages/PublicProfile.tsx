@@ -28,18 +28,24 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 export default function PublicProfile() {
-  const { username } = useParams<{ username: string }>();
+  const { id } = useParams<{ id: string }>();
   const [profileData, setProfileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"favorites" | "watched">(
     "favorites",
   );
 
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   useEffect(() => {
     const fetchPublicProfile = async () => {
       try {
-        const response = await api.get(`/users/public/profile/${username}`);
+        const response = await api.get(`/users/public/${id}`);
         setProfileData(response.data);
       } catch {
         setError(true);
@@ -47,8 +53,18 @@ export default function PublicProfile() {
         setIsLoading(false);
       }
     };
-    fetchPublicProfile();
-  }, [username]);
+    if (id) fetchPublicProfile();
+  }, [id]);
+
+  const handleAddFriend = async () => {
+    try {
+      await api.post(`/users/friends/${id}`);
+      setProfileData((prev: any) => ({ ...prev, isFriend: true }));
+      showToast("Added to friends!");
+    } catch (err: any) {
+      showToast(err.response?.data?.message || "Error adding friend.");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -93,17 +109,23 @@ export default function PublicProfile() {
   const displayedMovies =
     activeTab === "favorites"
       ? profileData.favorites
-      : profileData.recent.filter((m: any) => m.isWatched);
+      : profileData.recent?.filter((m: any) => m.isWatched) || [];
 
   return (
     <div className="min-h-[100dvh] p-3 sm:p-8 bg-[#12100e] font-sans text-[#f0e6cc] selection:bg-[#c8963c] selection:text-[#12100e]">
       <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
-        <header className="flex justify-center mb-6">
+        <header className="flex justify-between items-center mb-6">
           <Link
             to="/search"
             className="text-xl sm:text-2xl font-black text-[#c8963c] tracking-widest uppercase drop-shadow-md"
           >
             Movie Tracker
+          </Link>
+          <Link
+            to="/watchlist"
+            className="text-[10px] sm:text-xs font-bold text-[#f0e6cc]/50 hover:text-[#c8963c] uppercase tracking-widest transition-colors"
+          >
+            ← My Profile
           </Link>
         </header>
 
@@ -125,9 +147,24 @@ export default function PublicProfile() {
               <h2 className="text-2xl sm:text-3xl font-black text-[#f0e6cc] tracking-tight mb-1">
                 {profileData.username}
               </h2>
-              <p className="text-[10px] text-[#c8963c] font-bold uppercase tracking-[0.2em] mb-6">
+              <p className="text-[10px] text-[#c8963c] font-bold uppercase tracking-[0.2em] mb-4">
                 {userRank}
               </p>
+
+              <div className="mb-6">
+                {profileData.isFriend ? (
+                  <div className="px-6 py-2 bg-[#c8963c]/10 text-[#c8963c] rounded-full font-black uppercase tracking-widest text-[10px] flex items-center gap-2 border border-[#c8963c]/30 cursor-default">
+                    <span>✓</span> Friends
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleAddFriend}
+                    className="px-6 py-2.5 bg-[#c8963c] text-[#12100e] rounded-full font-black uppercase tracking-widest text-[10px] hover:bg-[#e8c070] transition-all shadow-lg active:scale-95"
+                  >
+                    + Add to Friends
+                  </button>
+                )}
+              </div>
 
               <div className="flex flex-wrap justify-center gap-2 mb-6">
                 {achievementsList.map((ach) => (
@@ -178,8 +215,8 @@ export default function PublicProfile() {
                     Screen Time
                   </p>
                   <p className="text-xl font-black text-[#f0e6cc]">
-                    {Math.floor(profileData.stats.totalMinutes / 60)}h{" "}
-                    {profileData.stats.totalMinutes % 60}m
+                    {Math.floor((profileData.stats?.totalMinutes || 0) / 60)}h{" "}
+                    {(profileData.stats?.totalMinutes || 0) % 60}m
                   </p>
                 </div>
                 <div className="bg-[#12100e] p-4 rounded-2xl border border-[#c8963c]/10 shadow-inner">
@@ -187,23 +224,22 @@ export default function PublicProfile() {
                     Favorite Genre
                   </p>
                   <p className="text-xl font-black text-[#c8963c]">
-                    {profileData.stats.topGenre}
+                    {profileData.stats?.topGenre || "N/A"}
                   </p>
                 </div>
               </div>
               <div className="h-48 relative">
-                {" "}
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={profileData.stats.genreDistribution}
+                      data={profileData.stats?.genreDistribution || []}
                       innerRadius={60}
                       outerRadius={80}
                       paddingAngle={5}
                       dataKey="value"
                       stroke="none"
                     >
-                      {profileData.stats.genreDistribution.map(
+                      {profileData.stats?.genreDistribution?.map(
                         (_: any, index: number) => (
                           <Cell
                             key={`cell-${index}`}
@@ -217,7 +253,7 @@ export default function PublicProfile() {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
                   <span className="text-[#c8963c] text-xl font-black">
-                    {profileData.stats.genreDistribution.length}
+                    {profileData.stats?.genreDistribution?.length || 0}
                   </span>
                   <span className="text-[#f0e6cc]/40 text-[10px] font-bold uppercase tracking-widest">
                     Genres
@@ -226,7 +262,7 @@ export default function PublicProfile() {
               </div>
             </div>
 
-            {profileData.stats.topRated?.length > 0 && (
+            {profileData.stats?.topRated?.length > 0 && (
               <div className="mt-4 pt-8 border-t border-[#c8963c]/10">
                 <h4 className="text-[10px] text-[#c8963c] font-black uppercase tracking-[0.4em] mb-6 text-center">
                   Top 3 Rated Masterpieces
@@ -339,6 +375,12 @@ export default function PublicProfile() {
           )}
         </div>
       </div>
+
+      {toastMessage && (
+        <div className="fixed bottom-10 right-10 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-6 py-4 rounded-xl font-bold uppercase tracking-widest text-xs z-50 shadow-2xl animate-in slide-in-from-bottom-5">
+          {toastMessage}
+        </div>
+      )}
     </div>
   );
 }
