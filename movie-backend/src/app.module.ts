@@ -63,7 +63,7 @@ import { UsersModule } from './users/users.module';
           },
         },
         defaults: {
-          from: `"Movie Tracker" <onboarding@resend.dev>`,
+          from: '"Movie Tracker" <noreply@movietracker.ink>',
         },
       }),
     }),
