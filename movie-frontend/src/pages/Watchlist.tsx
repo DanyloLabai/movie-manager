@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { api } from "../api";
 
 interface WatchlistItem {
@@ -22,6 +23,11 @@ interface ProfileData {
   totalCount?: number;
   avatarUrl?: string | null;
   username?: string;
+  stats?: {
+    totalMinutes: number;
+    topGenre: string;
+    genreDistribution: { name: string; value: number }[];
+  };
 }
 
 const getUserIdFromToken = (): string => {
@@ -38,6 +44,22 @@ const getUserIdFromToken = (): string => {
 const getProfileCacheKey = () =>
   `movie_tracker_profile_cache_${getUserIdFromToken()}`;
 const ENABLE_CACHE = import.meta.env.VITE_ENABLE_PROFILE_CACHE !== "false";
+
+const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#1a1714] border border-[#c8963c]/50 p-3 rounded-xl shadow-xl">
+        <p className="text-[#f0e6cc] font-bold text-xs uppercase tracking-widest">
+          {payload[0].name}:{" "}
+          <span className="text-[#c8963c]">{payload[0].value}</span>
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function Watchlist() {
   const getUsernameKey = () => `custom_username_${getUserIdFromToken()}`;
@@ -420,6 +442,77 @@ export default function Watchlist() {
             </div>
           </div>
         </div>
+
+        {profileData?.stats &&
+          profileData.stats.genreDistribution.length > 0 && (
+            <div className="p-5 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl mt-5 sm:mt-8">
+              <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-6 border-b border-[#c8963c]/20 pb-3">
+                Your Movie Wrapped
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                <div className="space-y-4">
+                  <div className="bg-[#12100e] border border-[#c8963c]/20 p-5 rounded-2xl shadow-inner">
+                    <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+                      <span className="text-[#c8963c]">⏱</span> Time Spent
+                    </p>
+                    <p className="text-2xl sm:text-3xl font-black text-[#c8963c]">
+                      {Math.floor(profileData.stats.totalMinutes / 60)}{" "}
+                      <span className="text-sm font-medium text-[#f0e6cc]/60 uppercase tracking-widest">
+                        hours
+                      </span>{" "}
+                      {profileData.stats.totalMinutes % 60}{" "}
+                      <span className="text-sm font-medium text-[#f0e6cc]/60 uppercase tracking-widest">
+                        min
+                      </span>
+                    </p>
+                  </div>
+                  <div className="bg-[#12100e] border border-[#c8963c]/20 p-5 rounded-2xl shadow-inner">
+                    <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+                      <span className="text-[#c8963c]">🏆</span> Top Genre
+                    </p>
+                    <p className="text-2xl sm:text-3xl font-black text-[#c8963c]">
+                      {profileData.stats.topGenre}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="h-64 w-full relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={profileData.stats.genreDistribution}
+                        innerRadius={70}
+                        outerRadius={90}
+                        paddingAngle={5}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {profileData.stats.genreDistribution.map((_, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={CHART_COLORS[index % CHART_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        content={<CustomTooltip />}
+                        cursor={{ fill: "transparent" }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
+                    <span className="text-[#c8963c] text-xl font-black">
+                      {profileData.stats.genreDistribution.length}
+                    </span>
+                    <span className="text-[#f0e6cc]/40 text-[10px] font-bold uppercase tracking-widest">
+                      Genres
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        {/* -------------------------------- */}
 
         {isLoading && !profileData ? (
           <div className="flex justify-center items-center h-48">

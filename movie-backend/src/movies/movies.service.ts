@@ -224,7 +224,7 @@ export class MoviesService {
   }
 
   async getProfileData(userId: number) {
-    const [favorites, recent, watchedCount, totalCount] = await Promise.all([
+    const [favorites, recent, watchedItems, totalCount] = await Promise.all([
       this.watchlistRepo.find({
         where: { user: { id: userId }, isFavorite: true },
         order: { updatedAt: 'DESC' },
@@ -235,7 +235,7 @@ export class MoviesService {
         order: { updatedAt: 'DESC' },
         take: 10,
       }),
-      this.watchlistRepo.count({
+      this.watchlistRepo.find({
         where: { user: { id: userId }, isWatched: true },
       }),
       this.watchlistRepo.count({
@@ -243,11 +243,43 @@ export class MoviesService {
       }),
     ]);
 
+    let totalMinutes = 0;
+    const genreCounts: Record<string, number> = {};
+    const itemsToAnalyze = watchedItems.slice(-30);
+
+    const detailsPromises = itemsToAnalyze.map((item) =>
+      this.getMovieDetails(item.tmdbId, item.mediaType).catch(() => null),
+    );
+
+    const detailsResults = await Promise.all(detailsPromises);
+
+    detailsResults.forEach((detail) => {
+      if (detail) {
+        totalMinutes += detail.runtime || 0;
+        detail.genres?.forEach((g) => {
+          genreCounts[g.name] = (genreCounts[g.name] || 0) + 1;
+        });
+      }
+    });
+
+    const genreDistribution = Object.entries(genreCounts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    const topGenre =
+      genreDistribution.length > 0 ? genreDistribution[0].name : 'N/A';
+
     return {
       favorites,
       recent,
-      watchedCount,
+      watchedCount: watchedItems.length,
       totalCount,
+      stats: {
+        totalMinutes,
+        topGenre,
+        genreDistribution,
+      },
     };
   }
 
