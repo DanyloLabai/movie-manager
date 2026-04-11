@@ -3,6 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { CacheModule } from '@nestjs/cache-manager';
+import { redisStore } from 'cache-manager-redis-yet';
 import { AiChatModule } from './ai-chat/ai-chat.module';
 import { MoviesModule } from './movies/movies.module';
 import { AuthModule } from './auth/auth.module';
@@ -12,6 +14,19 @@ import { UsersModule } from './users/users.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+
+    CacheModule.registerAsync({
+      isGlobal: true,
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        store: await redisStore({
+          url:
+            configService.get<string>('REDIS_URL') || 'redis://localhost:6379',
+          ttl: 86400000,
+        }),
+      }),
+    }),
 
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -36,7 +51,6 @@ import { UsersModule } from './users/users.module';
 
           autoLoadEntities: true,
           synchronize: true,
-
           ssl: databaseUrl ? { rejectUnauthorized: false } : false,
         };
       },
