@@ -231,6 +231,11 @@ export default function MovieDetails() {
     setPendingAction(null);
   };
 
+  const isReleased = (dateStr?: string) => {
+    if (!dateStr) return true;
+    return new Date(dateStr) <= new Date();
+  };
+
   if (isLoading)
     return (
       <div className="min-h-screen bg-[#12100e] flex items-center justify-center">
@@ -246,6 +251,8 @@ export default function MovieDetails() {
         </Link>
       </div>
     );
+
+  const released = isReleased(movie.release_date);
 
   const posterUrl = movie.poster_path
     ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
@@ -324,9 +331,11 @@ export default function MovieDetails() {
               </span>
               <span className="text-[#c8963c]/50">•</span>
               <span>{movie.runtime || "0"} min</span>
-              <span className="text-[#c8963c] px-2 py-0.5 bg-[#c8963c]/10 rounded-md border border-[#c8963c]/20 font-black">
-                ★ {movie.vote_average?.toFixed(1)}
-              </span>
+              {released && (
+                <span className="text-[#c8963c] px-2 py-0.5 bg-[#c8963c]/10 rounded-md border border-[#c8963c]/20 font-black">
+                  ★ {movie.vote_average?.toFixed(1)}
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap gap-1.5 mt-1.5">
               {movie.genres?.slice(0, 3).map((g) => (
@@ -355,6 +364,7 @@ export default function MovieDetails() {
               status={status}
               hoveredStar={hoveredStar}
               setHoveredStar={setHoveredStar}
+              released={released}
               onAddWatchlist={() => handleAddNewMovie(false)}
               onWatched={() => {
                 setPendingAction("new_watched");
@@ -375,14 +385,24 @@ export default function MovieDetails() {
             </h1>
             <div className="flex flex-wrap gap-4 text-xs sm:text-sm text-[#f0e6cc]/60 mb-8 items-center font-bold">
               <span className="text-[#f0e6cc]">
-                {movie.release_date?.split("-")[0]}
+                {movie.release_date
+                  ? new Date(movie.release_date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "N/A"}
               </span>
               <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
               <span>{movie.runtime || "0"} min</span>
-              <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
-              <span className="text-[#c8963c] px-2 py-1 bg-[#c8963c]/10 rounded-lg border border-[#c8963c]/20 tracking-tighter font-black">
-                IMDB: {movie.vote_average?.toFixed(1)}
-              </span>
+              {released && (
+                <>
+                  <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
+                  <span className="text-[#c8963c] px-2 py-1 bg-[#c8963c]/10 rounded-lg border border-[#c8963c]/20 tracking-tighter font-black">
+                    IMDB: {movie.vote_average?.toFixed(1)}
+                  </span>
+                </>
+              )}
               <div className="flex gap-2">
                 {movie.genres?.slice(0, 3).map((g) => (
                   <span
@@ -411,19 +431,21 @@ export default function MovieDetails() {
               <div className="flex gap-3">
                 <button
                   onClick={() => handleAddNewMovie(false)}
-                  className="flex-1 py-3 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg"
+                  className={`py-3 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg ${released ? "flex-1" : "w-full"}`}
                 >
-                  + Watchlist
+                  {released ? "+ Add" : "+ Add"}
                 </button>
-                <button
-                  onClick={() => {
-                    setPendingAction("new_watched");
-                    setIsRatingModalOpen(true);
-                  }}
-                  className="flex-1 py-3 bg-[#c8963c] text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 shadow-lg"
-                >
-                  ✓ Watched
-                </button>
+                {released && (
+                  <button
+                    onClick={() => {
+                      setPendingAction("new_watched");
+                      setIsRatingModalOpen(true);
+                    }}
+                    className="flex-1 py-3 bg-[#c8963c] text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 shadow-lg"
+                  >
+                    ✓ Watched
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-4">
@@ -437,44 +459,56 @@ export default function MovieDetails() {
                   >
                     {status.isWatched ? "✓ Watched" : "⋯ In Plans"}
                   </span>
-                  <button
-                    onClick={handleToggleFavorite}
-                    className={`p-2.5 rounded-xl transition active:scale-90 border ${
-                      status.isFavorite
-                        ? "bg-red-500/20 text-red-500 border-red-500/30 shadow-lg"
-                        : "bg-[#12100e] text-[#f0e6cc]/30 border-[#c8963c]/20 hover:text-red-500"
-                    }`}
-                  >
-                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                    </svg>
-                  </button>
+
+                  {released ? (
+                    <button
+                      onClick={handleToggleFavorite}
+                      className={`p-2.5 rounded-xl transition active:scale-90 border ${
+                        status.isFavorite
+                          ? "bg-red-500/20 text-red-500 border-red-500/30 shadow-lg"
+                          : "bg-[#12100e] text-[#f0e6cc]/30 border-[#c8963c]/20 hover:text-red-500"
+                      }`}
+                    >
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <div
+                      className="p-2.5 rounded-xl bg-[#12100e] text-[#c8963c] border border-[#c8963c]/20"
+                      title="Not released yet"
+                    >
+                      ⏳
+                    </div>
+                  )}
                 </div>
 
-                <div>
-                  <p className="text-[9px] font-black text-[#f0e6cc]/50 mb-2 uppercase tracking-widest">
-                    Your Rating
-                  </p>
-                  <div
-                    className="flex justify-between"
-                    onMouseLeave={() => setHoveredStar(0)}
-                  >
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <button
-                        key={s}
-                        onMouseEnter={() => setHoveredStar(s)}
-                        onClick={() => handleRate(s)}
-                        className={`text-3xl transition-all duration-150 active:scale-90 ${
-                          (hoveredStar || status.rating || 0) >= s
-                            ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
-                            : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
-                        }`}
-                      >
-                        ★
-                      </button>
-                    ))}
+                {released && (
+                  <div>
+                    <p className="text-[9px] font-black text-[#f0e6cc]/50 mb-2 uppercase tracking-widest">
+                      Your Rating
+                    </p>
+                    <div
+                      className="flex justify-between"
+                      onMouseLeave={() => setHoveredStar(0)}
+                    >
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <button
+                          key={s}
+                          onMouseEnter={() => setHoveredStar(s)}
+                          onClick={() => handleRate(s)}
+                          className={`text-3xl transition-all duration-150 active:scale-90 ${
+                            (hoveredStar || status.rating || 0) >= s
+                              ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
+                              : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
+                          }`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <button
                   onClick={handleRemove}
@@ -507,6 +541,7 @@ export default function MovieDetails() {
         </div>
       </div>
 
+      {/* Recommendations Slider */}
       {recommendations.length > 0 && (
         <div className="mt-10 sm:mt-20 max-w-7xl mx-auto">
           <div className="flex items-center justify-between px-4 sm:px-6 mb-4 sm:mb-8">
@@ -590,9 +625,6 @@ export default function MovieDetails() {
                       No Image
                     </div>
                   )}
-                  <div className="absolute top-2 right-2 bg-[#12100e]/80 backdrop-blur-md px-1.5 py-0.5 rounded-md text-[9px] text-[#c8963c] font-black border border-[#c8963c]/30">
-                    ★ {m.rating?.toFixed(1) || "0.0"}
-                  </div>
                 </div>
                 <div className="p-3 sm:p-4">
                   <h4 className="text-[10px] sm:text-xs font-bold text-[#f0e6cc] truncate group-hover:text-[#c8963c] transition-colors uppercase tracking-tight">
@@ -669,6 +701,7 @@ function ActionPanel({
   status,
   hoveredStar,
   setHoveredStar,
+  released,
   onAddWatchlist,
   onWatched,
   onToggleFavorite,
@@ -678,6 +711,7 @@ function ActionPanel({
   status: UserMovieStatus | null;
   hoveredStar: number;
   setHoveredStar: (n: number) => void;
+  released: boolean;
   onAddWatchlist: () => void;
   onWatched: () => void;
   onToggleFavorite: () => void;
@@ -692,14 +726,17 @@ function ActionPanel({
             onClick={onAddWatchlist}
             className="w-full py-3.5 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg"
           >
-            Watchlist
+            {released ? "Add" : "Add"}
           </button>
-          <button
-            onClick={onWatched}
-            className="w-full py-3.5 bg-[#c8963c] text-[#12100e] rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 shadow-lg"
-          >
-            Watched
-          </button>
+
+          {released && (
+            <button
+              onClick={onWatched}
+              className="w-full py-3.5 bg-[#c8963c] text-[#12100e] rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 shadow-lg"
+            >
+              Watched
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
@@ -713,43 +750,57 @@ function ActionPanel({
             >
               {status.isWatched ? "Watched" : "In Plans"}
             </span>
-            <button
-              onClick={onToggleFavorite}
-              className={`p-2.5 rounded-xl transition border ${
-                status.isFavorite
-                  ? "bg-red-500/20 text-red-500 border-red-500/30 shadow-lg"
-                  : "bg-[#12100e] text-[#f0e6cc]/30 border-[#c8963c]/20 hover:text-red-500"
-              }`}
-            >
-              <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-              </svg>
-            </button>
+
+            {released ? (
+              <button
+                onClick={onToggleFavorite}
+                className={`p-2.5 rounded-xl transition border ${
+                  status.isFavorite
+                    ? "bg-red-500/20 text-red-500 border-red-500/30 shadow-lg"
+                    : "bg-[#12100e] text-[#f0e6cc]/30 border-[#c8963c]/20 hover:text-red-500"
+                }`}
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              </button>
+            ) : (
+              <div
+                className="p-2.5 rounded-xl bg-[#12100e] text-[#c8963c] border border-[#c8963c]/20"
+                title="Not released yet"
+              >
+                ⏳
+              </div>
+            )}
           </div>
-          <div className="pt-4 border-t border-[#c8963c]/20">
-            <p className="text-[10px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
-              Rate this media
-            </p>
-            <div
-              className="flex justify-between"
-              onMouseLeave={() => setHoveredStar(0)}
-            >
-              {[1, 2, 3, 4, 5].map((s) => (
-                <button
-                  key={s}
-                  onMouseEnter={() => setHoveredStar(s)}
-                  onClick={() => onRate(s)}
-                  className={`text-2xl transition-all duration-200 transform hover:scale-125 ${
-                    (hoveredStar || status.rating || 0) >= s
-                      ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
-                      : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
-                  }`}
-                >
-                  ★
-                </button>
-              ))}
+
+          {released && (
+            <div className="pt-4 border-t border-[#c8963c]/20">
+              <p className="text-[10px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
+                Rate this media
+              </p>
+              <div
+                className="flex justify-between"
+                onMouseLeave={() => setHoveredStar(0)}
+              >
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button
+                    key={s}
+                    onMouseEnter={() => setHoveredStar(s)}
+                    onClick={() => onRate(s)}
+                    className={`text-2xl transition-all duration-200 transform hover:scale-125 ${
+                      (hoveredStar || status.rating || 0) >= s
+                        ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
+                        : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
           <button
             onClick={onRemove}
             className="w-full py-2.5 bg-red-900/20 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/30 hover:bg-red-600 hover:text-[#f0e6cc] transition active:scale-95"

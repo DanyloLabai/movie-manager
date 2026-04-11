@@ -7,6 +7,7 @@ interface MovieResult {
   title: string;
   description: string;
   releaseYear: string;
+  releaseDate?: string;
   rating: number;
   posterUrl: string | null;
   mediaType: "movie" | "tv";
@@ -101,6 +102,16 @@ export default function AiChat() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const isReleased = (movie: MovieResult) => {
+    if (movie.releaseDate) {
+      return new Date(movie.releaseDate) <= new Date();
+    }
+    if (movie.releaseYear && movie.releaseYear !== "N/A") {
+      return parseInt(movie.releaseYear) <= new Date().getFullYear();
+    }
+    return true;
+  };
+
   const handleClearChat = () => {
     const initialMessage: Message[] = [
       {
@@ -177,6 +188,11 @@ export default function AiChat() {
   };
 
   const handleToggleFavorite = async (movie: MovieResult) => {
+    if (!isReleased(movie)) {
+      showToast("You can't favorite an unreleased movie!");
+      return;
+    }
+
     const isFav = favoriteIds.includes(movie.id);
     try {
       await api.patch(`/movies/watchlist/${movie.id}/favorite`);
@@ -282,94 +298,116 @@ export default function AiChat() {
                       Recommended for you
                     </h5>
 
-                    {msg.movies.map((movie) => (
-                      <div
-                        key={movie.id}
-                        className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-[#c8963c]/10 transition-colors group cursor-pointer border border-transparent hover:border-[#c8963c]/20"
-                        onClick={() =>
-                          navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
-                        }
-                      >
-                        <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
-                          <div className="w-10 h-14 sm:w-12 sm:h-16 bg-[#12100e] rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20 shadow-md">
-                            {movie.posterUrl ? (
-                              <img
-                                src={movie.posterUrl}
-                                alt={movie.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                              />
+                    {msg.movies.map((movie) => {
+                      const released = isReleased(movie);
+
+                      return (
+                        <div
+                          key={movie.id}
+                          className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-[#c8963c]/10 transition-colors group cursor-pointer border border-transparent hover:border-[#c8963c]/20"
+                          onClick={() =>
+                            navigate(
+                              `/movie/${movie.id}?type=${movie.mediaType}`,
+                            )
+                          }
+                        >
+                          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                            <div className="w-10 h-14 sm:w-12 sm:h-16 bg-[#12100e] rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20 shadow-md">
+                              {movie.posterUrl ? (
+                                <img
+                                  src={movie.posterUrl}
+                                  alt={movie.title}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[8px] text-[#f0e6cc]/30">
+                                  No Img
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="flex flex-col min-w-0 pr-2">
+                              <h4 className="font-bold text-[#f0e6cc] text-xs sm:text-sm truncate group-hover:text-[#c8963c] transition-colors">
+                                {movie.title}{" "}
+                                <span className="font-normal text-[#f0e6cc]/60">
+                                  (
+                                  {movie.releaseDate
+                                    ? new Date(movie.releaseDate).getFullYear()
+                                    : movie.releaseYear}
+                                  )
+                                </span>
+                              </h4>
+                              <p className="text-[10px] sm:text-xs text-[#f0e6cc]/50 mt-1 uppercase font-semibold tracking-wider">
+                                {movie.mediaType === "tv" ? "TV Show" : "Movie"}
+                                {released &&
+                                  ` • ${Number(movie.rating || 0).toFixed(1)} IMDb`}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 flex items-center gap-1 sm:gap-2">
+                            {released ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleToggleFavorite(movie);
+                                }}
+                                className="p-1.5 sm:p-2 rounded-md hover:bg-[#c8963c]/20 transition-colors"
+                                title="Favorite"
+                              >
+                                <svg
+                                  className={`w-4 h-4 sm:w-5 sm:h-5 transition ${
+                                    favoriteIds.includes(movie.id)
+                                      ? "text-red-500"
+                                      : "text-[#f0e6cc]/30 hover:text-red-500"
+                                  }`}
+                                  fill={
+                                    favoriteIds.includes(movie.id)
+                                      ? "currentColor"
+                                      : "none"
+                                  }
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="2"
+                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                  ></path>
+                                </svg>
+                              </button>
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-[8px] text-[#f0e6cc]/30">
-                                No Img
+                              <div
+                                className="p-1.5 sm:p-2 flex items-center justify-center text-[#c8963c] cursor-default"
+                                title="Not released yet"
+                              >
+                                <span className="text-sm">⏳</span>
                               </div>
                             )}
-                          </div>
 
-                          <div className="flex flex-col min-w-0 pr-2">
-                            <h4 className="font-bold text-[#f0e6cc] text-xs sm:text-sm truncate group-hover:text-[#c8963c] transition-colors">
-                              {movie.title}{" "}
-                              <span className="font-normal text-[#f0e6cc]/60">
-                                ({movie.releaseYear})
-                              </span>
-                            </h4>
-                            <p className="text-[10px] sm:text-xs text-[#f0e6cc]/50 mt-1 uppercase font-semibold tracking-wider">
-                              {movie.mediaType === "tv" ? "TV Show" : "Movie"} •{" "}
-                              {Number(movie.rating || 0).toFixed(1)} IMDb
-                            </p>
+                            {addedIds.includes(movie.id) ? (
+                              <div className="text-[10px] sm:text-xs text-[#c8963c] px-2 sm:px-3 py-1 sm:py-1.5 font-bold flex items-center gap-1 cursor-default opacity-70">
+                                <span>✓</span>{" "}
+                                <span className="hidden sm:inline">
+                                  In Plans
+                                </span>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddFromChat(movie);
+                                }}
+                                className="text-[10px] sm:text-xs border border-[#c8963c]/50 text-[#c8963c] px-3 py-1.5 rounded-lg font-bold hover:bg-[#c8963c] hover:text-[#12100e] transition-all active:scale-95 whitespace-nowrap shadow-sm"
+                              >
+                                {released ? "+ Add" : "+ Add"}
+                              </button>
+                            )}
                           </div>
                         </div>
-
-                        <div className="shrink-0 flex items-center gap-1 sm:gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleFavorite(movie);
-                            }}
-                            className="p-1.5 sm:p-2 rounded-md hover:bg-[#c8963c]/20 transition-colors"
-                            title="Favorite"
-                          >
-                            <svg
-                              className={`w-4 h-4 sm:w-5 sm:h-5 transition ${
-                                favoriteIds.includes(movie.id)
-                                  ? "text-red-500"
-                                  : "text-[#f0e6cc]/30 hover:text-red-500"
-                              }`}
-                              fill={
-                                favoriteIds.includes(movie.id)
-                                  ? "currentColor"
-                                  : "none"
-                              }
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                              ></path>
-                            </svg>
-                          </button>
-
-                          {addedIds.includes(movie.id) ? (
-                            <div className="text-[10px] sm:text-xs text-[#c8963c] px-2 sm:px-3 py-1 sm:py-1.5 font-bold flex items-center gap-1 cursor-default opacity-70">
-                              <span>✓</span>{" "}
-                              <span className="hidden sm:inline">Added</span>
-                            </div>
-                          ) : (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAddFromChat(movie);
-                              }}
-                              className="text-[10px] sm:text-xs border border-[#c8963c]/50 text-[#c8963c] px-3 py-1.5 rounded-lg font-bold hover:bg-[#c8963c] hover:text-[#12100e] transition-all active:scale-95 whitespace-nowrap shadow-sm"
-                            >
-                              + Add
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

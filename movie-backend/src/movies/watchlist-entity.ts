@@ -34,6 +34,12 @@ export class WatchlistItem {
   @Column({ nullable: true })
   posterUrl: string;
 
+  @Column({ type: 'date', nullable: true })
+  releaseDate: string;
+
+  @Column({ default: false })
+  notified: boolean;
+
   @CreateDateColumn()
   addedAt: Date;
 

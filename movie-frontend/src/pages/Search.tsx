@@ -7,6 +7,7 @@ interface MovieResult {
   title: string;
   description: string;
   releaseYear: string;
+  releaseDate?: string;
   rating: number;
   posterUrl: string | null;
   mediaType: "movie" | "tv";
@@ -25,6 +26,7 @@ const getUserId = (): string => {
 
 const uid = getUserId();
 const TRENDING_CACHE_KEY = `trending_cache_${uid}`;
+const UPCOMING_CACHE_KEY = `upcoming_cache_${uid}`;
 const FAVORITES_CACHE_KEY = `favorites_cache_${uid}`;
 const SEARCH_QUERY_CACHE_KEY = `search_query_cache_${uid}`;
 const SEARCH_RESULTS_CACHE_KEY = `search_results_cache_${uid}`;
@@ -70,6 +72,15 @@ export default function Search() {
     }
   });
 
+  const [upcoming, setUpcoming] = useState<MovieResult[]>(() => {
+    try {
+      const cached = localStorage.getItem(UPCOMING_CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [recommendations, setRecommendations] = useState<MovieResult[]>(() => {
     try {
       const cached = localStorage.getItem(RECOMMENDATIONS_CACHE_KEY);
@@ -109,17 +120,27 @@ export default function Search() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [trendingRes, profileRes, recsRes] = await Promise.all([
-          api.get("/movies/trending").catch(() => ({ data: [] })),
-          api.get("/movies/profile").catch(() => ({ data: null })),
-          api.get("/movies/recommendations").catch(() => ({ data: [] })),
-        ]);
+        const [trendingRes, profileRes, recsRes, upcomingRes] =
+          await Promise.all([
+            api.get("/movies/trending").catch(() => ({ data: [] })),
+            api.get("/movies/profile").catch(() => ({ data: null })),
+            api.get("/movies/recommendations").catch(() => ({ data: [] })),
+            api.get("/movies/upcoming").catch(() => ({ data: [] })),
+          ]);
 
         if (trendingRes.data?.length > 0) {
           setTrending(trendingRes.data);
           localStorage.setItem(
             TRENDING_CACHE_KEY,
             JSON.stringify(trendingRes.data),
+          );
+        }
+
+        if (upcomingRes.data?.length > 0) {
+          setUpcoming(upcomingRes.data);
+          localStorage.setItem(
+            UPCOMING_CACHE_KEY,
+            JSON.stringify(upcomingRes.data),
           );
         }
 
@@ -161,6 +182,16 @@ export default function Search() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const isReleased = (movie: MovieResult) => {
+    if (movie.releaseDate) {
+      return new Date(movie.releaseDate) <= new Date();
+    }
+    if (movie.releaseYear && movie.releaseYear !== "N/A") {
+      return parseInt(movie.releaseYear) <= new Date().getFullYear();
+    }
+    return true;
+  };
+
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -198,6 +229,7 @@ export default function Search() {
         title: movie.title,
         posterUrl: movie.posterUrl,
         mediaType: movie.mediaType,
+        releaseDate: movie.releaseDate,
       });
       setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
       showToast("Added to list");
@@ -226,6 +258,11 @@ export default function Search() {
   };
 
   const handleToggleFavorite = async (movie: MovieResult) => {
+    if (!isReleased(movie)) {
+      showToast("You can't favorite an unreleased movie!");
+      return;
+    }
+
     const isFav = favoriteIds.includes(movie.id);
     try {
       await api.patch(`/movies/watchlist/${movie.id}/favorite`);
@@ -266,6 +303,7 @@ export default function Search() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem(TRENDING_CACHE_KEY);
+    localStorage.removeItem(UPCOMING_CACHE_KEY);
     localStorage.removeItem(FAVORITES_CACHE_KEY);
     localStorage.removeItem(SEARCH_QUERY_CACHE_KEY);
     localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
@@ -277,91 +315,119 @@ export default function Search() {
 
   const renderMovieGrid = (movies: MovieResult[]) => (
     <div className="grid grid-cols-2 gap-3 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
-      {movies.map((movie) => (
-        <div
-          key={movie.id}
-          className="group relative overflow-hidden transition bg-[#1a1714] border border-[#c8963c]/20 shadow-lg rounded-2xl flex flex-col hover:shadow-[#c8963c]/10 hover:border-[#c8963c]/70 hover:-translate-y-1"
-        >
-          <button
-            className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-[#12100e]/80 rounded-full backdrop-blur-sm border border-[#c8963c]/30 hover:bg-[#1a1714] transition group/heart"
-            onClick={() => handleToggleFavorite(movie)}
-          >
-            <svg
-              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition ${
-                favoriteIds.includes(movie.id)
-                  ? "text-red-500 fill-red-500"
-                  : "text-[#f0e6cc]/30 group-hover/heart:text-red-500"
-              }`}
-              fill={favoriteIds.includes(movie.id) ? "currentColor" : "none"}
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-              />
-            </svg>
-          </button>
+      {movies.map((movie) => {
+        const released = isReleased(movie);
 
-          <Link
-            to={`/movie/${movie.id}?type=${movie.mediaType}`}
-            className="relative w-full aspect-[2/3] bg-[#12100e] block overflow-hidden"
+        return (
+          <div
+            key={movie.id}
+            className="group relative overflow-hidden transition bg-[#1a1714] border border-[#c8963c]/20 shadow-lg rounded-2xl flex flex-col hover:shadow-[#c8963c]/10 hover:border-[#c8963c]/70 hover:-translate-y-1"
           >
-            {movie.posterUrl ? (
-              <img
-                src={movie.posterUrl}
-                alt={movie.title}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
+            {released ? (
+              <button
+                className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-[#12100e]/80 rounded-full backdrop-blur-sm border border-[#c8963c]/30 hover:bg-[#1a1714] transition group/heart"
+                onClick={() => handleToggleFavorite(movie)}
+                title="Add to Favorites"
+              >
+                <svg
+                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 transition ${
+                    favoriteIds.includes(movie.id)
+                      ? "text-red-500 fill-red-500"
+                      : "text-[#f0e6cc]/30 group-hover/heart:text-red-500"
+                  }`}
+                  fill={
+                    favoriteIds.includes(movie.id) ? "currentColor" : "none"
+                  }
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
+                </svg>
+              </button>
             ) : (
-              <div className="flex items-center justify-center w-full h-full text-xs text-[#f0e6cc]/30">
-                No poster
+              <div
+                className="absolute top-2 left-2 sm:top-3 sm:left-3 z-10 w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center bg-[#12100e]/90 rounded-full backdrop-blur-sm border border-[#c8963c]/50 text-[#c8963c]"
+                title="Not released yet"
+              >
+                <span className="text-[14px]">⏳</span>
               </div>
             )}
-          </Link>
 
-          <div className="p-3 sm:p-4 flex flex-col flex-grow relative z-10 bg-[#1a1714]">
-            <Link to={`/movie/${movie.id}?type=${movie.mediaType}`}>
-              <h4
-                className="text-xs sm:text-lg font-bold mb-1 truncate text-[#f0e6cc] hover:text-[#c8963c] transition-colors"
-                title={movie.title}
-              >
-                {movie.title}
-              </h4>
-            </Link>
-            <p className="text-[9px] sm:text-xs text-[#f0e6cc]/50 mb-3 uppercase tracking-wider flex items-center gap-1 flex-wrap font-semibold">
-              <span>{movie.releaseYear}</span>
-              <span>•</span>
-              <span className="text-[#c8963c] font-bold">
-                ★ {Number(movie.rating || 0).toFixed(1)}
-              </span>
-              <span className="ml-auto inline-block px-1.5 py-0.5 bg-[#2a241f] rounded-md text-[7px] sm:text-[9px] text-[#f0e6cc]/80 border border-[#c8963c]/20">
-                {movie.mediaType === "tv" ? "TV" : "MOVIE"}
-              </span>
-            </p>
-
-            <div className="mt-auto pt-3 border-t border-[#c8963c]/20">
-              {addedIds.includes(movie.id) ? (
-                <button
-                  onClick={() => handleRemove(movie)}
-                  className="w-full py-2 sm:py-2.5 bg-[#c8963c]/10 text-[#c8963c] font-bold rounded-lg sm:rounded-xl uppercase text-[10px] sm:text-xs tracking-wider border border-[#c8963c]/30 flex items-center justify-center gap-1.5 min-h-[36px] hover:bg-[#c8963c]/20 transition-colors active:scale-95"
-                >
-                  <span className="text-sm">✓</span> Added
-                </button>
+            <Link
+              to={`/movie/${movie.id}?type=${movie.mediaType}`}
+              className="relative w-full aspect-[2/3] bg-[#12100e] block overflow-hidden"
+            >
+              {movie.posterUrl ? (
+                <img
+                  src={movie.posterUrl}
+                  alt={movie.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
               ) : (
-                <button
-                  onClick={() => handleAdd(movie)}
-                  className="w-full py-2 sm:py-2.5 bg-[#2a241f] hover:bg-[#c8963c] hover:text-[#12100e] text-[#c8963c] border border-[#c8963c]/30 font-bold rounded-lg sm:rounded-xl transition-all active:scale-95 uppercase text-[10px] sm:text-xs tracking-wider min-h-[36px] shadow-sm"
-                >
-                  + Add
-                </button>
+                <div className="flex items-center justify-center w-full h-full text-xs text-[#f0e6cc]/30">
+                  No poster
+                </div>
               )}
+            </Link>
+
+            <div className="p-3 sm:p-4 flex flex-col flex-grow relative z-10 bg-[#1a1714]">
+              <Link to={`/movie/${movie.id}?type=${movie.mediaType}`}>
+                <h4
+                  className="text-xs sm:text-lg font-bold mb-1 truncate text-[#f0e6cc] hover:text-[#c8963c] transition-colors"
+                  title={movie.title}
+                >
+                  {movie.title}
+                </h4>
+              </Link>
+              <p className="text-[9px] sm:text-xs text-[#f0e6cc]/50 mb-3 uppercase tracking-wider flex items-center gap-1 flex-wrap font-semibold">
+                <span>
+                  {movie.releaseDate
+                    ? new Date(movie.releaseDate).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : movie.releaseYear}
+                </span>
+                {released && (
+                  <>
+                    <span>•</span>
+                    <span className="text-[#c8963c] font-bold">
+                      ★ {Number(movie.rating || 0).toFixed(1)}
+                    </span>
+                  </>
+                )}
+                <span className="ml-auto inline-block px-1.5 py-0.5 bg-[#2a241f] rounded-md text-[7px] sm:text-[9px] text-[#f0e6cc]/80 border border-[#c8963c]/20">
+                  {movie.mediaType === "tv" ? "TV" : "MOVIE"}
+                </span>
+              </p>
+
+              <div className="mt-auto pt-3 border-t border-[#c8963c]/20">
+                {addedIds.includes(movie.id) ? (
+                  <button
+                    onClick={() => handleRemove(movie)}
+                    className="w-full py-2 sm:py-2.5 bg-[#c8963c]/10 text-[#c8963c] font-bold rounded-lg sm:rounded-xl uppercase text-[10px] sm:text-xs tracking-wider border border-[#c8963c]/30 flex items-center justify-center gap-1.5 min-h-[36px] hover:bg-[#c8963c]/20 transition-colors active:scale-95"
+                  >
+                    <span className="text-sm">✓</span> In Plans
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleAdd(movie)}
+                    className="w-full py-2 sm:py-2.5 bg-[#2a241f] hover:bg-[#c8963c] hover:text-[#12100e] text-[#c8963c] border border-[#c8963c]/30 font-bold rounded-lg sm:rounded-xl transition-all active:scale-95 uppercase text-[10px] sm:text-xs tracking-wider min-h-[36px] shadow-sm"
+                  >
+                    {released ? "+ Add" : "+ Add"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -494,6 +560,24 @@ export default function Search() {
                     Failed to load trends.
                   </p>
                 )}
+              </section>
+
+              <section>
+                <div className="flex items-center justify-between mb-5 border-b border-[#c8963c]/20 pb-2">
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-base sm:text-xl font-black text-[#c8963c] uppercase tracking-widest">
+                      Coming Soon
+                    </h2>
+                    <span className="bg-[#c8963c]/20 text-[#c8963c] text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30">
+                      NEW
+                    </span>
+                  </div>
+                </div>
+                {isLoadingHome && upcoming.length === 0 ? (
+                  <div className="flex justify-center items-center h-48"></div>
+                ) : upcoming.length > 0 ? (
+                  renderMovieGrid(upcoming.slice(0, 8))
+                ) : null}
               </section>
 
               <section>

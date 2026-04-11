@@ -21,7 +21,7 @@ import { isAxiosError } from 'axios';
 import { TmdbTvDetailsResponse } from './dto/tv-details-response.dto';
 import Groq from 'groq-sdk';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Injectable()
 export class MoviesService {
@@ -50,7 +50,8 @@ export class MoviesService {
   }
 
   async searchMovies(query: string): Promise<MovieResultDto[]> {
-    const cacheKey = `search:${query.toLowerCase().trim().replace(/\s+/g, '_')}`;
+    // Змінено ключ кешу для інвалідації старих даних без releaseDate
+    const cacheKey = `search_v2:${query.toLowerCase().trim().replace(/\s+/g, '_')}`;
 
     const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
     if (cached) return cached;
@@ -86,6 +87,8 @@ export class MoviesService {
         releaseYear:
           (media.release_date || media.first_air_date || '').split('-')[0] ||
           'N/A',
+        // ДОДАНО releaseDate
+        releaseDate: media.release_date || media.first_air_date || null,
         rating: media.vote_average || 0,
         posterUrl: media.poster_path
           ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
@@ -104,7 +107,7 @@ export class MoviesService {
     title: string,
     year?: number,
   ): Promise<MovieResultDto | null> {
-    const cacheKey = `find_title:${title.toLowerCase()}:${year || 'any'}`;
+    const cacheKey = `find_title_v2:${title.toLowerCase()}:${year || 'any'}`;
     const cached = await this.cacheManager.get<MovieResultDto>(cacheKey);
     if (cached) return cached;
 
@@ -153,6 +156,8 @@ export class MoviesService {
         releaseYear:
           (media.release_date || media.first_air_date || '').split('-')[0] ||
           'N/A',
+        // ДОДАНО releaseDate
+        releaseDate: media.release_date || media.first_air_date || null,
         rating: media.vote_average || 0,
         posterUrl: media.poster_path
           ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
@@ -239,7 +244,8 @@ export class MoviesService {
   }
 
   async getTrendingMovies(): Promise<MovieResultDto[]> {
-    const cacheKey = 'trending_weekly';
+    // Змінено ключ кешу
+    const cacheKey = 'trending_weekly_v2';
     const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
     if (cached) return cached;
 
@@ -276,6 +282,8 @@ export class MoviesService {
           releaseYear:
             (media.release_date || media.first_air_date || '').split('-')[0] ||
             'N/A',
+          // ДОДАНО releaseDate
+          releaseDate: media.release_date || media.first_air_date || null,
           rating: media.vote_average || 0,
           posterUrl: media.poster_path
             ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
@@ -362,7 +370,7 @@ export class MoviesService {
     tmdbId: number,
     type: string = 'movie',
   ): Promise<MovieResultDto[]> {
-    const cacheKey = `similar:${type}:${tmdbId}`;
+    const cacheKey = `similar_v2:${type}:${tmdbId}`;
     const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
     if (cached) return cached;
 
@@ -396,6 +404,8 @@ export class MoviesService {
           releaseYear:
             (media.release_date || media.first_air_date || '').split('-')[0] ||
             'N/A',
+          // ДОДАНО releaseDate
+          releaseDate: media.release_date || media.first_air_date || null,
           rating: media.vote_average || 0,
           posterUrl: media.poster_path
             ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
@@ -417,6 +427,7 @@ export class MoviesService {
     title: string,
     posterUrl?: string,
     mediaType: 'movie' | 'tv' = 'movie',
+    releaseDate?: string,
   ) {
     const existing = await this.watchlistRepo.findOne({
       where: { user: { id: userId }, tmdbId },
@@ -431,12 +442,12 @@ export class MoviesService {
       title,
       posterUrl,
       mediaType,
+      releaseDate,
       user: { id: userId },
     });
 
     return this.watchlistRepo.save(newItem);
   }
-
   async getWatchlist(userId: number) {
     return this.watchlistRepo.find({
       where: { user: { id: userId }, isWatched: false },
@@ -594,6 +605,61 @@ export class MoviesService {
     } catch (error: any) {
       this.logger.error(
         `Error generating AI recommendations: ${error.message}`,
+      );
+      return [];
+    }
+  }
+
+  async getUpcomingMovies(): Promise<MovieResultDto[]> {
+    const cacheKey = 'upcoming_movies';
+    const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+
+      const nextYear = new Date();
+      nextYear.setFullYear(nextYear.getFullYear() + 1);
+      const futureDate = nextYear.toISOString().split('T')[0];
+
+      const { data } = await firstValueFrom(
+        this.httpService.get<any>(`${this.baseUrl}/discover/movie`, {
+          params: {
+            language: 'en-US',
+            page: 1,
+            sort_by: 'popularity.desc',
+            'primary_release_date.gte': today,
+            'primary_release_date.lte': futureDate,
+            with_release_type: '2|3',
+          },
+          headers: { Authorization: `Bearer ${this.tmdbToken}` },
+        }),
+      );
+
+      const results = data.results
+        .filter((media: any) => media.poster_path && media.overview)
+        .slice(0, 16)
+        .map((media: any) => ({
+          id: media.id,
+          title: media.title,
+          originalTitle: media.original_title || media.title,
+          description: media.overview,
+          releaseYear: media.release_date
+            ? media.release_date.split('-')[0]
+            : 'N/A',
+          releaseDate: media.release_date,
+          rating: media.vote_average || 0,
+          posterUrl: media.poster_path
+            ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
+            : null,
+          mediaType: 'movie',
+        }));
+
+      await this.cacheManager.set(cacheKey, results, this.TTL_24H);
+      return results;
+    } catch (error: any) {
+      this.logger.error(
+        `Error fetching upcoming via discover: ${error.message}`,
       );
       return [];
     }

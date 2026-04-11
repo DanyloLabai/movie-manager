@@ -27,6 +27,11 @@ interface RequestWithUser extends Request {
 export class MoviesController {
   constructor(private readonly moviesService: MoviesService) {}
 
+  @Get('upcoming')
+  async getUpcomingMovies() {
+    return this.moviesService.getUpcomingMovies();
+  }
+
   @UseGuards(AuthGuard('jwt'))
   @Get('search')
   async searchByTitle(
@@ -45,6 +50,7 @@ export class MoviesController {
       title: string;
       posterUrl?: string;
       mediaType: 'movie' | 'tv';
+      releaseDate?: string;
     },
   ) {
     const userId = req.user.userId;
@@ -54,6 +60,7 @@ export class MoviesController {
       body.title,
       body.posterUrl,
       body.mediaType,
+      body.releaseDate,
     );
   }
 

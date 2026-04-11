@@ -14,6 +14,8 @@ interface WatchlistItem {
   isFavorite: boolean;
   rating?: number | null;
   mediaType: string;
+  releaseDate?: string | null;
+  releaseYear?: string | null;
 }
 
 interface ProfileData {
@@ -47,6 +49,19 @@ const getProfileCacheKey = () =>
 const ENABLE_CACHE = import.meta.env.VITE_ENABLE_PROFILE_CACHE !== "false";
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
+
+const isReleased = (item: WatchlistItem): boolean => {
+  if (item.releaseDate) {
+    const today = new Date();
+    const release = new Date(item.releaseDate);
+
+    today.setHours(0, 0, 0, 0);
+    release.setHours(0, 0, 0, 0);
+
+    return release <= today;
+  }
+  return true;
+};
 
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
@@ -186,6 +201,16 @@ export default function Watchlist() {
   };
 
   const handleToggleFavorite = async (tmdbId: number) => {
+    const itemToCheck =
+      movies.find((m) => m.tmdbId === tmdbId) ||
+      profileData?.favorites.find((f) => f.tmdbId === tmdbId) ||
+      profileData?.recent.find((r) => r.tmdbId === tmdbId);
+
+    if (itemToCheck && !isReleased(itemToCheck)) {
+      showToast("You can't favorite an unreleased movie!");
+      return;
+    }
+
     if (activeTab === "profile") {
       setProfileData((prev) => {
         if (!prev) return prev;
@@ -245,13 +270,12 @@ export default function Watchlist() {
 
   const handleMarkWatched = (tmdbId: number) => {
     const targetMovie = movies.find((m) => m.tmdbId === tmdbId);
-    if (targetMovie) {
-      setRatingModalData({
-        isOpen: true,
-        tmdbId: targetMovie.tmdbId,
-        title: targetMovie.title,
-      });
-    }
+    if (!targetMovie) return;
+    setRatingModalData({
+      isOpen: true,
+      tmdbId: targetMovie.tmdbId,
+      title: targetMovie.title,
+    });
   };
 
   const confirmMarkWatched = async (tmdbId: number, rating: number | null) => {
@@ -470,7 +494,6 @@ export default function Watchlist() {
           </div>
         </div>
 
-        {/* --- STATS SECTION (WRAPPED) --- */}
         {profileData?.stats &&
           profileData.stats.genreDistribution.length > 0 && (
             <div className="p-5 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl mt-5 sm:mt-8">
@@ -552,7 +575,6 @@ export default function Watchlist() {
                           key={item.id}
                           className="relative group bg-[#12100e] border border-[#c8963c]/10 rounded-2xl p-3 flex items-center gap-4 hover:border-[#c8963c]/40 transition-all shadow-lg"
                         >
-                          {/* Номер місця */}
                           <div className="absolute -top-2 -left-2 w-7 h-7 bg-[#c8963c] text-[#12100e] rounded-full flex items-center justify-center font-black text-xs shadow-lg z-10 border border-[#1a1714]">
                             #{index + 1}
                           </div>
@@ -618,57 +640,72 @@ export default function Watchlist() {
                 </div>
               ) : (
                 <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-6">
-                  {profileData.favorites.slice(0, 5).map((fav) => (
-                    <div
-                      key={fav.id}
-                      className="group relative flex flex-col items-center"
-                    >
-                      <Link
-                        to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}`}
-                        className="w-full aspect-[2/3] rounded-xl overflow-hidden shadow-lg border border-[#c8963c]/20 bg-[#12100e] relative"
+                  {profileData.favorites.slice(0, 5).map((fav) => {
+                    const released = isReleased(fav);
+                    return (
+                      <div
+                        key={fav.id}
+                        className="group relative flex flex-col items-center"
                       >
-                        {fav.posterUrl ? (
-                          <img
-                            src={fav.posterUrl}
-                            alt={fav.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center w-full h-full text-[10px] text-[#f0e6cc]/30 italic">
-                            No poster
-                          </div>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleToggleFavorite(fav.tmdbId);
-                          }}
-                          className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 hover:bg-[#1a1714] transition backdrop-blur-sm"
-                        >
-                          <svg
-                            className="w-3.5 h-3.5 text-red-500 fill-red-500"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                        <div className="w-full aspect-[2/3] rounded-xl overflow-hidden shadow-lg border border-[#c8963c]/20 bg-[#12100e] relative">
+                          <Link
+                            to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}`}
+                            className="block w-full h-full"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                            />
-                          </svg>
-                        </button>
-                      </Link>
-                      <Link
-                        to={`/movie/${fav.tmdbId}`}
-                        className="mt-2 w-full text-center"
-                      >
-                        <h4 className="text-[10px] sm:text-sm font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition">
-                          {fav.title}
-                        </h4>
-                      </Link>
-                    </div>
-                  ))}
+                            {fav.posterUrl ? (
+                              <img
+                                src={fav.posterUrl}
+                                alt={fav.title}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                              />
+                            ) : (
+                              <div className="flex items-center justify-center w-full h-full text-[10px] text-[#f0e6cc]/30 italic">
+                                No poster
+                              </div>
+                            )}
+                          </Link>
+                          {released ? (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleToggleFavorite(fav.tmdbId);
+                              }}
+                              className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 hover:bg-[#1a1714] transition backdrop-blur-sm z-10"
+                            >
+                              <svg
+                                className="w-3.5 h-3.5 text-red-500 fill-red-500"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                />
+                              </svg>
+                            </button>
+                          ) : (
+                            <div
+                              className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] text-xs shadow-lg z-10 cursor-default"
+                              title="Not released yet"
+                            >
+                              ⏳
+                            </div>
+                          )}
+                        </div>
+                        <Link
+                          to={`/movie/${fav.tmdbId}`}
+                          className="mt-2 w-full text-center"
+                        >
+                          <h4 className="text-[10px] sm:text-sm font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition">
+                            {fav.title}
+                          </h4>
+                        </Link>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -817,129 +854,168 @@ export default function Watchlist() {
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-            {movies.map((item) => (
-              <div
-                key={item.id}
-                className="group overflow-hidden transition bg-[#1a1714] border border-[#c8963c]/20 shadow-lg rounded-2xl flex flex-col hover:border-[#c8963c]/70 hover:shadow-[#c8963c]/10 hover:-translate-y-1 relative"
-              >
-                <Link
-                  to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                  className="relative w-full aspect-[2/3] bg-[#12100e] block overflow-hidden"
+            {movies.map((item) => {
+              const released = isReleased(item);
+              return (
+                <div
+                  key={item.id}
+                  className="group overflow-hidden transition bg-[#1a1714] border border-[#c8963c]/20 shadow-lg rounded-2xl flex flex-col hover:border-[#c8963c]/70 hover:shadow-[#c8963c]/10 hover:-translate-y-1 relative"
                 >
-                  {item.posterUrl ? (
-                    <img
-                      src={item.posterUrl}
-                      alt={item.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full text-[#f0e6cc]/30 text-xs italic">
-                      No poster
-                    </div>
-                  )}
-                  {activeTab === "watched" && (
-                    <div className="absolute top-2 right-2 bg-[#c8963c] text-[#12100e] text-[8px] font-black px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider">
-                      Watched
-                    </div>
-                  )}
-                </Link>
+                  <div className="relative w-full aspect-[2/3] bg-[#12100e] overflow-hidden">
+                    <Link
+                      to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
+                      className="block w-full h-full"
+                    >
+                      {item.posterUrl ? (
+                        <img
+                          src={item.posterUrl}
+                          alt={item.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center w-full h-full text-[#f0e6cc]/30 text-xs italic">
+                          No poster
+                        </div>
+                      )}
+                    </Link>
 
-                <div className="p-3 sm:p-4 flex flex-col flex-grow z-10 bg-[#1a1714]">
-                  <Link
-                    to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                    className="text-xs sm:text-base font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition"
-                    title={item.title}
-                  >
-                    {item.title}
-                  </Link>
-
-                  <p className="hidden sm:block mt-1 text-[10px] uppercase tracking-wider text-[#f0e6cc]/50 mb-2 font-semibold">
-                    Added: {new Date(item.addedAt).toLocaleDateString("en-US")}
-                  </p>
-
-                  <div
-                    className="flex justify-center gap-0.5 sm:gap-1 mb-2 mt-auto pt-2"
-                    onMouseLeave={() => {
-                      setHoveredMovieId(null);
-                      setHoveredStar(0);
-                    }}
-                  >
-                    {[1, 2, 3, 4, 5].map((star) => {
-                      const isActive =
-                        (hoveredMovieId === item.tmdbId
-                          ? hoveredStar
-                          : item.rating || 0) >= star;
-                      return (
-                        <button
-                          key={star}
-                          onMouseEnter={() => {
-                            setHoveredMovieId(item.tmdbId);
-                            setHoveredStar(star);
-                          }}
-                          onClick={() => handleRateMovie(item.tmdbId, star)}
-                          className={`text-xl sm:text-2xl p-0.5 transition-all duration-200 active:scale-150 ${
-                            isActive
-                              ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
-                              : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
-                          }`}
-                        >
-                          ★
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex justify-between items-center gap-1 pt-3 border-t border-[#c8963c]/20">
-                    {activeTab === "watchlist" ? (
-                      <button
-                        onClick={() => handleMarkWatched(item.tmdbId)}
-                        className="text-[10px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest min-h-[32px] flex items-center"
-                      >
+                    {activeTab === "watched" && (
+                      <div className="absolute top-2 left-2 bg-[#c8963c] text-[#12100e] text-[8px] font-black px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider pointer-events-none">
                         Watched
-                      </button>
-                    ) : (
-                      <Link
-                        to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                        className="text-[10px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest min-h-[32px] flex items-center"
-                      >
-                        Details
-                      </Link>
+                      </div>
+                    )}
+                    {activeTab === "watchlist" && !released && (
+                      <div className="absolute top-2 left-2 bg-blue-500/90 text-white text-[8px] font-black px-2 py-1 rounded shadow-md uppercase tracking-wider pointer-events-none">
+                        UPCOMING
+                      </div>
                     )}
 
-                    <div className="flex items-center gap-2 sm:gap-3">
+                    {released ? (
                       <button
-                        onClick={() => handleDelete(item.tmdbId)}
-                        className="text-[10px] font-bold text-red-500/60 hover:text-red-500 transition uppercase min-h-[32px] flex items-center px-1 tracking-widest"
-                      >
-                        Del
-                      </button>
-                      <button
-                        onClick={() => handleToggleFavorite(item.tmdbId)}
-                        className="group/heart p-1 min-h-[32px] flex items-center"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleToggleFavorite(item.tmdbId);
+                        }}
+                        className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 hover:bg-[#1a1714] transition backdrop-blur-sm shadow-lg z-10"
                       >
                         <svg
-                          className={`w-4 h-4 sm:w-5 sm:h-5 transition ${
+                          className={`w-3.5 h-3.5 ${
                             item.isFavorite
                               ? "text-red-500 fill-red-500"
-                              : "text-[#f0e6cc]/30 group-hover/heart:text-red-500"
+                              : "text-[#f0e6cc]/30 hover:text-red-500"
                           }`}
-                          fill={item.isFavorite ? "currentColor" : "none"}
-                          stroke="currentColor"
-                          strokeWidth="2.5"
                           viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          fill={item.isFavorite ? "currentColor" : "none"}
                         >
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
+                            strokeWidth="2.5"
                             d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                           />
                         </svg>
                       </button>
+                    ) : (
+                      <div
+                        className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] text-xs shadow-lg z-10 cursor-default"
+                        title="Not released yet"
+                      >
+                        ⏳
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-3 sm:p-4 flex flex-col flex-grow bg-[#1a1714]">
+                    <Link
+                      to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
+                      className="text-xs sm:text-base font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition mb-1"
+                      title={item.title}
+                    >
+                      {item.title}
+                    </Link>
+
+                    <p className="text-[10px] uppercase tracking-wider text-[#f0e6cc]/50 font-semibold mb-2">
+                      {activeTab === "watchlist" &&
+                      !released &&
+                      item.releaseDate
+                        ? `Releases: ${new Date(item.releaseDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                        : `Added: ${new Date(item.addedAt).toLocaleDateString("en-US")}`}
+                    </p>
+
+                    <div
+                      className="flex justify-center items-center gap-0.5 sm:gap-1 mb-2 mt-auto min-h-[28px]"
+                      onMouseLeave={() => {
+                        setHoveredMovieId(null);
+                        setHoveredStar(0);
+                      }}
+                    >
+                      {released || activeTab === "watched" ? (
+                        [1, 2, 3, 4, 5].map((star) => {
+                          const isActive =
+                            (hoveredMovieId === item.tmdbId
+                              ? hoveredStar
+                              : item.rating || 0) >= star;
+                          return (
+                            <button
+                              key={star}
+                              onMouseEnter={() => {
+                                setHoveredMovieId(item.tmdbId);
+                                setHoveredStar(star);
+                              }}
+                              onClick={() => handleRateMovie(item.tmdbId, star)}
+                              className={`text-xl sm:text-2xl p-0.5 transition-all duration-200 active:scale-150 ${
+                                isActive
+                                  ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
+                                  : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
+                              }`}
+                            >
+                              ★
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <span className="text-[9px] font-black text-[#f0e6cc]/20 uppercase tracking-[0.2em]">
+                          Unreleased
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex justify-between items-center gap-1 pt-3 border-t border-[#c8963c]/20">
+                      {activeTab === "watchlist" ? (
+                        released ? (
+                          <button
+                            onClick={() => handleMarkWatched(item.tmdbId)}
+                            className="text-[10px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest min-h-[32px] flex items-center"
+                          >
+                            Watched
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-black text-[#c8963c]/40 uppercase tracking-widest min-h-[32px] flex items-center cursor-default">
+                            Upcoming
+                          </span>
+                        )
+                      ) : (
+                        <Link
+                          to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
+                          className="text-[10px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest min-h-[32px] flex items-center"
+                        >
+                          Details
+                        </Link>
+                      )}
+
+                      <button
+                        onClick={() => handleDelete(item.tmdbId)}
+                        className="text-[10px] font-bold text-red-500/60 hover:text-red-500 transition uppercase min-h-[32px] px-1 tracking-widest flex items-center"
+                      >
+                        Del
+                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -1012,17 +1088,13 @@ export default function Watchlist() {
           onClose={() => setIsEditModalOpen(false)}
           onUpdate={(newUsername, newAvatarUrl) => {
             setUsername(newUsername);
-
             if (newAvatarUrl) {
               setAvatarUrl(newAvatarUrl);
               localStorage.setItem(getAvatarKey(), newAvatarUrl);
             }
-
             localStorage.setItem(getUsernameKey(), newUsername);
             localStorage.removeItem(getProfileCacheKey());
-
             fetchProfile();
-
             showToast("Profile updated successfully!");
           }}
         />
