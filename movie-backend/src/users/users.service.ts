@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import * as streamifier from 'streamifier';
 import 'multer';
+import { MoviesService } from 'src/movies/movies.service';
 
 @Injectable()
 export class UsersService {
@@ -18,6 +19,7 @@ export class UsersService {
     private configService: ConfigService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    private moviesService: MoviesService,
   ) {
     cloudinary.config({
       cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
@@ -93,5 +95,21 @@ export class UsersService {
 
       streamifier.createReadStream(file.buffer).pipe(uploadStream);
     });
+  }
+
+  async getPublicProfile(username: string) {
+    const user = await this.usersRepository.findOne({ where: { username } });
+
+    if (!user) {
+      throw new NotFoundException('Profile not found');
+    }
+
+    const profileStats = await this.moviesService.getProfileData(user.id);
+
+    return {
+      username: user.username,
+      avatarUrl: user.avatarUrl,
+      ...profileStats,
+    };
   }
 }

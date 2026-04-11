@@ -27,6 +27,7 @@ interface ProfileData {
     totalMinutes: number;
     topGenre: string;
     genreDistribution: { name: string; value: number }[];
+    topRated: WatchlistItem[];
   };
 }
 
@@ -59,6 +60,14 @@ const CustomTooltip = ({ active, payload }: any) => {
     );
   }
   return null;
+};
+
+const getUserRank = (watchedCount: number) => {
+  if (watchedCount >= 100) return "Film Legend";
+  if (watchedCount >= 50) return "Cinema Curator";
+  if (watchedCount >= 20) return "Cinephile";
+  if (watchedCount >= 5) return "Movie Enthusiast";
+  return "Cinema Guest";
 };
 
 export default function Watchlist() {
@@ -320,6 +329,7 @@ export default function Watchlist() {
     const totalCount = profileData?.totalCount || 0;
     const favoritesCount = profileData?.favorites?.length || 0;
     const watchedCount = profileData?.watchedCount || 0;
+    const userRank = getUserRank(watchedCount);
 
     const achievementsList = [
       {
@@ -375,7 +385,9 @@ export default function Watchlist() {
 
     return (
       <div className="space-y-5 sm:space-y-8 animate-fade-in px-1 sm:px-0">
-        <div className="flex flex-col p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl gap-5">
+        <div className="flex flex-col p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl gap-5 relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
+
           <div className="flex flex-col sm:flex-row items-center gap-5">
             <div className="w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-tr from-[#c8963c] to-[#9a732a] rounded-full flex items-center justify-center text-3xl sm:text-5xl font-black shadow-lg uppercase text-[#12100e] shrink-0 overflow-hidden border-2 border-[#c8963c]/50">
               {avatarUrl ? (
@@ -390,7 +402,7 @@ export default function Watchlist() {
             </div>
 
             <div className="flex-grow w-full">
-              <div className="flex items-center justify-center sm:justify-start gap-3 mb-4">
+              <div className="flex items-center justify-center sm:justify-start gap-3 mb-1">
                 <h2 className="text-xl sm:text-4xl font-black text-[#f0e6cc] tracking-tight text-center sm:text-left">
                   {username}
                 </h2>
@@ -401,7 +413,22 @@ export default function Watchlist() {
                 >
                   <span className="text-sm">✏️</span>
                 </button>
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/user/${username}`;
+                    navigator.clipboard.writeText(url);
+                    showToast("Profile link copied to clipboard! 🔗");
+                  }}
+                  className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full transition border border-[#c8963c]/30 shadow-sm flex-shrink-0 text-[#c8963c]"
+                  title="Share Profile"
+                >
+                  <span className="text-sm">🔗</span>
+                </button>
               </div>
+
+              <p className="text-[10px] text-[#c8963c] font-bold uppercase tracking-[0.2em] mb-4 text-center sm:text-left">
+                {userRank}
+              </p>
 
               <div className="grid grid-cols-2 xs:grid-cols-3 sm:flex sm:flex-wrap gap-2">
                 {achievementsList.map((achievement) => (
@@ -443,6 +470,7 @@ export default function Watchlist() {
           </div>
         </div>
 
+        {/* --- STATS SECTION (WRAPPED) --- */}
         {profileData?.stats &&
           profileData.stats.genreDistribution.length > 0 && (
             <div className="p-5 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl mt-5 sm:mt-8">
@@ -510,9 +538,59 @@ export default function Watchlist() {
                   </div>
                 </div>
               </div>
+
+              {profileData.stats.topRated &&
+                profileData.stats.topRated.length > 0 && (
+                  <div className="mt-10 border-t border-[#c8963c]/10 pt-8">
+                    <h4 className="text-[10px] text-[#c8963c] font-black uppercase tracking-[0.4em] mb-6 text-center">
+                      Top 3 Rated Masterpieces
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {profileData.stats.topRated.map((item, index) => (
+                        <Link
+                          to={`/movie/${item.tmdbId}?type=${item.mediaType}`}
+                          key={item.id}
+                          className="relative group bg-[#12100e] border border-[#c8963c]/10 rounded-2xl p-3 flex items-center gap-4 hover:border-[#c8963c]/40 transition-all shadow-lg"
+                        >
+                          {/* Номер місця */}
+                          <div className="absolute -top-2 -left-2 w-7 h-7 bg-[#c8963c] text-[#12100e] rounded-full flex items-center justify-center font-black text-xs shadow-lg z-10 border border-[#1a1714]">
+                            #{index + 1}
+                          </div>
+
+                          <div className="w-12 h-16 shrink-0 rounded-lg overflow-hidden border border-[#c8963c]/10 bg-[#1a1714]">
+                            {item.posterUrl ? (
+                              <img
+                                src={item.posterUrl}
+                                alt=""
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/20 font-black">
+                                N/A
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col min-w-0">
+                            <h5 className="text-[#f0e6cc] font-bold text-[11px] truncate group-hover:text-[#c8963c] transition-colors leading-tight">
+                              {item.title}
+                            </h5>
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="text-[#c8963c] text-[10px] font-black">
+                                ★ {item.rating}.0
+                              </span>
+                              <span className="text-[7px] text-[#f0e6cc]/30 uppercase font-bold tracking-widest hidden xs:inline">
+                                Score
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
             </div>
           )}
-        {/* -------------------------------- */}
 
         {isLoading && !profileData ? (
           <div className="flex justify-center items-center h-48">

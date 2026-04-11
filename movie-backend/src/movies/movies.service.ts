@@ -243,6 +243,18 @@ export class MoviesService {
       }),
     ]);
 
+    const topRated = watchedItems
+      .filter((item) => item.rating && item.rating > 0)
+      .sort((a, b) => {
+        if (b.rating !== a.rating) {
+          return b.rating - a.rating;
+        }
+        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, 3);
+
     let totalMinutes = 0;
     const genreCounts: Record<string, number> = {};
     const itemsToAnalyze = watchedItems.slice(-30);
@@ -279,6 +291,7 @@ export class MoviesService {
         totalMinutes,
         topGenre,
         genreDistribution,
+        topRated,
       },
     };
   }

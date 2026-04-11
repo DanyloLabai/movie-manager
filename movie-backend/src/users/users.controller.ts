@@ -6,6 +6,8 @@ import {
   UploadedFile,
   UseGuards,
   Req,
+  Get,
+  Param,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
@@ -25,5 +27,10 @@ export class UsersController {
   ) {
     const userId = req.user.userId;
     return this.usersService.updateUserProfile(userId, newUsername, file);
+  }
+
+  @Get('public/profile/:username')
+  async getPublicProfile(@Param('username') username: string) {
+    return this.usersService.getPublicProfile(username);
   }
 }
