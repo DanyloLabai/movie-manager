@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { api } from "../api";
 
@@ -19,7 +19,7 @@ interface WatchlistItem {
 }
 
 interface ProfileData {
-  id?: number; // Додали ID для профілю
+  id?: number;
   favorites: WatchlistItem[];
   recent: WatchlistItem[];
   watchedCount?: number;
@@ -39,7 +39,6 @@ const getUserIdFromToken = (): string => {
   if (!token) return "guest";
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
-    // payload.sub або payload.id зазвичай зберігають ID юзера в токені
     return String(payload.sub || payload.id || payload.userId || "guest");
   } catch {
     return "guest";
@@ -102,10 +101,24 @@ export default function Watchlist() {
     }
   });
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [searchParams] = useSearchParams();
+
+  const navigate = useNavigate();
+
+  const initialTab =
+    (searchParams.get("tab") as "profile" | "watchlist" | "watched") ||
+    "profile";
+
   const [activeTab, setActiveTab] = useState<
     "profile" | "watchlist" | "watched"
-  >("profile");
+  >(initialTab);
+
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    navigate(`?tab=${activeTab}`, { replace: true });
+  }, [activeTab, navigate]);
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [username, setUsername] = useState<string>(() => {
@@ -147,8 +160,6 @@ export default function Watchlist() {
     tmdbId: number | null;
     title: string;
   }>({ isOpen: false, tmdbId: null, title: "" });
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (activeTab === "watchlist" || activeTab === "watched") {
@@ -340,6 +351,13 @@ export default function Watchlist() {
     setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
   };
 
+  const handleModalSkip = async () => {
+    if (ratingModalData.tmdbId) {
+      await confirmMarkWatched(ratingModalData.tmdbId, null);
+    }
+    setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
+  };
+
   const closeRatingModal = () => {
     setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
   };
@@ -374,6 +392,7 @@ export default function Watchlist() {
 
     return (
       <div className="space-y-5 sm:space-y-8 animate-fade-in px-1 sm:px-0">
+        {/* --- ШАПКА ПРОФІЛЮ --- */}
         <div className="flex flex-col p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl gap-5 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
 
@@ -466,6 +485,7 @@ export default function Watchlist() {
           </div>
         </div>
 
+        {/* --- MOVIE WRAPPED --- */}
         {profileData?.stats &&
           profileData.stats.genreDistribution.length > 0 && (
             <div className="p-5 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl mt-5 sm:mt-8">
@@ -543,7 +563,7 @@ export default function Watchlist() {
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       {profileData.stats.topRated.map((item, index) => (
                         <Link
-                          to={`/movie/${item.tmdbId}?type=${item.mediaType}`}
+                          to={`/movie/${item.tmdbId}?type=${item.mediaType}&fromTab=profile`}
                           key={item.id}
                           className="relative group bg-[#12100e] border border-[#c8963c]/10 rounded-2xl p-3 flex items-center gap-4 hover:border-[#c8963c]/40 transition-all shadow-lg"
                         >
@@ -586,153 +606,141 @@ export default function Watchlist() {
             </div>
           )}
 
-        {isLoading && !profileData ? (
-          <div className="flex justify-center items-center h-48">
-            <div className="flex gap-2">
-              <div className="w-2.5 h-2.5 bg-[#c8963c] rounded-full animate-bounce"></div>
-              <div
-                className="w-2.5 h-2.5 bg-[#c8963c] rounded-full animate-bounce"
-                style={{ animationDelay: "0.1s" }}
-              ></div>
-              <div
-                className="w-2.5 h-2.5 bg-[#c8963c] rounded-full animate-bounce"
-                style={{ animationDelay: "0.2s" }}
-              ></div>
+        {/* --- TOP FAVORITES --- */}
+        <div className="p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl">
+          <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
+            Top Favorites
+          </h3>
+          {!profileData?.favorites || profileData.favorites.length === 0 ? (
+            <div className="text-center py-8 bg-[#12100e] rounded-2xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
+              You haven't liked any movies yet.
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-5 sm:gap-8">
-            <div className="p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl">
-              <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
-                Top Favorites
-              </h3>
-              {!profileData?.favorites || profileData.favorites.length === 0 ? (
-                <div className="text-center py-8 bg-[#12100e] rounded-2xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
-                  You haven't liked any movies yet.
-                </div>
-              ) : (
-                <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-6">
-                  {profileData.favorites.slice(0, 5).map((fav) => {
-                    const released = isReleased(fav);
-                    return (
-                      <div
-                        key={fav.id}
-                        className="group relative flex flex-col items-center"
-                      >
-                        <div className="w-full aspect-[2/3] rounded-xl overflow-hidden shadow-lg border border-[#c8963c]/20 bg-[#12100e] relative">
-                          <Link
-                            to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}`}
-                            className="block w-full h-full"
-                          >
-                            {fav.posterUrl ? (
-                              <img
-                                src={fav.posterUrl}
-                                alt={fav.title}
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                              />
-                            ) : (
-                              <div className="flex items-center justify-center w-full h-full text-[10px] text-[#f0e6cc]/30 italic">
-                                No poster
-                              </div>
-                            )}
-                          </Link>
-                          {released ? (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                handleToggleFavorite(fav.tmdbId);
-                              }}
-                              className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 hover:bg-[#1a1714] transition backdrop-blur-sm z-10"
-                            >
-                              <svg
-                                className={`w-3.5 h-3.5 ${fav.isFavorite ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30 hover:text-red-500"}`}
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                                fill={fav.isFavorite ? "currentColor" : "none"}
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2.5"
-                                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                />
-                              </svg>
-                            </button>
-                          ) : (
-                            <div
-                              className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] text-xs shadow-lg z-10 cursor-default"
-                              title="Not released yet"
-                            >
-                              ⏳
-                            </div>
-                          )}
-                        </div>
-                        <Link
-                          to={`/movie/${fav.tmdbId}`}
-                          className="mt-2 w-full text-center"
-                        >
-                          <h4 className="text-[10px] sm:text-sm font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition">
-                            {fav.title}
-                          </h4>
-                        </Link>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl">
-              <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
-                Recent Activity
-              </h3>
-              {!profileData?.recent || profileData.recent.length === 0 ? (
-                <div className="text-center py-8 bg-[#12100e] rounded-2xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
-                  No recent activity.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
-                  {profileData.recent.map((act) => {
-                    const addedStr = new Date(act.addedAt).toLocaleDateString(
-                      "en-US",
-                      { month: "short", day: "numeric" },
-                    );
-                    return (
+          ) : (
+            <div className="grid grid-cols-3 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-6">
+              {profileData.favorites.slice(0, 5).map((fav) => {
+                const released = isReleased(fav);
+                return (
+                  <div
+                    key={fav.id}
+                    className="group relative flex flex-col items-center"
+                  >
+                    <div className="w-full aspect-[2/3] rounded-xl overflow-hidden shadow-lg border border-[#c8963c]/20 bg-[#12100e] relative">
                       <Link
-                        to={`/movie/${act.tmdbId}?type=${act.mediaType || "movie"}`}
-                        key={act.id}
-                        className="flex items-center gap-3 bg-[#12100e] p-2.5 rounded-2xl border border-[#c8963c]/10 hover:border-[#c8963c]/40 hover:bg-[#1a1714] transition group shadow-sm"
+                        to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}&fromTab=profile`}
+                        className="block w-full h-full"
                       >
-                        <div className="w-10 h-14 rounded-lg bg-[#1a1714] overflow-hidden shrink-0 border border-[#c8963c]/20">
-                          {act.posterUrl ? (
-                            <img
-                              src={act.posterUrl}
-                              alt={act.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/30">
-                              No Img
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col overflow-hidden">
-                          <h4 className="font-bold text-[#f0e6cc] group-hover:text-[#c8963c] transition truncate text-xs sm:text-sm">
-                            {act.title}
-                          </h4>
-                          <span className="text-[9px] text-[#f0e6cc]/50 uppercase font-semibold mt-1">
-                            Added: {addedStr}
-                          </span>
-                        </div>
+                        {fav.posterUrl ? (
+                          <img
+                            src={fav.posterUrl}
+                            alt={fav.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center w-full h-full text-[10px] text-[#f0e6cc]/30 italic">
+                            No poster
+                          </div>
+                        )}
                       </Link>
-                    );
-                  })}
-                </div>
-              )}
+                      {released ? (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleToggleFavorite(fav.tmdbId);
+                          }}
+                          className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 hover:bg-[#1a1714] transition backdrop-blur-sm z-10"
+                        >
+                          <svg
+                            className={`w-3.5 h-3.5 ${
+                              fav.isFavorite
+                                ? "text-red-500 fill-red-500"
+                                : "text-[#f0e6cc]/30 hover:text-red-500"
+                            }`}
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            fill={fav.isFavorite ? "currentColor" : "none"}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2.5"
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            />
+                          </svg>
+                        </button>
+                      ) : (
+                        <div
+                          className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] text-xs shadow-lg z-10 cursor-default"
+                          title="Not released yet"
+                        >
+                          ⏳
+                        </div>
+                      )}
+                    </div>
+                    <Link
+                      to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}&fromTab=profile`}
+                      className="mt-2 w-full text-center"
+                    >
+                      <h4 className="text-[10px] sm:text-sm font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition">
+                        {fav.title}
+                      </h4>
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* --- RECENT ACTIVITY --- */}
+        <div className="p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl">
+          <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
+            Recent Activity
+          </h3>
+          {!profileData?.recent || profileData.recent.length === 0 ? (
+            <div className="text-center py-8 bg-[#12100e] rounded-2xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
+              No recent activity.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+              {profileData.recent.map((act) => {
+                const addedStr = new Date(act.addedAt).toLocaleDateString(
+                  "en-US",
+                  { month: "short", day: "numeric" },
+                );
+                return (
+                  <Link
+                    to={`/movie/${act.tmdbId}?type=${act.mediaType || "movie"}&fromTab=profile`}
+                    key={act.id}
+                    className="flex items-center gap-3 bg-[#12100e] p-2.5 rounded-2xl border border-[#c8963c]/10 hover:border-[#c8963c]/40 hover:bg-[#1a1714] transition group shadow-sm"
+                  >
+                    <div className="w-10 h-14 rounded-lg bg-[#1a1714] overflow-hidden shrink-0 border border-[#c8963c]/20">
+                      {act.posterUrl ? (
+                        <img
+                          src={act.posterUrl}
+                          alt={act.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/30">
+                          No Img
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col overflow-hidden">
+                      <h4 className="font-bold text-[#f0e6cc] group-hover:text-[#c8963c] transition truncate text-xs sm:text-sm">
+                        {act.title}
+                      </h4>
+                      <span className="text-[9px] text-[#f0e6cc]/50 uppercase font-semibold mt-1">
+                        Added: {addedStr}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
@@ -836,7 +844,7 @@ export default function Watchlist() {
                 >
                   <div className="relative w-full aspect-[2/3] bg-[#12100e] overflow-hidden">
                     <Link
-                      to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
+                      to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}&fromTab=${activeTab}`}
                       className="block w-full h-full"
                     >
                       {item.posterUrl ? (
@@ -1063,7 +1071,7 @@ export default function Watchlist() {
                 ))}
               </div>
               <button
-                onClick={closeRatingModal}
+                onClick={handleModalSkip}
                 className="text-xs font-bold text-[#f0e6cc]/50 hover:text-[#c8963c] uppercase tracking-widest transition py-2 px-4"
               >
                 Skip Rating

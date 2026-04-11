@@ -152,6 +152,7 @@ export default function MovieDetails() {
         title: movie.title,
         posterUrl,
         mediaType,
+        releaseDate: movie.release_date,
       });
       if (initialRating) {
         await api.patch(`/movies/watchlist/${movie.id}/rate`, {
@@ -271,7 +272,14 @@ export default function MovieDetails() {
           Movie Tracker
         </Link>
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => {
+            const fromTab = searchParams.get("fromTab");
+            if (fromTab) {
+              navigate(`/watchlist?tab=${fromTab}`);
+            } else {
+              navigate(-1);
+            }
+          }}
           className="flex items-center gap-1.5 text-xs font-black uppercase text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"
         >
           <svg

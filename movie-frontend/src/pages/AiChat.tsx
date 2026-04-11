@@ -174,6 +174,7 @@ export default function AiChat() {
         title: movie.title,
         posterUrl: movie.posterUrl,
         mediaType: movie.mediaType,
+        releaseDate: movie.releaseDate,
       });
       setAddedIds((prev) => [...prev, movie.id]);
       showToast("Added!");

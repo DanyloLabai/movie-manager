@@ -56,15 +56,33 @@ export class AiChatService {
           .slice(0, 15)
           .join(', ') || 'None';
 
+      let upcomingList = 'No upcoming movies available.';
+      try {
+        const upcomingMovies = await this.moviesService.getUpcomingMovies();
+        upcomingList = upcomingMovies
+          .slice(0, 25)
+          .map((m) => `"${m.title}" (${m.releaseYear})`)
+          .join(', ');
+      } catch (e) {
+        this.logger.warn('Failed to fetch upcoming movies for AI cheat sheet');
+      }
+
+      const currentYear = new Date().getFullYear();
       userContext = `
-        User Data is split into two categories:
-        1. PROVEN TASTES (Movies the user absolutely loves - added to favorites or rated 4-5 stars): ${favs}, ${highlyRated}.
-        2. CURRENT INTEREST (Movies in their "To Watch" list. They haven't seen these yet, but are currently interested in them): ${inPlans}.
+        CURRENT YEAR: ${currentYear}.
         
-        RECOMMENDATION RULES:
-        - Use "PROVEN TASTES" as the baseline for what genres/styles the user enjoys.
-        - Use "CURRENT INTEREST" to understand what mood or genre they are currently leaning towards.
-        - STRICT RULE: NEVER recommend movies that are already in ANY of these lists (${favs}, ${highlyRated}, ${inPlans}). The user already knows about them. Suggest new, similar content.
+        USER DATA:
+        1. PROVEN TASTES (Movies loved by user): ${favs}, ${highlyRated}.
+        2. CURRENT INTEREST (Movies in "To Watch" list): ${inPlans}.
+
+        UPCOMING MOVIES CHEAT SHEET (From Live TMDB Database): 
+        ${upcomingList}.
+        
+        CRITICAL RECOMMENDATION RULES:
+        1. IGNORE THE CHEAT SHEET for general requests. If the user just asks for "a good movie", "action movies", or general recommendations, you MUST recommend ALREADY RELEASED, well-known, high-quality movies from past years.
+        2. ONLY use the "UPCOMING MOVIES CHEAT SHEET" if the user EXPLICITLY asks for "new movies", "upcoming movies", "in theaters", or specifically asks about ${currentYear}.
+        3. NEVER recommend movies already in the user's lists (${favs}, ${highlyRated}, ${inPlans}).
+        4. NEVER invent movie titles. Only suggest real movies that exist on TMDB.
       `;
     } catch (e) {
       this.logger.warn('Could not fetch user profile for AI context');
@@ -188,7 +206,7 @@ export class AiChatService {
     );
   }
 
-private getSystemPrompt(userContext: string): string {
+  private getSystemPrompt(userContext: string): string {
     return `You are an elite movie, TV series, anime, and pop-culture expert assistant. You perfectly understand all languages, including Ukrainian.
     
     Here is the data about the current user's preferences:
