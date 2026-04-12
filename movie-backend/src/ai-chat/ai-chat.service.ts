@@ -56,6 +56,15 @@ export class AiChatService {
           .slice(0, 15)
           .join(', ') || 'None';
 
+      const recentWatched =
+        watched
+          .slice(0, 5)
+          .map(
+            (m: any) =>
+              `"${m.title}" (Rating: ${m.rating ? m.rating + '/5' : 'Unrated'})`,
+          )
+          .join(', ') || 'None';
+
       let upcomingList = 'No upcoming movies available.';
       try {
         const upcomingMovies = await this.moviesService.getUpcomingMovies();
@@ -68,12 +77,14 @@ export class AiChatService {
       }
 
       const currentYear = new Date().getFullYear();
+
       userContext = `
         CURRENT YEAR: ${currentYear}.
         
-        USER DATA:
-        1. PROVEN TASTES (Movies loved by user): ${favs}, ${highlyRated}.
-        2. CURRENT INTEREST (Movies in "To Watch" list): ${inPlans}.
+        USER DATA (STRICTLY FOR CONTEXT):
+        1. FAVORITES & MASTERPIECES: ${favs}, ${highlyRated}.
+        2. IN PLANS TO WATCH: ${inPlans}.
+        3. RECENTLY WATCHED & RATED: ${recentWatched}.
 
         UPCOMING MOVIES CHEAT SHEET (From Live TMDB Database): 
         ${upcomingList}.
@@ -81,8 +92,10 @@ export class AiChatService {
         CRITICAL RECOMMENDATION RULES:
         1. IGNORE THE CHEAT SHEET for general requests. If the user just asks for "a good movie", "action movies", or general recommendations, you MUST recommend ALREADY RELEASED, well-known, high-quality movies from past years.
         2. ONLY use the "UPCOMING MOVIES CHEAT SHEET" if the user EXPLICITLY asks for "new movies", "upcoming movies", "in theaters", or specifically asks about ${currentYear}.
-        3. NEVER recommend movies already in the user's lists (${favs}, ${highlyRated}, ${inPlans}).
-        4. NEVER invent movie titles. Only suggest real movies that exist on TMDB.
+        3. If the user mentions a movie they recently watched or rated, LOOK AT THE "RECENTLY WATCHED & RATED" list to identify it, and base your answer on that context.
+        4. NEVER recommend movies already in the user's lists (${favs}, ${highlyRated}, ${inPlans}, ${recentWatched}).
+        5. NEVER invent movie titles. Only suggest real movies that exist on TMDB.
+        6. Do NOT guess release years for unreleased/upcoming movies unless you are 100% absolutely sure. If you are not sure of the exact release year, omit the "year" field entirely.
       `;
     } catch (e) {
       this.logger.warn('Could not fetch user profile for AI context');
