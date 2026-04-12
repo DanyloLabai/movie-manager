@@ -295,12 +295,9 @@ export class MoviesService {
     }
   }
 
-  async getMovieDetails(
-    tmdbId: number,
-    type: string = 'movie',
-  ): Promise<MovieDetailsResponse> {
+  async getMovieDetails(tmdbId: number, type: string = 'movie'): Promise<any> {
     const cacheKey = `details:${type}:${tmdbId}`;
-    const cached = await this.cacheManager.get<MovieDetailsResponse>(cacheKey);
+    const cached = await this.cacheManager.get<any>(cacheKey);
     if (cached) return cached;
 
     try {
@@ -308,7 +305,10 @@ export class MoviesService {
 
       const { data } = await firstValueFrom(
         this.httpService.get<any>(`${this.baseUrl}/${endpoint}/${tmdbId}`, {
-          params: { language: 'en-US', append_to_response: 'videos' },
+          params: {
+            language: 'en-US',
+            append_to_response: 'videos,watch/providers,credits',
+          },
           headers: { Authorization: `Bearer ${this.tmdbToken}` },
         }),
       );
@@ -324,7 +324,20 @@ export class MoviesService {
         ? `https://www.youtube.com/embed/${trailer.key}`
         : null;
 
-      let result: MovieDetailsResponse;
+      const watchProviders = data['watch/providers']?.results?.US || null;
+
+      const productionCountries =
+        data.production_countries?.map((c: any) => c.name) || [];
+
+      const cast =
+        data.credits?.cast?.slice(0, 12).map((actor: any) => ({
+          id: actor.id,
+          name: actor.name,
+          character: actor.character,
+          profile_path: actor.profile_path,
+        })) || [];
+
+      let result: any;
 
       if (endpoint === 'tv') {
         const tvData = data as TmdbTvDetailsResponse;
@@ -340,6 +353,9 @@ export class MoviesService {
           genres: tvData.genres,
           mediaType: 'tv',
           trailerUrl,
+          watchProviders,
+          productionCountries,
+          cast,
         };
       } else {
         const movieData = data as MovieDetailsResponse;
@@ -347,6 +363,9 @@ export class MoviesService {
           ...movieData,
           mediaType: 'movie',
           trailerUrl,
+          watchProviders,
+          productionCountries,
+          cast,
         };
       }
 
@@ -413,6 +432,65 @@ export class MoviesService {
     } catch (error: any) {
       this.logger.error(`Error fetching similar movies: ${error.message}`);
       return [];
+    }
+  }
+
+  // 🔥 НОВИЙ МЕТОД ДЛЯ ОТРИМАННЯ АКТОРІВ
+  async getActorDetails(personId: number): Promise<any> {
+    const cacheKey = `actor:${personId}`;
+    const cached = await this.cacheManager.get<any>(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.get<any>(`${this.baseUrl}/person/${personId}`, {
+          params: {
+            language: 'en-US',
+            append_to_response: 'combined_credits',
+          },
+          headers: { Authorization: `Bearer ${this.tmdbToken}` },
+        }),
+      );
+
+      const credits = data.combined_credits?.cast || [];
+
+      const knownFor = credits
+        .sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0))
+        .slice(0, 20)
+        .map((media: any) => ({
+          id: media.id,
+          title: media.title || media.name || 'Unknown',
+          posterUrl: media.poster_path
+            ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
+            : null,
+          mediaType: media.media_type,
+          releaseYear:
+            (media.release_date || media.first_air_date || '').split('-')[0] ||
+            'N/A',
+          character: media.character || '',
+        }));
+
+      const result = {
+        id: data.id,
+        name: data.name,
+        biography: data.biography,
+        profileUrl: data.profile_path
+          ? `https://image.tmdb.org/t/p/h632${data.profile_path}`
+          : null,
+        birthday: data.birthday,
+        placeOfBirth: data.place_of_birth,
+        knownFor,
+      };
+
+      await this.cacheManager.set(cacheKey, result, this.TTL_24H);
+      return result;
+    } catch (error: unknown) {
+      if (isAxiosError(error)) {
+        this.logger.error(
+          `TMDB Error: ${error.response?.status} - ${error.message}`,
+        );
+      }
+      throw new NotFoundException('Actor details not found');
     }
   }
 

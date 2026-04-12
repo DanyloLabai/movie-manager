@@ -9,6 +9,7 @@ import ChangePassword from "./pages/ChangePassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import type { JSX } from "react";
 import PublicProfile from "./pages/PublicProfile";
+import ActorDetails from "./pages/ActorDetails";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const token = localStorage.getItem("token");
@@ -64,6 +65,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <MovieDetails />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/actor/:id"
+            element={
+              <ProtectedRoute>
+                <ActorDetails />
               </ProtectedRoute>
             }
           />

@@ -7,6 +7,26 @@ import {
 } from "react-router-dom";
 import { api } from "../api";
 
+interface WatchProvider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string;
+}
+
+interface WatchProvidersData {
+  link?: string;
+  flatrate?: WatchProvider[];
+  rent?: WatchProvider[];
+  buy?: WatchProvider[];
+}
+
+interface CastMember {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
+}
+
 interface MovieDetailsData {
   id: number;
   title: string;
@@ -19,6 +39,9 @@ interface MovieDetailsData {
   genres: { id: number; name: string }[];
   mediaType?: "movie" | "tv";
   trailerUrl?: string | null;
+  watchProviders?: WatchProvidersData;
+  productionCountries?: string[];
+  cast?: CastMember[];
 }
 
 interface RecommendedMovie {
@@ -382,6 +405,16 @@ export default function MovieDetails() {
               onRate={handleRate}
               onRemove={handleRemove}
             />
+
+            {movie.watchProviders &&
+              (movie.watchProviders.flatrate ||
+                movie.watchProviders.rent ||
+                movie.watchProviders.buy) && (
+                <WatchProvidersBlock
+                  providers={movie.watchProviders}
+                  movieTitle={movie.title}
+                />
+              )}
           </div>
 
           <div className="col-span-8 lg:col-span-9 flex flex-col pt-32 md:pt-40">
@@ -391,45 +424,70 @@ export default function MovieDetails() {
                 {mediaType === "tv" ? "TV SHOW" : "MOVIE"}
               </span>
             </h1>
-            <div className="flex flex-wrap gap-4 text-xs sm:text-sm text-[#f0e6cc]/60 mb-8 items-center font-bold">
-              <span className="text-[#f0e6cc]">
-                {movie.release_date
-                  ? new Date(movie.release_date).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "N/A"}
-              </span>
-              <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
-              <span>{movie.runtime || "0"} min</span>
-              {released && (
-                <>
-                  <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
-                  <span className="text-[#c8963c] px-2 py-1 bg-[#c8963c]/10 rounded-lg border border-[#c8963c]/20 tracking-tighter font-black">
-                    IMDB: {movie.vote_average?.toFixed(1)}
-                  </span>
-                </>
-              )}
-              <div className="flex gap-2">
-                {movie.genres?.slice(0, 3).map((g) => (
-                  <span
-                    key={g.id}
-                    className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest"
-                  >
-                    {g.name}
-                  </span>
-                ))}
+
+            <div className="flex flex-col gap-3 mb-8">
+              <div className="flex flex-wrap gap-4 text-xs sm:text-sm text-[#f0e6cc]/60 items-center font-bold">
+                <span className="text-[#f0e6cc]">
+                  {movie.release_date
+                    ? new Date(movie.release_date).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "N/A"}
+                </span>
+                <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
+                <span>{movie.runtime || "0"} min</span>
+                {released && (
+                  <>
+                    <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
+                    <span className="text-[#c8963c] px-2 py-1 bg-[#c8963c]/10 rounded-lg border border-[#c8963c]/20 tracking-tighter font-black">
+                      IMDB: {movie.vote_average?.toFixed(1)}
+                    </span>
+                  </>
+                )}
+                <div className="flex gap-2">
+                  {movie.genres?.slice(0, 3).map((g) => (
+                    <span
+                      key={g.id}
+                      className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest"
+                    >
+                      {g.name}
+                    </span>
+                  ))}
+                </div>
               </div>
+
+              {movie.productionCountries &&
+                movie.productionCountries.length > 0 && (
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#f0e6cc]/70">
+                    <span title="Production Countries">🌎</span>
+                    <span>{movie.productionCountries.join(", ")}</span>
+                  </div>
+                )}
             </div>
+
             <p className="text-[#f0e6cc]/80 text-base sm:text-lg leading-relaxed mb-12 max-w-4xl font-medium">
               {movie.overview}
             </p>
+
+            {movie.cast && movie.cast.length > 0 && (
+              <CastBlock cast={movie.cast} />
+            )}
+
             {movie.trailerUrl && <TrailerBlock trailerUrl={movie.trailerUrl} />}
           </div>
         </div>
 
         <div className="sm:hidden mt-4 flex flex-col gap-4">
+          {movie.productionCountries &&
+            movie.productionCountries.length > 0 && (
+              <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#f0e6cc]/70 bg-[#1a1714] border border-[#c8963c]/20 px-3 py-1.5 rounded-lg w-fit">
+                <span title="Production Countries">🌎</span>
+                <span>{movie.productionCountries.join(", ")}</span>
+              </div>
+            )}
+
           <p className="text-[#f0e6cc]/80 text-sm leading-relaxed font-medium">
             {movie.overview}
           </p>
@@ -527,6 +585,20 @@ export default function MovieDetails() {
               </div>
             )}
           </div>
+
+          {movie.cast && movie.cast.length > 0 && (
+            <CastBlock cast={movie.cast} />
+          )}
+
+          {movie.watchProviders &&
+            (movie.watchProviders.flatrate ||
+              movie.watchProviders.rent ||
+              movie.watchProviders.buy) && (
+              <WatchProvidersBlock
+                providers={movie.watchProviders}
+                movieTitle={movie.title}
+              />
+            )}
 
           {movie.trailerUrl && (
             <div className="mt-2">
@@ -823,7 +895,7 @@ function ActionPanel({
 
 function TrailerBlock({ trailerUrl }: { trailerUrl: string }) {
   return (
-    <div className="w-full max-w-2xl">
+    <div className="w-full max-w-2xl mt-8">
       <div className="flex items-center gap-4 mb-6">
         <h3 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest italic">
           Trailer
@@ -840,6 +912,181 @@ function TrailerBlock({ trailerUrl }: { trailerUrl: string }) {
             allowFullScreen
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function WatchProvidersBlock({
+  providers,
+  movieTitle,
+}: {
+  providers: WatchProvidersData;
+  movieTitle: string;
+}) {
+  const defaultLink = providers.link;
+
+  const getSmartLink = (providerName: string, title: string) => {
+    const query = encodeURIComponent(title);
+    const name = providerName.toLowerCase();
+
+    if (name.includes("netflix"))
+      return `https://www.netflix.com/search?q=${query}`;
+    if (name.includes("amazon") || name.includes("prime"))
+      return `https://www.primevideo.com/search/ref=atv_sr_sug_1?phrase=${query}`;
+    if (name.includes("apple"))
+      return `https://tv.apple.com/search?term=${query}`;
+    if (name.includes("youtube"))
+      return `https://www.youtube.com/results?search_query=${query}+movie`;
+    if (name.includes("google play"))
+      return `https://play.google.com/store/search?q=${query}&c=movies`;
+    if (name.includes("megogo"))
+      return `https://megogo.net/ua/search?q=${query}`;
+    if (name.includes("sweet.tv")) return `https://sweet.tv/search?q=${query}`;
+    if (name.includes("kyivstar") || name.includes("київстар"))
+      return `https://tv.kyivstar.ua/ua/search?q=${query}`;
+    if (name.includes("volia"))
+      return `https://tv.volia.com/search?query=${query}`;
+
+    return defaultLink || "#";
+  };
+
+  const renderProviderList = (title: string, list?: WatchProvider[]) => {
+    if (!list || list.length === 0) return null;
+    return (
+      <div className="mb-4 last:mb-0">
+        <h4 className="text-[9px] font-black text-[#c8963c]/70 uppercase tracking-[0.2em] mb-2">
+          {title}
+        </h4>
+        <div className="flex flex-wrap gap-2">
+          {list.map((p) => (
+            <a
+              key={p.provider_id}
+              href={getSmartLink(p.provider_name, movieTitle)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`Watch on ${p.provider_name}`}
+              className="block transition-transform hover:scale-110 hover:-translate-y-0.5"
+            >
+              <img
+                src={`https://image.tmdb.org/t/p/w92${p.logo_path}`}
+                alt={p.provider_name}
+                className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl shadow-md border border-[#c8963c]/20"
+              />
+            </a>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-[#1a1714] border border-[#c8963c]/20 p-5 rounded-[2rem] shadow-xl backdrop-blur-md w-full mt-6">
+      <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
+        Where to Watch
+      </h3>
+
+      {renderProviderList("Stream", providers.flatrate)}
+      {renderProviderList("Rent", providers.rent)}
+      {renderProviderList("Buy", providers.buy)}
+
+      {providers.link && (
+        <div className="mt-2 pt-3 border-t border-[#c8963c]/10 text-center">
+          <a
+            href={providers.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[8px] text-[#f0e6cc]/40 hover:text-[#c8963c] transition-colors uppercase tracking-widest font-bold"
+          >
+            Powered by JustWatch &rarr;
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CastBlock({ cast }: { cast: CastMember[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const { scrollLeft, clientWidth } = scrollRef.current;
+      const scrollTo =
+        direction === "left"
+          ? scrollLeft - clientWidth / 2
+          : scrollLeft + clientWidth / 2;
+      scrollRef.current.scrollTo({ left: scrollTo, behavior: "smooth" });
+    }
+  };
+
+  return (
+    <div className="w-full max-w-4xl mb-12">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-4 flex-grow">
+          <h3 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest italic">
+            Top Cast
+          </h3>
+          <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent max-w-[200px]" />
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => scroll("left")}
+            className="w-7 h-7 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition-all"
+          >
+            &larr;
+          </button>
+          <button
+            onClick={() => scroll("right")}
+            className="w-7 h-7 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition-all"
+          >
+            &rarr;
+          </button>
+        </div>
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="flex gap-4 overflow-x-auto scrollbar-hide snap-x pb-4"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {cast.map((actor) => (
+          <Link
+            key={actor.id}
+            to={`/actor/${actor.id}`}
+            className="flex-shrink-0 w-24 sm:w-28 snap-start group block cursor-pointer"
+          >
+            <div className="w-24 h-36 sm:w-28 sm:h-40 rounded-2xl overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 mb-2 shadow-md group-hover:border-[#c8963c]/80 group-hover:shadow-[0_0_15px_rgba(200,150,60,0.2)] transition-all duration-300">
+              {actor.profile_path ? (
+                <img
+                  src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
+                  alt={actor.name}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-[#f0e6cc]/20">
+                  <svg
+                    className="w-8 h-8 mb-1"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                  </svg>
+                </div>
+              )}
+            </div>
+            <p className="text-[10px] sm:text-xs font-bold text-[#f0e6cc] leading-tight truncate group-hover:text-[#c8963c] transition-colors">
+              {actor.name}
+            </p>
+            <p
+              className="text-[9px] text-[#c8963c]/70 truncate mt-0.5"
+              title={actor.character}
+            >
+              {actor.character}
+            </p>
+          </Link>
+        ))}
       </div>
     </div>
   );

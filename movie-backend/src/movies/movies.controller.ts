@@ -163,4 +163,10 @@ export class MoviesController {
   async getSimilar(@Param('id') id: string, @Query('type') type: string) {
     return this.moviesService.getSimilarMovies(+id, type);
   }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Get('actor/:id')
+  async getActorDetails(@Param('id', ParseIntPipe) id: number) {
+    return this.moviesService.getActorDetails(id);
+  }
 }
