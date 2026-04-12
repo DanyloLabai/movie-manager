@@ -22,6 +22,7 @@ import { TmdbTvDetailsResponse } from './dto/tv-details-response.dto';
 import Groq from 'groq-sdk';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class MoviesService {
@@ -50,7 +51,6 @@ export class MoviesService {
   }
 
   async searchMovies(query: string): Promise<MovieResultDto[]> {
-    // Змінено ключ кешу для інвалідації старих даних без releaseDate
     const cacheKey = `search_v2:${query.toLowerCase().trim().replace(/\s+/g, '_')}`;
 
     const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
@@ -87,7 +87,6 @@ export class MoviesService {
         releaseYear:
           (media.release_date || media.first_air_date || '').split('-')[0] ||
           'N/A',
-        // ДОДАНО releaseDate
         releaseDate: media.release_date || media.first_air_date || null,
         rating: media.vote_average || 0,
         posterUrl: media.poster_path
@@ -156,7 +155,6 @@ export class MoviesService {
         releaseYear:
           (media.release_date || media.first_air_date || '').split('-')[0] ||
           'N/A',
-        // ДОДАНО releaseDate
         releaseDate: media.release_date || media.first_air_date || null,
         rating: media.vote_average || 0,
         posterUrl: media.poster_path
@@ -244,7 +242,6 @@ export class MoviesService {
   }
 
   async getTrendingMovies(): Promise<MovieResultDto[]> {
-    // Змінено ключ кешу
     const cacheKey = 'trending_weekly_v2';
     const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
     if (cached) return cached;
@@ -282,7 +279,6 @@ export class MoviesService {
           releaseYear:
             (media.release_date || media.first_air_date || '').split('-')[0] ||
             'N/A',
-          // ДОДАНО releaseDate
           releaseDate: media.release_date || media.first_air_date || null,
           rating: media.vote_average || 0,
           posterUrl: media.poster_path
@@ -404,7 +400,6 @@ export class MoviesService {
           releaseYear:
             (media.release_date || media.first_air_date || '').split('-')[0] ||
             'N/A',
-          // ДОДАНО releaseDate
           releaseDate: media.release_date || media.first_air_date || null,
           rating: media.vote_average || 0,
           posterUrl: media.poster_path
@@ -448,6 +443,7 @@ export class MoviesService {
 
     return this.watchlistRepo.save(newItem);
   }
+
   async getWatchlist(userId: number) {
     return this.watchlistRepo.find({
       where: { user: { id: userId }, isWatched: false },
@@ -662,6 +658,73 @@ export class MoviesService {
         `Error fetching upcoming via discover: ${error.message}`,
       );
       return [];
+    }
+  }
+
+  @Cron('0 9 * * *')
+  async notifyAboutReleasedMovies() {
+    this.logger.log('Running daily check for released movies...');
+
+    const today = new Date().toISOString().split('T')[0];
+    const resendApiKey = this.configService.get<string>('RESEND_API_KEY');
+
+    try {
+      const releasedToday = await this.watchlistRepo.find({
+        where: {
+          releaseDate: today,
+          isWatched: false,
+        },
+        relations: ['user'],
+      });
+
+      if (releasedToday.length === 0) {
+        this.logger.log('No unplayed movies released today.');
+        return;
+      }
+
+      for (const item of releasedToday) {
+        if (!item.user || !item.user.email) continue;
+
+        await firstValueFrom(
+          this.httpService.post(
+            'https://api.resend.com/emails',
+            {
+              from: 'Movie Tracker <noreply@movietracker.ink>',
+              to: [item.user.email],
+              subject: `🍿 "${item.title}" is officially out today!`,
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #12100e; color: #f0e6cc; padding: 30px; border-radius: 12px; border: 1px solid #c8963c40;">
+                  <h2 style="color: #c8963c; text-transform: uppercase;">It's Premiere Day! 🎬</h2>
+                  <p>Hi ${item.user.username},</p>
+                  <p>Great news! <strong>${item.title}</strong>, which you added to your "In Plans" list, is officially released today (${today}).</p>
+
+                  ${item.posterUrl ? `<img src="${item.posterUrl}" alt="${item.title}" style="max-width: 200px; border-radius: 8px; margin: 20px 0; border: 1px solid #c8963c;" />` : ''}
+
+                  <p>Grab some popcorn and enjoy the show! Don't forget to mark it as "Watched" and leave a rating in your profile afterwards.</p>
+
+                  <a href="${this.configService.get('FRONTEND_URL') || 'http://localhost:5173'}/movie/${item.tmdbId}?type=${item.mediaType}" style="display: inline-block; padding: 12px 24px; background-color: #c8963c; color: #12100e; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 10px;">
+                    View Details
+                  </a>
+                </div>
+              `,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${resendApiKey}`,
+                'Content-Type': 'application/json',
+              },
+            },
+          ),
+        );
+
+        this.logger.log(
+          `Sent release email to ${item.user.email} for movie ${item.title}`,
+        );
+      }
+    } catch (error: any) {
+      this.logger.error(
+        `Failed to process daily movie releases: ${error.message}`,
+      );
     }
   }
 }
