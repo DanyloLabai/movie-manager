@@ -17,18 +17,21 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { UpdatePasswordDto } from './dto/update-password.dto';
-import { MailerService } from '@nestjs-modules/mailer';
+import { Resend } from 'resend';
 
 @Injectable()
 export class AuthService {
+  private resend: Resend;
+
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private jwtService: JwtService,
     private httpService: HttpService,
     private configService: ConfigService,
-    private mailerService: MailerService,
-  ) {}
+  ) {
+    this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
+  }
 
   async signUp(signUpDto: SignUpDto): Promise<{ message: string }> {
     const { email, password, username, captchaToken } = signUpDto;
@@ -49,7 +52,6 @@ export class AuthService {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Генеруємо випадковий токен (наприклад, 32 байти у hex-форматі)
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
     const user = this.usersRepository.create({
@@ -60,44 +62,44 @@ export class AuthService {
       isVerified: false,
     });
 
+    await this.usersRepository.save(user);
+
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+
     try {
-      await this.usersRepository.save(user);
-
-      const frontendUrl =
-        this.configService.get<string>('FRONTEND_URL') ||
-        'http://localhost:5173';
-      const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
-
-      await this.mailerService.sendMail({
-        to: user.email,
+      await this.resend.emails.send({
+        from: 'Movie Tracker <noreply@movietracker.ink>',
+        to: email,
         subject: 'Welcome to Movie Tracker! Please verify your email',
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2>Welcome to Movie Tracker! 🎬</h2>
-            <p>Hi ${username},</p>
-            <p>Thanks for creating an account. To complete your registration and start tracking your favorite movies, please verify your email address by clicking the button below:</p>
-            <a href="${verificationUrl}" style="display: inline-block; padding: 12px 24px; background-color: #2563EB; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0;">
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #12100e; color: #f0e6cc; padding: 40px; border-radius: 16px;">
+            <h2 style="color: #c8963c; text-transform: uppercase; letter-spacing: 0.1em;">Welcome to Movie Tracker! 🎬</h2>
+            <p>Hi <strong>${username}</strong>,</p>
+            <p>Thanks for creating an account. To complete your registration, please verify your email address:</p>
+            <a href="${verificationUrl}"
+               style="display: inline-block; padding: 14px 28px; background-color: #c8963c; color: #12100e; text-decoration: none; border-radius: 12px; font-weight: 900; margin: 24px 0; text-transform: uppercase; letter-spacing: 0.1em;">
               Verify Email
             </a>
-            <p>Or copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #6B7280; font-size: 14px;">${verificationUrl}</p>
-            <p>If you didn't create this account, you can safely ignore this email.</p>
+            <p style="color: #f0e6cc99; font-size: 13px;">Or copy and paste this link:</p>
+            <p style="word-break: break-all; color: #c8963c; font-size: 13px;">${verificationUrl}</p>
+            <p style="color: #f0e6cc66; font-size: 12px; margin-top: 32px;">If you didn't create this account, you can safely ignore this email.</p>
           </div>
         `,
       });
-
-      return {
-        message:
-          'Successfully registered! Please check your email to verify your account.',
-      };
-    } catch (error) {
-      console.error('Registration/Email sending error:', error);
-      // Якщо лист не відправився, можна видалити юзера або залишити його,
-      // але кидаємо 500 помилку, щоб фронтенд знав, що щось пішло не так.
+    } catch (emailError) {
+      console.error('Failed to send verification email:', emailError);
+      await this.usersRepository.delete({ id: user.id });
       throw new InternalServerErrorException(
-        'Registration successful, but failed to send verification email.',
+        'Failed to send verification email. Please try again.',
       );
     }
+
+    return {
+      message:
+        'Successfully registered! Please check your email to verify your account.',
+    };
   }
 
   async changePassword(dto: UpdatePasswordDto) {

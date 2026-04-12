@@ -8,7 +8,6 @@ import { redisStore } from 'cache-manager-redis-yet';
 import { AiChatModule } from './ai-chat/ai-chat.module';
 import { MoviesModule } from './movies/movies.module';
 import { AuthModule } from './auth/auth.module';
-import { MailerModule } from '@nestjs-modules/mailer';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -62,25 +61,6 @@ import { UsersModule } from './users/users.module';
         limit: 10,
       },
     ]),
-
-    MailerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        transport: {
-          host: 'smtp.resend.com',
-          port: 2525,
-          secure: false,
-          auth: {
-            user: 'resend',
-            pass: configService.get<string>('RESEND_API_KEY'),
-          },
-        },
-        defaults: {
-          from: '"Movie Tracker" <noreply@movietracker.ink>',
-        },
-      }),
-    }),
 
     AiChatModule,
     MoviesModule,
