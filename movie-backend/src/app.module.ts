@@ -69,8 +69,8 @@ import { UsersModule } from './users/users.module';
       useFactory: (configService: ConfigService) => ({
         transport: {
           host: 'smtp.resend.com',
-          port: 465,
-          secure: true,
+          port: 587,
+          secure: false,
           auth: {
             user: 'resend',
             pass: configService.get<string>('RESEND_API_KEY'),
