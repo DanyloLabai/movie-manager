@@ -27,7 +27,6 @@ export default function ActorDetails() {
   const [actor, setActor] = useState<ActorDetailsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBioExpanded, setIsBioExpanded] = useState(false);
-
   const sliderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,42 +60,45 @@ export default function ActorDetails() {
     }
   };
 
-  if (isLoading)
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-[#12100e] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-[#c8963c] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-[#c8963c] border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
 
-  if (!actor)
+  if (!actor) {
     return (
       <div className="min-h-screen bg-[#12100e] text-[#f0e6cc] flex flex-col items-center justify-center gap-4">
-        <p>Actor not found.</p>
+        <p className="text-base">Actor not found.</p>
         <button
           onClick={() => navigate(-1)}
-          className="text-[#c8963c] font-bold hover:underline"
+          className="text-[#c8963c] font-bold hover:underline text-sm"
         >
-          &larr; Go Back
+          ← Go Back
         </button>
       </div>
     );
+  }
 
   const bioParagraphs = actor.biography
     ? actor.biography.split("\n\n").filter((p) => p.trim() !== "")
     : [];
 
   return (
-    <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative pb-24 selection:bg-[#c8963c] selection:text-[#12100e]">
-      <header className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5">
+    <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] pb-10 selection:bg-[#c8963c] selection:text-[#12100e]">
+      {/* Header */}
+      <header className="flex items-center justify-between px-3 py-3 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40">
         <Link
           to="/search"
-          className="text-lg sm:text-xl font-black text-[#c8963c] uppercase tracking-tighter drop-shadow-md"
+          className="text-base font-black text-[#c8963c] uppercase tracking-tighter drop-shadow-md"
         >
           Movie Tracker
         </Link>
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-xs font-black uppercase text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"
+          className="flex items-center gap-1 text-[10px] font-black uppercase text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"
         >
           <svg
             className="w-4 h-4"
@@ -115,22 +117,23 @@ export default function ActorDetails() {
         </button>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-8 sm:pt-12">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12">
-          <div className="md:col-span-4 lg:col-span-3 flex flex-col gap-6">
-            <div className="relative group w-2/3 md:w-full mx-auto md:mx-0">
-              <div className="absolute -inset-1 bg-gradient-to-b from-[#c8963c]/20 to-[#9a732a]/20 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000" />
-              <div className="relative aspect-[2/3] rounded-[2rem] overflow-hidden bg-[#1a1714] border border-[#c8963c]/30 shadow-2xl">
+      <div className="px-3 pt-5 max-w-3xl mx-auto">
+        {/* Actor info — horizontal on mobile */}
+        <div className="flex gap-4 mb-5">
+          {/* Avatar */}
+          <div className="w-28 shrink-0">
+            <div className="relative group">
+              <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-[#1a1714] border border-[#c8963c]/30 shadow-xl">
                 {actor.profileUrl ? (
                   <img
                     src={actor.profileUrl}
                     alt={actor.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-[#f0e6cc]/20">
+                  <div className="w-full h-full flex items-center justify-center text-[#f0e6cc]/20">
                     <svg
-                      className="w-16 h-16 mb-2"
+                      className="w-10 h-10"
                       fill="currentColor"
                       viewBox="0 0 24 24"
                     >
@@ -141,139 +144,132 @@ export default function ActorDetails() {
               </div>
             </div>
 
-            <div className="bg-[#1a1714] border border-[#c8963c]/20 p-6 rounded-[2rem] shadow-xl backdrop-blur-md">
-              <h3 className="text-xs font-black text-[#c8963c] uppercase tracking-widest mb-4">
-                Personal Info
-              </h3>
-              <div className="space-y-4">
+            {/* Personal info below avatar */}
+            {(actor.birthday || actor.placeOfBirth) && (
+              <div className="mt-3 bg-[#1a1714] border border-[#c8963c]/20 p-2.5 rounded-xl space-y-2">
                 {actor.birthday && (
                   <div>
-                    <p className="text-[9px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-1">
+                    <p className="text-[8px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-0.5">
                       Born
                     </p>
-                    <p className="text-sm font-medium text-[#f0e6cc]">
+                    <p className="text-[10px] font-medium text-[#f0e6cc]">
                       {actor.birthday}
                     </p>
                   </div>
                 )}
                 {actor.placeOfBirth && (
                   <div>
-                    <p className="text-[9px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-1">
-                      Place of Birth
+                    <p className="text-[8px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-0.5">
+                      From
                     </p>
-                    <p className="text-sm font-medium text-[#f0e6cc]">
+                    <p className="text-[10px] font-medium text-[#f0e6cc]">
                       {actor.placeOfBirth}
                     </p>
                   </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="md:col-span-8 lg:col-span-9 flex flex-col">
-            <h1 className="text-4xl sm:text-5xl font-black text-[#f0e6cc] mb-6 tracking-tighter text-center md:text-left">
+          {/* Name + Bio */}
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-black text-[#f0e6cc] tracking-tighter mb-3">
               {actor.name}
             </h1>
 
             {bioParagraphs.length > 0 ? (
-              <div className="mb-10 text-[#f0e6cc]/80 text-sm sm:text-base leading-relaxed font-medium space-y-4">
+              <div className="text-[#f0e6cc]/75 text-xs leading-relaxed font-medium space-y-2">
                 <p>{bioParagraphs[0]}</p>
-
                 {isBioExpanded &&
-                  bioParagraphs.slice(1).map((p, i) => (
-                    <p key={i} className="animate-fade-in">
-                      {p}
-                    </p>
-                  ))}
-
+                  bioParagraphs.slice(1).map((p, i) => <p key={i}>{p}</p>)}
                 {bioParagraphs.length > 1 && (
                   <button
                     onClick={() => setIsBioExpanded(!isBioExpanded)}
-                    className="text-[#c8963c] text-xs font-black uppercase tracking-widest mt-2 hover:underline"
+                    className="text-[#c8963c] text-[10px] font-black uppercase tracking-widest hover:underline mt-1"
                   >
                     {isBioExpanded ? "Read Less" : "Read More..."}
                   </button>
                 )}
               </div>
             ) : (
-              <p className="mb-10 text-[#f0e6cc]/50 italic">
-                We don't have a biography for {actor.name}.
+              <p className="text-[#f0e6cc]/40 italic text-xs">
+                No biography available.
               </p>
-            )}
-
-            {actor.knownFor && actor.knownFor.length > 0 && (
-              <div className="mt-4">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-4 flex-grow">
-                    <h3 className="text-lg sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest italic">
-                      Known For
-                    </h3>
-                    <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent" />
-                  </div>
-
-                  <div className="flex gap-2 ml-4">
-                    <button
-                      onClick={() => scrollSlider("left")}
-                      className="w-8 h-8 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition-all"
-                    >
-                      &larr;
-                    </button>
-                    <button
-                      onClick={() => scrollSlider("right")}
-                      className="w-8 h-8 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition-all"
-                    >
-                      &rarr;
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  ref={sliderRef}
-                  className="flex gap-4 overflow-x-auto scrollbar-hide snap-x pb-8"
-                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                >
-                  {actor.knownFor.map((m) => (
-                    <Link
-                      key={m.id}
-                      to={`/movie/${m.id}?type=${m.mediaType}`}
-                      className="group flex-shrink-0 w-36 sm:w-44 snap-start block"
-                    >
-                      <div className="aspect-[2/3] rounded-2xl sm:rounded-[2rem] overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 mb-3 group-hover:border-[#c8963c]/70 group-hover:-translate-y-1 shadow-lg transition-all duration-300">
-                        {m.posterUrl ? (
-                          <img
-                            src={m.posterUrl}
-                            alt={m.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[9px] text-[#f0e6cc]/30 font-bold uppercase tracking-widest text-center px-2">
-                            {m.title}
-                          </div>
-                        )}
-                      </div>
-                      <div className="px-1">
-                        <h4 className="text-[11px] sm:text-xs font-bold text-[#f0e6cc] truncate group-hover:text-[#c8963c] transition-colors uppercase tracking-tight">
-                          {m.title}
-                        </h4>
-                        <div className="flex justify-between items-center mt-1">
-                          <p
-                            className="text-[9px] text-[#c8963c]/70 truncate max-w-[70%]"
-                            title={m.character}
-                          >
-                            {m.character || "N/A"}
-                          </p>
-                          <p className="text-[8px] sm:text-[9px] text-[#f0e6cc]/40 font-black uppercase tracking-widest">
-                            {m.releaseYear}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
             )}
           </div>
         </div>
+
+        {/* Known For */}
+        {actor.knownFor && actor.knownFor.length > 0 && (
+          <div className="mt-2">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-3 flex-grow">
+                <h3 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest italic">
+                  Known For
+                </h3>
+                <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent" />
+              </div>
+              <div className="flex gap-1.5 ml-3">
+                <button
+                  onClick={() => scrollSlider("left")}
+                  className="w-7 h-7 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition text-xs"
+                >
+                  ←
+                </button>
+                <button
+                  onClick={() => scrollSlider("right")}
+                  className="w-7 h-7 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition text-xs"
+                >
+                  →
+                </button>
+              </div>
+            </div>
+
+            <div
+              ref={sliderRef}
+              className="flex gap-3 overflow-x-auto scrollbar-hide snap-x pb-6"
+              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            >
+              {actor.knownFor.map((m) => (
+                <Link
+                  key={m.id}
+                  to={`/movie/${m.id}?type=${m.mediaType}`}
+                  className="group flex-shrink-0 w-28 snap-start block"
+                >
+                  <div className="aspect-[2/3] rounded-xl overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 mb-2 group-hover:border-[#c8963c]/70 group-hover:-translate-y-0.5 shadow transition-all duration-300">
+                    {m.posterUrl ? (
+                      <img
+                        src={m.posterUrl}
+                        alt={m.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[8px] text-[#f0e6cc]/30 font-bold uppercase px-2 text-center">
+                        {m.title}
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-0.5">
+                    <h4 className="text-[10px] font-bold text-[#f0e6cc] truncate group-hover:text-[#c8963c] transition uppercase tracking-tight">
+                      {m.title}
+                    </h4>
+                    <div className="flex justify-between items-center mt-0.5">
+                      <p
+                        className="text-[8px] text-[#c8963c]/70 truncate max-w-[65%]"
+                        title={m.character}
+                      >
+                        {m.character || "N/A"}
+                      </p>
+                      <p className="text-[7px] text-[#f0e6cc]/40 font-black uppercase tracking-widest">
+                        {m.releaseYear}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
