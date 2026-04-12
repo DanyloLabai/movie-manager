@@ -777,7 +777,7 @@ export default function Watchlist() {
         )}
 
         {/* Top Favorites */}
-        <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl">
+        <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl mt-4">
           <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-3">
             Top Favorites
           </h3>
@@ -856,7 +856,7 @@ export default function Watchlist() {
         </div>
 
         {/* Recent Activity */}
-        <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl">
+        <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl mt-4">
           <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-3">
             Recent Activity
           </h3>
@@ -910,9 +910,9 @@ export default function Watchlist() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-8">
-        {/* 1. ВЕРХНЯ НАВІГАЦІЯ (Static Header) */}
-        <header className="sticky top-0 z-50 bg-[#12100e]/95 flex flex-col sm:flex-row items-center justify-between gap-3 py-6 mb-2 border-b border-[#c8963c]/10">
+      {/* 👇 1. ВЕРХНЯ НАВІГАЦІЯ (НА ВСЮ ШИРИНУ ТА ЗАКРІПЛЕНА) 👇 */}
+      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6">
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
             className="hover:opacity-80 transition-opacity shrink-0"
@@ -938,7 +938,7 @@ export default function Watchlist() {
               to="/watchlist"
               className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
             >
-              My Profile
+              Profile
             </Link>
             <button
               onClick={handleLogout}
@@ -948,43 +948,28 @@ export default function Watchlist() {
             </button>
           </nav>
         </header>
+      </div>
 
-        {/* 2. ПАНЕЛЬ ВКЛАДОК (Винесена окремо, зліва) */}
-        <div className="flex gap-2 sm:gap-3 mb-8 overflow-x-auto scrollbar-hide pt-4">
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`px-6 py-2.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-              activeTab === "profile"
-                ? "bg-[#c8963c] text-[#12100e]"
-                : "bg-[#1a1714] text-[#f0e6cc]/40 border border-[#c8963c]/10 hover:border-[#c8963c]/30"
-            }`}
-          >
-            Profile
-          </button>
-          <button
-            onClick={() => setActiveTab("watchlist")}
-            className={`px-6 py-2.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-              activeTab === "watchlist"
-                ? "bg-[#c8963c] text-[#12100e]"
-                : "bg-[#1a1714] text-[#f0e6cc]/40 border border-[#c8963c]/10 hover:border-[#c8963c]/30"
-            }`}
-          >
-            In Plans
-          </button>
-          <button
-            onClick={() => setActiveTab("watched")}
-            className={`px-6 py-2.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-              activeTab === "watched"
-                ? "bg-[#c8963c] text-[#12100e]"
-                : "bg-[#1a1714] text-[#f0e6cc]/40 border border-[#c8963c]/10 hover:border-[#c8963c]/30"
-            }`}
-          >
-            Watched
-          </button>
+      {/* 👇 2. ОСНОВНИЙ КОНТЕНТ (ОБМЕЖЕНИЙ ПО ЦЕНТРУ) 👇 */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
+        {/* ПАНЕЛЬ ВКЛАДОК */}
+        <div className="flex gap-2 sm:gap-3 mb-8 overflow-x-auto scrollbar-hide">
+          {(["profile", "watchlist", "watched"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 max-w-[150px] ${
+                activeTab === tab
+                  ? "bg-[#c8963c] text-[#12100e]"
+                  : "bg-[#1a1714] text-[#f0e6cc]/40 border border-[#c8963c]/10 hover:border-[#c8963c]/30"
+              }`}
+            >
+              {tab === "watchlist" ? "In Plans" : tab}
+            </button>
+          ))}
         </div>
 
-        {/* 3. ОСНОВНИЙ КОНТЕНТ */}
-        <main className="pb-12">
+        <main>
           {activeTab === "profile" ? (
             renderProfileTab()
           ) : isLoading ? (
@@ -992,25 +977,25 @@ export default function Watchlist() {
               Loading your list...
             </p>
           ) : movies.length === 0 ? (
-            <div className="text-center p-10 sm:p-12 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-2xl mt-10 max-w-lg mx-auto">
-              <p className="text-[#f0e6cc]/60 text-lg font-medium mb-6">
+            <div className="text-center p-8 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-2xl mt-8 max-w-sm mx-auto">
+              <p className="text-[#f0e6cc]/60 text-base font-medium mb-5">
                 It's empty here. Add some movies!
               </p>
               <Link
                 to="/search"
-                className="inline-block px-8 py-3.5 bg-[#c8963c] text-[#12100e] font-black uppercase tracking-wider rounded-xl hover:bg-[#e8c070] transition shadow-lg"
+                className="inline-block px-6 py-3 bg-[#c8963c] text-[#12100e] font-black uppercase tracking-wider rounded-xl hover:bg-[#e8c070] transition shadow-lg text-sm"
               >
                 Discover Movies
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
               {movies.map((item) => {
                 const released = isReleased(item);
                 return (
                   <div
                     key={item.id}
-                    className="group overflow-hidden transition bg-[#1a1714] border border-[#c8963c]/20 shadow-lg rounded-2xl flex flex-col hover:border-[#c8963c]/70 hover:shadow-[#c8963c]/10 hover:-translate-y-1 relative"
+                    className="group overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 shadow rounded-xl flex flex-col hover:border-[#c8963c]/70 hover:-translate-y-0.5 transition relative"
                   >
                     <div className="relative w-full aspect-[2/3] bg-[#12100e] overflow-hidden">
                       <Link
@@ -1024,19 +1009,19 @@ export default function Watchlist() {
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           />
                         ) : (
-                          <div className="flex items-center justify-center w-full h-full text-[#f0e6cc]/30 text-xs italic">
+                          <div className="flex items-center justify-center w-full h-full text-[#f0e6cc]/30 text-[9px] italic">
                             No poster
                           </div>
                         )}
                       </Link>
 
                       {activeTab === "watched" && (
-                        <div className="absolute top-2 left-2 bg-[#c8963c] text-[#12100e] text-[8px] font-black px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider pointer-events-none">
+                        <div className="absolute top-1.5 left-1.5 bg-[#c8963c] text-[#12100e] text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
                           Watched
                         </div>
                       )}
                       {activeTab === "watchlist" && !released && (
-                        <div className="absolute top-2 left-2 bg-blue-500/90 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-md uppercase tracking-wider pointer-events-none">
+                        <div className="absolute top-1.5 left-1.5 bg-blue-500/90 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">
                           Upcoming
                         </div>
                       )}
@@ -1048,14 +1033,10 @@ export default function Watchlist() {
                             e.stopPropagation();
                             handleToggleFavorite(item.tmdbId);
                           }}
-                          className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 hover:bg-[#1a1714] transition backdrop-blur-sm shadow-lg z-10"
+                          className="absolute top-1.5 right-1.5 w-7 h-7 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 transition backdrop-blur-sm z-10"
                         >
                           <svg
-                            className={`w-3.5 h-3.5 ${
-                              item.isFavorite
-                                ? "text-red-500 fill-red-500"
-                                : "text-[#f0e6cc]/30 hover:text-red-500"
-                            }`}
+                            className={`w-3 h-3 ${item.isFavorite ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30"}`}
                             viewBox="0 0 24 24"
                             stroke="currentColor"
                             fill={item.isFavorite ? "currentColor" : "none"}
@@ -1069,87 +1050,91 @@ export default function Watchlist() {
                           </svg>
                         </button>
                       ) : (
-                        <div
-                          className="absolute top-2 right-2 w-8 h-8 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] text-xs shadow-lg z-10 cursor-default"
-                          title="Not released yet"
-                        >
+                        <div className="absolute top-1.5 right-1.5 w-7 h-7 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] text-[10px] z-10">
                           ⏳
                         </div>
                       )}
                     </div>
 
-                    <div className="p-3 sm:p-4 flex flex-col flex-grow z-10 bg-[#1a1714]">
+                    <div className="p-2.5 flex flex-col flex-grow bg-[#1a1714]">
                       <Link
                         to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                        className="text-xs sm:text-base font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition"
+                        className="text-[11px] font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition"
                         title={item.title}
                       >
                         {item.title}
                       </Link>
 
-                      <div
-                        className="flex justify-center gap-0.5 sm:gap-1 mb-2 mt-auto pt-2"
-                        onMouseLeave={() => {
-                          setHoveredMovieId(null);
-                          setHoveredStar(0);
-                        }}
-                      >
-                        {[1, 2, 3, 4, 5].map((star) => {
-                          const isActive =
-                            (hoveredMovieId === item.tmdbId
-                              ? hoveredStar
-                              : item.rating || 0) >= star;
-                          return (
-                            <button
-                              key={star}
-                              onMouseEnter={() => {
-                                setHoveredMovieId(item.tmdbId);
-                                setHoveredStar(star);
-                              }}
-                              onClick={() => handleRateMovie(item.tmdbId, star)}
-                              className={`text-xl sm:text-2xl p-0.5 transition-all duration-200 active:scale-150 ${
-                                isActive
-                                  ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
-                                  : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
-                              }`}
-                            >
-                              ★
-                            </button>
-                          );
-                        })}
-                      </div>
+                      {released || activeTab === "watched" ? (
+                        <div
+                          className="flex justify-center gap-0 mb-1.5 mt-auto pt-2"
+                          onMouseLeave={() => {
+                            setHoveredMovieId(null);
+                            setHoveredStar(0);
+                          }}
+                        >
+                          {[1, 2, 3, 4, 5].map((star) => {
+                            const isActive =
+                              (hoveredMovieId === item.tmdbId
+                                ? hoveredStar
+                                : item.rating || 0) >= star;
+                            return (
+                              <button
+                                key={star}
+                                onMouseEnter={() => {
+                                  setHoveredMovieId(item.tmdbId);
+                                  setHoveredStar(star);
+                                }}
+                                onClick={() =>
+                                  handleRateMovie(item.tmdbId, star)
+                                }
+                                className={`text-lg p-0.5 transition-all active:scale-150 ${
+                                  isActive
+                                    ? "text-[#c8963c]"
+                                    : "text-[#f0e6cc]/20"
+                                }`}
+                              >
+                                ★
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex justify-center mb-1.5 mt-auto pt-2">
+                          <span className="text-[8px] font-black text-[#f0e6cc]/20 uppercase tracking-wider py-1.5">
+                            Unreleased
+                          </span>
+                        </div>
+                      )}
 
-                      <div className="flex justify-between items-center gap-1 pt-3 border-t border-[#c8963c]/20">
+                      <div className="flex justify-between items-center gap-1 pt-2 border-t border-[#c8963c]/20">
                         {activeTab === "watchlist" ? (
                           released ? (
                             <button
                               onClick={() => handleMarkWatched(item.tmdbId)}
-                              className="text-[10px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest min-h-[32px] flex items-center"
+                              className="text-[9px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-wide"
                             >
                               Watched
                             </button>
                           ) : (
-                            <span className="text-[10px] font-black text-[#c8963c]/40 uppercase tracking-widest min-h-[32px] flex items-center gap-1 cursor-default">
+                            <span className="text-[9px] font-black text-[#c8963c]/40 uppercase tracking-wide">
                               Upcoming
                             </span>
                           )
                         ) : (
                           <Link
                             to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                            className="text-[10px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest min-h-[32px] flex items-center"
+                            className="text-[9px] font-bold text-[#c8963c] uppercase tracking-wide hover:text-[#e8c070] transition"
                           >
                             Details
                           </Link>
                         )}
-
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <button
-                            onClick={() => handleDelete(item.tmdbId)}
-                            className="text-[10px] font-bold text-red-500/60 hover:text-red-500 transition uppercase min-h-[32px] flex items-center px-1 tracking-widest"
-                          >
-                            Del
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => handleDelete(item.tmdbId)}
+                          className="text-[9px] font-bold text-red-500/60 hover:text-red-500 transition uppercase"
+                        >
+                          Del
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1160,28 +1145,41 @@ export default function Watchlist() {
         </main>
       </div>
 
-      {/* 4. МОДАЛЬНІ ВІКНА ТА ТОСТИ */}
+      {/* Rating Modal */}
       {ratingModalData.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
           <div
-            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200"
+            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-t-3xl sm:rounded-3xl p-6 w-full sm:max-w-sm shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="w-10 h-1 bg-[#c8963c]/30 rounded-full mx-auto mb-4 sm:hidden" />
             <button
               onClick={closeRatingModal}
               className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
             >
-              ✕
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
             </button>
             <div className="text-center">
-              <h3 className="text-xl sm:text-2xl font-black text-[#c8963c] mb-2 uppercase tracking-wide">
+              <h3 className="text-lg font-black text-[#c8963c] mb-1 uppercase tracking-wide">
                 How was it?
               </h3>
               <p className="text-sm text-[#f0e6cc]/60 mb-6">
                 Rate "{ratingModalData.title}" or skip.
               </p>
               <div
-                className="flex justify-center gap-2 mb-6"
+                className="flex justify-center gap-1 mb-6"
                 onMouseLeave={() => setModalHoveredStar(0)}
               >
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -1189,11 +1187,7 @@ export default function Watchlist() {
                     key={star}
                     onMouseEnter={() => setModalHoveredStar(star)}
                     onClick={() => handleModalRate(star)}
-                    className={`text-4xl sm:text-5xl transition-all duration-200 transform hover:scale-125 active:scale-150 p-1 ${
-                      modalHoveredStar >= star
-                        ? "text-[#c8963c] drop-shadow-[0_0_12px_rgba(200,150,60,0.5)]"
-                        : "text-[#f0e6cc]/20"
-                    }`}
+                    className={`text-4xl transition-all duration-150 transform active:scale-125 p-1 ${modalHoveredStar >= star ? "text-[#c8963c]" : "text-[#f0e6cc]/20"}`}
                   >
                     ★
                   </button>
@@ -1234,8 +1228,8 @@ export default function Watchlist() {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-5 left-4 right-4 sm:left-auto sm:right-10 sm:bottom-10 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-6 py-4 rounded-xl shadow-2xl flex items-center justify-center gap-3 animate-in slide-in-from-bottom-5 fade-in duration-300 z-50 uppercase tracking-widest font-bold">
-          <span className="text-xs sm:text-sm text-center">{toastMessage}</span>
+        <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl flex items-center justify-center gap-2 z-50 uppercase tracking-widest font-bold">
+          <span className="text-[10px] text-center">{toastMessage}</span>
         </div>
       )}
     </div>

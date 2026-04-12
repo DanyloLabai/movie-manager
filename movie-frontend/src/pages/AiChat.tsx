@@ -220,39 +220,44 @@ export default function AiChat() {
   return (
     <div className="flex flex-col fixed inset-0 h-[100dvh] w-full bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
       {/* Header */}
-      <header className="flex items-center justify-between px-3 py-3 gap-2 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md z-20 shrink-0">
-        <Link to="/search" className="hover:opacity-80 transition shrink-0">
-          <h1 className="text-lg font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md">
-            Movie Tracker
-          </h1>
-        </Link>
-        <nav className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
-          <Link
-            to="/ai-chat"
-            className="text-[#c8963c] font-bold border-b border-[#c8963c] text-xs px-1 tracking-wide uppercase whitespace-nowrap"
-          >
-            AI Chat
-          </Link>
+      <div className="z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 shrink-0">
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
-            className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition text-xs px-1 uppercase font-semibold whitespace-nowrap"
+            className="hover:opacity-80 transition-opacity shrink-0"
           >
-            Search
+            <h1 className="text-xl sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md">
+              Movie Tracker
+            </h1>
           </Link>
-          <Link
-            to="/watchlist"
-            className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition text-xs px-1 uppercase font-semibold whitespace-nowrap"
-          >
-            Profile
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="text-[9px] px-2.5 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap"
-          >
-            Logout
-          </button>
-        </nav>
-      </header>
+          <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
+            <Link
+              to="/ai-chat"
+              className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
+            >
+              AI Chat
+            </Link>
+            <Link
+              to="/search"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
+            >
+              Search
+            </Link>
+            <Link
+              to="/watchlist"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
+            >
+              Profile
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
+            >
+              Logout
+            </button>
+          </nav>
+        </header>
+      </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e]">

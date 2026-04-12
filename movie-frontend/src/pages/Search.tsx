@@ -413,25 +413,25 @@ export default function Search() {
       {/* Header */}
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
         <header className="flex items-center justify-between px-3 py-3 gap-2">
-          <h1 className="text-lg font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md shrink-0">
+          <h1 className="text-xl sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md shrink-0">
             Movie Tracker
           </h1>
           <nav className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
             <Link
               to="/ai-chat"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition text-xs px-1 uppercase font-semibold whitespace-nowrap"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition text-xs sm:text-sm px-1 uppercase font-semibold whitespace-nowrap"
             >
               AI Chat
             </Link>
             <Link
               to="/search"
-              className="text-[#c8963c] font-bold border-b border-[#c8963c] text-xs px-1 uppercase whitespace-nowrap"
+              className="text-[#c8963c] font-bold border-b border-[#c8963c] text-xs sm:text-sm px-1 uppercase whitespace-nowrap"
             >
               Search
             </Link>
             <Link
               to="/watchlist"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition text-xs px-1 uppercase font-semibold whitespace-nowrap"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition text-xs sm:text-sm px-1 uppercase font-semibold whitespace-nowrap"
             >
               Profile
             </Link>
