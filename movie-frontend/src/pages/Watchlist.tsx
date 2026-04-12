@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+} from "recharts";
 import { api } from "../api";
 
 interface WatchlistItem {
@@ -31,6 +40,14 @@ interface ProfileData {
     topGenre: string;
     genreDistribution: { name: string; value: number }[];
     topRated: WatchlistItem[];
+    averageRating: string | number;
+    moviesCount: number;
+    tvCount: number;
+    favoriteDecade: string;
+    ratingDistribution: { name: string; value: number }[];
+    completionRate: number;
+    longestMovie: { title: string; runtime: number };
+    topActor: { name: string; count: number; profileUrl: string | null } | null;
   };
 }
 
@@ -67,11 +84,28 @@ const isReleased = (item: WatchlistItem): boolean => {
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#1a1714] border border-[#c8963c]/50 p-3 rounded-xl shadow-xl">
+      <div className="bg-[#1a1714] border border-[#c8963c]/50 p-3 rounded-xl shadow-xl z-50">
         <p className="text-[#f0e6cc] font-bold text-xs uppercase tracking-widest">
           {payload[0].name}:{" "}
           <span className="text-[#c8963c]">{payload[0].value}</span>
         </p>
+      </div>
+    );
+  }
+  return null;
+};
+
+const RatingTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-[#1a1714] border border-[#c8963c]/50 px-3 py-2 rounded-xl shadow-xl z-50 flex items-center gap-2">
+        <span className="text-[#c8963c] font-black text-sm">
+          ★ {payload[0].payload.name}
+        </span>
+        <span className="text-[#f0e6cc]/50">|</span>
+        <span className="text-[#f0e6cc] font-bold text-xs">
+          {payload[0].value} movies
+        </span>
       </div>
     );
   }
@@ -376,6 +410,12 @@ export default function Watchlist() {
     const watchedCount = profileData?.watchedCount || 0;
     const userRank = getUserRank(watchedCount);
 
+    const hasStats = Boolean(
+      profileData?.stats &&
+      profileData.stats.genreDistribution &&
+      profileData.stats.genreDistribution.length > 0,
+    );
+
     const achievementsList = [
       { id: "first_blood", isUnlocked: totalCount > 0, text: "🏆 First Blood" },
       { id: "critic", isUnlocked: favoritesCount >= 5, text: "⭐ Critic" },
@@ -485,129 +525,302 @@ export default function Watchlist() {
           </div>
         </div>
 
-        {/* --- MOVIE WRAPPED --- */}
-        {profileData?.stats &&
-          profileData.stats.genreDistribution.length > 0 && (
-            <div className="p-5 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl mt-5 sm:mt-8">
-              <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-6 border-b border-[#c8963c]/20 pb-3">
-                Your Movie Wrapped
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-                <div className="space-y-4">
-                  <div className="bg-[#12100e] border border-[#c8963c]/20 p-5 rounded-2xl shadow-inner">
-                    <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
-                      <span className="text-[#c8963c]">⏱</span> Time Spent
-                    </p>
-                    <p className="text-2xl sm:text-3xl font-black text-[#c8963c]">
-                      {Math.floor(profileData.stats.totalMinutes / 60)}{" "}
-                      <span className="text-sm font-medium text-[#f0e6cc]/60 uppercase tracking-widest">
-                        hours
-                      </span>{" "}
-                      {profileData.stats.totalMinutes % 60}{" "}
-                      <span className="text-sm font-medium text-[#f0e6cc]/60 uppercase tracking-widest">
-                        min
-                      </span>
-                    </p>
-                  </div>
-                  <div className="bg-[#12100e] border border-[#c8963c]/20 p-5 rounded-2xl shadow-inner">
-                    <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
-                      <span className="text-[#c8963c]">🏆</span> Top Genre
-                    </p>
-                    <p className="text-2xl sm:text-3xl font-black text-[#c8963c]">
-                      {profileData.stats.topGenre}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="h-64 w-full relative">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={profileData.stats.genreDistribution}
-                        innerRadius={70}
-                        outerRadius={90}
-                        paddingAngle={5}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {profileData.stats.genreDistribution.map((_, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={CHART_COLORS[index % CHART_COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        content={<CustomTooltip />}
-                        cursor={{ fill: "transparent" }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
-                    <span className="text-[#c8963c] text-xl font-black">
-                      {profileData.stats.genreDistribution.length}
-                    </span>
-                    <span className="text-[#f0e6cc]/40 text-[10px] font-bold uppercase tracking-widest">
-                      Genres
-                    </span>
-                  </div>
-                </div>
+        {/* СТАТИСТИКА ПРОФІЛЮ (Прогрес-бар) */}
+        {hasStats && (
+          <div className="w-full mt-4 bg-[#12100e] border border-[#c8963c]/10 rounded-2xl p-4 shadow-inner">
+            <div className="flex justify-between items-end mb-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#f0e6cc]/50">
+                Completion Rate
+              </span>
+              <span className="text-[#c8963c] font-black text-sm">
+                {profileData?.stats?.completionRate || 0}%
+              </span>
+            </div>
+            <div className="w-full h-3 bg-[#1a1714] rounded-full overflow-hidden border border-[#c8963c]/10">
+              <div
+                className="h-full bg-gradient-to-r from-[#9a732a] to-[#c8963c] transition-all duration-1000 ease-out relative"
+                style={{ width: `${profileData?.stats?.completionRate || 0}%` }}
+              >
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNMCAwaDQwdjQwSDBWMHptMjAgMjBWMGgyMHYyMEgyMHoiLz48L2c+PC9zdmc+')] opacity-20" />
               </div>
+            </div>
+            <p className="text-[9px] text-center text-[#f0e6cc]/40 mt-2 italic">
+              You have watched {watchedCount} out of {totalCount} movies in your
+              list.
+            </p>
+          </div>
+        )}
 
-              {profileData.stats.topRated &&
-                profileData.stats.topRated.length > 0 && (
-                  <div className="mt-10 border-t border-[#c8963c]/10 pt-8">
-                    <h4 className="text-[10px] text-[#c8963c] font-black uppercase tracking-[0.4em] mb-6 text-center">
-                      Top 3 Rated Masterpieces
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      {profileData.stats.topRated.map((item, index) => (
-                        <Link
-                          to={`/movie/${item.tmdbId}?type=${item.mediaType}&fromTab=profile`}
-                          key={item.id}
-                          className="relative group bg-[#12100e] border border-[#c8963c]/10 rounded-2xl p-3 flex items-center gap-4 hover:border-[#c8963c]/40 transition-all shadow-lg"
+        {/* --- MOVIE WRAPPED --- */}
+        {hasStats && (
+          <div className="p-5 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl mt-5 sm:mt-8">
+            <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-6 border-b border-[#c8963c]/20 pb-3 flex items-center justify-between">
+              Your Movie Wrapped
+            </h3>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              {/* ЛІВА КОЛОНКА (Картки статів) */}
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {/* Time Spent */}
+                <div className="bg-[#12100e] border border-[#c8963c]/20 p-4 sm:p-5 rounded-2xl shadow-inner col-span-2 sm:col-span-1">
+                  <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+                    <span className="text-[#c8963c]">⏱</span> Time Spent
+                  </p>
+                  <p className="text-xl sm:text-2xl font-black text-[#c8963c]">
+                    {Math.floor((profileData?.stats?.totalMinutes || 0) / 60)}{" "}
+                    <span className="text-xs font-medium text-[#f0e6cc]/60 uppercase tracking-widest">
+                      h
+                    </span>{" "}
+                    {(profileData?.stats?.totalMinutes || 0) % 60}{" "}
+                    <span className="text-xs font-medium text-[#f0e6cc]/60 uppercase tracking-widest">
+                      m
+                    </span>
+                  </p>
+                </div>
+
+                {/* Top Genre */}
+                <div className="bg-[#12100e] border border-[#c8963c]/20 p-4 sm:p-5 rounded-2xl shadow-inner col-span-2 sm:col-span-1">
+                  <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+                    <span className="text-[#c8963c]">🏆</span> Top Genre
+                  </p>
+                  <p
+                    className="text-xl sm:text-2xl font-black text-[#c8963c] truncate"
+                    title={profileData?.stats?.topGenre || "N/A"}
+                  >
+                    {profileData?.stats?.topGenre || "N/A"}
+                  </p>
+                </div>
+
+                {/* Favorite Decade */}
+                <div className="bg-[#12100e] border border-[#c8963c]/20 p-4 sm:p-5 rounded-2xl shadow-inner">
+                  <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+                    <span className="text-[#c8963c]">📼</span> Fav Decade
+                  </p>
+                  <p className="text-xl sm:text-2xl font-black text-[#c8963c]">
+                    {profileData?.stats?.favoriteDecade || "N/A"}
+                  </p>
+                </div>
+
+                {/* Movies vs TV */}
+                <div className="bg-[#12100e] border border-[#c8963c]/20 p-4 sm:p-5 rounded-2xl shadow-inner">
+                  <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
+                    <span className="text-[#c8963c]">🎬</span> Format
+                  </p>
+                  <div className="flex justify-between items-center h-full pb-2">
+                    <div className="text-center w-1/2 border-r border-[#c8963c]/20">
+                      <span className="block text-lg font-black text-[#c8963c]">
+                        {profileData?.stats?.moviesCount || 0}
+                      </span>
+                      <span className="text-[8px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold">
+                        Movies
+                      </span>
+                    </div>
+                    <div className="text-center w-1/2">
+                      <span className="block text-lg font-black text-[#c8963c]">
+                        {profileData?.stats?.tvCount || 0}
+                      </span>
+                      <span className="text-[8px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold">
+                        TV
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Longest Marathon */}
+                {profileData?.stats?.longestMovie &&
+                  profileData.stats.longestMovie.runtime > 0 && (
+                    <div className="bg-[#12100e] border border-[#c8963c]/20 p-4 rounded-2xl shadow-inner col-span-2 flex items-center gap-4">
+                      <div className="text-3xl">🏃‍♂️</div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-0.5">
+                          Longest Marathon
+                        </p>
+                        <p
+                          className="text-sm font-bold text-[#c8963c] truncate"
+                          title={profileData.stats.longestMovie.title}
                         >
-                          <div className="absolute -top-2 -left-2 w-7 h-7 bg-[#c8963c] text-[#12100e] rounded-full flex items-center justify-center font-black text-xs shadow-lg z-10 border border-[#1a1714]">
-                            #{index + 1}
-                          </div>
+                          {profileData.stats.longestMovie.title}
+                        </p>
+                        <p className="text-xs text-[#f0e6cc]/80 font-black">
+                          {profileData.stats.longestMovie.runtime} min
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
-                          <div className="w-12 h-16 shrink-0 rounded-lg overflow-hidden border border-[#c8963c]/10 bg-[#1a1714]">
-                            {item.posterUrl ? (
-                              <img
-                                src={item.posterUrl}
-                                alt=""
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/20 font-black">
-                                N/A
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex flex-col min-w-0">
-                            <h5 className="text-[#f0e6cc] font-bold text-[11px] truncate group-hover:text-[#c8963c] transition-colors leading-tight">
-                              {item.title}
-                            </h5>
-                            <div className="flex items-center gap-1 mt-1">
-                              <span className="text-[#c8963c] text-[10px] font-black">
-                                ★ {item.rating}.0
-                              </span>
-                              <span className="text-[7px] text-[#f0e6cc]/30 uppercase font-bold tracking-widest hidden xs:inline">
-                                Score
-                              </span>
-                            </div>
-                          </div>
-                        </Link>
-                      ))}
+                {/* Top Actor */}
+                {profileData?.stats?.topActor && (
+                  <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 sm:p-4 rounded-2xl shadow-inner col-span-2 flex items-center gap-4 group cursor-pointer hover:border-[#c8963c]/50 transition-colors">
+                    <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-[#c8963c]/30">
+                      {profileData.stats.topActor.profileUrl ? (
+                        <img
+                          src={profileData.stats.topActor.profileUrl}
+                          alt="Actor"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[#1a1714] flex items-center justify-center text-xl">
+                          🌟
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-0.5">
+                        Most Watched Actor
+                      </p>
+                      <p className="text-sm font-bold text-[#c8963c] truncate">
+                        {profileData.stats.topActor.name}
+                      </p>
+                      <p className="text-[10px] text-[#f0e6cc]/80 italic">
+                        In {profileData.stats.topActor.count} recent movies
+                      </p>
                     </div>
                   </div>
                 )}
-            </div>
-          )}
+              </div>
 
-        {/* --- TOP FAVORITES --- */}
-        <div className="p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl">
+              {/* ПРАВА КОЛОНКА (Діаграми) */}
+              <div className="flex flex-col gap-6 h-full">
+                {/* Pie Chart (Genres) */}
+                <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-2xl p-4 shadow-inner h-[220px]">
+                  <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-2 text-center">
+                    Genre Breakdown
+                  </p>
+                  <div className="h-full w-full relative -mt-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={profileData?.stats?.genreDistribution || []}
+                          innerRadius="60%"
+                          outerRadius="85%"
+                          paddingAngle={5}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {(profileData?.stats?.genreDistribution || []).map(
+                            (_, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={CHART_COLORS[index % CHART_COLORS.length]}
+                              />
+                            ),
+                          )}
+                        </Pie>
+                        <Tooltip
+                          content={<CustomTooltip />}
+                          cursor={{ fill: "transparent" }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-4">
+                      <span className="text-[#c8963c] text-xl font-black">
+                        {profileData?.stats?.genreDistribution?.length || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bar Chart (Ratings) */}
+                {profileData?.stats?.ratingDistribution && (
+                  <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-2xl p-4 shadow-inner h-[220px] flex flex-col">
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold">
+                        Rating Distribution
+                      </p>
+                      <p className="text-xs font-black text-[#c8963c]">
+                        Avg: {profileData.stats.averageRating}
+                      </p>
+                    </div>
+                    <div className="flex-grow w-full h-full -ml-4">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={profileData.stats.ratingDistribution}
+                          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                        >
+                          <XAxis
+                            dataKey="name"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{
+                              fill: "#f0e6cc",
+                              opacity: 0.5,
+                              fontSize: 10,
+                              fontWeight: "bold",
+                            }}
+                            dy={5}
+                          />
+                          <Tooltip
+                            content={<RatingTooltip />}
+                            cursor={{ fill: "#c8963c", opacity: 0.1 }}
+                          />
+                          <Bar
+                            dataKey="value"
+                            fill="#c8963c"
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={40}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* TOP 3 MASTERPIECES */}
+            {profileData?.stats?.topRated &&
+              profileData.stats.topRated.length > 0 && (
+                <div className="mt-8 border-t border-[#c8963c]/10 pt-6">
+                  <h4 className="text-[10px] text-[#c8963c] font-black uppercase tracking-[0.4em] mb-6 text-center">
+                    Top 3 Rated Masterpieces
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {profileData.stats.topRated.map((item, index) => (
+                      <Link
+                        to={`/movie/${item.tmdbId}?type=${item.mediaType}&fromTab=profile`}
+                        key={item.id}
+                        className="relative group bg-[#12100e] border border-[#c8963c]/10 rounded-2xl p-3 flex items-center gap-4 hover:border-[#c8963c]/40 transition-all shadow-lg"
+                      >
+                        <div className="absolute -top-2 -left-2 w-7 h-7 bg-[#c8963c] text-[#12100e] rounded-full flex items-center justify-center font-black text-xs shadow-lg z-10 border border-[#1a1714]">
+                          #{index + 1}
+                        </div>
+
+                        <div className="w-12 h-16 shrink-0 rounded-lg overflow-hidden border border-[#c8963c]/10 bg-[#1a1714]">
+                          {item.posterUrl ? (
+                            <img
+                              src={item.posterUrl}
+                              alt=""
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/20 font-black">
+                              N/A
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col min-w-0">
+                          <h5 className="text-[#f0e6cc] font-bold text-[11px] truncate group-hover:text-[#c8963c] transition-colors leading-tight">
+                            {item.title}
+                          </h5>
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-[#c8963c] text-[10px] font-black">
+                              ★ {item.rating}.0
+                            </span>
+                            <span className="text-[7px] text-[#f0e6cc]/30 uppercase font-bold tracking-widest hidden xs:inline">
+                              Score
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+          </div>
+        )}
+
+        <div className="p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl mt-5 sm:mt-8">
           <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
             Top Favorites
           </h3>
@@ -692,8 +905,7 @@ export default function Watchlist() {
           )}
         </div>
 
-        {/* --- RECENT ACTIVITY --- */}
-        <div className="p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl">
+        <div className="p-4 sm:p-8 bg-[#1a1714] rounded-3xl border border-[#c8963c]/20 shadow-xl mt-5 sm:mt-8">
           <h3 className="text-base sm:text-xl font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
             Recent Activity
           </h3>
