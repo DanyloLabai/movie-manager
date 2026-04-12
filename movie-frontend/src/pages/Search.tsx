@@ -410,58 +410,66 @@ export default function Search() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
-        <header className="flex items-center justify-between px-3 py-3 gap-2">
-          <h1 className="text-xl sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md shrink-0">
-            Movie Tracker
-          </h1>
-          <nav className="flex items-center gap-3 overflow-x-auto scrollbar-hide">
+      {/* 1. ВЕРХНЯ НАВІГАЦІЯ (ЗАКРІПЛЕНА ТА АДАПТИВНА) */}
+      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6">
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full max-w-7xl mx-auto">
+          <Link
+            to="/search"
+            className="hover:opacity-80 transition-opacity shrink-0"
+          >
+            <h1 className="text-xl sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md">
+              Movie Tracker
+            </h1>
+          </Link>
+          <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
             <Link
               to="/ai-chat"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition text-xs sm:text-sm px-1 uppercase font-semibold whitespace-nowrap"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
               AI Chat
             </Link>
             <Link
               to="/search"
-              className="text-[#c8963c] font-bold border-b border-[#c8963c] text-xs sm:text-sm px-1 uppercase whitespace-nowrap"
+              className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
             >
               Search
             </Link>
             <Link
               to="/watchlist"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition text-xs sm:text-sm px-1 uppercase font-semibold whitespace-nowrap"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
               Profile
             </Link>
             <button
               onClick={handleLogout}
-              className="text-[9px] px-2.5 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap"
+              className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
             >
               Logout
             </button>
           </nav>
         </header>
+      </div>
 
-        {/* Search bar */}
+      {/* 2. ОСНОВНИЙ КОНТЕНТ (ОБМЕЖЕНИЙ ПО ЦЕНТРУ) */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
+        {/* Поле пошуку винесене з липкої шапки */}
         <form
           onSubmit={handleSearch}
-          className="px-3 pb-3 relative max-w-2xl mx-auto"
+          className="relative max-w-2xl mx-auto mb-10"
         >
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Enter movie title..."
-            className="w-full pl-4 pr-20 py-3 bg-[#1a1714] border border-[#c8963c]/30 rounded-full text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition text-sm"
+            className="w-full pl-6 pr-24 py-3.5 sm:py-4 bg-[#1a1714] border border-[#c8963c]/30 rounded-full text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition text-sm sm:text-base font-medium tracking-wide"
           />
-          <div className="absolute right-4 top-0 bottom-3 flex items-center gap-1">
+          <div className="absolute right-2 top-0 bottom-0 flex items-center gap-1">
             {searchQuery && (
               <button
                 type="button"
                 onClick={handleClearSearch}
-                className="w-7 h-7 flex items-center justify-center rounded-full text-[#f0e6cc]/50 hover:text-[#c8963c] transition text-xs"
+                className="w-8 h-8 flex items-center justify-center rounded-full text-[#f0e6cc]/50 hover:text-[#c8963c] transition text-sm"
               >
                 ✕
               </button>
@@ -469,25 +477,23 @@ export default function Search() {
             <button
               type="submit"
               disabled={isSearching || !searchQuery.trim()}
-              className="px-4 h-8 bg-[#c8963c] text-[#12100e] rounded-full font-black hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 text-xs shadow uppercase tracking-wide"
+              className="px-5 h-10 bg-[#c8963c] text-[#12100e] rounded-full font-black hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 text-xs sm:text-sm shadow uppercase tracking-wider mr-1"
             >
               {isSearching ? "..." : "Find"}
             </button>
           </div>
         </form>
-      </div>
 
-      <div className="p-3 max-w-7xl mx-auto">
         <main>
           {results.length > 0 ? (
             <>
-              <div className="flex justify-between items-center mb-4 border-b border-[#c8963c]/20 pb-2">
-                <h2 className="text-xs font-black text-[#c8963c] uppercase tracking-widest">
+              <div className="flex justify-between items-center mb-6 border-b border-[#c8963c]/20 pb-3">
+                <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
                   Search Results
                 </h2>
                 <button
                   onClick={handleClearSearch}
-                  className="text-[10px] font-bold text-[#f0e6cc]/60 hover:text-[#c8963c] transition uppercase tracking-wider"
+                  className="text-[10px] sm:text-xs font-bold text-[#f0e6cc]/60 hover:text-[#c8963c] transition uppercase tracking-wider"
                 >
                   ← Back
                 </button>
@@ -496,36 +502,36 @@ export default function Search() {
             </>
           ) : searchQuery.trim() !== "" ? (
             !isSearching && (
-              <div className="text-center mt-10 border border-[#c8963c]/20 bg-[#1a1714] p-8 rounded-2xl max-w-sm mx-auto shadow">
-                <p className="text-[#f0e6cc]/60 text-base mb-4 font-semibold">
+              <div className="text-center mt-10 border border-[#c8963c]/20 bg-[#1a1714] p-10 rounded-3xl max-w-sm mx-auto shadow-2xl">
+                <p className="text-[#f0e6cc]/60 text-lg mb-6 font-semibold">
                   No movies found.
                 </p>
                 <button
                   onClick={handleClearSearch}
-                  className="text-sm font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-wider"
+                  className="text-sm font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest"
                 >
                   ← Back to Home
                 </button>
               </div>
             )
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-12">
               <section>
-                <div className="flex items-center gap-2 mb-3 border-b border-[#c8963c]/20 pb-2">
-                  <h2 className="text-xs font-black text-[#c8963c] uppercase tracking-widest">
+                <div className="flex items-center gap-2 mb-4 border-b border-[#c8963c]/20 pb-3">
+                  <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
                     Trending This Week
                   </h2>
-                  <span className="bg-red-500/20 text-red-500 text-[8px] font-bold px-1.5 py-0.5 rounded border border-red-500/30">
+                  <span className="bg-red-500/20 text-red-500 text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30">
                     HOT
                   </span>
                 </div>
                 {isLoadingHome && trending.length === 0 ? (
                   <div className="flex justify-center items-center h-40">
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-2">
                       {[0, 0.1, 0.2].map((delay, i) => (
                         <div
                           key={i}
-                          className="w-2 h-2 bg-[#c8963c] rounded-full animate-bounce"
+                          className="w-2.5 h-2.5 bg-[#c8963c] rounded-full animate-bounce"
                           style={{ animationDelay: `${delay}s` }}
                         />
                       ))}
@@ -541,11 +547,11 @@ export default function Search() {
               </section>
 
               <section>
-                <div className="flex items-center gap-2 mb-3 border-b border-[#c8963c]/20 pb-2">
-                  <h2 className="text-xs font-black text-[#c8963c] uppercase tracking-widest">
+                <div className="flex items-center gap-2 mb-4 border-b border-[#c8963c]/20 pb-3">
+                  <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
                     Coming Soon
                   </h2>
-                  <span className="bg-[#c8963c]/20 text-[#c8963c] text-[8px] font-bold px-1.5 py-0.5 rounded border border-[#c8963c]/30">
+                  <span className="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30">
                     NEW
                   </span>
                 </div>
@@ -555,25 +561,25 @@ export default function Search() {
               </section>
 
               <section>
-                <div className="flex items-center gap-2 mb-3 border-b border-[#c8963c]/20 pb-2">
-                  <h2 className="text-xs font-black text-[#c8963c] uppercase tracking-widest">
+                <div className="flex items-center gap-2 mb-4 border-b border-[#c8963c]/20 pb-3">
+                  <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
                     Recommended for You
                   </h2>
-                  <span className="bg-[#c8963c]/20 text-[#c8963c] text-[8px] font-bold px-1.5 py-0.5 rounded border border-[#c8963c]/30">
+                  <span className="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30">
                     AI
                   </span>
                 </div>
                 {isLoadingHome && recommendations.length === 0 ? (
                   <div className="flex justify-center items-center h-24">
-                    <p className="text-[#f0e6cc]/50 animate-pulse text-xs font-semibold uppercase tracking-wider">
+                    <p className="text-[#f0e6cc]/50 animate-pulse text-xs sm:text-sm font-semibold uppercase tracking-widest">
                       AI curating your list...
                     </p>
                   </div>
                 ) : recommendations.length > 0 ? (
                   renderMovieGrid(recommendations)
                 ) : (
-                  <div className="text-center p-5 bg-[#1a1714] rounded-xl border border-[#c8963c]/30 border-dashed">
-                    <p className="text-[#f0e6cc]/60 text-xs font-medium">
+                  <div className="text-center p-8 bg-[#1a1714] rounded-2xl border border-[#c8963c]/30 border-dashed">
+                    <p className="text-[#f0e6cc]/60 text-sm font-medium">
                       Add movies to your Watchlist so AI can recommend similar
                       titles!
                     </p>
@@ -586,8 +592,8 @@ export default function Search() {
       </div>
 
       {toastMessage && (
-        <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] uppercase tracking-widest px-4 py-3 rounded-xl shadow-2xl flex items-center justify-center z-50">
-          <span className="font-bold text-[10px] text-center">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] uppercase tracking-widest px-6 py-4 rounded-xl shadow-2xl flex items-center justify-center z-50">
+          <span className="font-bold text-[10px] sm:text-xs text-center">
             {toastMessage}
           </span>
         </div>
