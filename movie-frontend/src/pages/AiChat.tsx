@@ -38,7 +38,8 @@ export default function AiChat() {
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -63,6 +64,15 @@ export default function AiChat() {
 
   const [messages, setMessages] = useState<Message[]>(loadSavedMessages);
 
+  const scrollToBottom = () => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem(
       CHAT_STORAGE_KEY,
@@ -71,7 +81,7 @@ export default function AiChat() {
   }, [messages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    scrollToBottom();
   }, [messages]);
 
   useEffect(() => {
@@ -123,7 +133,6 @@ export default function AiChat() {
     const userText = input;
     setInput("");
 
-    // Блокуємо фокус на інпуті після відправки, щоб клавіатура ховалась, якщо треба
     inputRef.current?.blur();
 
     const newMessages: Message[] = [
@@ -222,11 +231,9 @@ export default function AiChat() {
   };
 
   return (
-    // ОНОВЛЕНО: Прибрано `fixed inset-0`. Тепер контейнер просто займає `100dvh`
-    <div className="flex flex-col h-[100dvh] w-full bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* Header */}
-      <div className="z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 shrink-0 pt-[env(safe-area-inset-top)]">
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
+    <div className="fixed inset-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+      <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 pt-[env(safe-area-inset-top)]">
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
             className="hover:opacity-80 transition-opacity shrink-0"
@@ -264,8 +271,10 @@ export default function AiChat() {
         </header>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e]">
+      <div
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e]"
+      >
         <div className="max-w-2xl mx-auto space-y-4 pb-2">
           {messages.map((msg, idx) => (
             <div
@@ -401,12 +410,11 @@ export default function AiChat() {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
       </div>
 
-      {/* Input bar — safe area aware */}
-      <div className="px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 shrink-0">
+      {/* Поле вводу: flex-none (завжди знизу) */}
+      <div className="flex-none px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 z-40 relative">
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button
             onClick={handleClearChat}
@@ -436,12 +444,10 @@ export default function AiChat() {
               value={input}
               disabled={isLoading}
               onChange={(e) => setInput(e.target.value)}
-              // ОНОВЛЕНО: При кліку скролимо чат вниз, щоб усе підлаштувалось під клавіатуру
               onFocus={() => {
                 setTimeout(() => {
-                  messagesEndRef.current?.scrollIntoView({
-                    behavior: "smooth",
-                  });
+                  window.scrollTo(0, 0);
+                  scrollToBottom();
                 }, 300);
               }}
               placeholder={isLoading ? "Thinking..." : "Ask about a movie..."}
