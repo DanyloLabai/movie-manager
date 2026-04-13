@@ -88,17 +88,17 @@ export default function ActorDetails() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] pb-10 selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* Header */}
-      <header className="flex items-center justify-between px-3 py-3 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40">
+      {/* ОНОВЛЕНИЙ HEADER: Відступ для Dynamic Island і розміри як у MovieDetails */}
+      <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5 pt-[env(safe-area-inset-top,12px)]">
         <Link
           to="/search"
-          className="text-base font-black text-[#c8963c] uppercase tracking-tighter drop-shadow-md"
+          className="text-lg sm:text-xl font-black text-[#c8963c] uppercase tracking-tighter drop-shadow-md"
         >
           Movie Tracker
         </Link>
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-[10px] font-black uppercase text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"
+          className="flex items-center gap-1.5 text-xs font-black uppercase text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"
         >
           <svg
             className="w-4 h-4"
@@ -117,11 +117,10 @@ export default function ActorDetails() {
         </button>
       </header>
 
-      <div className="px-3 pt-5 max-w-3xl mx-auto">
-        {/* Actor info — horizontal on mobile */}
-        <div className="flex gap-4 mb-5">
+      <div className="px-4 sm:px-6 pt-6 max-w-3xl mx-auto">
+        <div className="flex gap-4 sm:gap-6 mb-6">
           {/* Avatar */}
-          <div className="w-28 shrink-0">
+          <div className="w-28 sm:w-36 shrink-0">
             <div className="relative group">
               <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-[#1a1714] border border-[#c8963c]/30 shadow-xl">
                 {actor.profileUrl ? (
@@ -173,26 +172,26 @@ export default function ActorDetails() {
 
           {/* Name + Bio */}
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-black text-[#f0e6cc] tracking-tighter mb-3">
+            <h1 className="text-3xl sm:text-4xl font-black text-[#f0e6cc] tracking-tighter mb-4">
               {actor.name}
             </h1>
 
             {bioParagraphs.length > 0 ? (
-              <div className="text-[#f0e6cc]/75 text-xs leading-relaxed font-medium space-y-2">
+              <div className="text-[#f0e6cc]/75 text-xs sm:text-sm leading-relaxed font-medium space-y-3">
                 <p>{bioParagraphs[0]}</p>
                 {isBioExpanded &&
                   bioParagraphs.slice(1).map((p, i) => <p key={i}>{p}</p>)}
                 {bioParagraphs.length > 1 && (
                   <button
                     onClick={() => setIsBioExpanded(!isBioExpanded)}
-                    className="text-[#c8963c] text-[10px] font-black uppercase tracking-widest hover:underline mt-1"
+                    className="text-[#c8963c] text-[10px] sm:text-xs font-black uppercase tracking-widest hover:underline mt-2 block"
                   >
                     {isBioExpanded ? "Read Less" : "Read More..."}
                   </button>
                 )}
               </div>
             ) : (
-              <p className="text-[#f0e6cc]/40 italic text-xs">
+              <p className="text-[#f0e6cc]/40 italic text-xs sm:text-sm">
                 No biography available.
               </p>
             )}
@@ -201,42 +200,66 @@ export default function ActorDetails() {
 
         {/* Known For */}
         {actor.knownFor && actor.knownFor.length > 0 && (
-          <div className="mt-2">
-            <div className="flex items-center justify-between mb-3">
+          <div className="mt-8">
+            <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3 flex-grow">
-                <h3 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest italic">
+                <h3 className="text-sm sm:text-base font-black text-[#f0e6cc] uppercase tracking-widest italic">
                   Known For
                 </h3>
                 <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent" />
               </div>
-              <div className="flex gap-1.5 ml-3">
+              <div className="flex gap-2 ml-4">
                 <button
                   onClick={() => scrollSlider("left")}
-                  className="w-7 h-7 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition text-xs"
+                  className="w-8 h-8 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition-all"
                 >
-                  ←
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2.5}
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
                 </button>
                 <button
                   onClick={() => scrollSlider("right")}
-                  className="w-7 h-7 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition text-xs"
+                  className="w-8 h-8 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition-all"
                 >
-                  →
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2.5}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
                 </button>
               </div>
             </div>
 
             <div
               ref={sliderRef}
-              className="flex gap-3 overflow-x-auto scrollbar-hide snap-x pb-6"
+              className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide snap-x pb-6"
               style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             >
               {actor.knownFor.map((m) => (
                 <Link
                   key={m.id}
                   to={`/movie/${m.id}?type=${m.mediaType}`}
-                  className="group flex-shrink-0 w-28 snap-start block"
+                  className="group flex-shrink-0 w-32 sm:w-36 snap-start block"
                 >
-                  <div className="aspect-[2/3] rounded-xl overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 mb-2 group-hover:border-[#c8963c]/70 group-hover:-translate-y-0.5 shadow transition-all duration-300">
+                  <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 mb-2 group-hover:border-[#c8963c]/70 group-hover:-translate-y-1 shadow transition-all duration-300">
                     {m.posterUrl ? (
                       <img
                         src={m.posterUrl}
@@ -244,23 +267,23 @@ export default function ActorDetails() {
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[8px] text-[#f0e6cc]/30 font-bold uppercase px-2 text-center">
+                      <div className="w-full h-full flex items-center justify-center text-[10px] text-[#f0e6cc]/30 font-bold uppercase px-2 text-center">
                         {m.title}
                       </div>
                     )}
                   </div>
-                  <div className="px-0.5">
-                    <h4 className="text-[10px] font-bold text-[#f0e6cc] truncate group-hover:text-[#c8963c] transition uppercase tracking-tight">
+                  <div className="px-1">
+                    <h4 className="text-[11px] sm:text-xs font-bold text-[#f0e6cc] truncate group-hover:text-[#c8963c] transition uppercase tracking-tight">
                       {m.title}
                     </h4>
-                    <div className="flex justify-between items-center mt-0.5">
+                    <div className="flex justify-between items-center mt-1">
                       <p
-                        className="text-[8px] text-[#c8963c]/70 truncate max-w-[65%]"
+                        className="text-[9px] sm:text-[10px] text-[#c8963c]/70 truncate max-w-[70%]"
                         title={m.character}
                       >
                         {m.character || "N/A"}
                       </p>
-                      <p className="text-[7px] text-[#f0e6cc]/40 font-black uppercase tracking-widest">
+                      <p className="text-[8px] text-[#f0e6cc]/40 font-black uppercase tracking-widest">
                         {m.releaseYear}
                       </p>
                     </div>

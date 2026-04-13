@@ -219,9 +219,8 @@ export default function AiChat() {
 
   return (
     <div className="flex flex-col fixed inset-0 h-[100dvh] w-full bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* Header */}
-      <div className="z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 shrink-0">
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
+      <div className="z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 shrink-0 pt-[env(safe-area-inset-top)]">
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
             className="hover:opacity-80 transition-opacity shrink-0"
@@ -230,7 +229,7 @@ export default function AiChat() {
               Movie Tracker
             </h1>
           </Link>
-          <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
+          <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
             <Link
               to="/ai-chat"
               className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"

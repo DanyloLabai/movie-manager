@@ -287,7 +287,8 @@ export default function MovieDetails() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative pb-24 overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      <header className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5">
+      
+      <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5 pt-[env(safe-area-inset-top,12px)]">
         <Link
           to="/search"
           className="text-lg sm:text-xl font-black text-[#c8963c] uppercase tracking-tighter drop-shadow-md"
@@ -721,7 +722,7 @@ export default function MovieDetails() {
       )}
 
       {isRatingModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-[#12100e]/90 backdrop-blur-xl p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#12100e]/90 backdrop-blur-xl p-4">
           <div className="bg-[#1a1714] border border-[#c8963c]/30 p-8 sm:p-10 rounded-[2.5rem] sm:rounded-[3.5rem] shadow-2xl w-full max-w-sm text-center relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
             <button

@@ -145,25 +145,37 @@ export default function PublicProfile() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
-        <header className="flex justify-between items-center px-3 py-3">
+      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 pt-[env(safe-area-inset-top)]">
+        <header className="flex justify-between items-center px-4 sm:px-8 py-4 w-full">
           <Link
             to="/search"
-            className="text-lg font-black text-[#c8963c] tracking-widest uppercase drop-shadow-md"
+            className="text-lg sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md shrink-0"
           >
             Movie Tracker
           </Link>
           <Link
             to="/watchlist"
-            className="text-[10px] font-bold text-[#f0e6cc]/50 hover:text-[#c8963c] uppercase tracking-widest transition"
+            className="text-[10px] sm:text-sm font-bold text-[#f0e6cc]/50 hover:text-[#c8963c] uppercase tracking-widest transition flex items-center gap-1.5 shrink-0"
           >
-            ← My Profile
+            <svg
+              className="w-3 h-3 sm:w-4 sm:h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            My Profile
           </Link>
         </header>
       </div>
 
-      <div className="px-3 py-4 space-y-4 max-w-3xl mx-auto">
+      <div className="px-3 py-6 space-y-4 max-w-3xl mx-auto">
         {/* User Info Card */}
         <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />

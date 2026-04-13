@@ -543,39 +543,28 @@ export default function Search() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
+     {/* 1. ВЕРХНЯ НАВІГАЦІЯ */}
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
-        <header className="flex flex-row items-center justify-between gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
-          <Link
-            to="/search"
-            className="hover:opacity-80 transition-opacity shrink-0"
-          >
-            <h1 className="text-lg sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md">
+        {/* ОНОВЛЕНО: flex-col для мобілок, sm:flex-row для ПК. justify-between для розносу на ПК */}
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
+          <Link to="/search" className="hover:opacity-80 transition-opacity shrink-0">
+            <h1 className="text-xl sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md">
               Movie Tracker
             </h1>
           </Link>
-          <nav className="flex items-center gap-3 sm:gap-8 overflow-x-auto pb-1 scrollbar-hide justify-end">
-            <Link
-              to="/ai-chat"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-[10px] sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
-            >
+          
+          {/* ОНОВЛЕНО: justify-center на мобілках, sm:justify-end на ПК */}
+          <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
+            <Link to="/ai-chat" className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0">
               AI Chat
             </Link>
-            <Link
-              to="/search"
-              className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-[10px] sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
-            >
+            <Link to="/search" className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0">
               Search
             </Link>
-            <Link
-              to="/watchlist"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-[10px] sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
-            >
+            <Link to="/watchlist" className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0">
               Profile
             </Link>
-            <button
-              onClick={handleLogout}
-              className="text-[9px] sm:text-xs px-2 sm:px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
-            >
+            <button onClick={handleLogout} className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0">
               Logout
             </button>
           </nav>

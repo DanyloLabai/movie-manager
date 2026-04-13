@@ -910,8 +910,8 @@ export default function Watchlist() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* 👇 1. ВЕРХНЯ НАВІГАЦІЯ (НА ВСЮ ШИРИНУ ТА ЗАКРІПЛЕНА) 👇 */}
-      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6">
+      {/* 👇 1. ВЕРХНЯ НАВІГАЦІЯ (Оновлено pt-[env(safe-area-inset-top)]) 👇 */}
+      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
@@ -950,9 +950,8 @@ export default function Watchlist() {
         </header>
       </div>
 
-      {/* 👇 2. ОСНОВНИЙ КОНТЕНТ (ОБМЕЖЕНИЙ ПО ЦЕНТРУ) 👇 */}
+      {/* 👇 2. ОСНОВНИЙ КОНТЕНТ 👇 */}
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
-        {/* ПАНЕЛЬ ВКЛАДОК */}
         <div className="flex gap-2 sm:gap-3 mb-8 overflow-x-auto scrollbar-hide">
           {(["profile", "watchlist", "watched"] as const).map((tab) => (
             <button
@@ -1145,14 +1144,12 @@ export default function Watchlist() {
         </main>
       </div>
 
-      {/* Rating Modal */}
       {ratingModalData.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div
-            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-t-3xl sm:rounded-3xl p-6 w-full sm:max-w-sm shadow-2xl relative"
+            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-10 h-1 bg-[#c8963c]/30 rounded-full mx-auto mb-4 sm:hidden" />
             <button
               onClick={closeRatingModal}
               className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
@@ -1204,6 +1201,7 @@ export default function Watchlist() {
         </div>
       )}
 
+      {/* ОНОВЛЕНО: Edit Profile Modal тепер завжди items-center */}
       {isEditModalOpen && (
         <EditProfileModal
           currentUsername={username}
@@ -1266,14 +1264,13 @@ function FriendsModal({ onClose }: FriendsModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className="w-full sm:max-w-md p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-t-3xl sm:rounded-3xl shadow-2xl relative"
+        className="w-full max-w-md p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-10 h-1 bg-[#c8963c]/30 rounded-full mx-auto mb-4 sm:hidden" />
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
@@ -1399,9 +1396,8 @@ function EditProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="w-full sm:max-w-md p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-t-3xl sm:rounded-3xl shadow-2xl relative">
-        <div className="w-10 h-1 bg-[#c8963c]/30 rounded-full mx-auto mb-4 sm:hidden" />
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
