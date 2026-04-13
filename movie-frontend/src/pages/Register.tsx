@@ -139,7 +139,7 @@ export default function Register() {
             Join Us
           </h2>
           <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium tracking-wide">
-            Create your premium tracking profile
+            Create your tracking profile
           </p>
         </div>
 

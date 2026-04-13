@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 
@@ -37,6 +37,237 @@ const ADDED_CACHE_KEY = `added_cache_${uid}`;
 const CACHE_EXPIRATION_MS =
   Number(import.meta.env.VITE_CACHE_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
 
+// Винесена функція перевірки релізу
+const isReleased = (movie: MovieResult) => {
+  if (movie.releaseDate) return new Date(movie.releaseDate) <= new Date();
+  if (movie.releaseYear && movie.releaseYear !== "N/A")
+    return parseInt(movie.releaseYear) <= new Date().getFullYear();
+  return true;
+};
+
+// 1. Окремий компонент картки фільму (щоб не дублювати код)
+const MovieCard = ({
+  movie,
+  favoriteIds,
+  addedIds,
+  onToggleFavorite,
+  onAdd,
+  onRemove,
+}: any) => {
+  const released = isReleased(movie);
+  return (
+    <div className="group relative overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 shadow rounded-xl flex flex-col hover:border-[#c8963c]/70 hover:-translate-y-0.5 transition h-full">
+      {released ? (
+        <button
+          className="absolute top-1.5 left-1.5 z-10 w-7 h-7 flex items-center justify-center bg-[#12100e]/80 rounded-full backdrop-blur-sm border border-[#c8963c]/30 transition group/heart"
+          onClick={() => onToggleFavorite(movie)}
+        >
+          <svg
+            className={`w-3 h-3 transition ${favoriteIds.includes(movie.id) ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30 group-hover/heart:text-red-500"}`}
+            fill={favoriteIds.includes(movie.id) ? "currentColor" : "none"}
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+            />
+          </svg>
+        </button>
+      ) : (
+        <div className="absolute top-1.5 left-1.5 z-10 w-7 h-7 flex items-center justify-center bg-[#12100e]/90 rounded-full border border-[#c8963c]/50 text-[#c8963c] text-[11px]">
+          ⏳
+        </div>
+      )}
+
+      <Link
+        to={`/movie/${movie.id}?type=${movie.mediaType}`}
+        className="relative w-full aspect-[2/3] bg-[#12100e] block overflow-hidden"
+      >
+        {movie.posterUrl ? (
+          <img
+            src={movie.posterUrl}
+            alt={movie.title}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex items-center justify-center w-full h-full text-[9px] text-[#f0e6cc]/30">
+            No poster
+          </div>
+        )}
+      </Link>
+
+      <div className="p-2.5 flex flex-col flex-grow bg-[#1a1714]">
+        <Link to={`/movie/${movie.id}?type=${movie.mediaType}`}>
+          <h4
+            className="text-[11px] font-bold mb-1 truncate text-[#f0e6cc] hover:text-[#c8963c] transition-colors"
+            title={movie.title}
+          >
+            {movie.title}
+          </h4>
+        </Link>
+        <p className="text-[8px] text-[#f0e6cc]/50 mb-2 uppercase tracking-wider flex items-center gap-1 flex-wrap font-semibold">
+          <span>
+            {movie.releaseDate
+              ? new Date(movie.releaseDate).toLocaleDateString("en-US", {
+                  month: "short",
+                  year: "numeric",
+                })
+              : movie.releaseYear}
+          </span>
+          {released && (
+            <>
+              <span>•</span>
+              <span className="text-[#c8963c] font-bold">
+                ★ {Number(movie.rating || 0).toFixed(1)}
+              </span>
+            </>
+          )}
+          <span className="ml-auto px-1 py-0.5 bg-[#2a241f] rounded text-[7px] text-[#f0e6cc]/70 border border-[#c8963c]/20">
+            {movie.mediaType === "tv" ? "TV" : "MOVIE"}
+          </span>
+        </p>
+
+        <div className="mt-auto pt-2 border-t border-[#c8963c]/20">
+          {addedIds.includes(movie.id) ? (
+            <button
+              onClick={() => onRemove(movie)}
+              className="w-full py-1.5 bg-[#c8963c]/10 text-[#c8963c] font-bold rounded-lg uppercase text-[9px] tracking-wider border border-[#c8963c]/30 flex items-center justify-center gap-1 active:scale-95 hover:bg-[#c8963c]/20 transition"
+            >
+              <span>✓</span> In Plans
+            </button>
+          ) : (
+            <button
+              onClick={() => onAdd(movie)}
+              className="w-full py-1.5 bg-[#2a241f] hover:bg-[#c8963c] hover:text-[#12100e] text-[#c8963c] border border-[#c8963c]/30 font-bold rounded-lg transition-all active:scale-95 uppercase text-[9px] tracking-wider shadow-sm"
+            >
+              + Add
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// 2. Компонент Каруселі зі стрілочками та прихованим скролбаром
+const MovieCarousel = ({
+  title,
+  badge,
+  badgeClass,
+  movies,
+  isLoading,
+  fallback,
+  emptyElement,
+  favoriteIds,
+  addedIds,
+  onToggleFavorite,
+  onAdd,
+  onRemove,
+}: any) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const scrollAmount = scrollRef.current.clientWidth * 0.75; // Гортаємо на 75% ширини екрана
+      scrollRef.current.scrollBy({
+        left: direction === "left" ? -scrollAmount : scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  return (
+    <section>
+      <div className="flex justify-between items-center mb-4 border-b border-[#c8963c]/20 pb-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
+            {title}
+          </h2>
+          {badge && <span className={badgeClass}>{badge}</span>}
+        </div>
+
+        {/* Стрілочки (показуються, якщо є фільми і вони завантажені) */}
+        {!isLoading && movies?.length > 0 && (
+          <div className="flex gap-1 sm:gap-2">
+            <button
+              onClick={() => scroll("left")}
+              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-[#c8963c]/30 text-[#f0e6cc]/50 hover:text-[#c8963c] hover:border-[#c8963c] hover:bg-[#c8963c]/10 transition active:scale-95"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={() => scroll("right")}
+              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-[#c8963c]/30 text-[#f0e6cc]/50 hover:text-[#c8963c] hover:border-[#c8963c] hover:bg-[#c8963c]/10 transition active:scale-95"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {isLoading ? (
+        fallback
+      ) : movies && movies.length > 0 ? (
+        <div
+          ref={scrollRef}
+          /* КЛЮЧОВИЙ МОМЕНТ: повністю приховуємо скролбар через класи Tailwind */
+          className="flex overflow-x-auto gap-3 pb-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:px-0"
+        >
+          {movies.map((movie: MovieResult) => (
+            <div
+              key={movie.id}
+              className="flex-none w-[140px] sm:w-[160px] lg:w-[180px] snap-start h-auto"
+            >
+              <MovieCard
+                movie={movie}
+                favoriteIds={favoriteIds}
+                addedIds={addedIds}
+                onToggleFavorite={onToggleFavorite}
+                onAdd={onAdd}
+                onRemove={onRemove}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        emptyElement || (
+          <p className="text-[#f0e6cc]/50 text-center text-sm">
+            No movies found.
+          </p>
+        )
+      )}
+    </section>
+  );
+};
+
+// ГОЛОВНИЙ КОМПОНЕНТ SEARCH
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState(() => {
     try {
@@ -176,13 +407,6 @@ export default function Search() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const isReleased = (movie: MovieResult) => {
-    if (movie.releaseDate) return new Date(movie.releaseDate) <= new Date();
-    if (movie.releaseYear && movie.releaseYear !== "N/A")
-      return parseInt(movie.releaseYear) <= new Date().getFullYear();
-    return true;
-  };
-
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!searchQuery.trim()) return;
@@ -300,149 +524,57 @@ export default function Search() {
     navigate("/login");
   };
 
+  // Ця сітка залишається тільки для результатів пошуку (щоб вони були у кілька рядів)
   const renderMovieGrid = (movies: MovieResult[]) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-      {movies.map((movie) => {
-        const released = isReleased(movie);
-        return (
-          <div
-            key={movie.id}
-            className="group relative overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 shadow rounded-xl flex flex-col hover:border-[#c8963c]/70 hover:-translate-y-0.5 transition"
-          >
-            {released ? (
-              <button
-                className="absolute top-1.5 left-1.5 z-10 w-7 h-7 flex items-center justify-center bg-[#12100e]/80 rounded-full backdrop-blur-sm border border-[#c8963c]/30 transition group/heart"
-                onClick={() => handleToggleFavorite(movie)}
-              >
-                <svg
-                  className={`w-3 h-3 transition ${favoriteIds.includes(movie.id) ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30 group-hover/heart:text-red-500"}`}
-                  fill={
-                    favoriteIds.includes(movie.id) ? "currentColor" : "none"
-                  }
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                  />
-                </svg>
-              </button>
-            ) : (
-              <div className="absolute top-1.5 left-1.5 z-10 w-7 h-7 flex items-center justify-center bg-[#12100e]/90 rounded-full border border-[#c8963c]/50 text-[#c8963c] text-[11px]">
-                ⏳
-              </div>
-            )}
-
-            <Link
-              to={`/movie/${movie.id}?type=${movie.mediaType}`}
-              className="relative w-full aspect-[2/3] bg-[#12100e] block overflow-hidden"
-            >
-              {movie.posterUrl ? (
-                <img
-                  src={movie.posterUrl}
-                  alt={movie.title}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                />
-              ) : (
-                <div className="flex items-center justify-center w-full h-full text-[9px] text-[#f0e6cc]/30">
-                  No poster
-                </div>
-              )}
-            </Link>
-
-            <div className="p-2.5 flex flex-col flex-grow bg-[#1a1714]">
-              <Link to={`/movie/${movie.id}?type=${movie.mediaType}`}>
-                <h4
-                  className="text-[11px] font-bold mb-1 truncate text-[#f0e6cc] hover:text-[#c8963c] transition-colors"
-                  title={movie.title}
-                >
-                  {movie.title}
-                </h4>
-              </Link>
-              <p className="text-[8px] text-[#f0e6cc]/50 mb-2 uppercase tracking-wider flex items-center gap-1 flex-wrap font-semibold">
-                <span>
-                  {movie.releaseDate
-                    ? new Date(movie.releaseDate).toLocaleDateString("en-US", {
-                        month: "short",
-                        year: "numeric",
-                      })
-                    : movie.releaseYear}
-                </span>
-                {released && (
-                  <>
-                    <span>•</span>
-                    <span className="text-[#c8963c] font-bold">
-                      ★ {Number(movie.rating || 0).toFixed(1)}
-                    </span>
-                  </>
-                )}
-                <span className="ml-auto px-1 py-0.5 bg-[#2a241f] rounded text-[7px] text-[#f0e6cc]/70 border border-[#c8963c]/20">
-                  {movie.mediaType === "tv" ? "TV" : "MOVIE"}
-                </span>
-              </p>
-
-              <div className="mt-auto pt-2 border-t border-[#c8963c]/20">
-                {addedIds.includes(movie.id) ? (
-                  <button
-                    onClick={() => handleRemove(movie)}
-                    className="w-full py-1.5 bg-[#c8963c]/10 text-[#c8963c] font-bold rounded-lg uppercase text-[9px] tracking-wider border border-[#c8963c]/30 flex items-center justify-center gap-1 active:scale-95 hover:bg-[#c8963c]/20 transition"
-                  >
-                    <span>✓</span> In Plans
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleAdd(movie)}
-                    className="w-full py-1.5 bg-[#2a241f] hover:bg-[#c8963c] hover:text-[#12100e] text-[#c8963c] border border-[#c8963c]/30 font-bold rounded-lg transition-all active:scale-95 uppercase text-[9px] tracking-wider shadow-sm"
-                  >
-                    + Add
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      {movies.map((movie) => (
+        <MovieCard
+          key={movie.id}
+          movie={movie}
+          favoriteIds={favoriteIds}
+          addedIds={addedIds}
+          onToggleFavorite={handleToggleFavorite}
+          onAdd={handleAdd}
+          onRemove={handleRemove}
+        />
+      ))}
     </div>
   );
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* 1. ВЕРХНЯ НАВІГАЦІЯ (ЗАКРІПЛЕНА ТА АДАПТИВНА) */}
-      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6">
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full max-w-7xl mx-auto">
+      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
+        <header className="flex flex-row items-center justify-between gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
             className="hover:opacity-80 transition-opacity shrink-0"
           >
-            <h1 className="text-xl sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md">
+            <h1 className="text-lg sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md">
               Movie Tracker
             </h1>
           </Link>
-          <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
+          <nav className="flex items-center gap-3 sm:gap-8 overflow-x-auto pb-1 scrollbar-hide justify-end">
             <Link
               to="/ai-chat"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-[10px] sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
               AI Chat
             </Link>
             <Link
               to="/search"
-              className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
+              className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-[10px] sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
             >
               Search
             </Link>
             <Link
               to="/watchlist"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-[10px] sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
               Profile
             </Link>
             <button
               onClick={handleLogout}
-              className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
+              className="text-[9px] sm:text-xs px-2 sm:px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
             >
               Logout
             </button>
@@ -450,9 +582,7 @@ export default function Search() {
         </header>
       </div>
 
-      {/* 2. ОСНОВНИЙ КОНТЕНТ (ОБМЕЖЕНИЙ ПО ЦЕНТРУ) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
-        {/* Поле пошуку винесене з липкої шапки */}
         <form
           onSubmit={handleSearch}
           className="relative max-w-2xl mx-auto mb-10"
@@ -516,16 +646,13 @@ export default function Search() {
             )
           ) : (
             <div className="space-y-12">
-              <section>
-                <div className="flex items-center gap-2 mb-4 border-b border-[#c8963c]/20 pb-3">
-                  <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
-                    Trending This Week
-                  </h2>
-                  <span className="bg-red-500/20 text-red-500 text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30">
-                    HOT
-                  </span>
-                </div>
-                {isLoadingHome && trending.length === 0 ? (
+              <MovieCarousel
+                title="Trending This Week"
+                badge="HOT"
+                badgeClass="bg-red-500/20 text-red-500 text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30"
+                movies={trending}
+                isLoading={isLoadingHome && trending.length === 0}
+                fallback={
                   <div className="flex justify-center items-center h-40">
                     <div className="flex gap-2">
                       {[0, 0.1, 0.2].map((delay, i) => (
@@ -537,55 +664,59 @@ export default function Search() {
                       ))}
                     </div>
                   </div>
-                ) : trending.length > 0 ? (
-                  renderMovieGrid(trending)
-                ) : (
+                }
+                emptyElement={
                   <p className="text-[#f0e6cc]/50 text-center text-sm">
                     Failed to load trends.
                   </p>
-                )}
-              </section>
+                }
+                favoriteIds={favoriteIds}
+                addedIds={addedIds}
+                onToggleFavorite={handleToggleFavorite}
+                onAdd={handleAdd}
+                onRemove={handleRemove}
+              />
 
-              <section>
-                <div className="flex items-center gap-2 mb-4 border-b border-[#c8963c]/20 pb-3">
-                  <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
-                    Coming Soon
-                  </h2>
-                  <span className="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30">
-                    NEW
-                  </span>
-                </div>
-                {!isLoadingHome &&
-                  upcoming.length > 0 &&
-                  renderMovieGrid(upcoming.slice(0, 8))}
-              </section>
+              <MovieCarousel
+                title="Coming Soon"
+                badge="NEW"
+                badgeClass="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30"
+                movies={upcoming.slice(0, 10)}
+                isLoading={isLoadingHome && upcoming.length === 0}
+                favoriteIds={favoriteIds}
+                addedIds={addedIds}
+                onToggleFavorite={handleToggleFavorite}
+                onAdd={handleAdd}
+                onRemove={handleRemove}
+              />
 
-              <section>
-                <div className="flex items-center gap-2 mb-4 border-b border-[#c8963c]/20 pb-3">
-                  <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
-                    Recommended for You
-                  </h2>
-                  <span className="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30">
-                    AI
-                  </span>
-                </div>
-                {isLoadingHome && recommendations.length === 0 ? (
+              <MovieCarousel
+                title="Recommended for You"
+                badge="AI"
+                badgeClass="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30"
+                movies={recommendations}
+                isLoading={isLoadingHome && recommendations.length === 0}
+                fallback={
                   <div className="flex justify-center items-center h-24">
                     <p className="text-[#f0e6cc]/50 animate-pulse text-xs sm:text-sm font-semibold uppercase tracking-widest">
                       AI curating your list...
                     </p>
                   </div>
-                ) : recommendations.length > 0 ? (
-                  renderMovieGrid(recommendations)
-                ) : (
+                }
+                emptyElement={
                   <div className="text-center p-8 bg-[#1a1714] rounded-2xl border border-[#c8963c]/30 border-dashed">
                     <p className="text-[#f0e6cc]/60 text-sm font-medium">
                       Add movies to your Watchlist so AI can recommend similar
                       titles!
                     </p>
                   </div>
-                )}
-              </section>
+                }
+                favoriteIds={favoriteIds}
+                addedIds={addedIds}
+                onToggleFavorite={handleToggleFavorite}
+                onAdd={handleAdd}
+                onRemove={handleRemove}
+              />
             </div>
           )}
         </main>
