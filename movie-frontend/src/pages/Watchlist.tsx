@@ -83,7 +83,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1714] border border-[#c8963c]/50 p-2 rounded-xl shadow-xl z-50">
-        <p className="text-[#f0e6cc] font-bold text-[10px] uppercase tracking-widest">
+        <p className="text-[#f0e6cc] font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">
           {payload[0].name}:{" "}
           <span className="text-[#c8963c]">{payload[0].value}</span>
         </p>
@@ -218,10 +218,21 @@ export default function Watchlist() {
     try {
       const response = await api.get("/movies/profile");
       setProfileData(response.data);
-      if (!localStorage.getItem(getAvatarKey()) && response.data.avatarUrl)
-        setAvatarUrl(response.data.avatarUrl);
-      if (!localStorage.getItem(getUsernameKey()) && response.data.username)
+
+      if (response.data.username) {
         setUsername(response.data.username);
+        localStorage.setItem(getUsernameKey(), response.data.username);
+      }
+
+      if (response.data.avatarUrl !== undefined) {
+        setAvatarUrl(response.data.avatarUrl);
+        if (response.data.avatarUrl) {
+          localStorage.setItem(getAvatarKey(), response.data.avatarUrl);
+        } else {
+          localStorage.removeItem(getAvatarKey());
+        }
+      }
+
       if (ENABLE_CACHE)
         localStorage.setItem(
           getProfileCacheKey(),
@@ -652,35 +663,40 @@ export default function Watchlist() {
                   Genre Breakdown
                 </p>
                 <div className="h-full w-full relative -mt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={profileData?.stats?.genreDistribution || []}
-                        innerRadius="55%"
-                        outerRadius="80%"
-                        paddingAngle={4}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {(profileData?.stats?.genreDistribution || []).map(
-                          (_, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={CHART_COLORS[index % CHART_COLORS.length]}
-                            />
-                          ),
-                        )}
-                      </Pie>
-                      <Tooltip
-                        content={<CustomTooltip />}
-                        cursor={{ fill: "transparent" }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2">
+                  {/* 🔥 ОНОВЛЕНО: Перемістили цифру НАЗАД під графік (z-0), щоб Tooltip перекривав її */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2 z-0">
                     <span className="text-[#c8963c] text-lg font-black">
                       {profileData?.stats?.genreDistribution?.length || 0}
                     </span>
+                  </div>
+
+                  {/* 🔥 ОНОВЛЕНО: Графік знаходиться на передньому плані (z-10) */}
+                  <div className="relative z-10 w-full h-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={profileData?.stats?.genreDistribution || []}
+                          innerRadius="55%"
+                          outerRadius="80%"
+                          paddingAngle={4}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {(profileData?.stats?.genreDistribution || []).map(
+                            (_, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={CHART_COLORS[index % CHART_COLORS.length]}
+                              />
+                            ),
+                          )}
+                        </Pie>
+                        <Tooltip
+                          content={<CustomTooltip />}
+                          cursor={{ fill: "transparent" }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
               </div>
@@ -910,7 +926,7 @@ export default function Watchlist() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* 👇 1. ВЕРХНЯ НАВІГАЦІЯ (Оновлено pt-[env(safe-area-inset-top)]) 👇 */}
+      {/* 👇 1. ВЕРХНЯ НАВІГАЦІЯ 👇 */}
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
@@ -1201,7 +1217,6 @@ export default function Watchlist() {
         </div>
       )}
 
-      {/* ОНОВЛЕНО: Edit Profile Modal тепер завжди items-center */}
       {isEditModalOpen && (
         <EditProfileModal
           currentUsername={username}

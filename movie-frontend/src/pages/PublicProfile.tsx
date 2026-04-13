@@ -26,7 +26,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1714] border border-[#c8963c]/50 p-2 rounded-xl shadow-xl z-50">
-        <p className="text-[#f0e6cc] font-bold text-[10px] uppercase tracking-widest">
+        <p className="text-[#f0e6cc] font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">
           {payload[0].name}:{" "}
           <span className="text-[#c8963c]">{payload[0].value}</span>
         </p>
@@ -43,7 +43,7 @@ const RatingTooltip = ({ active, payload }: any) => {
         <span className="text-[#c8963c] font-black text-xs">
           ★ {payload[0].payload.name}
         </span>
-        <span className="text-[#f0e6cc]/50">|</span>
+        <span className="text-[#f0e6cc]/50 text-xs">|</span>
         <span className="text-[#f0e6cc] font-bold text-[10px]">
           {payload[0].value} movies
         </span>
@@ -342,7 +342,7 @@ export default function PublicProfile() {
                   {profileData.stats.topActor.profileUrl ? (
                     <img
                       src={profileData.stats.topActor.profileUrl}
-                      alt=""
+                      alt="Actor"
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -365,69 +365,85 @@ export default function PublicProfile() {
               </div>
             )}
 
-            {/* Charts stacked */}
-            <div className="space-y-3">
-              <div className="h-44 relative bg-[#12100e] rounded-xl border border-[#c8963c]/5 p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={profileData.stats?.genreDistribution || []}
-                      innerRadius={50}
-                      outerRadius={68}
-                      paddingAngle={4}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {profileData.stats?.genreDistribution?.map(
-                        (_: any, index: number) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={CHART_COLORS[index % CHART_COLORS.length]}
-                          />
-                        ),
-                      )}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col">
-                  <span className="text-[#c8963c] text-lg font-black">
-                    {profileData.stats?.genreDistribution?.length || 0}
-                  </span>
-                  <span className="text-[#f0e6cc]/40 text-[7px] font-bold uppercase tracking-widest">
-                    Genres
-                  </span>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px]">
+                <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1 text-center">
+                  Genre Breakdown
+                </p>
+                <div className="h-full w-full relative -mt-2">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2 z-0">
+                    <span className="text-[#c8963c] text-lg font-black">
+                      {profileData?.stats?.genreDistribution?.length || 0}
+                    </span>
+                  </div>
+
+                  <div className="relative z-10 w-full h-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={profileData?.stats?.genreDistribution || []}
+                          innerRadius="55%"
+                          outerRadius="80%"
+                          paddingAngle={4}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {(profileData?.stats?.genreDistribution || []).map(
+                            (_, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={CHART_COLORS[index % CHART_COLORS.length]}
+                              />
+                            ),
+                          )}
+                        </Pie>
+                        <Tooltip
+                          content={<CustomTooltip />}
+                          cursor={{ fill: "transparent" }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
 
-              <div className="h-44 bg-[#12100e] rounded-xl border border-[#c8963c]/5 p-3">
-                <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black mb-1">
-                  Rating Distribution
-                </p>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={profileData.stats?.ratingDistribution || []}
-                    margin={{ top: 4, right: 4, left: -28, bottom: 0 }}
-                  >
-                    <XAxis
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: "#f0e6cc", opacity: 0.3, fontSize: 9 }}
-                    />
-                    <Tooltip
-                      content={<RatingTooltip />}
-                      cursor={{ fill: "#c8963c", opacity: 0.05 }}
-                    />
-                    <Bar
-                      dataKey="value"
-                      fill="#c8963c"
-                      radius={[2, 2, 0, 0]}
-                      barSize={22}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              {profileData?.stats?.ratingDistribution && (
+                <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px] flex flex-col">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
+                      Rating Distribution
+                    </p>
+                    <p className="text-[10px] font-black text-[#c8963c]">
+                      Avg: {profileData.stats.averageRating}
+                    </p>
+                  </div>
+                  <div className="flex-grow w-full -ml-3">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={profileData.stats.ratingDistribution}
+                        margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
+                      >
+                        <XAxis
+                          dataKey="name"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: "#f0e6cc", opacity: 0.3, fontSize: 9 }}
+                        />
+                        <Tooltip
+                          content={<RatingTooltip />}
+                          cursor={{ fill: "#c8963c", opacity: 0.05 }}
+                        />
+                        <Bar
+                          dataKey="value"
+                          fill="#c8963c"
+                          radius={[3, 3, 0, 0]}
+                          maxBarSize={32}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Top 3 */}
