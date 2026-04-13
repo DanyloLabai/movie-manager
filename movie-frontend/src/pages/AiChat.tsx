@@ -21,7 +21,7 @@ interface Message {
 
 const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
 const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
-const CHAT_EXPIRATION_MS = 24 * 60 * 60 * 1000;
+const CHAT_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function AiChat() {
   const [input, setInput] = useState("");
@@ -155,7 +155,7 @@ export default function AiChat() {
     const userText = input;
     setInput("");
 
-    inputRef.current?.blur(); // Сховати клавіатуру після відправки
+    inputRef.current?.blur();
 
     const newMessages: Message[] = [
       ...messages,
@@ -164,10 +164,19 @@ export default function AiChat() {
     setMessages(newMessages);
     setIsLoading(true);
     try {
-      const chatHistory = newMessages.map((msg) => ({
-        role: msg.role === "ai" ? "assistant" : "user",
-        content: msg.text,
-      }));
+      const chatHistory = newMessages.map((msg) => {
+        let content = msg.text;
+        if (msg.role === "ai" && msg.movies && msg.movies.length > 0) {
+          const shownMovies = msg.movies.map((m) => m.title).join(", ");
+          content += `\n[System note: I already showed these movies to the user: ${shownMovies}. I must not repeat them in my next suggestions.]`;
+        }
+
+        return {
+          role: msg.role === "ai" ? "assistant" : "user",
+          content: content,
+        };
+      });
+
       const response = await api.post("/ai/search", { messages: chatHistory });
       setMessages((prev) => [
         ...prev,
