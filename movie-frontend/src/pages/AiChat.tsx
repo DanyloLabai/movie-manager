@@ -39,6 +39,10 @@ export default function AiChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const [viewportHeight, setViewportHeight] = useState<number | string>(
+    "100dvh",
+  );
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
@@ -72,6 +76,24 @@ export default function AiChat() {
       });
     }
   };
+
+  useEffect(() => {
+    const visualViewport = window.visualViewport;
+    if (!visualViewport) return;
+
+    const handleResize = () => {
+      setViewportHeight(visualViewport.height);
+      window.scrollTo(0, 0);
+      setTimeout(scrollToBottom, 50);
+    };
+
+    visualViewport.addEventListener("resize", handleResize);
+    handleResize();
+
+    return () => {
+      visualViewport.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(
@@ -133,7 +155,7 @@ export default function AiChat() {
     const userText = input;
     setInput("");
 
-    inputRef.current?.blur();
+    inputRef.current?.blur(); // Сховати клавіатуру після відправки
 
     const newMessages: Message[] = [
       ...messages,
@@ -231,7 +253,11 @@ export default function AiChat() {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+    <div
+      className="fixed top-0 left-0 w-full flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]"
+      style={{ height: viewportHeight }}
+    >
+      {/* Шапка */}
       <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
@@ -271,6 +297,7 @@ export default function AiChat() {
         </header>
       </div>
 
+      {/* Чат */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e]"
@@ -413,7 +440,7 @@ export default function AiChat() {
         </div>
       </div>
 
-      {/* Поле вводу: flex-none (завжди знизу) */}
+      {/* Поле вводу */}
       <div className="flex-none px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 z-40 relative">
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button
@@ -444,12 +471,6 @@ export default function AiChat() {
               value={input}
               disabled={isLoading}
               onChange={(e) => setInput(e.target.value)}
-              onFocus={() => {
-                setTimeout(() => {
-                  window.scrollTo(0, 0);
-                  scrollToBottom();
-                }, 300);
-              }}
               placeholder={isLoading ? "Thinking..." : "Ask about a movie..."}
               className="w-full pl-4 pr-12 py-3 bg-[#1a1714] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition disabled:opacity-50 text-sm"
             />
@@ -465,7 +486,7 @@ export default function AiChat() {
       </div>
 
       {toastMessage && (
-        <div className="fixed bottom-20 left-3 right-3 sm:left-auto sm:right-6 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl flex items-center justify-center z-50 uppercase tracking-widest font-bold text-[10px]">
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl flex items-center justify-center z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap">
           {toastMessage}
         </div>
       )}
