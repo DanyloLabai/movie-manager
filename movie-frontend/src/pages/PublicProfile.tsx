@@ -71,7 +71,7 @@ export default function PublicProfile() {
   useEffect(() => {
     const fetchPublicProfile = async () => {
       try {
-        const response = await api.get(`/users/public/${id}`);
+        const response = await api.get(`/users/public/${id}?_t=${Date.now()}`);
         setProfileData(response.data);
       } catch {
         setError(true);
@@ -183,8 +183,9 @@ export default function PublicProfile() {
           <div className="flex items-center gap-4 mb-4">
             <div className="w-16 h-16 bg-[#12100e] border-2 border-[#c8963c]/50 rounded-full flex items-center justify-center text-2xl font-black text-[#c8963c] shrink-0 overflow-hidden">
               {profileData.avatarUrl ? (
+                // 🔥 ОНОВЛЕНО: Також додаємо ?t=... до самої картинки, щоб браузер 100% намалював нову аватарку
                 <img
-                  src={profileData.avatarUrl}
+                  src={`${profileData.avatarUrl}${profileData.avatarUrl.includes("?") ? "&" : "?"}t=${Date.now()}`}
                   alt={profileData.username}
                   className="w-full h-full object-cover"
                 />
@@ -365,18 +366,21 @@ export default function PublicProfile() {
               </div>
             )}
 
+            {/* Charts — stacked on mobile */}
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px]">
                 <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1 text-center">
                   Genre Breakdown
                 </p>
                 <div className="h-full w-full relative -mt-2">
+                  {/* 🔥 ОНОВЛЕНО: Перемістили цифру НАЗАД під графік (z-0) */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2 z-0">
                     <span className="text-[#c8963c] text-lg font-black">
                       {profileData?.stats?.genreDistribution?.length || 0}
                     </span>
                   </div>
 
+                  {/* 🔥 ОНОВЛЕНО: Графік знаходиться на передньому плані (z-10) і має wrapperStyle для Tooltip */}
                   <div className="relative z-10 w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -400,6 +404,7 @@ export default function PublicProfile() {
                         <Tooltip
                           content={<CustomTooltip />}
                           cursor={{ fill: "transparent" }}
+                          wrapperStyle={{ zIndex: 9999 }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -429,9 +434,11 @@ export default function PublicProfile() {
                           tickLine={false}
                           tick={{ fill: "#f0e6cc", opacity: 0.3, fontSize: 9 }}
                         />
+                        {/* 🔥 ОНОВЛЕНО: wrapperStyle для BarChart Tooltip */}
                         <Tooltip
                           content={<RatingTooltip />}
                           cursor={{ fill: "#c8963c", opacity: 0.05 }}
+                          wrapperStyle={{ zIndex: 9999 }}
                         />
                         <Bar
                           dataKey="value"

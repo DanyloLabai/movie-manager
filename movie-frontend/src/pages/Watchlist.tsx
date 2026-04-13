@@ -82,7 +82,7 @@ const isReleased = (item: WatchlistItem): boolean => {
 const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#1a1714] border border-[#c8963c]/50 p-2 rounded-xl shadow-xl z-50">
+      <div className="bg-[#1a1714] border border-[#c8963c]/50 p-2 rounded-xl shadow-xl">
         <p className="text-[#f0e6cc] font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">
           {payload[0].name}:{" "}
           <span className="text-[#c8963c]">{payload[0].value}</span>
@@ -96,7 +96,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 const RatingTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#1a1714] border border-[#c8963c]/50 px-2 py-1.5 rounded-xl shadow-xl z-50 flex items-center gap-1.5">
+      <div className="bg-[#1a1714] border border-[#c8963c]/50 px-2 py-1.5 rounded-xl shadow-xl flex items-center gap-1.5">
         <span className="text-[#c8963c] font-black text-xs">
           ★ {payload[0].payload.name}
         </span>
@@ -202,9 +202,10 @@ export default function Watchlist() {
   const fetchMovies = async () => {
     setIsLoading(true);
     try {
+      // 🔥 ОНОВЛЕНО: Додаємо _t=${Date.now()} щоб обійти кеш браузера для фільмів
       const endpoint =
         activeTab === "watchlist" ? "/movies/watchlist" : "/movies/watched";
-      const response = await api.get(endpoint);
+      const response = await api.get(`${endpoint}?_t=${Date.now()}`);
       setMovies(response.data);
     } catch (error: any) {
       if (error.response?.status === 401) handleLogout();
@@ -216,7 +217,8 @@ export default function Watchlist() {
   const fetchProfile = async () => {
     if (!profileData || !ENABLE_CACHE) setIsLoading(true);
     try {
-      const response = await api.get("/movies/profile");
+      // 🔥 ОНОВЛЕНО: Завжди тягнемо свіжі дані з бекенду, ніякого кешування запиту
+      const response = await api.get(`/movies/profile?_t=${Date.now()}`);
       setProfileData(response.data);
 
       if (response.data.username) {
@@ -663,41 +665,40 @@ export default function Watchlist() {
                   Genre Breakdown
                 </p>
                 <div className="h-full w-full relative -mt-2">
-                  {/* 🔥 ОНОВЛЕНО: Перемістили цифру НАЗАД під графік (z-0), щоб Tooltip перекривав її */}
+                  {/* 🔥 ОНОВЛЕНО: Тепер текст не перекриває Tooltip */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2 z-0">
                     <span className="text-[#c8963c] text-lg font-black">
                       {profileData?.stats?.genreDistribution?.length || 0}
                     </span>
                   </div>
 
-                  {/* 🔥 ОНОВЛЕНО: Графік знаходиться на передньому плані (z-10) */}
-                  <div className="relative z-10 w-full h-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={profileData?.stats?.genreDistribution || []}
-                          innerRadius="55%"
-                          outerRadius="80%"
-                          paddingAngle={4}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {(profileData?.stats?.genreDistribution || []).map(
-                            (_, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={CHART_COLORS[index % CHART_COLORS.length]}
-                              />
-                            ),
-                          )}
-                        </Pie>
-                        <Tooltip
-                          content={<CustomTooltip />}
-                          cursor={{ fill: "transparent" }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={profileData?.stats?.genreDistribution || []}
+                        innerRadius="55%"
+                        outerRadius="80%"
+                        paddingAngle={4}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {(profileData?.stats?.genreDistribution || []).map(
+                          (_, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={CHART_COLORS[index % CHART_COLORS.length]}
+                            />
+                          ),
+                        )}
+                      </Pie>
+                      {/* 🔥 ОНОВЛЕНО: wrapperStyle з високим zIndex */}
+                      <Tooltip
+                        content={<CustomTooltip />}
+                        cursor={{ fill: "transparent" }}
+                        wrapperStyle={{ zIndex: 9999 }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 
@@ -732,6 +733,7 @@ export default function Watchlist() {
                         <Tooltip
                           content={<RatingTooltip />}
                           cursor={{ fill: "#c8963c", opacity: 0.1 }}
+                          wrapperStyle={{ zIndex: 9999 }}
                         />
                         <Bar
                           dataKey="value"
