@@ -122,6 +122,10 @@ export default function AiChat() {
     if (!input.trim() || isLoading) return;
     const userText = input;
     setInput("");
+
+    // Блокуємо фокус на інпуті після відправки, щоб клавіатура ховалась, якщо треба
+    inputRef.current?.blur();
+
     const newMessages: Message[] = [
       ...messages,
       { role: "user", text: userText },
@@ -218,9 +222,11 @@ export default function AiChat() {
   };
 
   return (
-    <div className="flex flex-col fixed inset-0 h-[100dvh] w-full bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+    // ОНОВЛЕНО: Прибрано `fixed inset-0`. Тепер контейнер просто займає `100dvh`
+    <div className="flex flex-col h-[100dvh] w-full bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+      {/* Header */}
       <div className="z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 shrink-0 pt-[env(safe-area-inset-top)]">
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
+        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
             className="hover:opacity-80 transition-opacity shrink-0"
@@ -260,7 +266,7 @@ export default function AiChat() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e]">
-        <div className="max-w-2xl mx-auto space-y-4">
+        <div className="max-w-2xl mx-auto space-y-4 pb-2">
           {messages.map((msg, idx) => (
             <div
               key={idx}
@@ -430,6 +436,14 @@ export default function AiChat() {
               value={input}
               disabled={isLoading}
               onChange={(e) => setInput(e.target.value)}
+              // ОНОВЛЕНО: При кліку скролимо чат вниз, щоб усе підлаштувалось під клавіатуру
+              onFocus={() => {
+                setTimeout(() => {
+                  messagesEndRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                  });
+                }, 300);
+              }}
               placeholder={isLoading ? "Thinking..." : "Ask about a movie..."}
               className="w-full pl-4 pr-12 py-3 bg-[#1a1714] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition disabled:opacity-50 text-sm"
             />
