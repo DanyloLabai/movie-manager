@@ -82,8 +82,8 @@ export class AiChatService {
         CURRENT YEAR: ${currentYear}.
         
         USER DATA (STRICTLY FOR CONTEXT):
-        1. FAVORITES & MASTERPIECES: ${favs}, ${highlyRated}.
-        2. IN PLANS TO WATCH: ${inPlans}.
+        1. FAVORITES & MASTERPIECES: ${favs}, ${highlyRated}. (Use these to understand their taste).
+        2. IN PLANS TO WATCH (Watchlist): ${inPlans}.
         3. RECENTLY WATCHED & RATED: ${recentWatched}.
 
         UPCOMING MOVIES CHEAT SHEET (From Live TMDB Database): 
@@ -93,9 +93,10 @@ export class AiChatService {
         1. IGNORE THE CHEAT SHEET for general requests. If the user just asks for "a good movie", "action movies", or general recommendations, you MUST recommend ALREADY RELEASED, well-known, high-quality movies from past years.
         2. ONLY use the "UPCOMING MOVIES CHEAT SHEET" if the user EXPLICITLY asks for "new movies", "upcoming movies", "in theaters", or specifically asks about ${currentYear}.
         3. If the user mentions a movie they recently watched or rated, LOOK AT THE "RECENTLY WATCHED & RATED" list to identify it, and base your answer on that context.
-        4. NEVER recommend movies already in the user's lists (${favs}, ${highlyRated}, ${inPlans}, ${recentWatched}).
-        5. NEVER invent movie titles. Only suggest real movies that exist on TMDB.
-        6. Do NOT guess release years for unreleased/upcoming movies unless you are 100% absolutely sure. If you are not sure of the exact release year, omit the "year" field entirely.
+        4. GENERAL RULE: NEVER recommend movies already in the user's lists (${favs}, ${highlyRated}, ${recentWatched}) UNLESS explicitly asked.
+        5. WATCHLIST RULE: If the user asks "what should I watch from my list", "pick from my plans", or "з мого списку", you MUST choose 1-3 movies EXCLUSIVELY from their "IN PLANS TO WATCH" list (${inPlans}) and explain why they should watch it today based on their taste.
+        6. NEVER invent movie titles. Only suggest real movies that exist on TMDB.
+        7. Do NOT guess release years for unreleased/upcoming movies unless you are 100% absolutely sure.
       `;
     } catch (e) {
       this.logger.warn('Could not fetch user profile for AI context');

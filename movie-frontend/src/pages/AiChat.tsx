@@ -45,6 +45,7 @@ export default function AiChat() {
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const loadSavedMessages = (): Message[] => {
@@ -149,11 +150,8 @@ export default function AiChat() {
     showToast("Chat history cleared");
   };
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-    const userText = input;
-    setInput("");
+  const sendMessageToAi = async (userText: string) => {
+    if (isLoading) return;
 
     inputRef.current?.blur();
 
@@ -163,9 +161,11 @@ export default function AiChat() {
     ];
     setMessages(newMessages);
     setIsLoading(true);
+
     try {
       const chatHistory = newMessages.map((msg) => {
         let content = msg.text;
+
         if (msg.role === "ai" && msg.movies && msg.movies.length > 0) {
           const shownMovies = msg.movies.map((m) => m.title).join(", ");
           content += `\n[System note: I already showed these movies to the user: ${shownMovies}. I must not repeat them in my next suggestions.]`;
@@ -197,6 +197,14 @@ export default function AiChat() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    const text = input;
+    setInput("");
+    await sendMessageToAi(text);
   };
 
   const handleAddFromChat = async (movie: MovieResult) => {
@@ -315,7 +323,7 @@ export default function AiChat() {
           {messages.map((msg, idx) => (
             <div
               key={idx}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
             >
               <div
                 className={`max-w-[92%] p-3 rounded-2xl shadow-xl text-sm leading-relaxed ${
@@ -446,6 +454,7 @@ export default function AiChat() {
               </div>
             </div>
           )}
+          <div ref={messagesEndRef} />
         </div>
       </div>
 
@@ -480,6 +489,12 @@ export default function AiChat() {
               value={input}
               disabled={isLoading}
               onChange={(e) => setInput(e.target.value)}
+              onFocus={() => {
+                setTimeout(() => {
+                  window.scrollTo(0, 0);
+                  scrollToBottom();
+                }, 300);
+              }}
               placeholder={isLoading ? "Thinking..." : "Ask about a movie..."}
               className="w-full pl-4 pr-12 py-3 bg-[#1a1714] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition disabled:opacity-50 text-sm"
             />
