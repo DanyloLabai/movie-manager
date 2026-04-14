@@ -160,10 +160,7 @@ export default function Watchlist() {
     return "User";
   });
 
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
-    const savedAvatar = localStorage.getItem(getAvatarKey());
-    return savedAvatar || null;
-  });
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
@@ -218,11 +215,11 @@ export default function Watchlist() {
 
       if (response.data.avatarUrl !== undefined) {
         setAvatarUrl(response.data.avatarUrl);
-        if (response.data.avatarUrl) {
-          localStorage.setItem(getAvatarKey(), response.data.avatarUrl);
-        } else {
-          localStorage.removeItem(getAvatarKey());
-        }
+        // if (response.data.avatarUrl) {
+        //   localStorage.setItem(getAvatarKey(), response.data.avatarUrl);
+        // } else {
+        //   localStorage.removeItem(getAvatarKey());
+        // }
       }
 
       if (ENABLE_CACHE)
@@ -384,7 +381,7 @@ export default function Watchlist() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem(getUsernameKey());
-    localStorage.removeItem(getAvatarKey());
+    // localStorage.removeItem(getAvatarKey());
     if (ENABLE_CACHE) localStorage.removeItem(getProfileCacheKey());
     navigate("/login");
   };
@@ -426,7 +423,7 @@ export default function Watchlist() {
             <div className="w-16 h-16 bg-gradient-to-tr from-[#c8963c] to-[#9a732a] rounded-full flex items-center justify-center text-2xl font-black shadow-lg uppercase text-[#12100e] shrink-0 overflow-hidden border-2 border-[#c8963c]/50">
               {avatarUrl ? (
                 <img
-                  src={`${avatarUrl}${avatarUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`}
+                  src={avatarUrl}
                   alt={username}
                   className="w-full h-full object-cover"
                 />
@@ -1218,7 +1215,7 @@ export default function Watchlist() {
             setUsername(newUsername);
             if (newAvatarUrl) {
               setAvatarUrl(newAvatarUrl);
-              localStorage.setItem(getAvatarKey(), newAvatarUrl);
+              // localStorage.setItem(getAvatarKey(), newAvatarUrl);
             }
             localStorage.setItem(getUsernameKey(), newUsername);
             localStorage.removeItem(getProfileCacheKey());
