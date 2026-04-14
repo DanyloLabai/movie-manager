@@ -88,7 +88,6 @@ export default function ActorDetails() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] pb-10 selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* ОНОВЛЕНИЙ HEADER: Відступ для Dynamic Island і розміри як у MovieDetails */}
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5 pt-[env(safe-area-inset-top,12px)]">
         <Link
           to="/search"
@@ -143,7 +142,6 @@ export default function ActorDetails() {
               </div>
             </div>
 
-            {/* Personal info below avatar */}
             {(actor.birthday || actor.placeOfBirth) && (
               <div className="mt-3 bg-[#1a1714] border border-[#c8963c]/20 p-2.5 rounded-xl space-y-2">
                 {actor.birthday && (
@@ -170,7 +168,6 @@ export default function ActorDetails() {
             )}
           </div>
 
-          {/* Name + Bio */}
           <div className="flex-1 min-w-0">
             <h1 className="text-3xl sm:text-4xl font-black text-[#f0e6cc] tracking-tighter mb-4">
               {actor.name}
@@ -198,7 +195,6 @@ export default function ActorDetails() {
           </div>
         </div>
 
-        {/* Known For */}
         {actor.knownFor && actor.knownFor.length > 0 && (
           <div className="mt-8">
             <div className="flex items-center justify-between mb-4">

@@ -176,7 +176,6 @@ export default function PublicProfile() {
       </div>
 
       <div className="px-3 py-6 space-y-4 max-w-3xl mx-auto">
-        {/* User Info Card */}
         <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
 
@@ -216,7 +215,6 @@ export default function PublicProfile() {
             </div>
           </div>
 
-          {/* Achievements */}
           <div className="flex flex-wrap gap-1.5 mb-4">
             {achievementsList.map((ach) => (
               <div
@@ -281,7 +279,6 @@ export default function PublicProfile() {
               {profileData.username}'s Wrapped
             </h3>
 
-            {/* Stat grid */}
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
                 <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black mb-1">
@@ -365,21 +362,18 @@ export default function PublicProfile() {
               </div>
             )}
 
-            {/* Charts — stacked on mobile */}
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px]">
                 <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1 text-center">
                   Genre Breakdown
                 </p>
                 <div className="h-full w-full relative -mt-2">
-                  {/* 🔥 ОНОВЛЕНО: Перемістили цифру НАЗАД під графік (z-0) */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2 z-0">
                     <span className="text-[#c8963c] text-lg font-black">
                       {profileData?.stats?.genreDistribution?.length || 0}
                     </span>
                   </div>
 
-                  {/* 🔥 ОНОВЛЕНО: Графік знаходиться на передньому плані (z-10) і має wrapperStyle для Tooltip */}
                   <div className="relative z-10 w-full h-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -433,7 +427,6 @@ export default function PublicProfile() {
                           tickLine={false}
                           tick={{ fill: "#f0e6cc", opacity: 0.3, fontSize: 9 }}
                         />
-                        {/* 🔥 ОНОВЛЕНО: wrapperStyle для BarChart Tooltip */}
                         <Tooltip
                           content={<RatingTooltip />}
                           cursor={{ fill: "#c8963c", opacity: 0.05 }}

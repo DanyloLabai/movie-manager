@@ -274,7 +274,6 @@ export default function AiChat() {
       className="fixed top-0 left-0 w-full flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]"
       style={{ height: viewportHeight }}
     >
-      {/* Шапка */}
       <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
@@ -314,7 +313,6 @@ export default function AiChat() {
         </header>
       </div>
 
-      {/* Чат */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e]"
@@ -458,7 +456,6 @@ export default function AiChat() {
         </div>
       </div>
 
-      {/* Поле вводу */}
       <div className="flex-none px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 z-40 relative">
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button

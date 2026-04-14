@@ -186,7 +186,6 @@ const MovieCarousel = ({
           {badge && <span className={badgeClass}>{badge}</span>}
         </div>
 
-        {/* Стрілочки (показуються, якщо є фільми і вони завантажені) */}
         {!isLoading && movies?.length > 0 && (
           <div className="flex gap-1 sm:gap-2">
             <button
@@ -234,7 +233,6 @@ const MovieCarousel = ({
       ) : movies && movies.length > 0 ? (
         <div
           ref={scrollRef}
-          /* КЛЮЧОВИЙ МОМЕНТ: повністю приховуємо скролбар через класи Tailwind */
           className="flex overflow-x-auto gap-3 pb-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:px-0"
         >
           {movies.map((movie: MovieResult) => (
@@ -538,9 +536,7 @@ export default function Search() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* 1. ВЕРХНЯ НАВІГАЦІЯ */}
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
-        {/* ОНОВЛЕНО: flex-col для мобілок, sm:flex-row для ПК. justify-between для розносу на ПК */}
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
@@ -551,7 +547,6 @@ export default function Search() {
             </h1>
           </Link>
 
-          {/* ОНОВЛЕНО: justify-center на мобілках, sm:justify-end на ПК */}
           <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
             <Link
               to="/ai-chat"

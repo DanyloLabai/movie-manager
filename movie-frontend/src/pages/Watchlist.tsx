@@ -385,7 +385,6 @@ export default function Watchlist() {
         <div className="flex flex-col p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl gap-4 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
 
-          {/* Avatar + Username row */}
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-gradient-to-tr from-[#c8963c] to-[#9a732a] rounded-full flex items-center justify-center text-2xl font-black shadow-lg uppercase text-[#12100e] shrink-0 overflow-hidden border-2 border-[#c8963c]/50">
               {avatarUrl ? (
@@ -507,7 +506,6 @@ export default function Watchlist() {
               Your Movie Wrapped
             </h3>
 
-            {/* Stat cards — 2 columns on mobile */}
             <div className="grid grid-cols-2 gap-2 mb-4">
               <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 rounded-xl">
                 <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1">
@@ -612,14 +610,12 @@ export default function Watchlist() {
               </div>
             )}
 
-            {/* Charts — stacked on mobile */}
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px]">
                 <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1 text-center">
                   Genre Breakdown
                 </p>
                 <div className="h-full w-full relative -mt-2">
-                  {/* 🔥 ОНОВЛЕНО: Тепер текст не перекриває Tooltip */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2 z-0">
                     <span className="text-[#c8963c] text-lg font-black">
                       {profileData?.stats?.genreDistribution?.length || 0}
@@ -645,7 +641,6 @@ export default function Watchlist() {
                           ),
                         )}
                       </Pie>
-                      {/* 🔥 ОНОВЛЕНО: wrapperStyle з високим zIndex */}
                       <Tooltip
                         content={<CustomTooltip />}
                         cursor={{ fill: "transparent" }}
@@ -882,7 +877,6 @@ export default function Watchlist() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* 👇 1. ВЕРХНЯ НАВІГАЦІЯ 👇 */}
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
@@ -922,7 +916,6 @@ export default function Watchlist() {
         </header>
       </div>
 
-      {/* 👇 2. ОСНОВНИЙ КОНТЕНТ 👇 */}
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
         <div className="flex gap-2 sm:gap-3 mb-8 overflow-x-auto scrollbar-hide">
           {(["profile", "watchlist", "watched"] as const).map((tab) => (
