@@ -140,16 +140,7 @@ export default function Watchlist() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [username, setUsername] = useState<string>(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        return payload.username || "User";
-      } catch {}
-    }
-    return "User";
-  });
+  const [username, setUsername] = useState<string>("");
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -180,7 +171,6 @@ export default function Watchlist() {
   const fetchMovies = async () => {
     setIsLoading(true);
     try {
-      // 🔥 ОНОВЛЕНО: Додаємо _t=${Date.now()} щоб обійти кеш браузера для фільмів
       const endpoint =
         activeTab === "watchlist" ? "/movies/watchlist" : "/movies/watched";
       const response = await api.get(`${endpoint}?_t=${Date.now()}`);
@@ -193,38 +183,25 @@ export default function Watchlist() {
   };
 
   const fetchProfile = async () => {
-    if (!profileData || !ENABLE_CACHE) setIsLoading(true);
+    setIsLoading(true);
     try {
-      // 🔥 ОНОВЛЕНО: Завжди тягнемо свіжі дані з бекенду, ніякого кешування запиту
       const response = await api.get(`/movies/profile?_t=${Date.now()}`);
-      setProfileData(response.data);
+      const data = response.data;
 
-      if (response.data.username) {
-        setUsername(response.data.username);
-        localStorage.setItem(getUsernameKey(), response.data.username);
+      setProfileData(data);
+
+      if (data.username) {
+        setUsername(data.username);
       }
-
-      if (response.data.avatarUrl !== undefined) {
-        setAvatarUrl(response.data.avatarUrl);
-        // if (response.data.avatarUrl) {
-        //   localStorage.setItem(getAvatarKey(), response.data.avatarUrl);
-        // } else {
-        //   localStorage.removeItem(getAvatarKey());
-        // }
+      if (data.avatarUrl !== undefined) {
+        setAvatarUrl(data.avatarUrl ?? null);
       }
-
-      if (ENABLE_CACHE)
-        localStorage.setItem(
-          getProfileCacheKey(),
-          JSON.stringify(response.data),
-        );
     } catch (error: any) {
       if (error.response?.status === 401) handleLogout();
     } finally {
       setIsLoading(false);
     }
   };
-
   const handleToggleFavorite = async (tmdbId: number) => {
     const itemToCheck =
       movies.find((m) => m.tmdbId === tmdbId) ||

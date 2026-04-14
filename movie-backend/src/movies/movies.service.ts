@@ -23,6 +23,7 @@ import Groq from 'groq-sdk';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { Cron } from '@nestjs/schedule';
+import { User } from 'src/users/users.entity';
 
 @Injectable()
 export class MoviesService {
@@ -54,6 +55,8 @@ export class MoviesService {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    @InjectRepository(User)
+    private usersRepo: Repository<User>,
     @InjectRepository(WatchlistItem)
     private watchlistRepo: Repository<WatchlistItem>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
@@ -453,8 +456,9 @@ export class MoviesService {
   }
 
   async getProfileData(userId: number) {
-    const [favorites, recent, watchedItems, inPlansItems, totalCount] =
+    const [user, favorites, recent, watchedItems, inPlansItems, totalCount] =
       await Promise.all([
+        this.usersRepo.findOne({ where: { id: userId } }),
         this.watchlistRepo.find({
           where: { user: { id: userId }, isFavorite: true },
           order: { updatedAt: 'DESC' },
@@ -592,6 +596,9 @@ export class MoviesService {
       Object.entries(decadeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
 
     return {
+      id: user?.id,
+      username: user?.username,
+      avatarUrl: user?.avatarUrl,
       favorites,
       recent,
       watchedCount: watchedItems.length,
