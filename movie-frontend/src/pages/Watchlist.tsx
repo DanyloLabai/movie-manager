@@ -64,7 +64,7 @@ const getUserIdFromToken = (): string => {
 
 const getProfileCacheKey = () =>
   `movie_tracker_profile_cache_${getUserIdFromToken()}`;
-const ENABLE_CACHE = import.meta.env.VITE_ENABLE_PROFILE_CACHE !== "false";
+const ENABLE_CACHE = import.meta.env.VITE_ENABLE_PROFILE_CACHE;
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
 
@@ -123,16 +123,7 @@ export default function Watchlist() {
   const getAvatarKey = () => `custom_avatarUrl_${getUserIdFromToken()}`;
   const [movies, setMovies] = useState<WatchlistItem[]>([]);
 
-  const [profileData, setProfileData] = useState<ProfileData | null>(() => {
-    if (!ENABLE_CACHE) return null;
-    try {
-      const cached = localStorage.getItem(getProfileCacheKey());
-      return cached ? JSON.parse(cached) : null;
-    } catch {
-      return null;
-    }
-  });
-
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialTab =

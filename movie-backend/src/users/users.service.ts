@@ -108,7 +108,6 @@ export class UsersService {
       throw new NotFoundException('Profile not found');
     }
 
-    // Це підтягне всі нові метрики: графіки, топ-актора, Completion Rate тощо
     const profileStats = await this.moviesService.getProfileData(user.id);
 
     const isFriend =
@@ -119,7 +118,7 @@ export class UsersService {
       username: user.username,
       avatarUrl: user.avatarUrl,
       isFriend: isFriend,
-      ...profileStats, // Поширюємо статистику
+      ...profileStats,
     };
   }
 
@@ -142,7 +141,6 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Ініціалізуємо масиви, якщо вони раптом undefined
     if (!currentUser.friends) currentUser.friends = [];
     if (!friendToAdd.friends) friendToAdd.friends = [];
 
