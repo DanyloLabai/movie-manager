@@ -183,9 +183,8 @@ export default function PublicProfile() {
           <div className="flex items-center gap-4 mb-4">
             <div className="w-16 h-16 bg-[#12100e] border-2 border-[#c8963c]/50 rounded-full flex items-center justify-center text-2xl font-black text-[#c8963c] shrink-0 overflow-hidden">
               {profileData.avatarUrl ? (
-                // 🔥 ОНОВЛЕНО: Також додаємо ?t=... до самої картинки, щоб браузер 100% намалював нову аватарку
                 <img
-                  src={`${profileData.avatarUrl}${profileData.avatarUrl.includes("?") ? "&" : "?"}t=${Date.now()}`}
+                  src={profileData.avatarUrl}
                   alt={profileData.username}
                   className="w-full h-full object-cover"
                 />

@@ -149,31 +149,8 @@ export default function Watchlist() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [username, setUsername] = useState<string>(() => {
-    const savedName = localStorage.getItem(getUsernameKey());
-    if (savedName) return savedName;
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        return payload.username || payload.email?.split("@")[0] || "User";
-      } catch {}
-    }
-    return "User";
-  });
-
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
-    const savedAvatar = localStorage.getItem(getAvatarKey());
-    if (savedAvatar) return savedAvatar;
-    const token = localStorage.getItem("token");
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        return payload.avatarUrl || null;
-      } catch {}
-    }
-    return null;
-  });
+  const [username, setUsername] = useState<string>("User");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
