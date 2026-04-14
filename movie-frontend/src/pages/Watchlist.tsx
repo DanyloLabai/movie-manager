@@ -149,8 +149,21 @@ export default function Watchlist() {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [username, setUsername] = useState<string>("User");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [username, setUsername] = useState<string>(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        return payload.username || "User";
+      } catch {}
+    }
+    return "User";
+  });
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(() => {
+    const savedAvatar = localStorage.getItem(getAvatarKey());
+    return savedAvatar || null;
+  });
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
