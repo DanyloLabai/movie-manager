@@ -808,8 +808,6 @@ export class MoviesService {
     }
   }
 
-  // ─── CRON: ПОВІДОМЛЕННЯ ПРО РЕЛІЗ ────────────────────────────────────────────
-
   @Cron('0 9 * * *')
   async notifyAboutReleasedMovies() {
     this.logger.log('Running daily check for released movies...');

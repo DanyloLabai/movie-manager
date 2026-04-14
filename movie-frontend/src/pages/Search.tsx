@@ -37,7 +37,6 @@ const ADDED_CACHE_KEY = `added_cache_${uid}`;
 const CACHE_EXPIRATION_MS =
   Number(import.meta.env.VITE_CACHE_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
 
-// Винесена функція перевірки релізу
 const isReleased = (movie: MovieResult) => {
   if (movie.releaseDate) return new Date(movie.releaseDate) <= new Date();
   if (movie.releaseYear && movie.releaseYear !== "N/A")
@@ -45,7 +44,6 @@ const isReleased = (movie: MovieResult) => {
   return true;
 };
 
-// 1. Окремий компонент картки фільму (щоб не дублювати код)
 const MovieCard = ({
   movie,
   favoriteIds,
@@ -152,7 +150,6 @@ const MovieCard = ({
   );
 };
 
-// 2. Компонент Каруселі зі стрілочками та прихованим скролбаром
 const MovieCarousel = ({
   title,
   badge,
@@ -171,7 +168,7 @@ const MovieCarousel = ({
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
-      const scrollAmount = scrollRef.current.clientWidth * 0.75; // Гортаємо на 75% ширини екрана
+      const scrollAmount = scrollRef.current.clientWidth * 0.75;
       scrollRef.current.scrollBy({
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
@@ -267,7 +264,6 @@ const MovieCarousel = ({
   );
 };
 
-// ГОЛОВНИЙ КОМПОНЕНТ SEARCH
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState(() => {
     try {
@@ -524,7 +520,6 @@ export default function Search() {
     navigate("/login");
   };
 
-  // Ця сітка залишається тільки для результатів пошуку (щоб вони були у кілька рядів)
   const renderMovieGrid = (movies: MovieResult[]) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
       {movies.map((movie) => (
@@ -543,28 +538,43 @@ export default function Search() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-     {/* 1. ВЕРХНЯ НАВІГАЦІЯ */}
+      {/* 1. ВЕРХНЯ НАВІГАЦІЯ */}
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
         {/* ОНОВЛЕНО: flex-col для мобілок, sm:flex-row для ПК. justify-between для розносу на ПК */}
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
-          <Link to="/search" className="hover:opacity-80 transition-opacity shrink-0">
+          <Link
+            to="/search"
+            className="hover:opacity-80 transition-opacity shrink-0"
+          >
             <h1 className="text-xl sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md">
               Movie Tracker
             </h1>
           </Link>
-          
+
           {/* ОНОВЛЕНО: justify-center на мобілках, sm:justify-end на ПК */}
           <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
-            <Link to="/ai-chat" className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0">
+            <Link
+              to="/ai-chat"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
+            >
               AI Chat
             </Link>
-            <Link to="/search" className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0">
+            <Link
+              to="/search"
+              className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
+            >
               Search
             </Link>
-            <Link to="/watchlist" className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0">
+            <Link
+              to="/watchlist"
+              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
+            >
               Profile
             </Link>
-            <button onClick={handleLogout} className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0">
+            <button
+              onClick={handleLogout}
+              className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
+            >
               Logout
             </button>
           </nav>

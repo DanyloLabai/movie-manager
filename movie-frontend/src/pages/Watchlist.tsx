@@ -349,7 +349,6 @@ export default function Watchlist() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem(getUsernameKey());
-    // localStorage.removeItem(getAvatarKey());
     if (ENABLE_CACHE) localStorage.removeItem(getProfileCacheKey());
     navigate("/login");
   };
@@ -1183,7 +1182,6 @@ export default function Watchlist() {
             setUsername(newUsername);
             if (newAvatarUrl) {
               setAvatarUrl(newAvatarUrl);
-              // localStorage.setItem(getAvatarKey(), newAvatarUrl);
             }
             localStorage.setItem(getUsernameKey(), newUsername);
             localStorage.removeItem(getProfileCacheKey());
