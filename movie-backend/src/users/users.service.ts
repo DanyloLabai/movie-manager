@@ -114,11 +114,8 @@ export class UsersService {
       user.friends?.some((friend) => friend.id === currentUserId) || false;
 
     return {
-      id: user.id,
-      username: user.username,
-      avatarUrl: user.avatarUrl,
-      isFriend: isFriend,
       ...profileStats,
+      isFriend,
     };
   }
 
