@@ -233,4 +233,62 @@ export class AuthService {
       message: 'If this email exists, a verification link has been sent.',
     };
   }
+
+  async forgotPassword(email: string) {
+    const user = await this.usersRepository.findOne({ where: { email } });
+    if (!user) {
+      return { message: 'If this email exists, a reset link has been sent.' };
+    }
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.resetToken = resetToken;
+    await this.usersRepository.save(user);
+
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+
+    try {
+      await this.resend.emails.send({
+        from: 'Movie Tracker <noreply@movietracker.ink>',
+        to: email,
+        subject: 'Reset Your Password - Movie Tracker',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #12100e; color: #f0e6cc; padding: 40px; border-radius: 16px;">
+            <h2 style="color: #c8963c; text-transform: uppercase; letter-spacing: 0.1em;">Password Reset 🎬</h2>
+            <p>Hi <strong>${user.username}</strong>,</p>
+            <p>We received a request to reset your password. Click the button below to create a new one:</p>
+            <a href="${resetUrl}"
+               style="display: inline-block; padding: 14px 28px; background-color: #c8963c; color: #12100e; text-decoration: none; border-radius: 12px; font-weight: 900; margin: 24px 0; text-transform: uppercase; letter-spacing: 0.1em;">
+              Reset Password
+            </a>
+            <p style="color: #f0e6cc66; font-size: 12px; margin-top: 32px;">If you didn't request this, you can safely ignore this email.</p>
+          </div>
+        `,
+      });
+    } catch (emailError) {
+      throw new InternalServerErrorException('Failed to send reset email.');
+    }
+
+    return { message: 'If this email exists, a reset link has been sent.' };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await this.usersRepository.findOne({
+      where: { resetToken: token },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    const salt = await bcrypt.genSalt();
+    const hashedPath = await bcrypt.hash(newPassword, salt);
+
+    user.password = hashedPath;
+    user.resetToken = null;
+    await this.usersRepository.save(user);
+
+    return { message: 'Password successfully reset!' };
+  }
 }

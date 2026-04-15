@@ -7,6 +7,8 @@ import AiChat from "./pages/AiChat";
 import MovieDetails from "./pages/MovieDetails";
 import ChangePassword from "./pages/ChangePassword";
 import VerifyEmail from "./pages/VerifyEmail";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import type { JSX } from "react";
 import PublicProfile from "./pages/PublicProfile";
 import ActorDetails from "./pages/ActorDetails";
@@ -28,10 +30,21 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/change-password" element={<ChangePassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
 
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+
           <Route path="/user/:id" element={<PublicProfile />} />
+
+          <Route
+            path="/change-password"
+            element={
+              <ProtectedRoute>
+                <ChangePassword />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/search"

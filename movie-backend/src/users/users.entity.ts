@@ -39,6 +39,9 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Column({ nullable: true })
+  resetToken: string | null;
+
   @OneToMany(() => WatchlistItem, (watchlistItem) => watchlistItem.user)
   watchlist: WatchlistItem[];
 

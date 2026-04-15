@@ -191,10 +191,10 @@ export default function Login() {
 
         <div className="text-center">
           <Link
-            to="/change-password"
+            to="/forgot-password"
             className="text-xs font-bold text-[#f0e6cc]/40 hover:text-[#c8963c] transition-colors uppercase tracking-wider underline underline-offset-4"
           >
-            Forgot or change password?
+            Forgot your password?
           </Link>
         </div>
 
