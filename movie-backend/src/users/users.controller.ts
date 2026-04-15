@@ -10,6 +10,7 @@ import {
   Param,
   Post,
   ParseIntPipe,
+  Delete,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UsersService } from './users.service';
@@ -53,5 +54,11 @@ export class UsersController {
   async addFriend(@Req() req, @Param('id', ParseIntPipe) friendId: number) {
     const currentUserId = req.user.userId;
     return this.usersService.addFriend(currentUserId, friendId);
+  }
+  @Delete('friends/:id')
+  @UseGuards(AuthGuard('jwt'))
+  async removeFriend(@Req() req, @Param('id', ParseIntPipe) friendId: number) {
+    const currentUserId = req.user.userId;
+    return this.usersService.removeFriend(currentUserId, friendId);
   }
 }

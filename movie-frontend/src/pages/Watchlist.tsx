@@ -1210,6 +1210,7 @@ interface FriendsModalProps {
 function FriendsModal({ onClose }: FriendsModalProps) {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [removingId, setRemovingId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchFriends = async () => {
@@ -1224,6 +1225,18 @@ function FriendsModal({ onClose }: FriendsModalProps) {
     };
     fetchFriends();
   }, []);
+
+  const handleRemoveFriend = async (friendId: number) => {
+    setRemovingId(friendId);
+    try {
+      await api.delete(`/users/friends/${friendId}`);
+      setFriends((prev) => prev.filter((f) => f.id !== friendId));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setRemovingId(null);
+    }
+  };
 
   return (
     <div
@@ -1267,28 +1280,39 @@ function FriendsModal({ onClose }: FriendsModalProps) {
         ) : (
           <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
             {friends.map((friend) => (
-              <Link
+              <div
                 key={friend.id}
-                to={`/user/${friend.id}`}
-                onClick={onClose}
-                className="flex items-center gap-3 bg-[#12100e] p-2.5 rounded-xl border border-[#c8963c]/20 hover:border-[#c8963c]/60 transition"
+                className="flex items-center gap-3 bg-[#12100e] p-2.5 rounded-xl border border-[#c8963c]/20"
               >
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-base font-black text-[#12100e] overflow-hidden shrink-0">
-                  {friend.avatarUrl ? (
-                    <img
-                      src={friend.avatarUrl}
-                      className="w-full h-full object-cover"
-                      alt={friend.username}
-                    />
-                  ) : (
-                    friend.username[0].toUpperCase()
-                  )}
-                </div>
-                <span className="font-black text-[#f0e6cc] text-sm truncate">
-                  {friend.username}
-                </span>
-                <span className="ml-auto text-[#c8963c] opacity-50">→</span>
-              </Link>
+                <Link
+                  to={`/user/${friend.id}`}
+                  onClick={onClose}
+                  className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition"
+                >
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-base font-black text-[#12100e] overflow-hidden shrink-0">
+                    {friend.avatarUrl ? (
+                      <img
+                        src={friend.avatarUrl}
+                        className="w-full h-full object-cover"
+                        alt={friend.username}
+                      />
+                    ) : (
+                      friend.username[0].toUpperCase()
+                    )}
+                  </div>
+                  <span className="font-black text-[#f0e6cc] text-sm truncate">
+                    {friend.username}
+                  </span>
+                </Link>
+                <button
+                  onClick={() => handleRemoveFriend(friend.id)}
+                  disabled={removingId === friend.id}
+                  className="shrink-0 text-[9px] font-black text-red-500/60 hover:text-red-500 uppercase tracking-wide transition disabled:opacity-40 px-1"
+                  title="Remove friend"
+                >
+                  {removingId === friend.id ? "..." : "✕"}
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -1296,7 +1320,6 @@ function FriendsModal({ onClose }: FriendsModalProps) {
     </div>
   );
 }
-
 interface EditProfileProps {
   currentUsername: string;
   currentAvatarUrl: string | null;

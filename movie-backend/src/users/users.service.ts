@@ -98,6 +98,33 @@ export class UsersService {
     });
   }
 
+  async removeFriend(currentUserId: number, friendId: number) {
+    const currentUser = await this.usersRepository.findOne({
+      where: { id: currentUserId },
+      relations: ['friends'],
+    });
+
+    const friendToRemove = await this.usersRepository.findOne({
+      where: { id: friendId },
+      relations: ['friends'],
+    });
+
+    if (!currentUser || !friendToRemove) {
+      throw new NotFoundException('User not found');
+    }
+
+    currentUser.friends = (currentUser.friends || []).filter(
+      (f) => f.id !== friendId,
+    );
+    friendToRemove.friends = (friendToRemove.friends || []).filter(
+      (f) => f.id !== currentUserId,
+    );
+
+    await this.usersRepository.save([currentUser, friendToRemove]);
+
+    return { message: 'Friend removed successfully' };
+  }
+
   async getPublicProfile(targetUserId: number, currentUserId: number) {
     const user = await this.usersRepository.findOne({
       where: { id: targetUserId },
