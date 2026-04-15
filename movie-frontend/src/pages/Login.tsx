@@ -8,6 +8,9 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showResend, setShowResend] = useState(false);
+  const [resendStatus, setResendStatus] = useState("");
+  const [isResending, setIsResending] = useState(false);
 
   const navigate = useNavigate();
 
@@ -36,6 +39,9 @@ export default function Login() {
 
       if (typeof serverMessage === "string") {
         setError(serverMessage);
+        if (serverMessage.toLowerCase().includes("verify")) {
+          setShowResend(true);
+        }
       } else if (Array.isArray(serverMessage)) {
         setError(serverMessage[0]);
       } else {
@@ -43,6 +49,19 @@ export default function Login() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    setResendStatus("");
+    try {
+      await api.post("/auth/resend-verification", { email });
+      setResendStatus("Verification email sent! Check your inbox.");
+    } catch {
+      setResendStatus("Failed to send. Please try again.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -101,6 +120,21 @@ export default function Login() {
         {error && (
           <div className="p-4 text-xs font-bold text-red-500 bg-red-900/10 border border-red-500/20 rounded-xl text-center uppercase tracking-wider">
             {error}
+            {showResend && (
+              <div className="mt-3 pt-3 border-t border-red-500/20">
+                {resendStatus ? (
+                  <p className="text-[#c8963c] normal-case">{resendStatus}</p>
+                ) : (
+                  <button
+                    onClick={handleResendVerification}
+                    disabled={isResending}
+                    className="text-[#c8963c] hover:text-[#e8c070] transition font-black normal-case disabled:opacity-50"
+                  >
+                    {isResending ? "Sending..." : "Resend verification email →"}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 

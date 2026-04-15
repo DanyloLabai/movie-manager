@@ -180,4 +180,57 @@ export class AuthService {
 
     return { message: 'Email verified successfully!' };
   }
+
+  async resendVerificationEmail(email: string) {
+    const user = await this.usersRepository.findOne({ where: { email } });
+
+    if (!user) {
+      return {
+        message: 'If this email exists, a verification link has been sent.',
+      };
+    }
+
+    if (user.isVerified) {
+      throw new BadRequestException('This email is already verified.');
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    user.verificationToken = verificationToken;
+    await this.usersRepository.save(user);
+
+    const frontendUrl =
+      this.configService.get<string>('FRONTEND_URL') || 'http://localhost:5173';
+    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+
+    try {
+      await this.resend.emails.send({
+        from: 'Movie Tracker <noreply@movietracker.ink>',
+        to: email,
+        subject: 'Verify your Movie Tracker email',
+        html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #12100e; color: #f0e6cc; padding: 40px; border-radius: 16px;">
+          <h2 style="color: #c8963c; text-transform: uppercase; letter-spacing: 0.1em;">Verify your email 🎬</h2>
+          <p>Hi <strong>${user.username}</strong>,</p>
+          <p>Here's your new verification link:</p>
+          <a href="${verificationUrl}"
+             style="display: inline-block; padding: 14px 28px; background-color: #c8963c; color: #12100e; text-decoration: none; border-radius: 12px; font-weight: 900; margin: 24px 0; text-transform: uppercase; letter-spacing: 0.1em;">
+            Verify Email
+          </a>
+          <p style="color: #f0e6cc99; font-size: 13px;">Or copy and paste this link:</p>
+          <p style="word-break: break-all; color: #c8963c; font-size: 13px;">${verificationUrl}</p>
+          <p style="color: #f0e6cc66; font-size: 12px; margin-top: 32px;">If you didn't request this, you can safely ignore this email.</p>
+        </div>
+      `,
+      });
+    } catch (emailError) {
+      console.error('Failed to resend verification email:', emailError);
+      throw new InternalServerErrorException(
+        'Failed to send email. Please try again.',
+      );
+    }
+
+    return {
+      message: 'If this email exists, a verification link has been sent.',
+    };
+  }
 }
