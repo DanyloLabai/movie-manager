@@ -118,7 +118,7 @@ export default function Top100() {
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative selection:bg-[#c8963c] selection:text-[#12100e]">
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
-        <header className="flex items-center justify-between py-4 px-4 sm:px-8 w-full max-w-7xl mx-auto">
+        <header className="flex items-center justify-between py-4 px-6 sm:px-12 w-full">
           <Link to="/search" className="hover:opacity-80 transition-opacity">
             <h1 className="text-lg sm:text-xl font-black text-[#c8963c] tracking-tight uppercase">
               MOVIE TRACKER
