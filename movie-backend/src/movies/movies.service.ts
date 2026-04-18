@@ -903,4 +903,53 @@ export class MoviesService {
       mediaType,
     };
   }
+
+  async getTop100(type: 'movie' | 'tv'): Promise<MovieResultDto[]> {
+    const cacheKey = `top_100_v2_${type}`;
+    const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const endpoint = type === 'tv' ? 'tv/top_rated' : 'movie/top_rated';
+
+      const requests = Array.from({ length: 5 }, (_, i) =>
+        firstValueFrom(
+          this.httpService.get<any>(`${this.baseUrl}/${endpoint}`, {
+            params: { language: 'en-US', page: i + 1 },
+            headers: { Authorization: `Bearer ${this.tmdbToken}` },
+          }),
+        ),
+      );
+
+      const responses = await Promise.all(requests);
+      let results: MovieResultDto[] = [];
+
+      responses.forEach((response) => {
+        const mapped = response.data.results
+          .filter((media: any) => media.poster_path)
+          .map((media: any) => ({
+            id: media.id,
+            title: media.title || media.name,
+            originalTitle: media.original_title || media.original_name,
+            description: media.overview || '',
+            releaseYear:
+              (media.release_date || media.first_air_date || '').split(
+                '-',
+              )[0] || 'N/A',
+            releaseDate: media.release_date || media.first_air_date || null,
+            rating: media.vote_average || 0,
+            posterUrl: `https://image.tmdb.org/t/p/w500${media.poster_path}`,
+            mediaType: type,
+          }));
+        results = [...results, ...mapped];
+      });
+
+      const final100 = results.slice(0, 100);
+      await this.cacheManager.set(cacheKey, final100, this.TTL_7D);
+      return final100;
+    } catch (error: any) {
+      this.logger.error(`Error fetching Top 100 ${type}: ${error.message}`);
+      return [];
+    }
+  }
 }

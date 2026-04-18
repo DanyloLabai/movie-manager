@@ -32,6 +32,11 @@ export class MoviesController {
     return this.moviesService.getUpcomingMovies();
   }
 
+  @Get('top100/:type')
+  async getTop100(@Param('type') type: 'movie' | 'tv') {
+    return this.moviesService.getTop100(type);
+  }
+
   @UseGuards(AuthGuard('jwt'))
   @Get('search')
   async searchByTitle(

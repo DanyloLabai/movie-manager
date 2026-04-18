@@ -13,6 +13,15 @@ interface MovieResult {
   mediaType: "movie" | "tv";
 }
 
+export interface MovieCardProps {
+  movie: any;
+  favoriteIds: number[];
+  addedIds: number[];
+  onToggleFavorite: (item: any) => void;
+  onAdd: (item: any) => void;
+  onRemove: (item: any) => void;
+}
+
 const getUserId = (): string => {
   const token = localStorage.getItem("token");
   if (!token) return "guest";
@@ -44,15 +53,16 @@ const isReleased = (movie: MovieResult) => {
   return true;
 };
 
-const MovieCard = ({
+export const MovieCard = ({
   movie,
   favoriteIds,
   addedIds,
   onToggleFavorite,
   onAdd,
   onRemove,
-}: any) => {
+}: MovieCardProps) => {
   const released = isReleased(movie);
+  
   return (
     <div className="group relative overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 shadow rounded-xl flex flex-col hover:border-[#c8963c]/70 hover:-translate-y-0.5 transition h-full">
       {released ? (
@@ -609,6 +619,47 @@ export default function Search() {
         </form>
 
         <main>
+          {!isSearching &&
+            results.length === 0 &&
+            searchQuery.trim() === "" && (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-10">
+                <Link
+                  to="/top100/movie"
+                  className="relative group overflow-hidden rounded-2xl aspect-[16/9] sm:aspect-[21/9] border border-[#c8963c]/30 shadow-xl bg-[#12100e]"
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#c8963c]/20 via-[#1a1714] to-[#12100e] group-hover:scale-105 transition-transform duration-700" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center z-10">
+                    <span className="text-3xl sm:text-4xl mb-1 sm:mb-2 group-hover:-translate-y-1 transition-transform">
+                      🎬
+                    </span>
+                    <h3 className="text-[#c8963c] font-black uppercase tracking-widest text-xs sm:text-lg drop-shadow-lg">
+                      Top 100 Movies
+                    </h3>
+                    <p className="text-[#f0e6cc]/50 text-[7px] sm:text-[10px] font-bold uppercase tracking-widest mt-1">
+                      All-Time Classics
+                    </p>
+                  </div>
+                </Link>
+
+                <Link
+                  to="/top100/tv"
+                  className="relative group overflow-hidden rounded-2xl aspect-[16/9] sm:aspect-[21/9] border border-[#c8963c]/30 shadow-xl bg-[#12100e]"
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-[#c8963c]/20 via-[#1a1714] to-[#12100e] group-hover:scale-105 transition-transform duration-700" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center z-10">
+                    <span className="text-3xl sm:text-4xl mb-1 sm:mb-2 group-hover:-translate-y-1 transition-transform">
+                      📺
+                    </span>
+                    <h3 className="text-[#c8963c] font-black uppercase tracking-widest text-xs sm:text-lg drop-shadow-lg">
+                      Top 100 Series
+                    </h3>
+                    <p className="text-[#f0e6cc]/50 text-[7px] sm:text-[10px] font-bold uppercase tracking-widest mt-1">
+                      Highest Rated
+                    </p>
+                  </div>
+                </Link>
+              </div>
+            )}
           {results.length > 0 ? (
             <>
               <div className="flex justify-between items-center mb-6 border-b border-[#c8963c]/20 pb-3">
