@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
+import LogoImg from "../assets/logo.png";
 
 interface MovieResult {
   id: number;
@@ -278,10 +279,15 @@ export default function AiChat() {
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
-            className="hover:opacity-80 transition-opacity shrink-0"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0"
           >
-            <h1 className="text-xl sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md">
-              Movie Tracker
+            <img
+              src={LogoImg}
+              alt="LUMEN Logo"
+              className="h-6 sm:h-8 w-auto object-contain"
+            />
+            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+              LUMEN AI
             </h1>
           </Link>
           <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">

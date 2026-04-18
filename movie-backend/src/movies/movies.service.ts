@@ -836,7 +836,7 @@ export class MoviesService {
             this.httpService.post(
               'https://api.resend.com/emails',
               {
-                from: 'Movie Tracker <noreply@movietracker.ink>',
+                from: 'Lumen Movie Tracker <noreply@movietracker.ink>',
                 to: [item.user.email],
                 subject: `🍿 "${item.title}" is officially out today!`,
                 html: `

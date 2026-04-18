@@ -110,7 +110,7 @@ export default function Login() {
 
         <div className="text-center">
           <h2 className="text-3xl sm:text-4xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
-            Welcome
+            Welcome to Lumen
           </h2>
           <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium tracking-wide">
             Log in to your tracker

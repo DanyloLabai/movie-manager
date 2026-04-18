@@ -6,6 +6,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { api } from "../api";
+import LogoImg from "../assets/logo.png";
 
 interface WatchProvider {
   provider_id: number;
@@ -287,13 +288,19 @@ export default function MovieDetails() {
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative pb-24 overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5 pt-[env(safe-area-inset-top,12px)]">
         <Link
           to="/search"
-          className="text-lg sm:text-xl font-black text-[#c8963c] uppercase tracking-tighter drop-shadow-md"
+          className="hover:opacity-80 transition-opacity flex items-center gap-3"
         >
-          Movie Tracker
+          <img
+            src={LogoImg}
+            alt="LUMEN Logo"
+            className="h-6 sm:h-8 w-auto object-contain"
+          />
+          <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+            LUMEN
+          </h1>
         </Link>
         <button
           onClick={() => {

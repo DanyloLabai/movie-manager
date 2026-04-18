@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import { MovieCard } from "./Search";
+import LogoImg from "../assets/logo.png";
 
 export default function Top100() {
   const { type } = useParams<{ type: "movie" | "tv" }>();
@@ -119,9 +120,17 @@ export default function Top100() {
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative selection:bg-[#c8963c] selection:text-[#12100e]">
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex items-center justify-between py-4 px-6 sm:px-12 w-full">
-          <Link to="/search" className="hover:opacity-80 transition-opacity">
-            <h1 className="text-lg sm:text-xl font-black text-[#c8963c] tracking-tight uppercase">
-              MOVIE TRACKER
+          <Link
+            to="/search"
+            className="hover:opacity-80 transition-opacity flex items-center gap-3"
+          >
+            <img
+              src={LogoImg}
+              alt="LUMEN Logo"
+              className="h-6 sm:h-8 w-auto object-contain"
+            />
+            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+              LUMEN
             </h1>
           </Link>
 
@@ -148,7 +157,7 @@ export default function Top100() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {items.map((item, index) => (
-              <div key={item.id} className="relative">
+              <div key={`${item.id}-${index}`} className="relative">
                 <div className="absolute -top-2 -left-2 w-8 h-8 bg-[#c8963c] text-[#12100e] rounded-full flex items-center justify-center font-black text-[10px] z-20 border-2 border-[#12100e] shadow-lg">
                   #{index + 1}
                 </div>

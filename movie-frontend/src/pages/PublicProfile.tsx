@@ -11,6 +11,7 @@ import {
   XAxis,
 } from "recharts";
 import { api } from "../api";
+import LogoImg from "../assets/logo.png";
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
 
@@ -149,9 +150,16 @@ export default function PublicProfile() {
         <header className="flex justify-between items-center px-4 sm:px-8 py-4 w-full">
           <Link
             to="/search"
-            className="text-lg sm:text-2xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md shrink-0"
+            className="hover:opacity-80 transition-opacity flex items-center gap-3"
           >
-            Movie Tracker
+            <img
+              src={LogoImg}
+              alt="LUMEN Logo"
+              className="h-6 sm:h-8 w-auto object-contain"
+            />
+            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+              LUMEN
+            </h1>
           </Link>
           <Link
             to="/watchlist"
