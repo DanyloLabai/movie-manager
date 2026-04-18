@@ -9,9 +9,10 @@ import ChangePassword from "./pages/ChangePassword";
 import VerifyEmail from "./pages/VerifyEmail";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
-import type { JSX } from "react";
 import PublicProfile from "./pages/PublicProfile";
 import ActorDetails from "./pages/ActorDetails";
+import Top100 from "./pages/Top100";
+import type { JSX } from "react";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const token = localStorage.getItem("token");
@@ -36,6 +37,15 @@ function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
 
           <Route path="/user/:id" element={<PublicProfile />} />
+
+          <Route
+            path="/top100/:type"
+            element={
+              <ProtectedRoute>
+                <Top100 />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/change-password"

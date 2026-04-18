@@ -21,7 +21,7 @@ interface Message {
 
 const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
 const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
-const CHAT_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
+const CHAT_EXPIRATION_MS = Number(import.meta.env.CHAT_EXPIRATION_MS);
 
 export default function AiChat() {
   const [input, setInput] = useState("");
