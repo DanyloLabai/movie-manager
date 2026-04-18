@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../api";
-import MovieCard from "./Search";
+import { MovieCard } from "./Search";
 
 export default function Top100() {
   const { type } = useParams<{ type: "movie" | "tv" }>();
