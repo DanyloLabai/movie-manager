@@ -887,7 +887,7 @@ export default function Watchlist() {
             <img
               src={LogoImg}
               alt="LUMEN Logo"
-              className="h-6 sm:h-8 w-auto object-contain"
+              className="h-10 sm:h-12 w-auto object-contain"
             />
             <div className="flex flex-col justify-center">
               <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
