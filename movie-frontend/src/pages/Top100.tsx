@@ -122,16 +122,22 @@ export default function Top100() {
         <header className="flex items-center justify-between py-4 px-6 sm:px-12 w-full">
           <Link
             to="/search"
-            className="hover:opacity-80 transition-opacity flex items-center gap-3"
+            className="flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
           >
             <img
               src={LogoImg}
-              alt="LUMEN Logo"
-              className="h-6 sm:h-8 w-auto object-contain"
+              alt="LUMEN™ Logo"
+              className="h-10 sm:h-12 w-auto object-contain"
             />
-            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-              LUMEN
-            </h1>
+            
+            <div className="flex flex-col justify-center">
+              <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+                LUMEN
+              </h1>
+              <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
+                Movie Tracker
+              </span>
+            </div>
           </Link>
 
           <button

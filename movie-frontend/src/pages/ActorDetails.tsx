@@ -90,19 +90,25 @@ export default function ActorDetails() {
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] pb-10 selection:bg-[#c8963c] selection:text-[#12100e]">
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5 pt-[env(safe-area-inset-top,12px)]">
-        <Link
-          to="/search"
-          className="hover:opacity-80 transition-opacity flex items-center gap-3"
-        >
-          <img
-            src={LogoImg}
-            alt="LUMEN Logo"
-            className="h-6 sm:h-8 w-auto object-contain"
-          />
-          <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-            LUMEN
-          </h1>
-        </Link>
+          <Link
+            to="/search"
+            className="flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
+          >
+            <img
+              src={LogoImg}
+              alt="LUMEN™ Logo"
+              className="h-10 sm:h-12 w-auto object-contain"
+            />
+            
+            <div className="flex flex-col justify-center">
+              <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+                LUMEN
+              </h1>
+              <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
+                Movie Tracker
+              </span>
+            </div>
+          </Link>
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-xs font-black uppercase text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"

@@ -889,9 +889,14 @@ export default function Watchlist() {
               alt="LUMEN Logo"
               className="h-6 sm:h-8 w-auto object-contain"
             />
-            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-              LUMEN
-            </h1>
+            <div className="flex flex-col justify-center">
+              <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+                LUMEN
+              </h1>
+              <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
+                Movie Tracker
+              </span>
+            </div>
           </Link>
           <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
             <Link
