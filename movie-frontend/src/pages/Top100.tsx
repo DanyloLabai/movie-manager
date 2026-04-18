@@ -48,11 +48,6 @@ export default function Top100() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
-
   const handleAdd = async (item: any) => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -123,56 +118,27 @@ export default function Top100() {
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative selection:bg-[#c8963c] selection:text-[#12100e]">
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full max-w-7xl mx-auto">
-          <Link
-            to="/search"
-            className="hover:opacity-80 transition-opacity shrink-0"
-          >
-            <h1 className="text-3xl sm:text-4xl font-black text-[#c8963c] tracking-tight uppercase drop-shadow-md">
+        <header className="flex items-center justify-between py-4 px-4 sm:px-8 w-full max-w-7xl mx-auto">
+          <Link to="/search" className="hover:opacity-80 transition-opacity">
+            <h1 className="text-lg sm:text-xl font-black text-[#c8963c] tracking-tight uppercase">
               MOVIE TRACKER
             </h1>
           </Link>
 
-          <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
-            <Link
-              to="/ai-chat"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
-            >
-              AI Chat
-            </Link>
-            <Link
-              to="/search"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
-            >
-              Search
-            </Link>
-            <Link
-              to="/watchlist"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
-            >
-              Profile
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
-            >
-              Logout
-            </button>
-          </nav>
-        </header>
-      </div>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
-        <div className="flex justify-between items-center mb-6 border-b border-[#c8963c]/20 pb-3">
-          <h2 className="text-sm sm:text-lg font-black text-[#c8963c] uppercase tracking-widest">
-            {title}
-          </h2>
           <button
             onClick={() => navigate(-1)}
             className="text-[10px] sm:text-xs font-bold text-[#f0e6cc]/60 hover:text-[#c8963c] transition uppercase tracking-wider"
           >
-            ← Back
+            &lt; BACK
           </button>
+        </header>
+      </div>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
+        <div className="text-center mb-8 pb-4 border-b border-[#c8963c]/20">
+          <h2 className="text-xl sm:text-2xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
+            {title}
+          </h2>
         </div>
 
         {isLoading ? (
