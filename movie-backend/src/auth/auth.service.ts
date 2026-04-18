@@ -70,12 +70,12 @@ export class AuthService {
 
     try {
       await this.resend.emails.send({
-        from: 'Movie Tracker <noreply@movietracker.ink>',
+        from: 'Lumen Movie Tracker <noreply@movietracker.ink>',
         to: email,
-        subject: 'Welcome to Movie Tracker! Please verify your email',
+        subject: 'Welcome to Lumen Movie Tracker! Please verify your email',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #12100e; color: #f0e6cc; padding: 40px; border-radius: 16px;">
-            <h2 style="color: #c8963c; text-transform: uppercase; letter-spacing: 0.1em;">Welcome to Movie Tracker! 🎬</h2>
+            <h2 style="color: #c8963c; text-transform: uppercase; letter-spacing: 0.1em;">Welcome to Lumen Movie Tracker! 🎬</h2>
             <p>Hi <strong>${username}</strong>,</p>
             <p>Thanks for creating an account. To complete your registration, please verify your email address:</p>
             <a href="${verificationUrl}"
@@ -204,9 +204,9 @@ export class AuthService {
 
     try {
       await this.resend.emails.send({
-        from: 'Movie Tracker <noreply@movietracker.ink>',
+        from: 'Lumen Movie Tracker <noreply@movietracker.ink>',
         to: email,
-        subject: 'Verify your Movie Tracker email',
+        subject: 'Verify your Lumen Movie Tracker email',
         html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #12100e; color: #f0e6cc; padding: 40px; border-radius: 16px;">
           <h2 style="color: #c8963c; text-transform: uppercase; letter-spacing: 0.1em;">Verify your email 🎬</h2>
@@ -250,9 +250,9 @@ export class AuthService {
 
     try {
       await this.resend.emails.send({
-        from: 'Movie Tracker <noreply@movietracker.ink>',
+        from: 'Lumen Movie Tracker <noreply@movietracker.ink>',
         to: email,
-        subject: 'Reset Your Password - Movie Tracker',
+        subject: 'Reset Your Password - Lumen Movie Tracker',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #12100e; color: #f0e6cc; padding: 40px; border-radius: 16px;">
             <h2 style="color: #c8963c; text-transform: uppercase; letter-spacing: 0.1em;">Password Reset 🎬</h2>
