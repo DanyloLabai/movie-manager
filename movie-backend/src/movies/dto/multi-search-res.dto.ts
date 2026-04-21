@@ -10,6 +10,7 @@ export class TmdbMultiSearchResultDto {
   first_air_date?: string;
   vote_average: number;
   poster_path: string | null;
+  original_language: string;
 }
 
 export class TmdbMultiSearchResponseDto {

@@ -125,7 +125,8 @@ export class MoviesService {
       const results = data.results
         .filter(
           (item: TmdbMultiSearchResultDto) =>
-            item.media_type === 'movie' || item.media_type === 'tv',
+            (item.media_type === 'movie' || item.media_type === 'tv') &&
+            item.original_language !== 'ru',
         )
         .slice(0, this.SEARCH_RESULTS_LIMIT)
         .map((media: TmdbMultiSearchResultDto) =>
@@ -162,7 +163,8 @@ export class MoviesService {
 
       let results: TmdbMultiSearchResultDto[] = data.results.filter(
         (r: TmdbMultiSearchResultDto) =>
-          r.media_type === 'movie' || r.media_type === 'tv',
+          (r.media_type === 'movie' || r.media_type === 'tv') &&
+          r.original_language !== 'ru',
       );
 
       if (year && results.length > 0) {
@@ -771,6 +773,7 @@ export class MoviesService {
         You are an elite movie recommendation engine. The user likes these movies/shows: ${referenceTitles}.
         Suggest exactly ${this.RECOMMENDATIONS_LIMIT} highly relevant movies or tv shows that they would love.
         Do not include the ones they already like.
+        CRITICAL RULE: DO NOT recommend any Russian or Soviet movies/shows.
         Return ONLY a raw JSON array of strings containing the titles. No markdown, no explanations, no backticks.
         Example format: ["Title 1", "Title 2", "Title 3"]
       `;
