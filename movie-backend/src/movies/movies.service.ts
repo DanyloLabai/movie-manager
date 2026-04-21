@@ -905,17 +905,25 @@ export class MoviesService {
   }
 
   async getTop100(type: 'movie' | 'tv'): Promise<MovieResultDto[]> {
-    const cacheKey = `top_100_v2_${type}`;
+    const cacheKey = `top_100_v2_${type}_filtered`;
     const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
     if (cached) return cached;
 
     try {
-      const endpoint = type === 'tv' ? 'tv/top_rated' : 'movie/top_rated';
+      const endpoint = type === 'tv' ? 'discover/tv' : 'discover/movie';
+      const minVotes = type === 'movie' ? 10000 : 3000;
 
       const requests = Array.from({ length: 5 }, (_, i) =>
         firstValueFrom(
           this.httpService.get<any>(`${this.baseUrl}/${endpoint}`, {
-            params: { language: 'en-US', page: i + 1 },
+            params: {
+              language: 'en-US',
+              page: i + 1,
+              sort_by: 'vote_average.desc',
+              'vote_count.gte': minVotes,
+              without_original_language: 'ru',
+              ...(type === 'tv' ? { without_genres: '10763,10767' } : {}),
+            },
             headers: { Authorization: `Bearer ${this.tmdbToken}` },
           }),
         ),
