@@ -155,7 +155,7 @@ export const MovieCard = ({
                   : "bg-[#c8963c]/10 text-[#c8963c] border-[#c8963c]/30 hover:bg-[#c8963c]/20"
               }`}
             >
-              <span>✓</span> {isWatched ? "Watched" : "In Plans"}
+              <span>✓</span> {isWatched ? "Added" : "Added"}
             </button>
           ) : (
             <button
