@@ -104,42 +104,63 @@ export class MoviesService {
   }
 
   async searchMovies(query: string): Promise<MovieResultDto[]> {
-    const cacheKey = `search_v2:${query.toLowerCase().trim().replace(/\s+/g, '_')}`;
+    const cacheKey = `search_v3:${query.toLowerCase().trim().replace(/\s+/g, '_')}`;
 
     const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
     if (cached) return cached;
 
     try {
-      const { data } = await firstValueFrom(
-        this.httpService.get<TmdbMultiSearchResponseDto>(
-          `${this.baseUrl}/search/multi`,
-          {
-            params: { query, language: 'en-US' },
-            headers: { Authorization: `Bearer ${this.tmdbToken}` },
-          },
-        ),
+      const requests = [1, 2].map((page) =>
+        firstValueFrom(
+          this.httpService.get<TmdbMultiSearchResponseDto>(
+            `${this.baseUrl}/search/multi`,
+            {
+              params: { query, language: 'en-US', page },
+              headers: { Authorization: `Bearer ${this.tmdbToken}` },
+            },
+          ),
+        ).catch(() => null),
       );
 
-      if (!data.results) return [];
+      const responses = await Promise.all(requests);
+      let allResults: TmdbMultiSearchResultDto[] = [];
 
-      const results = data.results
+      responses.forEach((res) => {
+        if (res?.data?.results) {
+          const existingIds = new Set(allResults.map((item) => item.id));
+          const newItems = res.data.results.filter(
+            (item) => !existingIds.has(item.id),
+          );
+          allResults = [...allResults, ...newItems];
+        }
+      });
+
+      if (allResults.length === 0) return [];
+
+      const results = allResults
         .filter(
           (item: TmdbMultiSearchResultDto) =>
             (item.media_type === 'movie' || item.media_type === 'tv') &&
-            item.original_language !== 'ru',
+            item.original_language !== 'ru' &&
+            item.poster_path,
         )
-        .slice(0, this.SEARCH_RESULTS_LIMIT)
+        .sort((a, b) => {
+          const scoreA = (a.vote_average || 0) * (a.vote_count || 0);
+          const scoreB = (b.vote_average || 0) * (b.vote_count || 0);
+          return scoreB - scoreA;
+        })
+        .slice(0, 70)
         .map((media: TmdbMultiSearchResultDto) =>
           this.mapMediaToDto(media, media.media_type as 'movie' | 'tv'),
         );
 
       await this.cacheManager.set(cacheKey, results, this.TTL_24H);
       return results;
-    } catch {
+    } catch (error: any) {
+      this.logger.error(`Search error: ${error.message}`);
       return [];
     }
   }
-
   async findMovieByTitle(
     title: string,
     year?: number,

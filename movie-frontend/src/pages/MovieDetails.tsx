@@ -120,6 +120,12 @@ export default function MovieDetails() {
       setRecommendations([]);
       setStatus(null);
       setIsLoading(true);
+
+      setHoveredStar(0);
+      setModalHoveredStar(0);
+      setIsRatingModalOpen(false);
+      setPendingAction(null);
+
       fetchData(Number(id));
     }
   }, [id, mediaType]);
@@ -225,6 +231,7 @@ export default function MovieDetails() {
         rating: newRating,
       });
       showToast(newRating === 0 ? "Rating cleared!" : "Rating saved!");
+      setHoveredStar(0);
       fetchData(movie.id);
     } catch {
       showToast("Error.");
@@ -244,6 +251,7 @@ export default function MovieDetails() {
 
   const handleModalRate = async (star: number) => {
     setIsRatingModalOpen(false);
+    setModalHoveredStar(0);
     if (pendingAction === "new_watched") await handleAddNewMovie(true, star);
     else if (pendingAction === "update_watched") await handleRate(star);
     setPendingAction(null);
@@ -251,6 +259,7 @@ export default function MovieDetails() {
 
   const handleModalSkip = async () => {
     setIsRatingModalOpen(false);
+    setModalHoveredStar(0);
     if (pendingAction === "new_watched") await handleAddNewMovie(true, null);
     else if (pendingAction === "update_watched") await handleMarkWatched();
     setPendingAction(null);
@@ -289,25 +298,25 @@ export default function MovieDetails() {
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative pb-24 overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5 pt-[env(safe-area-inset-top,12px)]">
-          <Link
-            to="/search"
-            className="flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
-          >
-            <img
-              src={LogoImg}
-              alt="LUMEN™ Logo"
-              className="h-10 sm:h-12 w-auto object-contain"
-            />
-            
-            <div className="flex flex-col justify-center">
-              <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-                LUMEN
-              </h1>
-              <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-                Movie Tracker
-              </span>
-            </div>
-          </Link>
+        <Link
+          to="/search"
+          className="flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
+        >
+          <img
+            src={LogoImg}
+            alt="LUMEN™ Logo"
+            className="h-10 sm:h-12 w-auto object-contain"
+          />
+
+          <div className="flex flex-col justify-center">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+              LUMEN
+            </h1>
+            <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
+              Movie Tracker
+            </span>
+          </div>
+        </Link>
         <button
           onClick={() => {
             const fromTab = searchParams.get("fromTab");
@@ -739,7 +748,10 @@ export default function MovieDetails() {
           <div className="bg-[#1a1714] border border-[#c8963c]/30 p-8 sm:p-10 rounded-[2.5rem] sm:rounded-[3.5rem] shadow-2xl w-full max-w-sm text-center relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
             <button
-              onClick={() => setIsRatingModalOpen(false)}
+              onClick={() => {
+                setIsRatingModalOpen(false);
+                setModalHoveredStar(0);
+              }}
               className="absolute top-5 right-6 text-[#f0e6cc]/50 hover:text-[#c8963c] transition text-xl active:scale-90"
             >
               ✕

@@ -18,6 +18,7 @@ export interface MovieCardProps {
   movie: any;
   favoriteIds: number[];
   addedIds: number[];
+  watchedIds: number[];
   onToggleFavorite: (item: any) => void;
   onAdd: (item: any) => void;
   onRemove: (item: any) => void;
@@ -58,11 +59,14 @@ export const MovieCard = ({
   movie,
   favoriteIds,
   addedIds,
+  watchedIds,
   onToggleFavorite,
   onAdd,
   onRemove,
 }: MovieCardProps) => {
   const released = isReleased(movie);
+  const isWatched = watchedIds.includes(movie.id);
+  const isInPlans = addedIds.includes(movie.id);
 
   return (
     <div className="group relative overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 shadow rounded-xl flex flex-col hover:border-[#c8963c]/70 hover:-translate-y-0.5 transition h-full">
@@ -99,6 +103,8 @@ export const MovieCard = ({
           <img
             src={movie.posterUrl}
             alt={movie.title}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
         ) : (
@@ -140,12 +146,16 @@ export const MovieCard = ({
         </p>
 
         <div className="mt-auto pt-2 border-t border-[#c8963c]/20">
-          {addedIds.includes(movie.id) ? (
+          {isInPlans ? (
             <button
               onClick={() => onRemove(movie)}
-              className="w-full py-1.5 bg-[#c8963c]/10 text-[#c8963c] font-bold rounded-lg uppercase text-[9px] tracking-wider border border-[#c8963c]/30 flex items-center justify-center gap-1 active:scale-95 hover:bg-[#c8963c]/20 transition"
+              className={`w-full py-1.5 font-bold rounded-lg uppercase text-[9px] tracking-wider border flex items-center justify-center gap-1 active:scale-95 transition ${
+                isWatched
+                  ? "bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20"
+                  : "bg-[#c8963c]/10 text-[#c8963c] border-[#c8963c]/30 hover:bg-[#c8963c]/20"
+              }`}
             >
-              <span>✓</span> In Plans
+              <span>✓</span> {isWatched ? "Watched" : "In Plans"}
             </button>
           ) : (
             <button
@@ -171,6 +181,7 @@ const MovieCarousel = ({
   emptyElement,
   favoriteIds,
   addedIds,
+  watchedIds,
   onToggleFavorite,
   onAdd,
   onRemove,
@@ -255,6 +266,7 @@ const MovieCarousel = ({
                 movie={movie}
                 favoriteIds={favoriteIds}
                 addedIds={addedIds}
+                watchedIds={watchedIds}
                 onToggleFavorite={onToggleFavorite}
                 onAdd={onAdd}
                 onRemove={onRemove}
@@ -348,10 +360,33 @@ export default function Search() {
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [watchedIds, setWatchedIds] = useState<number[]>([]);
+
+  const [visibleCount, setVisibleCount] = useState(20);
 
   useEffect(() => {
     localStorage.setItem(ADDED_CACHE_KEY, JSON.stringify(addedIds));
   }, [addedIds]);
+
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [results]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 20);
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    const target = document.getElementById("load-more-trigger");
+    if (target) observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [results, visibleCount]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -389,8 +424,11 @@ export default function Search() {
             profileRes.data.favorites?.map((f: any) => f.tmdbId) || [];
           const recent =
             profileRes.data.recent?.map((r: any) => r.tmdbId) || [];
+          const watched =
+            profileRes.data.watched?.map((w: any) => w.tmdbId) || [];
           setFavoriteIds(favs);
           setAddedIds(Array.from(new Set([...favs, ...recent])));
+          setWatchedIds(watched);
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(favs));
         }
       } catch (error) {
@@ -451,11 +489,17 @@ export default function Search() {
         releaseDate: movie.releaseDate,
       });
       setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
+      setRecommendations((prev) => prev.filter((item) => item.id !== movie.id));
       showToast("Added to list");
     } catch (error: any) {
-      if (error.response?.status === 400)
+      if (error.response?.status === 400) {
         setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
-      else showToast("Error adding movie");
+        setRecommendations((prev) =>
+          prev.filter((item) => item.id !== movie.id),
+        );
+      } else {
+        showToast("Error adding movie");
+      }
     }
   };
 
@@ -530,19 +574,31 @@ export default function Search() {
   };
 
   const renderMovieGrid = (movies: MovieResult[]) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-      {movies.map((movie) => (
-        <MovieCard
-          key={movie.id}
-          movie={movie}
-          favoriteIds={favoriteIds}
-          addedIds={addedIds}
-          onToggleFavorite={handleToggleFavorite}
-          onAdd={handleAdd}
-          onRemove={handleRemove}
-        />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
+        {movies.slice(0, visibleCount).map((movie) => (
+          <MovieCard
+            key={movie.id}
+            movie={movie}
+            favoriteIds={favoriteIds}
+            addedIds={addedIds}
+            onToggleFavorite={handleToggleFavorite}
+            onAdd={handleAdd}
+            onRemove={handleRemove}
+            watchedIds={watchedIds}
+          />
+        ))}
+      </div>
+
+      {visibleCount < movies.length && (
+        <div
+          id="load-more-trigger"
+          className="h-20 mt-4 flex justify-center items-center"
+        >
+          <div className="w-8 h-8 border-4 border-[#1a1714] border-t-[#c8963c] rounded-full animate-spin"></div>
+        </div>
+      )}
+    </>
   );
 
   return (
@@ -722,6 +778,7 @@ export default function Search() {
                 }
                 favoriteIds={favoriteIds}
                 addedIds={addedIds}
+                watchedIds={watchedIds} // 🔥 Додано сюди
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
                 onRemove={handleRemove}
@@ -735,6 +792,7 @@ export default function Search() {
                 isLoading={isLoadingHome && upcoming.length === 0}
                 favoriteIds={favoriteIds}
                 addedIds={addedIds}
+                watchedIds={watchedIds} // 🔥 Додано сюди
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
                 onRemove={handleRemove}
@@ -763,6 +821,7 @@ export default function Search() {
                 }
                 favoriteIds={favoriteIds}
                 addedIds={addedIds}
+                watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
                 onRemove={handleRemove}

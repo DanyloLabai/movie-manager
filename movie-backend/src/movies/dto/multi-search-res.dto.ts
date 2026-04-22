@@ -11,6 +11,7 @@ export class TmdbMultiSearchResultDto {
   vote_average: number;
   poster_path: string | null;
   original_language: string;
+  vote_count: number;
 }
 
 export class TmdbMultiSearchResponseDto {

@@ -11,6 +11,7 @@ export default function Top100() {
   const [isLoading, setIsLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   const [addedIds, setAddedIds] = useState<number[]>([]);
+  const [watchedIds, setWatchedIds] = useState<number[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const isMovie = type === "movie";
@@ -32,8 +33,12 @@ export default function Top100() {
             profileRes.data.favorites?.map((f: any) => f.tmdbId) || [];
           const recent =
             profileRes.data.recent?.map((r: any) => r.tmdbId) || [];
+          const watched =
+            profileRes.data.watched?.map((w: any) => w.tmdbId) || [];
+
           setFavoriteIds(favs);
-          setAddedIds(Array.from(new Set([...favs, ...recent])));
+          setAddedIds(Array.from(new Set([...favs, ...recent, ...watched])));
+          setWatchedIds(watched);
         }
       } catch (error) {
         console.error(error);
@@ -129,7 +134,7 @@ export default function Top100() {
               alt="LUMEN™ Logo"
               className="h-10 sm:h-12 w-auto object-contain"
             />
-            
+
             <div className="flex flex-col justify-center">
               <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
                 LUMEN
@@ -171,6 +176,7 @@ export default function Top100() {
                   movie={item}
                   favoriteIds={favoriteIds}
                   addedIds={addedIds}
+                  watchedIds={watchedIds}
                   onToggleFavorite={handleToggleFavorite}
                   onAdd={handleAdd}
                   onRemove={handleRemove}

@@ -203,6 +203,7 @@ export default function Watchlist() {
       setIsLoading(false);
     }
   };
+
   const handleToggleFavorite = async (tmdbId: number) => {
     const itemToCheck =
       movies.find((m) => m.tmdbId === tmdbId) ||
@@ -272,6 +273,7 @@ export default function Watchlist() {
   const handleMarkWatched = (tmdbId: number) => {
     const targetMovie = movies.find((m) => m.tmdbId === tmdbId);
     if (!targetMovie) return;
+    setModalHoveredStar(0);
     setRatingModalData({
       isOpen: true,
       tmdbId: targetMovie.tmdbId,
@@ -332,20 +334,22 @@ export default function Watchlist() {
     }
   };
 
+  const closeRatingModal = () => {
+    setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
+    setModalHoveredStar(0);
+  };
+
   const handleModalRate = async (star: number) => {
     if (ratingModalData.tmdbId)
       await confirmMarkWatched(ratingModalData.tmdbId, star);
-    setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
+    closeRatingModal();
   };
 
   const handleModalSkip = async () => {
     if (ratingModalData.tmdbId)
       await confirmMarkWatched(ratingModalData.tmdbId, null);
-    setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
+    closeRatingModal();
   };
-
-  const closeRatingModal = () =>
-    setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -589,6 +593,8 @@ export default function Watchlist() {
                     <img
                       src={profileData.stats.topActor.profileUrl}
                       alt="Actor"
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -720,6 +726,8 @@ export default function Watchlist() {
                             <img
                               src={item.posterUrl}
                               alt=""
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -771,6 +779,8 @@ export default function Watchlist() {
                           <img
                             src={fav.posterUrl}
                             alt={fav.title}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           />
                         ) : (
@@ -850,6 +860,8 @@ export default function Watchlist() {
                         <img
                           src={act.posterUrl}
                           alt={act.title}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -981,6 +993,8 @@ export default function Watchlist() {
                           <img
                             src={item.posterUrl}
                             alt={item.title}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           />
                         ) : (
@@ -1126,6 +1140,7 @@ export default function Watchlist() {
             className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
             <button
               onClick={closeRatingModal}
               className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
@@ -1304,6 +1319,7 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                     {friend.avatarUrl ? (
                       <img
                         src={friend.avatarUrl}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                         alt={friend.username}
                       />
@@ -1331,6 +1347,7 @@ function FriendsModal({ onClose }: FriendsModalProps) {
     </div>
   );
 }
+
 interface EditProfileProps {
   currentUsername: string;
   currentAvatarUrl: string | null;
