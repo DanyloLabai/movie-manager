@@ -628,6 +628,8 @@ export class MoviesService {
       avatarUrl: user?.avatarUrl,
       favorites,
       recent,
+      watchedIds: watchedItems.map((item) => item.tmdbId),
+      inPlansIds: inPlansItems.map((item) => item.tmdbId),
       watchedCount: watchedItems.length,
       totalCount,
       stats: {

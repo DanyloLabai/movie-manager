@@ -443,13 +443,12 @@ export default function Search() {
         if (profileRes.data) {
           const favs =
             profileRes.data.favorites?.map((f: any) => f.tmdbId) || [];
-          const recent =
-            profileRes.data.recent?.map((r: any) => r.tmdbId) || [];
-          const watched =
-            profileRes.data.watched?.map((w: any) => w.tmdbId) || [];
+          const watched = profileRes.data.watchedIds || [];
+          const inPlans = profileRes.data.inPlansIds || [];
+
           setFavoriteIds(favs);
-          setAddedIds(Array.from(new Set([...favs, ...recent, ...watched])));
           setWatchedIds(watched);
+          setAddedIds(Array.from(new Set([...favs, ...watched, ...inPlans])));
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(favs));
         }
       } catch (error) {
