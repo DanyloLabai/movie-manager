@@ -389,6 +389,30 @@ export default function Search() {
     localStorage.setItem(ADDED_CACHE_KEY, JSON.stringify(addedIds));
   }, [addedIds]);
 
+  const prevAddedLengthRef = useRef<number>(addedIds.length);
+
+  useEffect(() => {
+    const prev = prevAddedLengthRef.current;
+    prevAddedLengthRef.current = addedIds.length;
+
+    if (addedIds.length <= prev) return;
+
+    localStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
+
+    api
+      .get("/movies/recommendations")
+      .then((res) => {
+        if (res.data?.length > 0) {
+          setRecommendations(res.data);
+          localStorage.setItem(
+            RECOMMENDATIONS_CACHE_KEY,
+            JSON.stringify(res.data),
+          );
+        }
+      })
+      .catch(() => {});
+  }, [addedIds.length]);
+
   useEffect(() => {
     setVisibleCount(20);
   }, [results]);
@@ -510,7 +534,7 @@ export default function Search() {
       });
 
       setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
-
+      localStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
       showToast("Added to list");
     } catch (error: any) {
       if (error.response?.status === 400) {

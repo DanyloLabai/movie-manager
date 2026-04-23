@@ -801,16 +801,16 @@ export class MoviesService {
       }
 
       if (userItems.length < 3) {
-        const existingIds = new Set(userItems.map((i) => i.tmdbId));
+        const existingIds2 = new Set(userItems.map((i) => i.tmdbId));
         const inPlansItems = await this.watchlistRepo.find({
           where: { user: { id: userId }, isWatched: false },
           order: { addedAt: 'DESC' },
         });
         for (const item of inPlansItems) {
           if (userItems.length >= this.RECOMMENDATIONS_REFERENCE_LIMIT) break;
-          if (!existingIds.has(item.tmdbId)) {
+          if (!existingIds2.has(item.tmdbId)) {
             userItems.push(item);
-            existingIds.add(item.tmdbId);
+            existingIds2.add(item.tmdbId);
           }
         }
       }
