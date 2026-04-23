@@ -95,8 +95,11 @@ export class MoviesService {
       this.configService.get<number>('PROFILE_ANALYZE_LIMIT') || 30;
     this.PROFILE_TOP_RATED_LIMIT =
       this.configService.get<number>('PROFILE_TOP_RATED_LIMIT') || 3;
+
+    // 🔥 ФІКС: Замовляємо у ШІ 20 фільмів замість 8, щоб мати "запас" для підміни
     this.RECOMMENDATIONS_LIMIT =
-      this.configService.get<number>('RECOMMENDATIONS_LIMIT') || 8;
+      this.configService.get<number>('RECOMMENDATIONS_LIMIT') || 20;
+
     this.RECOMMENDATIONS_REFERENCE_LIMIT =
       this.configService.get<number>('RECOMMENDATIONS_REFERENCE_LIMIT') || 10;
     this.GENRE_DISTRIBUTION_LIMIT =
@@ -161,6 +164,7 @@ export class MoviesService {
       return [];
     }
   }
+
   async findMovieByTitle(
     title: string,
     year?: number,
@@ -668,6 +672,10 @@ export class MoviesService {
       user: { id: userId },
     });
 
+    await this.cacheManager
+      .del(`recommendations:user:${userId}`)
+      .catch(() => {});
+
     return this.watchlistRepo.save(newItem);
   }
 
@@ -694,6 +702,11 @@ export class MoviesService {
 
     item.isWatched = true;
     item.updatedAt = new Date();
+
+    await this.cacheManager
+      .del(`recommendations:user:${userId}`)
+      .catch(() => {});
+
     return this.watchlistRepo.save(item);
   }
 
@@ -707,6 +720,11 @@ export class MoviesService {
     item.rating = rating;
     item.isWatched = true;
     item.updatedAt = new Date();
+
+    await this.cacheManager
+      .del(`recommendations:user:${userId}`)
+      .catch(() => {});
+
     return this.watchlistRepo.save(item);
   }
 
@@ -719,6 +737,11 @@ export class MoviesService {
 
     item.isFavorite = !item.isFavorite;
     item.updatedAt = new Date();
+
+    await this.cacheManager
+      .del(`recommendations:user:${userId}`)
+      .catch(() => {});
+
     return this.watchlistRepo.save(item);
   }
 
@@ -741,6 +764,10 @@ export class MoviesService {
         `Media with TMDB ID ${tmdbId} not found in your watchlist`,
       );
     }
+
+    await this.cacheManager
+      .del(`recommendations:user:${userId}`)
+      .catch(() => {});
 
     return { message: 'Successfully removed' };
   }

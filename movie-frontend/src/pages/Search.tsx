@@ -427,7 +427,7 @@ export default function Search() {
           const watched =
             profileRes.data.watched?.map((w: any) => w.tmdbId) || [];
           setFavoriteIds(favs);
-          setAddedIds(Array.from(new Set([...favs, ...recent])));
+          setAddedIds(Array.from(new Set([...favs, ...recent, ...watched])));
           setWatchedIds(watched);
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(favs));
         }
@@ -489,14 +489,10 @@ export default function Search() {
         releaseDate: movie.releaseDate,
       });
       setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
-      setRecommendations((prev) => prev.filter((item) => item.id !== movie.id));
       showToast("Added to list");
     } catch (error: any) {
       if (error.response?.status === 400) {
         setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
-        setRecommendations((prev) =>
-          prev.filter((item) => item.id !== movie.id),
-        );
       } else {
         showToast("Error adding movie");
       }
@@ -600,6 +596,10 @@ export default function Search() {
       )}
     </>
   );
+
+  const visibleRecommendations = recommendations
+    .filter((movie) => !addedIds.includes(movie.id))
+    .slice(0, 10);
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
@@ -778,7 +778,7 @@ export default function Search() {
                 }
                 favoriteIds={favoriteIds}
                 addedIds={addedIds}
-                watchedIds={watchedIds} // 🔥 Додано сюди
+                watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
                 onRemove={handleRemove}
@@ -792,7 +792,7 @@ export default function Search() {
                 isLoading={isLoadingHome && upcoming.length === 0}
                 favoriteIds={favoriteIds}
                 addedIds={addedIds}
-                watchedIds={watchedIds} // 🔥 Додано сюди
+                watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
                 onRemove={handleRemove}
@@ -802,7 +802,7 @@ export default function Search() {
                 title="Recommended for You"
                 badge="AI"
                 badgeClass="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30"
-                movies={recommendations}
+                movies={visibleRecommendations}
                 isLoading={isLoadingHome && recommendations.length === 0}
                 fallback={
                   <div className="flex justify-center items-center h-24">
