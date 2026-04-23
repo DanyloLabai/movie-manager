@@ -364,6 +364,27 @@ export default function Search() {
 
   const [visibleCount, setVisibleCount] = useState(20);
 
+  const visibleRecommendations = recommendations
+    .filter((movie) => !addedIds.includes(movie.id))
+    .slice(0, 10);
+
+  useEffect(() => {
+    if (recommendations.length > 0 && visibleRecommendations.length < 5) {
+      api
+        .get("/movies/recommendations")
+        .then((res) => {
+          if (res.data?.length > 0) {
+            setRecommendations(res.data);
+            localStorage.setItem(
+              RECOMMENDATIONS_CACHE_KEY,
+              JSON.stringify(res.data),
+            );
+          }
+        })
+        .catch(() => {});
+    }
+  }, [visibleRecommendations.length, recommendations.length]);
+
   useEffect(() => {
     localStorage.setItem(ADDED_CACHE_KEY, JSON.stringify(addedIds));
   }, [addedIds]);
@@ -488,7 +509,9 @@ export default function Search() {
         mediaType: movie.mediaType,
         releaseDate: movie.releaseDate,
       });
+
       setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
+
       showToast("Added to list");
     } catch (error: any) {
       if (error.response?.status === 400) {
@@ -596,10 +619,6 @@ export default function Search() {
       )}
     </>
   );
-
-  const visibleRecommendations = recommendations
-    .filter((movie) => !addedIds.includes(movie.id))
-    .slice(0, 10);
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
