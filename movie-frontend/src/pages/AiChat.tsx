@@ -23,6 +23,7 @@ interface Message {
 const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
 const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
 const CHAT_EXPIRATION_MS = Number(import.meta.env.CHAT_EXPIRATION_MS);
+const MAX_HISTORY = Number(import.meta.env.MAX_HISTORY);
 
 export default function AiChat() {
   const [input, setInput] = useState("");
@@ -164,7 +165,9 @@ export default function AiChat() {
     setIsLoading(true);
 
     try {
-      const chatHistory = newMessages.map((msg) => {
+      const trimmedMessages = newMessages.slice(-MAX_HISTORY);
+
+      const chatHistory = trimmedMessages.map((msg) => {
         let content = msg.text;
 
         if (msg.role === "ai" && msg.movies && msg.movies.length > 0) {
