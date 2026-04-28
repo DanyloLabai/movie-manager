@@ -122,7 +122,8 @@ const getUserRank = (watchedCount: number) => {
 };
 
 export default function Watchlist() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
+  const dateLocale = lang === "uk" ? "uk-UA" : "en-US";
   const getUsernameKey = () => `custom_username_${getUserIdFromToken()}`;
   const getAvatarKey = () => `custom_avatarUrl_${getUserIdFromToken()}`;
   const [movies, setMovies] = useState<WatchlistItem[]>([]);
@@ -841,17 +842,17 @@ export default function Watchlist() {
         {/* Recent Activity */}
         <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl mt-4">
           <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-3">
-            Recent Activity
+            {t("recent_actions")}
           </h3>
           {!profileData?.recent || profileData.recent.length === 0 ? (
             <div className="text-center py-6 bg-[#12100e] rounded-xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
-              No recent activity.
+              {t("no_recent_actions")}
             </div>
           ) : (
             <div className="flex flex-col gap-1.5">
               {profileData.recent.map((act) => {
                 const addedStr = new Date(act.addedAt).toLocaleDateString(
-                  "en-US",
+                  dateLocale,
                   { month: "short", day: "numeric" },
                 );
                 return (
@@ -878,7 +879,7 @@ export default function Watchlist() {
                         {act.title}
                       </h4>
                       <span className="text-[8px] text-[#f0e6cc]/50 uppercase font-semibold mt-0.5">
-                        Added: {addedStr}
+                        {t("added")} {addedStr}
                       </span>
                     </div>
                   </Link>
@@ -1012,12 +1013,12 @@ export default function Watchlist() {
 
                       {activeTab === "watched" && (
                         <div className="absolute top-1.5 left-1.5 bg-[#c8963c] text-[#12100e] text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                          Watched
+                          {t("watched")}
                         </div>
                       )}
                       {activeTab === "watchlist" && !released && (
                         <div className="absolute top-1.5 left-1.5 bg-blue-500/90 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">
-                          Upcoming
+                          {t("umcoming")}
                         </div>
                       )}
 
@@ -1116,7 +1117,7 @@ export default function Watchlist() {
                             </button>
                           ) : (
                             <span className="text-[9px] font-black text-[#c8963c]/40 uppercase tracking-wide">
-                              Upcoming
+                              {t("umcoming")}
                             </span>
                           )
                         ) : (
@@ -1124,14 +1125,14 @@ export default function Watchlist() {
                             to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
                             className="text-[9px] font-bold text-[#c8963c] uppercase tracking-wide hover:text-[#e8c070] transition"
                           >
-                            Details
+                            {t("details")}
                           </Link>
                         )}
                         <button
                           onClick={() => handleDelete(item.tmdbId)}
                           className="text-[9px] font-bold text-red-500/60 hover:text-red-500 transition uppercase"
                         >
-                          Del
+                          {t("deleted")}
                         </button>
                       </div>
                     </div>

@@ -224,6 +224,13 @@ const translations = {
     stats_top3: "Top 3 Masterpieces",
     stats_rank: "#",
     stats_rating_star: "★",
+    recent_actions: "Recent Actions",
+    no_recent_actions: "No recent actions.",
+    deleted: "Del",
+    details: "Details",
+    umcoming: "Uncoming",
+    added: "Added:",
+    watched: "Watched",
 
     // Movie details specific
     movie_production_countries: "Production Countries",
@@ -467,7 +474,7 @@ const translations = {
     stats_wrapped: "Кінотека [username]",
     stats_time_spent: "⏱ Часу витрачено",
     stats_top_genre: "🏆 Топ жанр",
-    stats_fav_decade: "📼 Улюблено десятиліття",
+    stats_fav_decade: "📼 Улюблене десятиліття",
     stats_format: "🎬 Формат",
     stats_movies: "Фільми",
     stats_tv: "Серіали",
@@ -481,6 +488,13 @@ const translations = {
     stats_top3: "Топ 3 шедеври",
     stats_rank: "#",
     stats_rating_star: "★",
+    recent_actions: "Недавні дії",
+    no_recent_actions: "Недавніх дій немає.",
+    deleted: "Видалити",
+    details: "Деталі",
+    umcoming: "Майбутні",
+    added: "Додано:",
+    watched: "Переглянуто",
 
     // Movie details specific
     movie_production_countries: "Країни виробництва",

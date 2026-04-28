@@ -28,6 +28,8 @@ const CHAT_EXPIRATION_MS =
   Number(import.meta.env.VITE_CHAT_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
 const MAX_HISTORY = Number(import.meta.env.VITE_MAX_HISTORY) || 20;
 
+const COOLDOWN_SECONDS = 3;
+
 export default function AiChat() {
   const { lang, t } = useLang();
   const [input, setInput] = useState("");
@@ -48,18 +50,12 @@ export default function AiChat() {
     "100dvh",
   );
 
+  const [cooldownTime, setCooldownTime] = useState(0);
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
-  const QUICK_PROMPTS = [
-    t("quick_watchlist"),
-    t("quick_inception"),
-    t("quick_anime"),
-    t("quick_new"),
-    t("quick_short"),
-  ];
 
   const getWelcomeMessage = (): Message => ({
     role: "ai",
@@ -81,6 +77,18 @@ export default function AiChat() {
   };
 
   const [messages, setMessages] = useState<Message[]>(loadSavedMessages);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+    if (cooldownTime > 0) {
+      timer = setInterval(() => {
+        setCooldownTime((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [cooldownTime]);
 
   const scrollToBottom = () => {
     if (chatContainerRef.current) {
@@ -154,7 +162,7 @@ export default function AiChat() {
   };
 
   const sendMessageToAi = async (userText: string) => {
-    if (isLoading) return;
+    if (isLoading || cooldownTime > 0) return;
     inputRef.current?.blur();
 
     const newMessages: Message[] = [
@@ -192,12 +200,13 @@ export default function AiChat() {
       setMessages((prev) => [...prev, { role: "ai", text: t("chat_error") }]);
     } finally {
       setIsLoading(false);
+      setCooldownTime(COOLDOWN_SECONDS);
     }
   };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || cooldownTime > 0) return;
     const text = input;
     setInput("");
     await sendMessageToAi(text);
@@ -467,20 +476,6 @@ export default function AiChat() {
       {/* Input area */}
       <div className="flex-none px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 z-40 relative">
         <div className="max-w-2xl w-full mx-auto space-y-2">
-          {/* Quick prompt chips */}
-          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
-            {QUICK_PROMPTS.map((p) => (
-              <button
-                key={p}
-                onClick={() => sendMessageToAi(p)}
-                disabled={isLoading}
-                className="shrink-0 text-[10px] px-2.5 py-1 border border-[#c8963c]/20 text-[#c8963c]/50 rounded-full hover:border-[#c8963c]/60 hover:text-[#c8963c] transition whitespace-nowrap disabled:opacity-30"
-              >
-                {p}
-              </button>
-            ))}
-          </div>
-
           {/* Input row */}
           <div className="flex items-center gap-2">
             <button
@@ -509,7 +504,7 @@ export default function AiChat() {
                 ref={inputRef}
                 type="text"
                 value={input}
-                disabled={isLoading}
+                disabled={isLoading || cooldownTime > 0}
                 onChange={(e) => setInput(e.target.value)}
                 onFocus={() => {
                   setTimeout(() => {
@@ -518,16 +513,20 @@ export default function AiChat() {
                   }, 300);
                 }}
                 placeholder={
-                  isLoading ? t("chat_thinking") : t("chat_placeholder")
+                  isLoading
+                    ? t("chat_thinking")
+                    : cooldownTime > 0
+                      ? `Wait ${cooldownTime}s before next request...`
+                      : t("chat_placeholder")
                 }
                 className="w-full pl-4 pr-12 py-3 bg-[#1a1714] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition disabled:opacity-50 text-sm"
               />
               <button
                 type="submit"
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || !input.trim() || cooldownTime > 0}
                 className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-[#c8963c] text-[#12100e] rounded-lg font-black hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 text-base"
               >
-                {isLoading ? "…" : "→"}
+                {isLoading ? "…" : cooldownTime > 0 ? cooldownTime : "→"}
               </button>
             </form>
           </div>

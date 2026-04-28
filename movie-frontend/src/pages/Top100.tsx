@@ -6,7 +6,7 @@ import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 
 export default function Top100() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { type } = useParams<{ type: "movie" | "tv" }>();
   const navigate = useNavigate();
   const [items, setItems] = useState<any[]>([]);
@@ -49,7 +49,7 @@ export default function Top100() {
       }
     };
     fetchData();
-  }, [type]);
+  }, [type, lang]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
