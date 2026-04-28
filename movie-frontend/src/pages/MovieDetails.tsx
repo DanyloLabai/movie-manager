@@ -655,6 +655,7 @@ export default function MovieDetails() {
           )}
         </div>
       </div>
+
       {/* Recommendations Slider */}
       {recommendations.length > 0 && (
         <div className="mt-10 sm:mt-20 max-w-7xl mx-auto">
@@ -736,7 +737,7 @@ export default function MovieDetails() {
                     />
                   ) : (
                     <div className="w-full h-full bg-[#12100e] flex items-center justify-center text-[9px] text-[#f0e6cc]/30 font-bold uppercase tracking-widest">
-                      N/A
+                      {t("common_na")}
                     </div>
                   )}
                 </div>
@@ -753,6 +754,7 @@ export default function MovieDetails() {
           </div>
         </div>
       )}
+
       {isRatingModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div
@@ -761,7 +763,10 @@ export default function MovieDetails() {
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
             <button
-              onClick={closeRatingModal}
+              onClick={() => {
+                setIsRatingModalOpen(false);
+                setModalHoveredStar(0);
+              }}
               className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
             >
               <svg
@@ -783,8 +788,7 @@ export default function MovieDetails() {
                 {t("movie_how_was_it")}
               </h3>
               <p className="text-sm text-[#f0e6cc]/60 mb-6">
-                {t("movie_rate_desc")} "{ratingModalData.title}"{" "}
-                {t("movie_or_skip")}.
+                {t("movie_rate_desc")} "{movie?.title}" {t("movie_or_skip")}.
               </p>
               <div
                 className="flex justify-center gap-1 mb-6"
