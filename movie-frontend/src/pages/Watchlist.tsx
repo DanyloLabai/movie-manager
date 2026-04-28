@@ -13,6 +13,7 @@ import {
 import LogoImg from "../assets/logo.png";
 import { api } from "../api";
 import { useLang } from "../context/LanguageContext";
+import LangToggle from "../components/LangToggle";
 
 interface WatchlistItem {
   id: string;
@@ -912,7 +913,7 @@ export default function Watchlist() {
               </span>
             </div>
           </Link>
-          <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
+          <nav className="flex items-center gap-2 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
             <Link
               to="/ai-chat"
               className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
@@ -931,9 +932,10 @@ export default function Watchlist() {
             >
               {t("nav_profile")}
             </Link>
+            <LangToggle />
             <button
               onClick={handleLogout}
-              className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
+              className="text-[9px] sm:text-xs px-2 py-1.5 sm:px-3 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
             >
               {t("nav_logout")}
             </button>
