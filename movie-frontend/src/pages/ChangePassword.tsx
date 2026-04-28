@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useLang } from "../context/LanguageContext";
-import { LangToggle } from "../components/LangToggle";
 
 export default function ChangePassword() {
   const { t } = useLang();

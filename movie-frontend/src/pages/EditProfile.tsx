@@ -1,7 +1,6 @@
 import { useState, useRef } from "react";
 import { api } from "../api";
 import { useLang } from "../context/LanguageContext";
-import { LangToggle } from "../components/LangToggle";
 
 interface EditProfileProps {
   currentUsername: string;
