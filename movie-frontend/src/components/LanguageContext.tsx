@@ -1,0 +1,553 @@
+import { createContext, useContext, useState, ReactNode } from "react";
+
+type Lang = "en" | "uk";
+
+const translations = {
+  en: {
+    // Nav
+    nav_ai_chat: "AI Chat",
+    nav_search: "Search",
+    nav_profile: "Profile",
+    nav_logout: "Logout",
+
+    // AI Chat page
+    chat_welcome:
+      "Hi! I'm your movie expert. Ask me about any movie, or describe a plot you can't remember.",
+    chat_cleared: "Chat cleared! Let's start fresh. What are you looking for?",
+    chat_placeholder: "Ask about a movie...",
+    chat_thinking: "Thinking...",
+    chat_clear_title: "Clear chat",
+    chat_history_cleared: "Chat history cleared",
+    chat_recommended: "Recommended for You",
+    chat_added: "Already in list.",
+    chat_add_error: "Error adding movie.",
+    chat_add_btn: "+ Add",
+    chat_fav_unreleased: "You can't favorite an unreleased movie!",
+    chat_fav_updated: "Favorite status updated",
+    chat_fav_added: "Added to favorites",
+    chat_fav_error: "Failed to add to favorites",
+    chat_server_error: "Server error",
+    chat_error: "Oops, something went wrong. Please try again later.",
+    chat_no_posters:
+      "(P.S. I found some titles but couldn't load their posters from the database.)",
+    chat_tv: "TV Show",
+    chat_movie: "Movie",
+
+    // Quick prompts
+    quick_watchlist: "From my watchlist 🎬",
+    quick_inception: "Similar to Inception",
+    quick_anime: "Anime for beginners",
+    quick_new: "New movies 2024",
+    quick_short: "Short series for tonight",
+
+    // Search page
+    search_placeholder: "Enter movie title...",
+    search_btn: "Search",
+    search_find: "Find",
+    search_results: "Search Results",
+    search_empty: "No movies found.",
+    search_add: "Add",
+    search_added_btn: "Added",
+    search_added_toast: "Added to list",
+    search_already: "Already in list",
+    search_no_poster: "No poster",
+    search_added: "Added to list",
+    search_add_error: "Error adding movie",
+    search_removed: "Removed from list",
+    search_remove_error: "Error removing movie",
+    search_fav_unreleased: "You can't favorite an unreleased movie!",
+    search_fav_updated: "Favorite status updated",
+    search_fav_added: "Added to list and favorites",
+    search_fav_error: "Failed to favorite movie",
+    search_fav_error2: "Failed to update favorite status",
+    search_all_time: "All-Time Classics",
+    search_highest_rated: "Highest Rated",
+    search_trending: "Trending This Week",
+    search_coming_soon: "Coming Soon",
+    search_hot: "HOT",
+    search_new: "NEW",
+    search_failed_trends: "Failed to load trends.",
+    search_ai_curating: "AI curating your list...",
+    search_ai_empty:
+      "Add movies to your Watchlist so AI can recommend similar titles!",
+
+    // Watchlist / Profile page
+    watchlist_title: "My Profile",
+    watchlist_favorites: "Favorites",
+    watchlist_planned: "Watchlist",
+    watchlist_watched: "Watched",
+    watchlist_empty: "Nothing here yet.",
+    watchlist_rate: "Rate",
+    watchlist_remove: "Remove",
+    watchlist_mark_watched: "Mark as watched",
+    watchlist_wrapped: "Your Movie Wrapped",
+    watchlist_top_fav: "Top Favorites",
+    watchlist_no_fav: "You haven't liked any movies yet.",
+    watchlist_invite_copied: "Invite link copied! 🔗",
+    watchlist_moved: "Moved to Watched",
+    watchlist_rating_cleared: "Rating cleared",
+    watchlist_rating_updated: "Rating updated",
+    watchlist_rating_error: "Failed to save rating",
+    watchlist_fav_error: "Failed to update favorite status",
+    watchlist_status_error: "Failed to update status",
+
+    // Login page
+    login_welcome: "Welcome to Lumen",
+    login_subtitle: "Log in to your tracker",
+    login_email: "Email Address",
+    login_password: "Password",
+    login_signin: "Sign In",
+    login_signing: "Signing in...",
+    login_forgot: "Forgot your password?",
+    login_new: "New here?",
+    login_signup: "Create an account",
+    login_error: "Invalid email or password. Please try again!",
+    login_resend: "Resend verification email →",
+
+    // Register page
+    register_welcome: "Join Us",
+    register_subtitle: "Create your tracking profile",
+    register_username: "Username",
+    register_email: "Email",
+    register_password: "Password",
+    register_create: "Create Account",
+    register_creating: "Creating Account...",
+    register_check_email: "Check Your Email!",
+    register_sent_link: "We've sent a verification link to",
+    register_verify_msg:
+      "Please check your inbox (and spam folder) to verify your account before logging in.",
+    register_go_login: "Go to Login",
+    register_have_account: "Already have an account?",
+    register_login: "Log In",
+    register_error: "Registration error. Please try again!",
+    register_captcha_error: "Please confirm that you are not a robot.",
+
+    // Password reset pages
+    password_security: "Security Settings",
+    password_subtitle: "Update your account password",
+    password_current: "Current Password",
+    password_new: "New Password",
+    password_min: "Min 8 characters",
+    password_confirm: "Confirm New Password",
+    password_update: "Update Password",
+    password_updating: "Updating...",
+    password_cancel: "Cancel and go back",
+    password_mismatch: "New passwords do not match.",
+    password_success: "Password changed successfully! Redirecting to login...",
+
+    password_reset_title: "Reset Password",
+    password_reset_subtitle: "Enter your email to get a reset link",
+    password_reset_send: "Send Reset Link",
+    password_reset_sending: "Sending...",
+    password_reset_back: "Back to Login",
+    password_reset_error: "Failed to send reset link.",
+
+    password_new_title: "Create New Password",
+    password_new_save: "Save New Password",
+    password_new_saving: "Saving...",
+    password_new_mismatch: "Passwords do not match.",
+    password_new_invalid: "Invalid token",
+
+    // Email verification
+    verify_success: "Success!",
+    verify_message: "Your email has been verified. You can now log in.",
+    verify_error: "Error",
+    verify_error_msg: "The link is invalid or has expired.",
+
+    // Edit profile
+    edit_profile: "Edit Profile",
+    edit_save: "Save Changes",
+    edit_saving: "Saving...",
+    edit_image: "Click image to change (Max 5MB)",
+    edit_username_taken: "That username is already taken by another user!",
+    edit_error:
+      "An error occurred while updating your profile. Please try again.",
+
+    // Public profile
+    profile_not_found: "Profile not found.",
+    profile_404: "404",
+    profile_go_home: "Return Home",
+    profile_add_friend: "+ Add Friend",
+    profile_friends: "Friends",
+    profile_completion: "Completion Rate",
+
+    // Movie/Content
+    movie_not_found: "Movie not found. Back to Search",
+    movie_imdb: "IMDB:",
+    movie_watched: "✓ Watched",
+    movie_planned: "⋯ In Plans",
+    movie_your_rating: "Your Rating",
+    movie_marked_watched: "Marked as Watched!",
+    movie_added_rated: "Added and rated!",
+    movie_added: "Added to Watchlist!",
+    movie_fav_updated: "Favorite updated",
+    movie_error: "Error.",
+    movie_error_updating: "Error updating.",
+    movie_failed: "Failed.",
+    movie_rating_cleared: "Rating cleared!",
+    movie_rating_saved: "Rating saved!",
+    movie_removed: "Removed.",
+
+    // Actor details
+    actor_not_found: "Actor not found.",
+    actor_read_more: "Read More...",
+    actor_read_less: "Read Less",
+    actor_no_bio: "No biography available.",
+    actor_known_for: "Known For",
+    actor_born: "Born",
+    actor_from: "From",
+
+    // Top 100
+    top100_movies: "Top 100 Movies",
+    top100_tv: "Top 100 TV Shows",
+    top100_added: "Added to list",
+    top100_add_error: "Error adding item",
+    top100_removed: "Removed from list",
+    top100_remove_error: "Error removing item",
+    top100_fav_error: "Failed to favorite",
+
+    // Watchlist stats
+    stats_wrapped: "[username]'s Wrapped",
+    stats_time_spent: "⏱ Time Spent",
+    stats_top_genre: "🏆 Top Genre",
+    stats_fav_decade: "📼 Fav Decade",
+    stats_format: "🎬 Format",
+    stats_movies: "Movies",
+    stats_tv: "TV",
+    stats_marathon: "🏃‍♂️ Longest Marathon",
+    stats_min: "min",
+    stats_actor: "🌟 Most Watched Actor",
+    stats_actor_count: "In [X] movies",
+    stats_genres: "Genre Breakdown",
+    stats_rating: "Rating Distribution",
+    stats_avg: "Avg:",
+    stats_top3: "Top 3 Masterpieces",
+    stats_rank: "#",
+    stats_rating_star: "★",
+
+    // Movie details specific
+    movie_production_countries: "Production Countries",
+    movie_trailer: "Trailer",
+    movie_where_to_watch: "Where to Watch",
+    movie_stream: "Stream",
+    movie_rent: "Rent",
+    movie_buy: "Buy",
+    movie_powered_by: "Powered by",
+    movie_top_cast: "Top Cast",
+    movie_how_was_it: "How was it?",
+    movie_rate_to_mark: "Rate to mark as watched",
+    movie_skip_rating: "Skip Rating",
+    movie_rate_this: "Rate this media",
+    movie_rate_desc: "Rate",
+    movie_or_skip: "or skip",
+    common_unreleased: "Not released yet",
+
+    profile_friends_list: "Friends List",
+    profile_loading: "Loading...",
+    profile_no_friends: "You haven't added any friends yet.",
+    profile_remove_friend: "Remove friend",
+    profile_friend_added: "Added to friends!",
+    profile_friend_error: "Error adding friend.",
+    profile_share_title: "Share",
+
+    // Common UI
+    common_na: "N/A",
+    common_go_back: "← Go Back",
+    common_back: "Back",
+    common_movie: "Movie",
+    common_tv: "TV Show",
+    common_error: "Error",
+  },
+  uk: {
+    // Nav
+    nav_ai_chat: "AI Чат",
+    nav_search: "Пошук",
+    nav_profile: "Профіль",
+    nav_logout: "Вийти",
+
+    // AI Chat page
+    chat_welcome:
+      "Привіт! Я твій кіно-експерт. Запитай про будь-який фільм або опиши сюжет, який не можеш згадати.",
+    chat_cleared: "Чат очищено! Починаємо спочатку. Що шукаємо?",
+    chat_placeholder: "Запитай про фільм...",
+    chat_thinking: "Думаю...",
+    chat_clear_title: "Очистити чат",
+    chat_history_cleared: "Історію чату очищено",
+    chat_recommended: "Рекомендуємо",
+    chat_added: "Вже у списку.",
+    chat_add_error: "Помилка додавання.",
+    chat_add_btn: "+ Додати",
+    chat_fav_unreleased: "Не можна додати до улюблених фільм, що ще не вийшов!",
+    chat_fav_updated: "Статус улюбленого оновлено",
+    chat_fav_added: "Додано до улюблених",
+    chat_fav_error: "Не вдалося додати до улюблених",
+    chat_server_error: "Помилка сервера",
+    chat_error: "Ой, щось пішло не так. Спробуй пізніше.",
+    chat_no_posters:
+      "(P.S. Знайшов кілька назв, але не зміг підтягнути постери з бази.)",
+    chat_tv: "Серіал",
+    chat_movie: "Фільм",
+
+    // Quick prompts
+    quick_watchlist: "З мого списку 🎬",
+    quick_inception: "Схоже на Inception",
+    quick_anime: "Аніме для початківців",
+    quick_new: "Нові фільми 2024",
+    quick_short: "Короткий серіал на вечір",
+
+    // Search page
+    search_placeholder: "Введіть назву фільму...",
+    search_btn: "Пошук",
+    search_find: "Знайти",
+    search_results: "Результати пошуку",
+    search_empty: "Фільмів не знайдено.",
+    search_add: "Додати",
+    search_added_btn: "Додано",
+    search_added_toast: "Додано до списку",
+    search_already: "Вже у списку",
+    search_no_poster: "Без постера",
+    search_added: "Додано до списку",
+    search_add_error: "Помилка додавання",
+    search_removed: "Видалено зі списку",
+    search_remove_error: "Помилка видалення",
+    search_fav_unreleased:
+      "Не можна додати до улюблених фільм, що ще не вийшов!",
+    search_fav_updated: "Статус улюбленого оновлено",
+    search_fav_added: "Додано до списку та улюблених",
+    search_fav_error: "Не вдалося додати до улюблених",
+    search_fav_error2: "Не вдалося оновити статус улюбленого",
+    search_all_time: "Визнана класика",
+    search_highest_rated: "Найвищий рейтинг",
+    search_trending: "У тренді цього тижня",
+    search_coming_soon: "Скоро на екранах",
+    search_hot: "ТОП",
+    search_new: "НОВЕ",
+    search_failed_trends: "Не вдалося завантажити тренди.",
+    search_ai_curating: "ШІ підбирає фільми...",
+    search_ai_empty:
+      "Додайте фільми до списку, щоб ШІ міг рекомендувати схожі!",
+
+    // Watchlist / Profile page
+    watchlist_title: "Мій профіль",
+    watchlist_favorites: "Улюблені",
+    watchlist_planned: "Список перегляду",
+    watchlist_watched: "Переглянуто",
+    watchlist_empty: "Тут ще нічого немає.",
+    watchlist_rate: "Оцінити",
+    watchlist_remove: "Видалити",
+    watchlist_mark_watched: "Позначити як переглянуте",
+    watchlist_wrapped: "Твоя кінотека",
+    watchlist_top_fav: "Топ улюблених",
+    watchlist_no_fav: "Ти ще не обрав улюблені фільми.",
+    watchlist_invite_copied: "Посилання скопійовано! 🔗",
+    watchlist_moved: "Переміщено в переглянуто",
+    watchlist_rating_cleared: "Оцінка видалена",
+    watchlist_rating_updated: "Оцінка оновлена",
+    watchlist_rating_error: "Не вдалося зберегти оцінку",
+    watchlist_fav_error: "Не вдалося оновити статус улюбленого",
+    watchlist_status_error: "Не вдалося оновити статус",
+
+    // Login page
+    login_welcome: "Ласкаво просимо в Lumen",
+    login_subtitle: "Увійди у свій обліковий запис",
+    login_email: "Адреса електронної пошти",
+    login_password: "Пароль",
+    login_signin: "Увійти",
+    login_signing: "Входимо...",
+    login_forgot: "Забув пароль?",
+    login_new: "Новий користувач?",
+    login_signup: "Створи обліковий запис",
+    login_error: "Невірна адреса електронної пошти або пароль!",
+    login_resend: "Надіслати посилання на підтвердження →",
+
+    // Register page
+    register_welcome: "Приєднуйся",
+    register_subtitle: "Створи свій профіль",
+    register_username: "Ім'я користувача",
+    register_email: "Електронна пошта",
+    register_password: "Пароль",
+    register_create: "Створити обліковий запис",
+    register_creating: "Створюємо...",
+    register_check_email: "Перевір свою пошту!",
+    register_sent_link: "Ми надіслали посилання на підтвердження на",
+    register_verify_msg:
+      "Перевір свою вхідну пошту (і папку спаму) та підтвердь свій обліковий запис перед входом.",
+    register_go_login: "Перейти до входу",
+    register_have_account: "Вже маєш обліковий запис?",
+    register_login: "Увійти",
+    register_error: "Помилка реєстрації. Спробуй знову!",
+    register_captcha_error: "Підтвердь, що ти не робот.",
+
+    // Password reset pages
+    password_security: "Параметри безпеки",
+    password_subtitle: "Оновити свій пароль",
+    password_current: "Поточний пароль",
+    password_new: "Новий пароль",
+    password_min: "Мінімум 8 символів",
+    password_confirm: "Підтвердити новий пароль",
+    password_update: "Оновити пароль",
+    password_updating: "Оновлюємо...",
+    password_cancel: "Скасувати і повернутися",
+    password_mismatch: "Нові паролі не збігаються.",
+    password_success: "Пароль змінено успішно! Перенаправляємо на вхід...",
+
+    password_reset_title: "Скинути пароль",
+    password_reset_subtitle:
+      "Введи свою адресу електронної пошти, щоб отримати посилання",
+    password_reset_send: "Надіслати посилання",
+    password_reset_sending: "Надсилаємо...",
+    password_reset_back: "Повернутися до входу",
+    password_reset_error: "Не вдалося надіслати посилання.",
+
+    password_new_title: "Створи новий пароль",
+    password_new_save: "Зберегти новий пароль",
+    password_new_saving: "Зберігаємо...",
+    password_new_mismatch: "Паролі не збігаються.",
+    password_new_invalid: "Невірний токен",
+
+    // Email verification
+    verify_success: "Успіх!",
+    verify_message: "Твоя пошта підтверджена. Тепер ти можеш увійти.",
+    verify_error: "Помилка",
+    verify_error_msg: "Посилання невірне або закінчилося.",
+
+    // Edit profile
+    edit_profile: "Редагувати профіль",
+    edit_save: "Зберегти зміни",
+    edit_saving: "Зберігаємо...",
+    edit_image: "Натисни, щоб змінити (макс 5МБ)",
+    edit_username_taken: "Це ім'я користувача вже займає інший користувач!",
+    edit_error: "Помилка при оновленні профілю. Спробуй знову.",
+
+    // Public profile
+    profile_not_found: "Профіль не знайдено.",
+    profile_404: "404",
+    profile_go_home: "Повернутися на головну",
+    profile_add_friend: "+ Додати друга",
+    profile_friends: "Друзі",
+    profile_completion: "Відсоток завершення",
+
+    // Movie/Content
+    movie_not_found: "Фільм не знайдено. Повернутися до пошуку",
+    movie_imdb: "IMDB:",
+    movie_watched: "✓ Переглянуто",
+    movie_planned: "⋯ У планах",
+    movie_your_rating: "Твоя оцінка",
+    movie_marked_watched: "Позначено як переглянуто!",
+    movie_added_rated: "Додано та оцінено!",
+    movie_added: "Додано до списку!",
+    movie_fav_updated: "Статус улюбленого оновлено",
+    movie_error: "Помилка.",
+    movie_error_updating: "Помилка оновлення.",
+    movie_failed: "Невдачу.",
+    movie_rating_cleared: "Оцінка видалена!",
+    movie_rating_saved: "Оцінка збережена!",
+    movie_removed: "Видалено.",
+
+    // Actor details
+    actor_not_found: "Актор не знайдено.",
+    actor_read_more: "Показати більше...",
+    actor_read_less: "Показати менше",
+    actor_no_bio: "Біографія недоступна.",
+    actor_known_for: "Відомий/відома за",
+    actor_born: "Народився/народилась",
+    actor_from: "Звідси",
+
+    // Top 100
+    top100_movies: "Топ 100 фільмів",
+    top100_tv: "Топ 100 серіалів",
+    top100_added: "Додано до списку",
+    top100_add_error: "Помилка додавання",
+    top100_removed: "Видалено зі списку",
+    top100_remove_error: "Помилка видалення",
+    top100_fav_error: "Не вдалося додати до улюблених",
+
+    // Watchlist stats
+    stats_wrapped: "Кінотека [username]",
+    stats_time_spent: "⏱ Часу витрачено",
+    stats_top_genre: "🏆 Топ жанр",
+    stats_fav_decade: "📼 Улюблено десятиліття",
+    stats_format: "🎬 Формат",
+    stats_movies: "Фільми",
+    stats_tv: "Серіали",
+    stats_marathon: "🏃‍♂️ Найдовший марафон",
+    stats_min: "хв",
+    stats_actor: "🌟 Найпопулярніший актор",
+    stats_actor_count: "У [X] фільмах",
+    stats_genres: "Розподіл за жанрами",
+    stats_rating: "Розподіл оцінок",
+    stats_avg: "Середня:",
+    stats_top3: "Топ 3 шедеври",
+    stats_rank: "#",
+    stats_rating_star: "★",
+
+    // Movie details specific
+    movie_production_countries: "Країни виробництва",
+    movie_trailer: "Трейлер",
+    movie_where_to_watch: "Де подивитися",
+    movie_stream: "Підписка",
+    movie_rent: "Оренда",
+    movie_buy: "Купівля",
+    movie_powered_by: "За підтримки",
+    movie_top_cast: "У головних ролях",
+    movie_how_was_it: "Як вам?",
+    movie_rate_to_mark: "Оцініть, щоб додати у переглянуті",
+    movie_skip_rating: "Пропустити",
+    movie_rate_this: "Оцінити",
+    movie_rate_desc: "Оцініть",
+    movie_or_skip: "або пропустіть",
+    common_unreleased: "Ще не вийшло",
+
+    profile_friends_list: "Список друзів",
+    profile_loading: "Завантаження...",
+    profile_no_friends: "Ти ще не додав жодного друга.",
+    profile_remove_friend: "Видалити друга",
+    profile_friend_added: "Додано до друзів!",
+    profile_friend_error: "Помилка при додаванні друга.",
+    profile_share_title: "Поділитися",
+
+    // Common UI
+    common_na: "N/A",
+    common_go_back: "← Повернутися",
+    common_back: "Назад",
+    common_movie: "Фільм",
+    common_tv: "Серіал",
+    common_error: "Помилка",
+  },
+} as const;
+
+export type TranslationKey = keyof typeof translations.en;
+
+interface LangContextType {
+  lang: Lang;
+  toggleLang: () => void;
+  t: (key: TranslationKey) => string;
+}
+
+const LangContext = createContext<LangContextType | null>(null);
+
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [lang, setLang] = useState<Lang>(
+    () => (localStorage.getItem("app_lang") as Lang) || "en",
+  );
+
+  const toggleLang = () => {
+    const next: Lang = lang === "en" ? "uk" : "en";
+    setLang(next);
+    localStorage.setItem("app_lang", next);
+  };
+
+  const t = (key: TranslationKey): string => translations[lang][key];
+
+  return (
+    <LangContext.Provider value={{ lang, toggleLang, t }}>
+      {children}
+    </LangContext.Provider>
+  );
+}
+
+export function useLang() {
+  const ctx = useContext(LangContext);
+  if (!ctx) throw new Error("useLang must be used inside LanguageProvider");
+  return ctx;
+}

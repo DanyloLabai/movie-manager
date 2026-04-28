@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { useLang } from "../context/LanguageContext";
+import { LangToggle } from "../components/LangToggle";
 
 export default function ResetPassword() {
+  const { t } = useLang();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
   const navigate = useNavigate();
@@ -21,7 +24,7 @@ export default function ResetPassword() {
     if (!token) return;
 
     if (newPassword !== confirmPassword) {
-      setStatus({ type: "error", message: "Passwords do not match." });
+      setStatus({ type: "error", message: t("password_new_mismatch") });
       return;
     }
 
@@ -84,7 +87,7 @@ export default function ResetPassword() {
   if (!token) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-[#12100e] text-red-500 font-bold uppercase tracking-widest">
-        Invalid token
+        {t("password_new_invalid")}
       </div>
     );
   }
@@ -96,7 +99,7 @@ export default function ResetPassword() {
 
         <div className="text-center">
           <h2 className="text-2xl sm:text-3xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
-            Create New Password
+            {t("password_new_title")}
           </h2>
         </div>
 
@@ -115,7 +118,7 @@ export default function ResetPassword() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              New Password
+              {t("password_new")}
             </label>
             <div className="relative">
               <input
@@ -123,7 +126,7 @@ export default function ResetPassword() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="w-full px-4 py-3.5 pr-12 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
-                placeholder="Min 8 characters"
+                placeholder={t("password_min")}
                 required
                 minLength={8}
               />
@@ -140,7 +143,7 @@ export default function ResetPassword() {
 
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              Confirm Password
+              {t("password_confirm")}
             </label>
             <div className="relative">
               <input
@@ -167,7 +170,7 @@ export default function ResetPassword() {
             disabled={isLoading || status.type === "success"}
             className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-[#c8963c]/10"
           >
-            {isLoading ? "Saving..." : "Save New Password"}
+            {isLoading ? t("password_new_saving") : t("password_new_save")}
           </button>
         </form>
       </div>

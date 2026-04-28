@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import LogoImg from "../assets/logo.png";
 import { api } from "../api";
+import { useLang } from "../components/LanguageContext";
 
 interface WatchlistItem {
   id: string;
@@ -94,7 +95,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const RatingTooltip = ({ active, payload }: any) => {
+const RatingTooltip = ({ active, payload, t }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1714] border border-[#c8963c]/50 px-2 py-1.5 rounded-xl shadow-xl flex items-center gap-1.5">
@@ -103,7 +104,7 @@ const RatingTooltip = ({ active, payload }: any) => {
         </span>
         <span className="text-[#f0e6cc]/50 text-xs">|</span>
         <span className="text-[#f0e6cc] font-bold text-[10px]">
-          {payload[0].value}
+          {payload[0].value} {t("stats_movies").toLowerCase()}
         </span>
       </div>
     );
@@ -120,6 +121,7 @@ const getUserRank = (watchedCount: number) => {
 };
 
 export default function Watchlist() {
+  const { t } = useLang();
   const getUsernameKey = () => `custom_username_${getUserIdFromToken()}`;
   const getAvatarKey = () => `custom_avatarUrl_${getUserIdFromToken()}`;
   const [movies, setMovies] = useState<WatchlistItem[]>([]);
@@ -210,7 +212,7 @@ export default function Watchlist() {
       profileData?.favorites.find((f) => f.tmdbId === tmdbId) ||
       profileData?.recent.find((r) => r.tmdbId === tmdbId);
     if (itemToCheck && !isReleased(itemToCheck)) {
-      showToast("You can't favorite an unreleased movie!");
+      showToast(t("search_fav_unreleased"));
       return;
     }
     if (activeTab === "profile") {
@@ -243,10 +245,10 @@ export default function Watchlist() {
     }
     try {
       await api.patch(`/movies/watchlist/${tmdbId}/favorite`);
-      showToast("Favorite status updated");
+      showToast(t("search_fav_updated"));
       if (activeTab === "profile") fetchProfile();
     } catch {
-      showToast("Failed to update favorite status");
+      showToast(t("search_fav_error2"));
       if (activeTab === "profile") fetchProfile();
     }
   };
@@ -264,9 +266,9 @@ export default function Watchlist() {
     });
     try {
       await api.delete(`/movies/watchlist/${tmdbId}`);
-      showToast("Movie removed");
+      showToast(t("movie_removed"));
     } catch {
-      showToast("Error removing movie");
+      showToast(t("search_remove_error"));
     }
   };
 
@@ -287,10 +289,10 @@ export default function Watchlist() {
       await api.post(`/movies/watchlist/${tmdbId}/watched`);
       if (rating !== null)
         await api.patch(`/movies/watchlist/${tmdbId}/rate`, { rating });
-      showToast("Moved to Watched");
+      showToast(t("watchlist_moved"));
       fetchProfile();
     } catch {
-      showToast("Failed to update status");
+      showToast(t("watchlist_status_error"));
       fetchMovies();
     }
   };
@@ -328,9 +330,13 @@ export default function Watchlist() {
       await api.patch(`/movies/watchlist/${tmdbId}/rate`, {
         rating: newRating,
       });
-      showToast(newRating === 0 ? "Rating cleared" : "Rating updated");
+      showToast(
+        newRating === 0
+          ? t("watchlist_rating_cleared")
+          : t("watchlist_rating_updated"),
+      );
     } catch {
-      showToast("Failed to save rating");
+      showToast(t("watchlist_rating_error"));
     }
   };
 
@@ -417,7 +423,7 @@ export default function Watchlist() {
               <button
                 onClick={() => setIsEditModalOpen(true)}
                 className="w-8 h-8 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full flex items-center justify-center border border-[#c8963c]/30 text-[#c8963c] transition"
-                title="Edit Profile"
+                title={t("edit_profile")}
               >
                 <span className="text-xs">✏️</span>
               </button>
@@ -427,17 +433,17 @@ export default function Watchlist() {
                   navigator.clipboard.writeText(
                     `${window.location.origin}/user/${currentId}`,
                   );
-                  showToast("Invite link copied! 🔗");
+                  showToast(t("watchlist_invite_copied"));
                 }}
                 className="w-8 h-8 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full flex items-center justify-center border border-[#c8963c]/30 text-[#c8963c] transition"
-                title="Share"
+                title={t("profile_share_title")}
               >
                 <span className="text-xs">🔗</span>
               </button>
               <button
                 onClick={() => setIsFriendsModalOpen(true)}
                 className="w-8 h-8 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full flex items-center justify-center border border-[#c8963c]/30 text-[#c8963c] transition"
-                title="Friends"
+                title={t("profile_friends")}
               >
                 <span className="text-xs">👥</span>
               </button>
@@ -467,7 +473,7 @@ export default function Watchlist() {
                 {favoritesCount}
               </div>
               <div className="text-[9px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mt-0.5">
-                Favorites
+                {t("watchlist_favorites")}
               </div>
             </div>
             <div className="text-center bg-[#12100e] px-3 py-3 rounded-xl border border-[#c8963c]/20">
@@ -475,7 +481,7 @@ export default function Watchlist() {
                 {watchedCount}
               </div>
               <div className="text-[9px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mt-0.5">
-                Watched
+                {t("watchlist_watched")}
               </div>
             </div>
           </div>
@@ -486,7 +492,7 @@ export default function Watchlist() {
           <div className="w-full bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3">
             <div className="flex justify-between items-center mb-1.5">
               <span className="text-[9px] font-black uppercase tracking-widest text-[#f0e6cc]/50">
-                Completion Rate
+                {t("profile_completion")}
               </span>
               <span className="text-[#c8963c] font-black text-xs">
                 {profileData?.stats?.completionRate || 0}%
@@ -499,7 +505,8 @@ export default function Watchlist() {
               />
             </div>
             <p className="text-[8px] text-center text-[#f0e6cc]/40 mt-1.5 italic">
-              {watchedCount} of {totalCount} watched
+              {watchedCount} / {totalCount}{" "}
+              {t("watchlist_watched").toLowerCase()}
             </p>
           </div>
         )}
@@ -508,13 +515,13 @@ export default function Watchlist() {
         {hasStats && (
           <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl">
             <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-4 border-b border-[#c8963c]/20 pb-2">
-              Your Movie Wrapped
+              {t("stats_wrapped").replace("[username]", username)}
             </h3>
 
             <div className="grid grid-cols-2 gap-2 mb-4">
               <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 rounded-xl">
                 <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1">
-                  ⏱ Time Spent
+                  {t("stats_time_spent")}
                 </p>
                 <p className="text-base font-black text-[#c8963c]">
                   {Math.floor((profileData?.stats?.totalMinutes || 0) / 60)}h{" "}
@@ -523,26 +530,26 @@ export default function Watchlist() {
               </div>
               <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 rounded-xl">
                 <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1">
-                  🏆 Top Genre
+                  {t("stats_top_genre")}
                 </p>
                 <p
                   className="text-base font-black text-[#c8963c] truncate"
-                  title={profileData?.stats?.topGenre || "N/A"}
+                  title={profileData?.stats?.topGenre || t("common_na")}
                 >
-                  {profileData?.stats?.topGenre || "N/A"}
+                  {profileData?.stats?.topGenre || t("common_na")}
                 </p>
               </div>
               <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 rounded-xl">
                 <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1">
-                  📼 Fav Decade
+                  {t("stats_fav_decade")}
                 </p>
                 <p className="text-base font-black text-[#c8963c]">
-                  {profileData?.stats?.favoriteDecade || "N/A"}
+                  {profileData?.stats?.favoriteDecade || t("common_na")}
                 </p>
               </div>
               <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 rounded-xl">
                 <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1">
-                  🎬 Format
+                  {t("stats_format")}
                 </p>
                 <div className="flex gap-2 items-center pt-0.5">
                   <div className="text-center">
@@ -550,7 +557,7 @@ export default function Watchlist() {
                       {profileData?.stats?.moviesCount || 0}
                     </span>
                     <span className="text-[7px] text-[#f0e6cc]/50 uppercase">
-                      Movies
+                      {t("stats_movies")}
                     </span>
                   </div>
                   <span className="text-[#c8963c]/30">|</span>
@@ -559,7 +566,7 @@ export default function Watchlist() {
                       {profileData?.stats?.tvCount || 0}
                     </span>
                     <span className="text-[7px] text-[#f0e6cc]/50 uppercase">
-                      TV
+                      {t("stats_tv")}
                     </span>
                   </div>
                 </div>
@@ -573,13 +580,13 @@ export default function Watchlist() {
                   <span className="text-2xl">🏃‍♂️</span>
                   <div className="min-w-0">
                     <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
-                      Longest Marathon
+                      {t("stats_marathon")}
                     </p>
                     <p className="text-xs font-bold text-[#c8963c] truncate">
                       {profileData.stats.longestMovie.title}
                     </p>
                     <p className="text-[10px] text-[#f0e6cc]/70 font-black">
-                      {profileData.stats.longestMovie.runtime} min
+                      {profileData.stats.longestMovie.runtime} {t("stats_min")}
                     </p>
                   </div>
                 </div>
@@ -593,8 +600,6 @@ export default function Watchlist() {
                     <img
                       src={profileData.stats.topActor.profileUrl}
                       alt="Actor"
-                      loading="lazy"
-                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -605,13 +610,16 @@ export default function Watchlist() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
-                    Most Watched Actor
+                    {t("stats_actor")}
                   </p>
                   <p className="text-xs font-bold text-[#c8963c] truncate">
                     {profileData.stats.topActor.name}
                   </p>
                   <p className="text-[9px] text-[#f0e6cc]/60 italic">
-                    In {profileData.stats.topActor.count} movies
+                    {t("stats_actor_count").replace(
+                      "[X]",
+                      profileData.stats.topActor.count.toString(),
+                    )}
                   </p>
                 </div>
               </div>
@@ -620,7 +628,7 @@ export default function Watchlist() {
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px]">
                 <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1 text-center">
-                  Genre Breakdown
+                  {t("stats_genres")}
                 </p>
                 <div className="h-full w-full relative -mt-2">
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2 z-0">
@@ -662,10 +670,10 @@ export default function Watchlist() {
                 <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px] flex flex-col">
                   <div className="flex justify-between items-center mb-1">
                     <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
-                      Rating Distribution
+                      {t("stats_rating")}
                     </p>
                     <p className="text-[10px] font-black text-[#c8963c]">
-                      Avg: {profileData.stats.averageRating}
+                      {t("stats_avg")} {profileData.stats.averageRating}
                     </p>
                   </div>
                   <div className="flex-grow w-full -ml-3">
@@ -687,7 +695,7 @@ export default function Watchlist() {
                           dy={4}
                         />
                         <Tooltip
-                          content={<RatingTooltip />}
+                          content={<RatingTooltip t={t} />}
                           cursor={{ fill: "#c8963c", opacity: 0.1 }}
                           wrapperStyle={{ zIndex: 9999 }}
                         />
@@ -709,7 +717,7 @@ export default function Watchlist() {
               profileData.stats.topRated.length > 0 && (
                 <div className="mt-5 border-t border-[#c8963c]/10 pt-4">
                   <h4 className="text-[9px] text-[#c8963c] font-black uppercase tracking-[0.3em] mb-4 text-center">
-                    Top 3 Masterpieces
+                    {t("stats_top3")}
                   </h4>
                   <div className="flex flex-col gap-2">
                     {profileData.stats.topRated.map((item, index) => (
@@ -726,13 +734,11 @@ export default function Watchlist() {
                             <img
                               src={item.posterUrl}
                               alt=""
-                              loading="lazy"
-                              decoding="async"
                               className="w-full h-full object-cover"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-[6px] text-[#f0e6cc]/20 font-black">
-                              N/A
+                              {t("common_na")}
                             </div>
                           )}
                         </div>
@@ -755,11 +761,11 @@ export default function Watchlist() {
         {/* Top Favorites */}
         <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl mt-4">
           <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-3">
-            Top Favorites
+            {t("watchlist_top_fav")}
           </h3>
           {!profileData?.favorites || profileData.favorites.length === 0 ? (
             <div className="text-center py-6 bg-[#12100e] rounded-xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
-              You haven't liked any movies yet.
+              {t("watchlist_no_fav")}
             </div>
           ) : (
             <div className="grid grid-cols-5 gap-2">
@@ -779,13 +785,11 @@ export default function Watchlist() {
                           <img
                             src={fav.posterUrl}
                             alt={fav.title}
-                            loading="lazy"
-                            decoding="async"
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           />
                         ) : (
                           <div className="flex items-center justify-center w-full h-full text-[8px] text-[#f0e6cc]/30 italic">
-                            N/A
+                            {t("common_na")}
                           </div>
                         )}
                       </Link>
@@ -860,13 +864,11 @@ export default function Watchlist() {
                         <img
                           src={act.posterUrl}
                           alt={act.title}
-                          loading="lazy"
-                          decoding="async"
                           className="w-full h-full object-cover"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-[6px] text-[#f0e6cc]/30">
-                          N/A
+                          {t("common_na")}
                         </div>
                       )}
                     </div>
@@ -915,25 +917,25 @@ export default function Watchlist() {
               to="/ai-chat"
               className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
-              AI Chat
+              {t("nav_ai_chat")}
             </Link>
             <Link
               to="/search"
               className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
-              Search
+              {t("nav_search")}
             </Link>
             <Link
               to="/watchlist"
               className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
             >
-              Profile
+              {t("nav_profile")}
             </Link>
             <button
               onClick={handleLogout}
               className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
             >
-              Logout
+              {t("nav_logout")}
             </button>
           </nav>
         </header>
@@ -951,7 +953,11 @@ export default function Watchlist() {
                   : "bg-[#1a1714] text-[#f0e6cc]/40 border border-[#c8963c]/10 hover:border-[#c8963c]/30"
               }`}
             >
-              {tab === "watchlist" ? "In Plans" : tab}
+              {tab === "watchlist"
+                ? t("watchlist_planned")
+                : tab === "profile"
+                  ? t("nav_profile")
+                  : t("watchlist_watched")}
             </button>
           ))}
         </div>
@@ -966,7 +972,7 @@ export default function Watchlist() {
           ) : movies.length === 0 ? (
             <div className="text-center p-8 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-2xl mt-8 max-w-sm mx-auto">
               <p className="text-[#f0e6cc]/60 text-base font-medium mb-5">
-                It's empty here. Add some movies!
+                {t("watchlist_empty")}
               </p>
               <Link
                 to="/search"
@@ -993,13 +999,11 @@ export default function Watchlist() {
                           <img
                             src={item.posterUrl}
                             alt={item.title}
-                            loading="lazy"
-                            decoding="async"
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                           />
                         ) : (
                           <div className="flex items-center justify-center w-full h-full text-[#f0e6cc]/30 text-[9px] italic">
-                            No poster
+                            {t("common_na")}
                           </div>
                         )}
                       </Link>
@@ -1091,7 +1095,7 @@ export default function Watchlist() {
                       ) : (
                         <div className="flex justify-center mb-1.5 mt-auto pt-2">
                           <span className="text-[8px] font-black text-[#f0e6cc]/20 uppercase tracking-wider py-1.5">
-                            Unreleased
+                            {t("common_unreleased")}
                           </span>
                         </div>
                       )}
@@ -1103,7 +1107,10 @@ export default function Watchlist() {
                               onClick={() => handleMarkWatched(item.tmdbId)}
                               className="text-[9px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-wide"
                             >
-                              Watched
+                              {t("watchlist_mark_watched").replace(
+                                "Mark as ",
+                                "",
+                              )}
                             </button>
                           ) : (
                             <span className="text-[9px] font-black text-[#c8963c]/40 uppercase tracking-wide">
@@ -1161,10 +1168,11 @@ export default function Watchlist() {
             </button>
             <div className="text-center">
               <h3 className="text-lg font-black text-[#c8963c] mb-1 uppercase tracking-wide">
-                How was it?
+                {t("movie_how_was_it")}
               </h3>
               <p className="text-sm text-[#f0e6cc]/60 mb-6">
-                Rate "{ratingModalData.title}" or skip.
+                {t("movie_rate_desc")} "{ratingModalData.title}"{" "}
+                {t("movie_or_skip")}.
               </p>
               <div
                 className="flex justify-center gap-1 mb-6"
@@ -1185,7 +1193,7 @@ export default function Watchlist() {
                 onClick={handleModalSkip}
                 className="text-xs font-bold text-[#f0e6cc]/50 hover:text-[#c8963c] uppercase tracking-widest transition py-2 px-4"
               >
-                Skip Rating
+                {t("movie_skip_rating")}
               </button>
             </div>
           </div>
@@ -1234,6 +1242,7 @@ interface FriendsModalProps {
 }
 
 function FriendsModal({ onClose }: FriendsModalProps) {
+  const { t } = useLang();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [removingId, setRemovingId] = useState<number | null>(null);
@@ -1292,16 +1301,16 @@ function FriendsModal({ onClose }: FriendsModalProps) {
           </svg>
         </button>
         <h2 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest text-center mb-4">
-          Friends List
+          {t("profile_friends_list")}
         </h2>
 
         {isLoading ? (
           <div className="text-center text-[#c8963c] animate-pulse font-bold uppercase tracking-widest py-6 text-sm">
-            Loading...
+            {t("profile_loading")}
           </div>
         ) : friends.length === 0 ? (
           <div className="text-center text-[#f0e6cc]/50 text-sm py-6 italic border border-[#c8963c]/20 rounded-xl border-dashed">
-            You haven't added any friends yet.
+            {t("profile_no_friends")}
           </div>
         ) : (
           <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
@@ -1319,7 +1328,6 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                     {friend.avatarUrl ? (
                       <img
                         src={friend.avatarUrl}
-                        loading="lazy"
                         className="w-full h-full object-cover"
                         alt={friend.username}
                       />
@@ -1335,7 +1343,7 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                   onClick={() => handleRemoveFriend(friend.id)}
                   disabled={removingId === friend.id}
                   className="shrink-0 text-[9px] font-black text-red-500/60 hover:text-red-500 uppercase tracking-wide transition disabled:opacity-40 px-1"
-                  title="Remove friend"
+                  title={t("profile_remove_friend")}
                 >
                   {removingId === friend.id ? "..." : "✕"}
                 </button>
@@ -1361,6 +1369,7 @@ function EditProfileModal({
   onClose,
   onUpdate,
 }: EditProfileProps) {
+  const { t } = useLang();
   const [username, setUsername] = useState(currentUsername);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentAvatarUrl);
@@ -1400,9 +1409,9 @@ function EditProfileModal({
       onClose();
     } catch (err: any) {
       if (err.response?.status === 409) {
-        setError("That username is already taken!");
+        setError(t("edit_username_taken"));
       } else {
-        setError("An error occurred. Please try again.");
+        setError(t("edit_error"));
       }
     } finally {
       setIsLoading(false);
@@ -1431,7 +1440,7 @@ function EditProfileModal({
           </svg>
         </button>
         <h2 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest text-center mb-4">
-          Edit Profile
+          {t("edit_profile")}
         </h2>
 
         {error && (
@@ -1491,13 +1500,13 @@ function EditProfileModal({
               onChange={handleFileChange}
             />
             <p className="text-[9px] text-[#f0e6cc]/50 mt-2 font-semibold uppercase tracking-wider">
-              Tap to change (max 5MB)
+              {t("edit_image")}
             </p>
           </div>
 
           <div>
             <label className="block text-[10px] font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-1.5">
-              Username
+              {t("register_username")}
             </label>
             <input
               type="text"
@@ -1514,7 +1523,7 @@ function EditProfileModal({
             disabled={isLoading || !username.trim()}
             className="w-full py-3.5 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow text-sm"
           >
-            {isLoading ? "Saving..." : "Save Changes"}
+            {isLoading ? t("edit_saving") : t("edit_save")}
           </button>
         </form>
       </div>

@@ -73,45 +73,60 @@ export class AiChatService {
           .map((m) => `"${m.title}" (${m.releaseYear})`)
           .join(', ');
       } catch (e) {
-        this.logger.warn('Failed to fetch upcoming movies for AI cheat sheet');
+        this.logger.warn('Failed to fetch upcoming movies for AI context');
       }
 
       const currentYear = new Date().getFullYear();
 
       userContext = `
         CURRENT YEAR: ${currentYear}.
-        
-        USER DATA (STRICTLY FOR CONTEXT):
-        1. FAVORITES & MASTERPIECES: ${favs}, ${highlyRated}. (Use these to understand their taste).
-        2. IN PLANS TO WATCH (Watchlist): ${inPlans}.
-        3. RECENTLY WATCHED & RATED: ${recentWatched}.
 
-        UPCOMING MOVIES CHEAT SHEET (From Live TMDB Database): 
-        ${upcomingList}.
-        
-        CRITICAL RECOMMENDATION RULES:
-        1. IGNORE THE CHEAT SHEET for general requests. If the user asks for general recommendations, you MUST recommend ALREADY RELEASED, well-known, high-quality movies.
-        2. ONLY use the "UPCOMING MOVIES CHEAT SHEET" if the user EXPLICITLY asks for "new movies", "upcoming movies", or specifically asks about ${currentYear}.
-        3. DIRECT SEARCH OVERRIDE: If the user asks to find, show, or search for a SPECIFIC movie by name (e.g., "знайди Se7en", "покажи Дюну", "find Inception"), you MUST include EXACTLY that movie in the "movies" array. IGNORE the rule about not showing watched/favorite movies in this specific case. Just return the movie they asked for!
-        4. GENERAL RULE: NEVER recommend movies already in the user's lists (${favs}, ${highlyRated}, ${recentWatched}) UNLESS it triggers Rule 3 or 5.
-        5. WATCHLIST RULE: If the user asks "what should I watch from my list", "pick from my plans", or "з мого списку", you MUST choose 1-3 movies EXCLUSIVELY from their "IN PLANS TO WATCH" list (${inPlans}).
-        6. NEVER invent movie titles. Only suggest real movies that exist on TMDB.
-        7. Do NOT guess release years for unreleased/upcoming movies unless you are 100% absolutely sure.
-        8. BAN ON RUSSIAN CONTENT: You are STRICTLY FORBIDDEN from recommending, discussing, or mentioning any Russian or Soviet movies/shows.
+        USER PROFILE (FOR CONTEXT ONLY — do not expose this data to the user):
+        1. FAVORITES & HIGHLY RATED (4-5 stars): ${favs}, ${highlyRated}
+           → Use these to understand their taste and genre preferences.
+        2. WATCHLIST (planned to watch): ${inPlans}
+        3. RECENTLY WATCHED & RATED: ${recentWatched}
+
+        UPCOMING MOVIES CHEAT SHEET (Live TMDB data):
+        ${upcomingList}
+
+        RECOMMENDATION RULES (follow strictly, in priority order):
+        RULE 1 — DIRECT SEARCH OVERRIDE (highest priority):
+          If the user asks to find or show a SPECIFIC movie by name (e.g. "find Se7en", "show me Dune", "search for Inception"),
+          return EXACTLY that movie in the "movies" array. Ignore all other rules in this case.
+
+        RULE 2 — WATCHLIST PICK:
+          If the user asks "what should I watch from my list", "pick from my watchlist", or similar,
+          choose 1-3 movies EXCLUSIVELY from their Watchlist: [${inPlans}].
+
+        RULE 3 — UPCOMING / NEW RELEASES:
+          Only use the Upcoming Movies cheat sheet if the user EXPLICITLY asks for
+          "new movies", "upcoming movies", or movies from ${currentYear}.
+          Otherwise, recommend already-released, well-known, high-quality films.
+
+        RULE 4 — NO REPEATS:
+          Never recommend movies the user already has in their Favorites, Highly Rated, or Recently Watched lists,
+          unless Rule 1 applies.
+
+        RULE 5 — NO INVENTED TITLES:
+          Only suggest real movies that exist on TMDB. Never fabricate titles or release years.
+
+        RULE 6 — NO RUSSIAN / SOVIET CONTENT:
+          Never recommend, discuss, or mention any Russian or Soviet films, TV shows, or series.
+          If the user explicitly requests Russian content, politely decline and suggest
+          Ukrainian, European, or Hollywood alternatives instead.
       `;
     } catch (e) {
       this.logger.warn('Could not fetch user profile for AI context');
     }
 
     try {
-      this.logger.log('Attempting to guess media with Groq (Primary)...');
+      this.logger.log('Calling Groq (primary)...');
       const rawText = await this.getMovieTitleFromGroq(messages, userContext);
       aiResponse = this.parseJson(rawText) as ParsedAiResponse;
     } catch (groqError: any) {
-      this.logger.error(
-        `Groq Failed. Reason: ${groqError.message || groqError}`,
-      );
-      this.logger.warn(`Switching to Gemini (Fallback)...`);
+      this.logger.error(`Groq failed: ${groqError.message || groqError}`);
+      this.logger.warn('Falling back to Gemini...');
 
       try {
         const rawText = await this.getMovieTitleFromGemini(
@@ -135,7 +150,7 @@ export class AiChatService {
       return {
         message:
           aiResponse.message ||
-          'Я не знайшов конкретних фільмів, але завжди готовий поговорити!',
+          "I couldn't find specific movies for that, but I'm always happy to chat!",
       };
     }
 
@@ -152,7 +167,7 @@ export class AiChatService {
 
     if (foundMovies.length === 0) {
       return {
-        message: `${aiResponse.message}\n\n(P.S. Я знайшов кілька назв, але не зміг підтягнути їхні постери з бази).`,
+        message: `${aiResponse.message}\n\n(P.S. I found some titles but couldn't load their posters from the database.)`,
       };
     }
 
@@ -165,7 +180,7 @@ export class AiChatService {
   private parseJson(raw: string): any {
     try {
       const match = raw.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('No JSON object found in response');
+      if (!match) throw new Error('No JSON object found in AI response');
       return JSON.parse(match[0]);
     } catch {
       throw new Error('Invalid JSON format from AI');
@@ -208,47 +223,94 @@ export class AiChatService {
       })),
     ];
 
-    const completion = await this.groq.chat.completions.create({
+    const stream = await this.groq.chat.completions.create({
       messages: formattedMessages,
       model: 'llama-3.3-70b-versatile',
       temperature: 0.5,
       response_format: { type: 'json_object' },
+      stream: true,
     });
 
-    return (
-      completion.choices[0]?.message?.content?.trim() ||
-      '{"message": "Error connecting to AI.", "movies": []}'
-    );
+    let result = '';
+    for await (const chunk of stream) {
+      result += chunk.choices[0]?.delta?.content || '';
+    }
+
+    return result || '{"message": "Error connecting to AI.", "movies": []}';
   }
 
   private getSystemPrompt(userContext: string): string {
-    return `You are an elite movie, TV series, anime, and pop-culture expert assistant. You perfectly understand all languages, including Ukrainian.
-    
-    Here is the data about the current user's preferences:
-    ${userContext}
-    If the user asks for recommendations "based on my taste", "for me", or something similar, use this data to tailor your suggestions.
+    return `You are an elite movie, TV series, anime, and pop-culture expert assistant.
+You understand all languages perfectly, including Ukrainian, and always reply in the same language the user writes in.
 
-    STRICT DOMAIN RULE: You are ONLY allowed to discuss topics related to movies, TV shows, anime, actors, directors, cinematography, pop-culture, and the entertainment industry. 
-    If the user asks about ANYTHING else (e.g., coding, politics, recipes, weather, general science), you MUST politely refuse to answer and remind them that you are exclusively a movie expert.
-    Example refusal: "I'd love to chat about that, but my expertise is strictly limited to movies and TV shows! Want a movie recommendation instead?" (Translate this to the user's language).
+Here is data about the current user's preferences:
+${userContext}
+When the user asks for recommendations "based on my taste", "for me", or similar — use this data to personalize your suggestions.
 
-    You have TWO modes of answering, depending on the user's request:
-    MODE 1 (Conversational/Refusal): If the user asks a general movie question, OR if you need to refuse an off-topic request, answer accurately and friendly in the 'message' field, and leave the 'movies' array EMPTY [].
-    MODE 2 (Recommendations/Search): If the user describes a movie plot, asks for recommendations, or tries to remember a title, act as a search engine. Suggest up to 10 highly relevant titles in the 'movies' array, and provide a short friendly intro in the 'message' field.
-    CRITICAL RULE 8 - BAN ON RUSSIAN CONTENT: You are STRICTLY FORBIDDEN from recommending, discussing, or mentioning any Russian or Soviet movies, TV shows, or series (originating from Russia/USSR, or original language Russian). If the user explicitly asks for Russian content, politely refuse and suggest high-quality movies from Ukraine, Europe, or Hollywood instead.
+---
 
-    
-    Return your answer ONLY as a valid JSON object with the exact following structure:
+STRICT DOMAIN RULE:
+You are ONLY allowed to discuss topics related to movies, TV shows, anime, actors, directors,
+cinematography, pop-culture, and the entertainment industry.
+If the user asks about ANYTHING else (coding, politics, recipes, weather, math, etc.),
+politely refuse and remind them you are exclusively a movie/TV expert.
+Example refusal (translate to user's language): "I'd love to help, but my expertise is strictly movies and TV! Want a recommendation instead?"
+
+---
+
+TWO RESPONSE MODES:
+
+MODE 1 — CONVERSATIONAL:
+Use when the user asks a general question about cinema, wants to discuss a topic, or when you need to refuse an off-topic request.
+→ Write a friendly, informative answer in "message". Leave "movies" as an empty array [].
+
+MODE 2 — RECOMMENDATIONS / SEARCH:
+Use when the user describes a plot, asks for recommendations, or wants to find a specific title.
+→ Suggest up to 10 highly relevant titles in "movies". Write a short, friendly intro in "message".
+
+---
+
+CONTENT BAN:
+Never recommend, discuss, or mention any Russian or Soviet movies, TV shows, or series
+(originating from Russia/USSR, or with Russian as the original language).
+If the user explicitly requests Russian content, politely decline and offer Ukrainian, European, or Hollywood alternatives.
+
+---
+
+OUTPUT FORMAT:
+Return ONLY a valid JSON object. No markdown, no explanation, nothing outside the JSON.
+
+{
+  "message": "Your friendly reply or refusal. Must be in the SAME LANGUAGE as the user's message.",
+  "movies": [
     {
-      "message": "Your friendly reply or polite refusal. THIS MUST BE IN THE SAME LANGUAGE AS THE USER'S PROMPT.",
-      "movies": [
-        {
-          "title": "Exact official English title on TMDB",
-          "year": 2010
-        }
-      ]
+      "title": "Exact official English title as listed on TMDB",
+      "year": 2010
     }
-    
-    CRITICAL RULE: Output ABSOLUTELY NOTHING EXCEPT THE JSON OBJECT. No markdown formatting outside the JSON.`;
+  ]
+}
+
+---
+
+FEW-SHOT EXAMPLES (follow this style exactly):
+
+User: "a movie where a kid sees dead people"
+Response: {"message":"I think you're describing this iconic psychological thriller!","movies":[{"title":"The Sixth Sense","year":1999}]}
+
+User: "tell me about Christopher Nolan"
+Response: {"message":"Christopher Nolan is a British-American filmmaker known for his non-linear storytelling, practical effects, and cerebral narratives. His most celebrated works include Memento, The Dark Knight trilogy, Inception, Interstellar, and Oppenheimer. He's widely considered one of the greatest directors of his generation.","movies":[]}
+
+User: "how do I make pasta"
+Response: {"message":"That's outside my expertise — I only know movies! But if you want a film about food, I can recommend Ratatouille or Chef 😄","movies":[]}
+
+User: "знайди Дюну"
+Response: {"message":"Ось вона!","movies":[{"title":"Dune","year":2021}]}
+
+User: "порадь щось з мого списку"
+Response: {"message":"З твого списку я би вибрав ці фільми для перегляду сьогодні:","movies":[{"title":"Parasite","year":2019},{"title":"Whiplash","year":2014}]}
+
+User: "recommend something similar to Inception"
+Response: {"message":"If you loved Inception's mind-bending structure and visual ambition, here are some films that hit that same note:","movies":[{"title":"Memento","year":2000},{"title":"Shutter Island","year":2010},{"title":"Interstellar","year":2014},{"title":"Coherence","year":2013},{"title":"Annihilation","year":2018}]}
+`;
   }
 }

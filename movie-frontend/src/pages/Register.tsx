@@ -2,8 +2,11 @@ import { useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
 import { api } from "../api";
+import { useLang } from "../context/LanguageContext";
+import LangToggle from "../components/LangToggle";
 
 export default function Register() {
+  const { t } = useLang();
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,7 +25,7 @@ export default function Register() {
     setError("");
 
     if (!captchaToken) {
-      setError("Please confirm that you are not a robot.");
+      setError(t("register_captcha_error"));
       return;
     }
 
@@ -37,9 +40,7 @@ export default function Register() {
 
       setIsSuccess(true);
     } catch (err: any) {
-      setError(
-        err.response?.data?.message || "Registration error. Please try again!",
-      );
+      setError(err.response?.data?.message || t("register_error"));
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
     } finally {
@@ -91,6 +92,10 @@ export default function Register() {
         <div className="w-full max-w-md p-8 sm:p-10 space-y-6 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/30 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
 
+          <div className="absolute top-4 right-4">
+            <LangToggle />
+          </div>
+
           <div className="w-20 h-20 bg-[#12100e] border border-[#c8963c]/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
             <svg
               className="w-10 h-10 text-[#c8963c]"
@@ -107,22 +112,21 @@ export default function Register() {
             </svg>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-[#c8963c] uppercase tracking-widest">
-            Check Your Email!
+            {t("register_check_email")}
           </h2>
           <p className="text-[#f0e6cc]/80 text-sm leading-relaxed font-medium">
-            We've sent a verification link to <br />
+            {t("register_sent_link")} <br />
             <strong className="text-[#c8963c] block mt-1 text-base">
               {email}
             </strong>{" "}
             <br />
-            Please check your inbox (and spam folder) to verify your account
-            before logging in.
+            {t("register_verify_msg")}
           </p>
           <button
             onClick={() => navigate("/login")}
             className="w-full py-4 mt-6 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] shadow-lg shadow-[#c8963c]/10"
           >
-            Go to Login
+            {t("register_go_login")}
           </button>
         </div>
       </div>
@@ -134,12 +138,16 @@ export default function Register() {
       <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/20 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
 
+        <div className="absolute top-4 right-4">
+          <LangToggle />
+        </div>
+
         <div className="text-center">
           <h2 className="text-3xl sm:text-4xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
-            Join Us
+            {t("register_welcome")}
           </h2>
           <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium tracking-wide">
-            Create your tracking profile
+            {t("register_subtitle")}
           </p>
         </div>
 
@@ -152,7 +160,7 @@ export default function Register() {
         <form onSubmit={handleRegister} className="space-y-5">
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              Username
+              {t("register_username")}
             </label>
             <input
               type="text"
@@ -170,7 +178,7 @@ export default function Register() {
 
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              Email
+              {t("register_email")}
             </label>
             <input
               type="email"
@@ -187,7 +195,7 @@ export default function Register() {
 
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              Password
+              {t("register_password")}
             </label>
             <div className="relative">
               <input
@@ -228,17 +236,17 @@ export default function Register() {
             disabled={isLoading || !captchaToken}
             className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow-lg shadow-[#c8963c]/10"
           >
-            {isLoading ? "Creating Account..." : "Create Account"}
+            {isLoading ? t("register_creating") : t("register_create")}
           </button>
         </form>
 
         <p className="text-sm text-center text-[#f0e6cc]/60 pt-4 border-t border-[#c8963c]/20 font-medium">
-          Already have an account?{" "}
+          {t("register_have_account")}{" "}
           <Link
             to="/login"
             className="text-[#c8963c] font-black uppercase tracking-wider hover:text-[#e8c070] transition-colors ml-1"
           >
-            Log In
+            {t("register_login")}
           </Link>
         </p>
       </div>

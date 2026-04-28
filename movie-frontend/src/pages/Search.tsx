@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import LogoImg from "../assets/logo.png";
+import LangToggle from "../context/LangToggle";
+import { useLang } from "../components/LanguageContext";
 
 interface MovieResult {
   id: number;
@@ -64,6 +66,7 @@ export const MovieCard = ({
   onAdd,
   onRemove,
 }: MovieCardProps) => {
+  const { t } = useLang();
   const released = isReleased(movie);
   const isWatched = watchedIds.includes(movie.id);
   const isInPlans = addedIds.includes(movie.id);
@@ -109,7 +112,7 @@ export const MovieCard = ({
           />
         ) : (
           <div className="flex items-center justify-center w-full h-full text-[9px] text-[#f0e6cc]/30">
-            No poster
+            {t("search_no_poster")}
           </div>
         )}
       </Link>
@@ -141,7 +144,7 @@ export const MovieCard = ({
             </>
           )}
           <span className="ml-auto px-1 py-0.5 bg-[#2a241f] rounded text-[7px] text-[#f0e6cc]/70 border border-[#c8963c]/20">
-            {movie.mediaType === "tv" ? "TV" : "MOVIE"}
+            {movie.mediaType === "tv" ? t("common_tv") : t("common_movie")}
           </span>
         </p>
 
@@ -155,14 +158,14 @@ export const MovieCard = ({
                   : "bg-[#c8963c]/10 text-[#c8963c] border-[#c8963c]/30 hover:bg-[#c8963c]/20"
               }`}
             >
-              <span>✓</span> {isWatched ? "Added" : "Added"}
+              <span>✓</span> {t("search_added_btn")}
             </button>
           ) : (
             <button
               onClick={() => onAdd(movie)}
               className="w-full py-1.5 bg-[#2a241f] hover:bg-[#c8963c] hover:text-[#12100e] text-[#c8963c] border border-[#c8963c]/30 font-bold rounded-lg transition-all active:scale-95 uppercase text-[9px] tracking-wider shadow-sm"
             >
-              + Add
+              + {t("search_add")}
             </button>
           )}
         </div>
@@ -186,6 +189,7 @@ const MovieCarousel = ({
   onAdd,
   onRemove,
 }: any) => {
+  const { t } = useLang();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: "left" | "right") => {
@@ -277,7 +281,7 @@ const MovieCarousel = ({
       ) : (
         emptyElement || (
           <p className="text-[#f0e6cc]/50 text-center text-sm">
-            No movies found.
+            {t("search_empty")}
           </p>
         )
       )}
@@ -359,6 +363,7 @@ export default function Search() {
   const [isLoadingHome, setIsLoadingHome] = useState(trending.length === 0);
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { t } = useLang();
   const navigate = useNavigate();
   const [watchedIds, setWatchedIds] = useState<number[]>([]);
 
@@ -535,12 +540,12 @@ export default function Search() {
 
       setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
       localStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
-      showToast("Added to list");
+      showToast(t("search_added_toast"));
     } catch (error: any) {
       if (error.response?.status === 400) {
         setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
       } else {
-        showToast("Error adding movie");
+        showToast(t("search_add_error"));
       }
     }
   };
@@ -554,15 +559,15 @@ export default function Search() {
         FAVORITES_CACHE_KEY,
         JSON.stringify(favoriteIds.filter((id) => id !== movie.id)),
       );
-      showToast("Removed from list");
+      showToast(t("search_removed"));
     } catch {
-      showToast("Error removing movie");
+      showToast(t("search_remove_error"));
     }
   };
 
   const handleToggleFavorite = async (movie: MovieResult) => {
     if (!isReleased(movie)) {
-      showToast("You can't favorite an unreleased movie!");
+      showToast(t("search_fav_unreleased"));
       return;
     }
     const isFav = favoriteIds.includes(movie.id);
@@ -575,7 +580,7 @@ export default function Search() {
       localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
       if (!isFav)
         setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
-      showToast("Favorite status updated");
+      showToast(t("search_fav_updated"));
     } catch (error: any) {
       if (error.response?.status === 404 && !isFav) {
         try {
@@ -590,12 +595,12 @@ export default function Search() {
           setFavoriteIds(newIds);
           setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
-          showToast("Added to list and favorites");
+          showToast(t("search_fav_added"));
         } catch {
-          showToast("Failed to favorite movie");
+          showToast(t("search_fav_error"));
         }
       } else {
-        showToast("Failed to update favorite status");
+        showToast(t("search_fav_error2"));
       }
     }
   };
@@ -671,25 +676,26 @@ export default function Search() {
               to="/ai-chat"
               className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
-              AI Chat
+              {t("nav_ai_chat")}
             </Link>
             <Link
               to="/search"
               className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
             >
-              Search
+              {t("nav_search")}
             </Link>
             <Link
               to="/watchlist"
               className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
-              Profile
+              {t("nav_profile")}
             </Link>
+            <LangToggle />
             <button
               onClick={handleLogout}
               className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
             >
-              Logout
+              {t("nav_logout")}
             </button>
           </nav>
         </header>
@@ -704,7 +710,7 @@ export default function Search() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Enter movie title..."
+            placeholder={t("search_placeholder")}
             className="w-full pl-6 pr-24 py-3.5 sm:py-4 bg-[#1a1714] border border-[#c8963c]/30 rounded-full text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition text-sm sm:text-base font-medium tracking-wide"
           />
           <div className="absolute right-2 top-0 bottom-0 flex items-center gap-1">
@@ -722,7 +728,7 @@ export default function Search() {
               disabled={isSearching || !searchQuery.trim()}
               className="px-5 h-10 bg-[#c8963c] text-[#12100e] rounded-full font-black hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 text-xs sm:text-sm shadow uppercase tracking-wider mr-1"
             >
-              {isSearching ? "..." : "Find"}
+              {isSearching ? "..." : t("search_find")}
             </button>
           </div>
         </form>
@@ -739,10 +745,10 @@ export default function Search() {
                   <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-[#c8963c]/20 via-[#1a1714] to-[#12100e] group-hover:scale-105 transition-transform duration-700" />
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center z-10">
                     <h3 className="text-[#c8963c] font-black uppercase tracking-widest text-xs sm:text-lg drop-shadow-lg">
-                      Top 100 Movies
+                      {t("top100_movies")}
                     </h3>
                     <p className="text-[#f0e6cc]/50 text-[7px] sm:text-[10px] font-bold uppercase tracking-widest mt-1">
-                      All-Time Classics
+                      {t("search_all_time")}
                     </p>
                   </div>
                 </Link>
@@ -754,10 +760,10 @@ export default function Search() {
                   <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-[#c8963c]/20 via-[#1a1714] to-[#12100e] group-hover:scale-105 transition-transform duration-700" />
                   <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center z-10">
                     <h3 className="text-[#c8963c] font-black uppercase tracking-widest text-xs sm:text-lg drop-shadow-lg">
-                      Top 100 Series
+                      {t("top100_tv")}
                     </h3>
                     <p className="text-[#f0e6cc]/50 text-[7px] sm:text-[10px] font-bold uppercase tracking-widest mt-1">
-                      Highest Rated
+                      {t("search_highest_rated")}
                     </p>
                   </div>
                 </Link>
@@ -767,13 +773,13 @@ export default function Search() {
             <>
               <div className="flex justify-between items-center mb-6 border-b border-[#c8963c]/20 pb-3">
                 <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
-                  Search Results
+                  {t("search_results")}
                 </h2>
                 <button
                   onClick={handleClearSearch}
                   className="text-[10px] sm:text-xs font-bold text-[#f0e6cc]/60 hover:text-[#c8963c] transition uppercase tracking-wider"
                 >
-                  ← Back
+                  {t("common_go_back")}
                 </button>
               </div>
               {renderMovieGrid(results)}
@@ -782,21 +788,21 @@ export default function Search() {
             !isSearching && (
               <div className="text-center mt-10 border border-[#c8963c]/20 bg-[#1a1714] p-10 rounded-3xl max-w-sm mx-auto shadow-2xl">
                 <p className="text-[#f0e6cc]/60 text-lg mb-6 font-semibold">
-                  No movies found.
+                  {t("search_empty")}
                 </p>
                 <button
                   onClick={handleClearSearch}
                   className="text-sm font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest"
                 >
-                  ← Back to Home
+                  {t("common_go_back")}
                 </button>
               </div>
             )
           ) : (
             <div className="space-y-12">
               <MovieCarousel
-                title="Trending This Week"
-                badge="HOT"
+                title={t("search_trending")}
+                badge={t("search_hot")}
                 badgeClass="bg-red-500/20 text-red-500 text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30"
                 movies={trending}
                 isLoading={isLoadingHome && trending.length === 0}
@@ -815,7 +821,7 @@ export default function Search() {
                 }
                 emptyElement={
                   <p className="text-[#f0e6cc]/50 text-center text-sm">
-                    Failed to load trends.
+                    {t("search_failed_trends")}
                   </p>
                 }
                 favoriteIds={favoriteIds}
@@ -827,8 +833,8 @@ export default function Search() {
               />
 
               <MovieCarousel
-                title="Coming Soon"
-                badge="NEW"
+                title={t("search_coming_soon")}
+                badge={t("search_new")}
                 badgeClass="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30"
                 movies={upcoming.slice(0, 10)}
                 isLoading={isLoadingHome && upcoming.length === 0}
@@ -841,7 +847,7 @@ export default function Search() {
               />
 
               <MovieCarousel
-                title="Recommended for You"
+                title={t("chat_recommended")}
                 badge="AI"
                 badgeClass="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30"
                 movies={visibleRecommendations}
@@ -849,15 +855,14 @@ export default function Search() {
                 fallback={
                   <div className="flex justify-center items-center h-24">
                     <p className="text-[#f0e6cc]/50 animate-pulse text-xs sm:text-sm font-semibold uppercase tracking-widest">
-                      AI curating your list...
+                      {t("search_ai_curating")}
                     </p>
                   </div>
                 }
                 emptyElement={
                   <div className="text-center p-8 bg-[#1a1714] rounded-2xl border border-[#c8963c]/30 border-dashed">
                     <p className="text-[#f0e6cc]/60 text-sm font-medium">
-                      Add movies to your Watchlist so AI can recommend similar
-                      titles!
+                      {t("search_ai_empty")}
                     </p>
                   </div>
                 }

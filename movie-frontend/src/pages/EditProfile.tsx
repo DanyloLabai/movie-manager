@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
 import { api } from "../api";
+import { useLang } from "../context/LanguageContext";
+import { LangToggle } from "../components/LangToggle";
 
 interface EditProfileProps {
   currentUsername: string;
@@ -14,6 +16,7 @@ export default function EditProfile({
   onClose,
   onUpdate,
 }: EditProfileProps) {
+  const { t } = useLang();
   const [username, setUsername] = useState(currentUsername);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(currentAvatarUrl);
@@ -49,11 +52,9 @@ export default function EditProfile({
       onClose();
     } catch (err: any) {
       if (err.response?.status === 409) {
-        setError("That username is already taken by another user!");
+        setError(t("edit_username_taken"));
       } else {
-        setError(
-          "An error occurred while updating your profile. Please try again.",
-        );
+        setError(t("edit_error"));
       }
     } finally {
       setIsLoading(false);
@@ -83,7 +84,7 @@ export default function EditProfile({
         </button>
 
         <h2 className="text-2xl font-bold text-white text-center mb-6">
-          Edit Profile
+          {t("edit_profile")}
         </h2>
 
         {error && (
@@ -144,14 +145,12 @@ export default function EditProfile({
               ref={fileInputRef}
               onChange={handleFileChange}
             />
-            <p className="text-xs text-gray-500 mt-2">
-              Click image to change (Max 5MB)
-            </p>
+            <p className="text-xs text-gray-500 mt-2">{t("edit_image")}</p>
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-gray-300 ml-1 mb-1">
-              Username
+              {t("register_username")}
             </label>
             <input
               type="text"
@@ -168,7 +167,7 @@ export default function EditProfile({
             disabled={isLoading || !username.trim()}
             className="w-full py-3.5 font-bold text-white transition bg-blue-600 rounded-xl hover:bg-blue-500 active:scale-[0.98] disabled:bg-gray-700 disabled:text-gray-500 shadow-lg shadow-blue-900/20"
           >
-            {isLoading ? "Saving..." : "Save Changes"}
+            {isLoading ? t("edit_saving") : t("edit_save")}
           </button>
         </form>
       </div>

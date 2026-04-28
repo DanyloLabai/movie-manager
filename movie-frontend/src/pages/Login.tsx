@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { useLang } from "../context/LanguageContext";
+import LangToggle from "../components/LangToggle";
 
 export default function Login() {
+  const { t } = useLang();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -45,7 +48,7 @@ export default function Login() {
       } else if (Array.isArray(serverMessage)) {
         setError(serverMessage[0]);
       } else {
-        setError("Invalid email or password. Please try again!");
+        setError(t("login_error"));
       }
     } finally {
       setIsLoading(false);
@@ -57,7 +60,7 @@ export default function Login() {
     setResendStatus("");
     try {
       await api.post("/auth/resend-verification", { email });
-      setResendStatus("Verification email sent! Check your inbox.");
+      setResendStatus(t("login_resend"));
     } catch {
       setResendStatus("Failed to send. Please try again.");
     } finally {
@@ -108,12 +111,16 @@ export default function Login() {
       <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/20 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
 
+        <div className="absolute top-4 right-4">
+          <LangToggle />
+        </div>
+
         <div className="text-center">
           <h2 className="text-3xl sm:text-4xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
-            Welcome to Lumen
+            {t("login_welcome")}
           </h2>
           <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium tracking-wide">
-            Log in to your tracker
+            {t("login_subtitle")}
           </p>
         </div>
 
@@ -141,7 +148,7 @@ export default function Login() {
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              Email Address
+              {t("login_email")}
             </label>
             <input
               type="email"
@@ -157,7 +164,7 @@ export default function Login() {
 
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              Password
+              {t("login_password")}
             </label>
             <div className="relative">
               <input
@@ -185,7 +192,7 @@ export default function Login() {
             disabled={isLoading}
             className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow-lg shadow-[#c8963c]/10"
           >
-            {isLoading ? "Signing in..." : "Sign In"}
+            {isLoading ? t("login_signing") : t("login_signin")}
           </button>
         </form>
 
@@ -194,17 +201,17 @@ export default function Login() {
             to="/forgot-password"
             className="text-xs font-bold text-[#f0e6cc]/40 hover:text-[#c8963c] transition-colors uppercase tracking-wider underline underline-offset-4"
           >
-            Forgot your password?
+            {t("login_forgot")}
           </Link>
         </div>
 
         <p className="text-sm text-center text-[#f0e6cc]/60 pt-4 border-t border-[#c8963c]/20 font-medium">
-          New here?{" "}
+          {t("login_new")}{" "}
           <Link
             to="/register"
             className="text-[#c8963c] font-black uppercase tracking-wider hover:text-[#e8c070] transition-colors ml-1"
           >
-            Create an account
+            {t("login_signup")}
           </Link>
         </p>
       </div>

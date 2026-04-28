@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { api } from "../api";
 import LogoImg from "../assets/logo.png";
+import { useLang } from "../components/LanguageContext";
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
 
@@ -37,7 +38,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const RatingTooltip = ({ active, payload }: any) => {
+const RatingTooltip = ({ active, payload, t }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1714] border border-[#c8963c]/50 px-2 py-1.5 rounded-xl shadow-xl z-50 flex items-center gap-1.5">
@@ -46,7 +47,7 @@ const RatingTooltip = ({ active, payload }: any) => {
         </span>
         <span className="text-[#f0e6cc]/50 text-xs">|</span>
         <span className="text-[#f0e6cc] font-bold text-[10px]">
-          {payload[0].value} movies
+          {payload[0].value} {t("stats_movies").toLowerCase()}
         </span>
       </div>
     );
@@ -55,6 +56,7 @@ const RatingTooltip = ({ active, payload }: any) => {
 };
 
 export default function PublicProfile() {
+  const { t } = useLang();
   const { id } = useParams<{ id: string }>();
   const [profileData, setProfileData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,7 +91,7 @@ export default function PublicProfile() {
       setProfileData((prev: any) => ({ ...prev, isFriend: true }));
       showToast("Added to friends!");
     } catch (err: any) {
-      showToast(err.response?.data?.message || "Error adding friend.");
+      showToast(err.response?.data?.message || t("common_error"));
     }
   };
 
@@ -106,13 +108,13 @@ export default function PublicProfile() {
       <div className="min-h-[100dvh] bg-[#12100e] flex flex-col items-center justify-center text-center p-4">
         <h1 className="text-5xl font-black text-[#c8963c] mb-3">404</h1>
         <p className="text-[#f0e6cc]/60 mb-6 text-base font-medium">
-          Profile not found.
+          {t("profile_not_found")}
         </p>
         <Link
           to="/search"
           className="px-6 py-3 bg-[#c8963c] text-[#12100e] font-black uppercase tracking-widest rounded-xl hover:bg-[#e8c070] transition shadow text-sm"
         >
-          Return Home
+          {t("profile_go_home")}
         </Link>
       </div>
     );
@@ -121,7 +123,7 @@ export default function PublicProfile() {
   const watchedCount = profileData.watchedCount || 0;
   const favoritesCount = profileData.favorites?.length || 0;
   const totalCount = profileData.totalCount || 0;
-  const userRank = getUserRank(watchedCount);
+  const userRank = getUserRank(watchedCount); // Ранг поки залишаємо англійською або теж можна перенести в словник
 
   const hasStats = Boolean(
     profileData.stats &&
@@ -157,7 +159,7 @@ export default function PublicProfile() {
               alt="LUMEN™ Logo"
               className="h-10 sm:h-12 w-auto object-contain"
             />
-            
+
             <div className="flex flex-col justify-center">
               <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
                 LUMEN
@@ -184,7 +186,7 @@ export default function PublicProfile() {
                 d="M15 19l-7-7 7-7"
               />
             </svg>
-            My Profile
+            {t("watchlist_title")}
           </Link>
         </header>
       </div>
@@ -216,14 +218,14 @@ export default function PublicProfile() {
             <div className="shrink-0">
               {profileData.isFriend ? (
                 <div className="px-3 py-1.5 bg-[#c8963c]/10 text-[#c8963c] rounded-full font-black uppercase text-[9px] flex items-center gap-1 border border-[#c8963c]/30">
-                  <span>✓</span> Friends
+                  <span>✓</span> {t("profile_friends")}
                 </div>
               ) : (
                 <button
                   onClick={handleAddFriend}
                   className="px-3 py-1.5 bg-[#c8963c] text-[#12100e] rounded-full font-black uppercase text-[9px] hover:bg-[#e8c070] transition shadow active:scale-95"
                 >
-                  + Add Friend
+                  {t("profile_add_friend")}
                 </button>
               )}
             </div>
@@ -251,7 +253,7 @@ export default function PublicProfile() {
                 {favoritesCount}
               </div>
               <div className="text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
-                Favorites
+                {t("watchlist_favorites")}
               </div>
             </div>
             <div className="border-l border-[#c8963c]/10 pl-3">
@@ -259,7 +261,7 @@ export default function PublicProfile() {
                 {watchedCount}
               </div>
               <div className="text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
-                Watched
+                {t("watchlist_watched")}
               </div>
             </div>
           </div>
@@ -270,7 +272,7 @@ export default function PublicProfile() {
           <div className="bg-[#1a1714] border border-[#c8963c]/10 rounded-xl p-3">
             <div className="flex justify-between items-center mb-1.5 px-0.5">
               <span className="text-[9px] font-black uppercase tracking-widest text-[#f0e6cc]/50">
-                Completion Rate
+                {t("profile_completion")}
               </span>
               <span className="text-[#c8963c] font-black text-xs">
                 {profileData.stats.completionRate}%
@@ -290,13 +292,13 @@ export default function PublicProfile() {
           <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl">
             <h3 className="text-[10px] font-black text-[#c8963c] uppercase tracking-[0.25em] mb-4 flex items-center gap-2">
               <span className="w-6 h-[1px] bg-[#c8963c]/30" />{" "}
-              {profileData.username}'s Wrapped
+              {t("stats_wrapped").replace("[username]", profileData.username)}
             </h3>
 
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
                 <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black mb-1">
-                  Time Spent
+                  {t("stats_time_spent")}
                 </p>
                 <p className="text-base font-black text-[#f0e6cc]">
                   {Math.floor((profileData.stats?.totalMinutes || 0) / 60)}h{" "}
@@ -305,15 +307,15 @@ export default function PublicProfile() {
               </div>
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
                 <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black mb-1">
-                  Top Genre
+                  {t("stats_top_genre")}
                 </p>
                 <p className="text-base font-black text-[#c8963c] truncate">
-                  {profileData.stats?.topGenre || "N/A"}
+                  {profileData.stats?.topGenre || t("common_na")}
                 </p>
               </div>
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
                 <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black mb-1">
-                  Avg Rating
+                  {t("stats_avg")}
                 </p>
                 <p className="text-base font-black text-[#f0e6cc]">
                   {profileData.stats?.averageRating || "0.0"}
@@ -321,32 +323,33 @@ export default function PublicProfile() {
               </div>
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
                 <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black mb-1">
-                  Fav Decade
+                  {t("stats_fav_decade")}
                 </p>
                 <p className="text-base font-black text-[#f0e6cc]">
-                  {profileData.stats?.favoriteDecade || "N/A"}
+                  {profileData.stats?.favoriteDecade || t("common_na")}
                 </p>
               </div>
             </div>
 
-            {/* Longest + Top Actor */}
+            {/* Longest Marathon */}
             {profileData.stats?.longestMovie?.runtime > 0 && (
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl mb-2 flex items-center gap-3">
                 <span className="text-xl">🏃‍♂️</span>
                 <div className="min-w-0">
                   <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black">
-                    Longest Marathon
+                    {t("stats_marathon")}
                   </p>
                   <p className="text-xs font-bold text-[#c8963c] truncate">
                     {profileData.stats.longestMovie.title}
                   </p>
                   <p className="text-[9px] text-[#f0e6cc]/60">
-                    {profileData.stats.longestMovie.runtime} min
+                    {profileData.stats.longestMovie.runtime} {t("stats_min")}
                   </p>
                 </div>
               </div>
             )}
 
+            {/* Top Actor */}
             {profileData.stats?.topActor && (
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl mb-4 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-[#c8963c]/30">
@@ -364,13 +367,16 @@ export default function PublicProfile() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black">
-                    Favorite Actor
+                    {t("stats_actor")}
                   </p>
                   <p className="text-xs font-bold text-[#c8963c] truncate">
                     {profileData.stats.topActor.name}
                   </p>
                   <p className="text-[9px] text-[#f0e6cc]/60">
-                    {profileData.stats.topActor.count} movies
+                    {t("stats_actor_count").replace(
+                      "[X]",
+                      profileData.stats.topActor.count,
+                    )}
                   </p>
                 </div>
               </div>
@@ -379,7 +385,7 @@ export default function PublicProfile() {
             <div className="grid grid-cols-1 gap-3">
               <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px]">
                 <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1 text-center">
-                  Genre Breakdown
+                  {t("stats_genres")}
                 </p>
                 <div className="h-full w-full relative -mt-2">
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2 z-0">
@@ -423,10 +429,10 @@ export default function PublicProfile() {
                 <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px] flex flex-col">
                   <div className="flex justify-between items-center mb-1">
                     <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
-                      Rating Distribution
+                      {t("stats_rating")}
                     </p>
                     <p className="text-[10px] font-black text-[#c8963c]">
-                      Avg: {profileData.stats.averageRating}
+                      {t("stats_avg")} {profileData.stats.averageRating}
                     </p>
                   </div>
                   <div className="flex-grow w-full -ml-3">
@@ -442,7 +448,7 @@ export default function PublicProfile() {
                           tick={{ fill: "#f0e6cc", opacity: 0.3, fontSize: 9 }}
                         />
                         <Tooltip
-                          content={<RatingTooltip />}
+                          content={<RatingTooltip t={t} />} // 🔥 Передаємо t всередину тултіпа
                           cursor={{ fill: "#c8963c", opacity: 0.05 }}
                           wrapperStyle={{ zIndex: 9999 }}
                         />
@@ -463,7 +469,7 @@ export default function PublicProfile() {
             {profileData.stats?.topRated?.length > 0 && (
               <div className="mt-5 pt-4 border-t border-[#c8963c]/10">
                 <h4 className="text-[9px] text-[#c8963c] font-black uppercase tracking-[0.3em] mb-3 text-center">
-                  Top 3 Masterpieces
+                  {t("stats_top3")}
                 </h4>
                 <div className="flex flex-col gap-2">
                   {profileData.stats.topRated.map(
@@ -515,7 +521,7 @@ export default function PublicProfile() {
                   : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
               }`}
             >
-              Favorites
+              {t("watchlist_favorites")}
             </button>
             <button
               onClick={() => setActiveTab("watched")}
@@ -525,7 +531,7 @@ export default function PublicProfile() {
                   : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
               }`}
             >
-              Watched
+              {t("watchlist_watched")}
             </button>
           </div>
         </div>
@@ -548,7 +554,7 @@ export default function PublicProfile() {
                     />
                   ) : (
                     <div className="flex items-center justify-center w-full h-full text-[8px] text-[#f0e6cc]/20 uppercase font-black">
-                      N/A
+                      {t("common_na")}
                     </div>
                   )}
                   {movie.rating > 0 && (
@@ -567,7 +573,7 @@ export default function PublicProfile() {
           ) : (
             <div className="col-span-full py-12 text-center bg-[#1a1714] rounded-2xl border border-[#c8963c]/10 border-dashed">
               <p className="text-[#f0e6cc]/30 uppercase tracking-widest font-black text-xs italic">
-                Empty collection
+                {t("watchlist_empty")}
               </p>
             </div>
           )}

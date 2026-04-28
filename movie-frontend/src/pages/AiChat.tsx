@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import LogoImg from "../assets/logo.png";
+import LangToggle from "../components/LangToggle";
+import { useLang } from "../context/LanguageContext";
 
 interface MovieResult {
   id: number;
@@ -22,10 +24,12 @@ interface Message {
 
 const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
 const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
-const CHAT_EXPIRATION_MS = Number(import.meta.env.CHAT_EXPIRATION_MS);
-const MAX_HISTORY = Number(import.meta.env.MAX_HISTORY);
+const CHAT_EXPIRATION_MS =
+  Number(import.meta.env.VITE_CHAT_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
+const MAX_HISTORY = Number(import.meta.env.VITE_MAX_HISTORY) || 20;
 
 export default function AiChat() {
+  const { lang, t } = useLang();
   const [input, setInput] = useState("");
 
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
@@ -40,7 +44,6 @@ export default function AiChat() {
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
   const [viewportHeight, setViewportHeight] = useState<number | string>(
     "100dvh",
   );
@@ -49,6 +52,19 @@ export default function AiChat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  const QUICK_PROMPTS = [
+    t("quick_watchlist"),
+    t("quick_inception"),
+    t("quick_anime"),
+    t("quick_new"),
+    t("quick_short"),
+  ];
+
+  const getWelcomeMessage = (): Message => ({
+    role: "ai",
+    text: t("chat_welcome"),
+  });
 
   const loadSavedMessages = (): Message[] => {
     const saved = localStorage.getItem(CHAT_STORAGE_KEY);
@@ -61,12 +77,7 @@ export default function AiChat() {
         console.error("Error parsing chat history", e);
       }
     }
-    return [
-      {
-        role: "ai",
-        text: "Hi! I'm your movie expert. Ask me about any movie, or describe a plot you can't remember.",
-      },
-    ];
+    return [getWelcomeMessage()];
   };
 
   const [messages, setMessages] = useState<Message[]>(loadSavedMessages);
@@ -83,19 +94,14 @@ export default function AiChat() {
   useEffect(() => {
     const visualViewport = window.visualViewport;
     if (!visualViewport) return;
-
     const handleResize = () => {
       setViewportHeight(visualViewport.height);
       window.scrollTo(0, 0);
       setTimeout(scrollToBottom, 50);
     };
-
     visualViewport.addEventListener("resize", handleResize);
     handleResize();
-
-    return () => {
-      visualViewport.removeEventListener("resize", handleResize);
-    };
+    return () => visualViewport.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -142,19 +148,13 @@ export default function AiChat() {
   };
 
   const handleClearChat = () => {
-    setMessages([
-      {
-        role: "ai",
-        text: "Chat cleared! Let's start fresh. What are you looking for?",
-      },
-    ]);
+    setMessages([{ role: "ai", text: t("chat_cleared") }]);
     localStorage.removeItem(CHAT_STORAGE_KEY);
-    showToast("Chat history cleared");
+    showToast(t("chat_history_cleared"));
   };
 
   const sendMessageToAi = async (userText: string) => {
     if (isLoading) return;
-
     inputRef.current?.blur();
 
     const newMessages: Message[] = [
@@ -169,15 +169,13 @@ export default function AiChat() {
 
       const chatHistory = trimmedMessages.map((msg) => {
         let content = msg.text;
-
         if (msg.role === "ai" && msg.movies && msg.movies.length > 0) {
           const shownMovies = msg.movies.map((m) => m.title).join(", ");
-          content += `\n[System note: I already showed these movies to the user: ${shownMovies}. I must not repeat them in my next suggestions.]`;
+          content += `\n[System note: I already showed these movies to the user: ${shownMovies}. Do not repeat them in next suggestions.]`;
         }
-
         return {
           role: msg.role === "ai" ? "assistant" : "user",
-          content: content,
+          content,
         };
       });
 
@@ -191,13 +189,7 @@ export default function AiChat() {
         },
       ]);
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          text: "Oops, something went wrong. Please try again later.",
-        },
-      ]);
+      setMessages((prev) => [...prev, { role: "ai", text: t("chat_error") }]);
     } finally {
       setIsLoading(false);
     }
@@ -221,18 +213,18 @@ export default function AiChat() {
         releaseDate: movie.releaseDate,
       });
       setAddedIds((prev) => [...prev, movie.id]);
-      showToast("Added!");
+      showToast(t("chat_added"));
     } catch (error: any) {
       if (error.response?.status === 400) {
         setAddedIds((prev) => [...prev, movie.id]);
-        showToast("Already in list.");
-      } else showToast("Error adding movie.");
+        showToast(t("chat_added"));
+      } else showToast(t("chat_add_error"));
     }
   };
 
   const handleToggleFavorite = async (movie: MovieResult) => {
     if (!isReleased(movie)) {
-      showToast("You can't favorite an unreleased movie!");
+      showToast(t("chat_fav_unreleased"));
       return;
     }
     const isFav = favoriteIds.includes(movie.id);
@@ -243,7 +235,7 @@ export default function AiChat() {
         : [...favoriteIds, movie.id];
       setFavoriteIds(newIds);
       localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
-      showToast("Favorite status updated");
+      showToast(t("chat_fav_updated"));
     } catch (error: any) {
       if (error.response?.status === 404 && !isFav) {
         try {
@@ -258,12 +250,12 @@ export default function AiChat() {
           setFavoriteIds(newIds);
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
           setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
-          showToast("Added to favorites");
+          showToast(t("chat_fav_added"));
         } catch {
-          showToast("Failed to add to favorites");
+          showToast(t("chat_fav_error"));
         }
       } else {
-        showToast("Server error");
+        showToast(t("chat_server_error"));
       }
     }
   };
@@ -278,6 +270,7 @@ export default function AiChat() {
       className="fixed top-0 left-0 w-full flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]"
       style={{ height: viewportHeight }}
     >
+      {/* Header */}
       <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
@@ -293,35 +286,40 @@ export default function AiChat() {
               LUMEN AI
             </h1>
           </Link>
-          <nav className="flex items-center gap-4 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
+          <nav className="flex items-center gap-4 sm:gap-6 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
             <Link
               to="/ai-chat"
               className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
             >
-              AI Chat
+              {t("nav_ai_chat")}
             </Link>
             <Link
               to="/search"
               className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
-              Search
+              {t("nav_search")}
             </Link>
             <Link
               to="/watchlist"
               className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
             >
-              Profile
+              {t("nav_profile")}
             </Link>
+
+            {/* Language toggle */}
+            <LangToggle />
+
             <button
               onClick={handleLogout}
               className="text-[9px] sm:text-xs px-3 py-1.5 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
             >
-              Logout
+              {t("nav_logout")}
             </button>
           </nav>
         </header>
       </div>
 
+      {/* Messages */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e]"
@@ -344,9 +342,8 @@ export default function AiChat() {
                 {msg.movies && msg.movies.length > 0 && (
                   <div className="mt-3 flex flex-col gap-1.5 bg-[#12100e]/60 p-2 rounded-xl border border-[#c8963c]/20">
                     <h5 className="text-[#c8963c] text-[9px] font-bold uppercase tracking-widest px-1 pt-0.5 pb-1.5">
-                      Recommended for you
+                      {t("chat_recommended")}
                     </h5>
-
                     {msg.movies.map((movie) => {
                       const released = isReleased(movie);
                       return (
@@ -385,7 +382,9 @@ export default function AiChat() {
                                 </span>
                               </h4>
                               <p className="text-[8px] text-[#f0e6cc]/50 mt-0.5 uppercase font-semibold tracking-wider">
-                                {movie.mediaType === "tv" ? "TV Show" : "Movie"}
+                                {movie.mediaType === "tv"
+                                  ? t("chat_tv")
+                                  : t("chat_movie")}
                                 {released &&
                                   ` • ${Number(movie.rating || 0).toFixed(1)}`}
                               </p>
@@ -437,7 +436,7 @@ export default function AiChat() {
                                 }}
                                 className="text-[9px] border border-[#c8963c]/50 text-[#c8963c] px-2.5 py-1 rounded-lg font-bold hover:bg-[#c8963c] hover:text-[#12100e] transition active:scale-95 whitespace-nowrap"
                               >
-                                + Add
+                                {t("chat_add_btn")}
                               </button>
                             )}
                           </div>
@@ -465,53 +464,73 @@ export default function AiChat() {
         </div>
       </div>
 
+      {/* Input area */}
       <div className="flex-none px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 z-40 relative">
-        <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
-          <button
-            onClick={handleClearChat}
-            disabled={isLoading || messages.length <= 1}
-            title="Clear chat"
-            className="shrink-0 w-10 h-10 text-[#c8963c]/50 bg-[#1a1714] border border-[#c8963c]/20 rounded-xl hover:text-red-400 hover:bg-red-900/20 hover:border-red-500/30 transition disabled:opacity-30 flex items-center justify-center"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
-          </button>
+        <div className="max-w-2xl w-full mx-auto space-y-2">
+          {/* Quick prompt chips */}
+          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+            {QUICK_PROMPTS.map((p) => (
+              <button
+                key={p}
+                onClick={() => sendMessageToAi(p)}
+                disabled={isLoading}
+                className="shrink-0 text-[10px] px-2.5 py-1 border border-[#c8963c]/20 text-[#c8963c]/50 rounded-full hover:border-[#c8963c]/60 hover:text-[#c8963c] transition whitespace-nowrap disabled:opacity-30"
+              >
+                {p}
+              </button>
+            ))}
+          </div>
 
-          <form onSubmit={handleSend} className="relative flex-grow">
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              disabled={isLoading}
-              onChange={(e) => setInput(e.target.value)}
-              onFocus={() => {
-                setTimeout(() => {
-                  window.scrollTo(0, 0);
-                  scrollToBottom();
-                }, 300);
-              }}
-              placeholder={isLoading ? "Thinking..." : "Ask about a movie..."}
-              className="w-full pl-4 pr-12 py-3 bg-[#1a1714] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition disabled:opacity-50 text-sm"
-            />
+          {/* Input row */}
+          <div className="flex items-center gap-2">
             <button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-[#c8963c] text-[#12100e] rounded-lg font-black hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 text-base"
+              onClick={handleClearChat}
+              disabled={isLoading || messages.length <= 1}
+              title={t("chat_clear_title")}
+              className="shrink-0 w-10 h-10 text-[#c8963c]/50 bg-[#1a1714] border border-[#c8963c]/20 rounded-xl hover:text-red-400 hover:bg-red-900/20 hover:border-red-500/30 transition disabled:opacity-30 flex items-center justify-center"
             >
-              {isLoading ? "…" : "→"}
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
             </button>
-          </form>
+
+            <form onSubmit={handleSend} className="relative flex-grow">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                disabled={isLoading}
+                onChange={(e) => setInput(e.target.value)}
+                onFocus={() => {
+                  setTimeout(() => {
+                    window.scrollTo(0, 0);
+                    scrollToBottom();
+                  }, 300);
+                }}
+                placeholder={
+                  isLoading ? t("chat_thinking") : t("chat_placeholder")
+                }
+                className="w-full pl-4 pr-12 py-3 bg-[#1a1714] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition disabled:opacity-50 text-sm"
+              />
+              <button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-[#c8963c] text-[#12100e] rounded-lg font-black hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 text-base"
+              >
+                {isLoading ? "…" : "→"}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 

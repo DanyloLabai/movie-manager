@@ -3,8 +3,10 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import { MovieCard } from "./Search";
 import LogoImg from "../assets/logo.png";
+import { useLang } from "../components/LanguageContext";
 
 export default function Top100() {
+  const { t } = useLang();
   const { type } = useParams<{ type: "movie" | "tv" }>();
   const navigate = useNavigate();
   const [items, setItems] = useState<any[]>([]);
@@ -15,7 +17,7 @@ export default function Top100() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const isMovie = type === "movie";
-  const title = isMovie ? "Top 100 Movies" : "Top 100 TV Shows";
+  const title = isMovie ? t("top100_movies") : t("top100_tv");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -69,9 +71,9 @@ export default function Top100() {
         releaseDate: item.releaseDate,
       });
       setAddedIds((prev) => Array.from(new Set([...prev, item.id])));
-      showToast("Added to list");
+      showToast(t("top100_added"));
     } catch {
-      showToast("Error adding item");
+      showToast(t("top100_add_error"));
     }
   };
 
@@ -80,9 +82,9 @@ export default function Top100() {
       await api.delete(`/movies/watchlist/${item.id}`);
       setAddedIds((prev) => prev.filter((id) => id !== item.id));
       setFavoriteIds((prev) => prev.filter((id) => id !== item.id));
-      showToast("Removed from list");
+      showToast(t("top100_removed"));
     } catch {
-      showToast("Error removing item");
+      showToast(t("top100_remove_error"));
     }
   };
 
@@ -100,7 +102,7 @@ export default function Top100() {
       );
       if (!isFav)
         setAddedIds((prev) => Array.from(new Set([...prev, item.id])));
-      showToast("Favorite status updated");
+      showToast(t("search_fav_updated"));
     } catch (error: any) {
       if (error.response?.status === 404 && !isFav) {
         try {
@@ -113,9 +115,9 @@ export default function Top100() {
           await api.patch(`/movies/watchlist/${item.id}/favorite`);
           setFavoriteIds((prev) => [...prev, item.id]);
           setAddedIds((prev) => Array.from(new Set([...prev, item.id])));
-          showToast("Added to list and favorites");
+          showToast(t("search_fav_added"));
         } catch {
-          showToast("Failed to favorite");
+          showToast(t("top100_fav_error"));
         }
       }
     }
@@ -149,7 +151,7 @@ export default function Top100() {
             onClick={() => navigate(-1)}
             className="text-[10px] sm:text-xs font-bold text-[#f0e6cc]/60 hover:text-[#c8963c] transition uppercase tracking-wider"
           >
-            &lt; BACK
+            &lt; {t("common_back").toUpperCase()}
           </button>
         </header>
       </div>

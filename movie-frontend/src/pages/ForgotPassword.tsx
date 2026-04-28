@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { useLang } from "../context/LanguageContext";
+import { LangToggle } from "../components/LangToggle";
 
 export default function ForgotPassword() {
+  const { t } = useLang();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState({ type: "", message: "" });
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +19,7 @@ export default function ForgotPassword() {
       const response = await api.post("/auth/forgot-password", { email });
       setStatus({ type: "success", message: response.data.message });
     } catch (err: any) {
-      setStatus({ type: "error", message: "Failed to send reset link." });
+      setStatus({ type: "error", message: t("password_reset_error") });
     } finally {
       setIsLoading(false);
     }
@@ -29,10 +32,10 @@ export default function ForgotPassword() {
 
         <div className="text-center">
           <h2 className="text-2xl sm:text-3xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
-            Reset Password
+            {t("password_reset_title")}
           </h2>
           <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium">
-            Enter your email to get a reset link
+            {t("password_reset_subtitle")}
           </p>
         </div>
 
@@ -51,7 +54,7 @@ export default function ForgotPassword() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              Email Address
+              {t("login_email")}
             </label>
             <input
               type="email"
@@ -66,7 +69,7 @@ export default function ForgotPassword() {
             disabled={isLoading}
             className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow-lg"
           >
-            {isLoading ? "Sending..." : "Send Reset Link"}
+            {isLoading ? t("password_reset_sending") : t("password_reset_send")}
           </button>
         </form>
 
@@ -75,7 +78,7 @@ export default function ForgotPassword() {
             to="/login"
             className="text-xs font-bold text-[#f0e6cc]/40 hover:text-[#c8963c] transition uppercase underline underline-offset-4"
           >
-            Back to Login
+            {t("password_reset_back")}
           </Link>
         </div>
       </div>

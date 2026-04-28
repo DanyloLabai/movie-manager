@@ -1,8 +1,11 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { useLang } from "../context/LanguageContext";
+import { LangToggle } from "../components/LangToggle";
 
 export default function VerifyEmail() {
+  const { t } = useLang();
   const [searchParams] = useSearchParams();
   const [status, setStatus] = useState<"loading" | "success" | "error">(
     "loading",
@@ -52,10 +55,10 @@ export default function VerifyEmail() {
             </svg>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-[#c8963c] mb-4 uppercase tracking-widest drop-shadow-md">
-            Success!
+            {t("verify_success")}
           </h2>
           <p className="text-[#f0e6cc]/60 text-sm font-medium tracking-wide mb-8">
-            Your email has been verified. You can now log in.
+            {t("verify_message")}
           </p>
           <button
             onClick={() => navigate("/login")}
@@ -85,10 +88,10 @@ export default function VerifyEmail() {
             </svg>
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-red-500 mb-4 uppercase tracking-widest drop-shadow-md">
-            Error
+            {t("verify_error")}
           </h2>
           <p className="text-[#f0e6cc]/60 text-sm font-medium tracking-wide">
-            The link is invalid or has expired.
+            {t("verify_error_msg")}
           </p>
         </div>
       )}

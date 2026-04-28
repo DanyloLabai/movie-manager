@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
+import { useLang } from "../context/LanguageContext";
+import { LangToggle } from "../components/LangToggle";
 
 export default function ChangePassword() {
+  const { t } = useLang();
   const [email, setEmail] = useState("");
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -23,7 +26,7 @@ export default function ChangePassword() {
     setSuccessMsg("");
 
     if (newPassword !== confirmPassword) {
-      setError("New passwords do not match.");
+      setError(t("password_mismatch"));
       return;
     }
 
@@ -35,7 +38,7 @@ export default function ChangePassword() {
         newPassword,
       });
 
-      setSuccessMsg("Password changed successfully! Redirecting to login...");
+      setSuccessMsg(t("password_success"));
       localStorage.removeItem("token");
 
       setTimeout(() => {
@@ -116,10 +119,10 @@ export default function ChangePassword() {
 
         <div className="text-center">
           <h2 className="text-2xl sm:text-3xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
-            Security Settings
+            {t("password_security")}
           </h2>
           <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium tracking-wide">
-            Update your account password
+            {t("password_subtitle")}
           </p>
         </div>
 
@@ -132,7 +135,7 @@ export default function ChangePassword() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              Email Address
+              {t("login_email")}
             </label>
             <input
               type="email"
@@ -146,7 +149,7 @@ export default function ChangePassword() {
 
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              Current Password
+              {t("password_current")}
             </label>
             <div className="relative">
               <input
@@ -170,7 +173,7 @@ export default function ChangePassword() {
 
           <div className="border-t border-[#c8963c]/20 my-2 pt-5">
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              New Password
+              {t("password_new")}
             </label>
             <div className="relative">
               <input
@@ -178,7 +181,7 @@ export default function ChangePassword() {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 className="w-full px-4 py-3.5 pr-12 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
-                placeholder="Min 8 characters"
+                placeholder={t("password_min")}
                 minLength={8}
                 required
               />
@@ -195,7 +198,7 @@ export default function ChangePassword() {
 
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              Confirm New Password
+              {t("password_confirm")}
             </label>
             <div className="relative">
               <input
@@ -222,7 +225,7 @@ export default function ChangePassword() {
             disabled={isLoading || !!successMsg}
             className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow-lg shadow-[#c8963c]/10 min-h-[52px]"
           >
-            {isLoading ? "Updating..." : "Update Password"}
+            {isLoading ? t("password_updating") : t("password_update")}
           </button>
         </form>
 
@@ -231,7 +234,7 @@ export default function ChangePassword() {
           className="w-full text-xs font-bold text-[#f0e6cc]/40 hover:text-[#c8963c] transition uppercase tracking-wider underline underline-offset-4"
           disabled={!!successMsg}
         >
-          Cancel and go back
+          {t("password_cancel")}
         </button>
       </div>
     </div>
