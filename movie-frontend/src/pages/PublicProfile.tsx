@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { api } from "../api";
 import LogoImg from "../assets/logo.png";
-import { useLang } from "../components/LanguageContext";
+import { useLang } from "../context/LanguageContext";
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
 

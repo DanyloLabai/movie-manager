@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import LogoImg from "../assets/logo.png";
 import { api } from "../api";
-import { useLang } from "../components/LanguageContext";
+import { useLang } from "../context/LanguageContext";
 
 interface WatchlistItem {
   id: string;

@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import LogoImg from "../assets/logo.png";
-import LangToggle from "../context/LangToggle";
-import { useLang } from "../components/LanguageContext";
+import LangToggle from "../components/LangToggle";
+import { useLang } from "../context/LanguageContext";
 
 interface MovieResult {
   id: number;

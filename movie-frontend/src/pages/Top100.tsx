@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import { MovieCard } from "./Search";
 import LogoImg from "../assets/logo.png";
-import { useLang } from "../components/LanguageContext";
+import { useLang } from "../context/LanguageContext";
 
 export default function Top100() {
   const { t } = useLang();

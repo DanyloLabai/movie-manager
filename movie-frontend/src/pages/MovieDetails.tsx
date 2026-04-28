@@ -7,7 +7,7 @@ import {
 } from "react-router-dom";
 import { api } from "../api";
 import LogoImg from "../assets/logo.png";
-import { useLang } from "../components/LanguageContext";
+import { useLang } from "../context/LanguageContext";
 
 interface WatchProvider {
   provider_id: number;
