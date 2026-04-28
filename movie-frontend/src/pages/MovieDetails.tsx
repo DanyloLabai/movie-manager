@@ -661,7 +661,7 @@ export default function MovieDetails() {
           <div className="flex items-center justify-between px-4 sm:px-6 mb-4 sm:mb-8">
             <div className="flex items-center gap-4">
               <h3 className="text-lg sm:text-2xl font-black text-[#f0e6cc] uppercase tracking-tighter italic">
-                More Like This
+                {t("movie_more_like_this")}
               </h3>
               <div className="hidden sm:block h-[1px] w-24 bg-[#c8963c]/20" />
             </div>

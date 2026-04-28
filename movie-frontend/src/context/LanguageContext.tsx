@@ -241,6 +241,7 @@ const translations = {
     movie_rate_desc: "Rate",
     movie_or_skip: "or skip",
     common_unreleased: "Not released yet",
+    movie_more_like_this: "More Like This",
 
     profile_friends_list: "Friends List",
     profile_loading: "Loading...",
@@ -497,6 +498,7 @@ const translations = {
     movie_rate_desc: "Оцініть",
     movie_or_skip: "або пропустіть",
     common_unreleased: "Ще не вийшло",
+    movie_more_like_this: "Схожі фільми",
 
     profile_friends_list: "Список друзів",
     profile_loading: "Завантаження...",
