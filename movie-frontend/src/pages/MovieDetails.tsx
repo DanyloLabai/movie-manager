@@ -655,7 +655,104 @@ export default function MovieDetails() {
           )}
         </div>
       </div>
+      {/* Recommendations Slider */}
+      {recommendations.length > 0 && (
+        <div className="mt-10 sm:mt-20 max-w-7xl mx-auto">
+          <div className="flex items-center justify-between px-4 sm:px-6 mb-4 sm:mb-8">
+            <div className="flex items-center gap-4">
+              <h3 className="text-lg sm:text-2xl font-black text-[#f0e6cc] uppercase tracking-tighter italic">
+                More Like This
+              </h3>
+              <div className="hidden sm:block h-[1px] w-24 bg-[#c8963c]/20" />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => scrollSlider("left")}
+                disabled={!canScrollLeft}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center border transition active:scale-90 ${
+                  canScrollLeft
+                    ? "bg-[#1a1714] border-[#c8963c]/30 text-[#c8963c] hover:bg-[#c8963c]/10"
+                    : "bg-[#12100e] border-[#c8963c]/10 text-[#f0e6cc]/20 cursor-not-allowed"
+                }`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={() => scrollSlider("right")}
+                disabled={!canScrollRight}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center border transition active:scale-90 ${
+                  canScrollRight
+                    ? "bg-[#1a1714] border-[#c8963c]/30 text-[#c8963c] hover:bg-[#c8963c]/10"
+                    : "bg-[#12100e] border-[#c8963c]/10 text-[#f0e6cc]/20 cursor-not-allowed"
+                }`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
 
+          <div
+            ref={sliderRef}
+            className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide px-4 sm:px-6 pb-4 snap-x snap-mandatory"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+            onScroll={checkScroll}
+          >
+            {recommendations.map((m) => (
+              <Link
+                key={m.id}
+                to={`/movie/${m.id}?type=${mediaType}`}
+                className="group flex-shrink-0 w-36 sm:w-44 snap-start bg-[#1a1714] rounded-2xl sm:rounded-[2rem] overflow-hidden border border-[#c8963c]/20 hover:border-[#c8963c]/70 transition-all duration-300 hover:-translate-y-1 shadow-lg"
+              >
+                <div className="aspect-[2/3] relative overflow-hidden">
+                  {m.posterUrl ? (
+                    <img
+                      src={m.posterUrl}
+                      alt={m.title}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-[#12100e] flex items-center justify-center text-[9px] text-[#f0e6cc]/30 font-bold uppercase tracking-widest">
+                      N/A
+                    </div>
+                  )}
+                </div>
+                <div className="p-3 sm:p-4">
+                  <h4 className="text-[10px] sm:text-xs font-bold text-[#f0e6cc] truncate group-hover:text-[#c8963c] transition-colors uppercase tracking-tight">
+                    {m.title}
+                  </h4>
+                  <p className="text-[8px] sm:text-[9px] text-[#f0e6cc]/50 mt-0.5 font-black uppercase tracking-widest">
+                    {m.releaseYear}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
       {isRatingModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div
