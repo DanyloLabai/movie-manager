@@ -35,11 +35,13 @@ export default function Top100() {
             profileRes.data.favorites?.map((f: any) => f.tmdbId) || [];
           const recent =
             profileRes.data.recent?.map((r: any) => r.tmdbId) || [];
-          const watched =
-            profileRes.data.watched?.map((w: any) => w.tmdbId) || [];
+          const watched = profileRes.data.watchedIds || [];
+          const inPlans = profileRes.data.inPlansIds || [];
 
           setFavoriteIds(favs);
-          setAddedIds(Array.from(new Set([...favs, ...recent, ...watched])));
+          setAddedIds(
+            Array.from(new Set([...favs, ...recent, ...watched, ...inPlans])),
+          );
           setWatchedIds(watched);
         }
       } catch (error) {

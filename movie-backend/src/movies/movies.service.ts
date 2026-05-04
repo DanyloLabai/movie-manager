@@ -96,7 +96,6 @@ export class MoviesService {
     this.PROFILE_TOP_RATED_LIMIT =
       this.configService.get<number>('PROFILE_TOP_RATED_LIMIT') || 3;
 
-    // 🔥 ФІКС: Замовляємо у ШІ 20 фільмів замість 8, щоб мати "запас" для підміни
     this.RECOMMENDATIONS_LIMIT =
       this.configService.get<number>('RECOMMENDATIONS_LIMIT') || 20;
 
