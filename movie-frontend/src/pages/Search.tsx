@@ -360,35 +360,18 @@ export default function Search() {
     }
   });
 
+  const [watchedIds, setWatchedIds] = useState<number[]>([]);
   const [isLoadingHome, setIsLoadingHome] = useState(trending.length === 0);
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const { t } = useLang();
   const navigate = useNavigate();
-  const [watchedIds, setWatchedIds] = useState<number[]>([]);
 
   const [visibleCount, setVisibleCount] = useState(20);
 
   const visibleRecommendations = recommendations
     .filter((movie) => !addedIds.includes(movie.id))
-    .slice(0, 10);
-
-  useEffect(() => {
-    if (recommendations.length > 0 && visibleRecommendations.length < 5) {
-      api
-        .get("/movies/recommendations")
-        .then((res) => {
-          if (res.data?.length > 0) {
-            setRecommendations(res.data);
-            localStorage.setItem(
-              RECOMMENDATIONS_CACHE_KEY,
-              JSON.stringify(res.data),
-            );
-          }
-        })
-        .catch(() => {});
-    }
-  }, [visibleRecommendations.length, recommendations.length]);
+    .slice(0, 20);
 
   useEffect(() => {
     localStorage.setItem(ADDED_CACHE_KEY, JSON.stringify(addedIds));
@@ -448,6 +431,7 @@ export default function Search() {
             api.get("/movies/recommendations").catch(() => ({ data: [] })),
             api.get("/movies/upcoming").catch(() => ({ data: [] })),
           ]);
+
         if (trendingRes.data?.length > 0) {
           setTrending(trendingRes.data);
           localStorage.setItem(
