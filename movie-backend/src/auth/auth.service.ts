@@ -124,7 +124,12 @@ export class AuthService {
     return { message: 'Password updated successfully' };
   }
 
-  async signIn(signInDto: SignInDto): Promise<{ accessToken: string }> {
+  async signIn(
+    signInDto: SignInDto,
+  ): Promise<{
+    access_token: string;
+    user: { id: number; username: string; email: string };
+  }> {
     const { email, password } = signInDto;
 
     const user = await this.usersRepository.findOne({ where: { email } });
@@ -146,7 +151,12 @@ export class AuthService {
     };
 
     return {
-      accessToken: await this.jwtService.signAsync(payload),
+      access_token: await this.jwtService.signAsync(payload),
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      },
     };
   }
 

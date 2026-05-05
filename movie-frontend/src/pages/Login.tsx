@@ -2,10 +2,13 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useLang } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
+import { STORAGE_KEYS } from "../constants/storage";
 import LangToggle from "../components/LangToggle";
 
 export default function Login() {
   const { t } = useLang();
+  const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -25,17 +28,21 @@ export default function Login() {
     try {
       const response = await api.post("/auth/signin", { email, password });
 
-      localStorage.removeItem(
-        import.meta.env.VITE_PROFILE_CACHE_KEY || "movie_tracker_profile_cache",
-      );
+      // Clear old caches
+      Object.values(STORAGE_KEYS).forEach((key) => {
+        if (typeof key === "string") {
+          const keysToRemove = Object.keys(localStorage).filter(
+            (k) => k.includes(key) || k.startsWith(key),
+          );
+          keysToRemove.forEach((k) => localStorage.removeItem(k));
+        }
+      });
       localStorage.removeItem("custom_username");
       localStorage.removeItem("custom_avatarUrl");
-      localStorage.removeItem("movie_tracker_favorites_cache");
       localStorage.removeItem("movie_tracker_chat_history");
-      localStorage.removeItem("trending_cache");
-      localStorage.removeItem("recommendations_cache");
 
-      localStorage.setItem("token", response.data.accessToken);
+      // Use AuthContext to login
+      login(response.data.access_token, response.data.user);
       navigate("/watchlist");
     } catch (err: any) {
       const serverMessage = err.response?.data?.message;
@@ -62,7 +69,7 @@ export default function Login() {
       await api.post("/auth/resend-verification", { email });
       setResendStatus(t("login_resend"));
     } catch {
-      setResendStatus("Failed to send. Please try again.");
+      setResendStatus(t("login_resend_error"));
     } finally {
       setIsResending(false);
     }
@@ -137,7 +144,7 @@ export default function Login() {
                     disabled={isResending}
                     className="text-[#c8963c] hover:text-[#e8c070] transition font-black normal-case disabled:opacity-50"
                   >
-                    {isResending ? "Sending..." : "Resend verification email →"}
+                    {isResending ? t("login_sending") : t("login_resend")}
                   </button>
                 )}
               </div>

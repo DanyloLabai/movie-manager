@@ -103,6 +103,8 @@ const translations = {
     login_signup: "Create an account",
     login_error: "Invalid email or password. Please try again!",
     login_resend: "Resend verification email →",
+    login_sending: "Sending...",
+    login_resend_error: "Failed to send. Please try again.",
 
     // Register page
     register_welcome: "Join Us",
@@ -367,6 +369,8 @@ const translations = {
     login_signup: "Створи обліковий запис",
     login_error: "Невірна адреса електронної пошти або пароль!",
     login_resend: "Надіслати посилання на підтвердження →",
+    login_sending: "Надсилаємо...",
+    login_resend_error: "Не вдалося надіслати. Спробуй ще раз.",
 
     // Register page
     register_welcome: "Приєднуйся",

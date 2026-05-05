@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Watchlist from "./pages/Watchlist";
@@ -15,9 +16,17 @@ import Top100 from "./pages/Top100";
 import type { JSX } from "react";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
-  const token = localStorage.getItem("token");
+  const { isAuthenticated, isLoading } = useAuth();
 
-  if (!token) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#12100e]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#c8963c]"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 

@@ -8,6 +8,7 @@ import {
   JoinTable,
   OneToMany,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { WatchlistItem } from '../movies/watchlist-entity';
 
 @Entity('users')
@@ -21,6 +22,7 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  @Exclude()
   @Column()
   password: string;
 
@@ -30,6 +32,7 @@ export class User {
   @Column({ default: false })
   isVerified: boolean;
 
+  @Exclude()
   @Column({ type: 'varchar', nullable: true })
   verificationToken: string | null;
 
@@ -39,6 +42,7 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 
+  @Exclude()
   @Column({ type: 'varchar', nullable: true })
   resetToken: string | null;
 
