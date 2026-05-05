@@ -105,6 +105,32 @@ export class MoviesService {
       this.configService.get<number>('GENRE_DISTRIBUTION_LIMIT') || 5;
   }
 
+  /**
+   * Helper method to handle API requests with retry logic for 429 (rate limit) errors
+   */
+  private async makeRequestWithRetry<T>(
+    request: () => Promise<{ data: T }>,
+    maxRetries: number = 3,
+    initialDelay: number = 1000,
+  ): Promise<{ data: T }> {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await request();
+      } catch (error: any) {
+        if (error.response?.status === 429 && attempt < maxRetries - 1) {
+          const delay = initialDelay * Math.pow(2, attempt);
+          this.logger.warn(
+            `Rate limited (429). Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        } else {
+          throw error;
+        }
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+
   async searchMovies(query: string): Promise<MovieResultDto[]> {
     const cacheKey = `search_v3:${query.toLowerCase().trim().replace(/\s+/g, '_')}`;
 

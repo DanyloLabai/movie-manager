@@ -29,6 +29,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = exceptionResponse;
     }
 
+    // Handle 429 Too Many Requests
+    if (status === HttpStatus.TOO_MANY_REQUESTS) {
+      message = 'Too many requests. Please wait a moment and try again.';
+    }
+
     const errorResponse = {
       statusCode: status,
       message: Array.isArray(message) ? message[0] : message,
@@ -37,7 +42,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     };
 
     // Log error for debugging
-    if (status >= 500) {
+    if (status >= 500 || status === HttpStatus.TOO_MANY_REQUESTS) {
       this.logger.error(
         `[${status}] ${message} - ${host.switchToHttp().getRequest().url}`,
         exception.stack,
