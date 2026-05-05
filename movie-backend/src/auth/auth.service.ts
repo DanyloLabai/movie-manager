@@ -124,9 +124,7 @@ export class AuthService {
     return { message: 'Password updated successfully' };
   }
 
-  async signIn(
-    signInDto: SignInDto,
-  ): Promise<{
+  async signIn(signInDto: SignInDto): Promise<{
     access_token: string;
     user: { id: number; username: string; email: string };
   }> {
@@ -188,7 +186,7 @@ export class AuthService {
     user.verificationToken = null;
     await this.usersRepository.save(user);
 
-    return { message: 'Email verified successfully!' };
+    return { message: 'Email verified successfully!', verified: true };
   }
 
   async resendVerificationEmail(email: string) {
