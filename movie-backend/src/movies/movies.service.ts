@@ -844,11 +844,35 @@ export class MoviesService {
 
       const referenceTitles = userItems.map((item) => item.title).join(', ');
 
+      // Get TOP-RATED movies from user's watchlist to exclude from recommendations
+      // Limit to last 100 items with highest ratings to represent user preferences better
+      const topRatedWatchlistItems = await this.watchlistRepo.find({
+        where: { user: { id: userId } },
+        order: { rating: 'DESC', updatedAt: 'DESC' },
+        take: 100,
+      });
+      const userWatchlistTitles = topRatedWatchlistItems
+        .map((item) => item.title)
+        .join(', ');
+
+      // Get ALL watchlist IDs for backend filtering (double-check)
+      const allWatchlistIds = new Set(
+        (
+          await this.watchlistRepo.find({
+            where: { user: { id: userId } },
+            select: ['tmdbId'],
+          })
+        ).map((item) => item.tmdbId),
+      );
+
       const prompt = `
         You are an elite movie recommendation engine. The user likes these movies/shows: ${referenceTitles}.
+        The user ALREADY HAS these titles in their watchlist - DO NOT recommend any of them: ${userWatchlistTitles}.
         Suggest exactly ${this.RECOMMENDATIONS_LIMIT} highly relevant movies or tv shows that they would love.
-        Do not include the ones they already like.
-        CRITICAL RULE: DO NOT recommend any Russian or Soviet movies/shows.
+        CRITICAL RULES:
+        - DO NOT recommend any movies from the exclusion list above
+        - DO NOT recommend any Russian or Soviet movies/shows
+        - Focus on quality, diverse recommendations
         Return ONLY a raw JSON array of strings containing the titles. No markdown, no explanations, no backticks.
         Example format: ["Title 1", "Title 2", "Title 3"]
       `;
@@ -872,8 +896,13 @@ export class MoviesService {
         recommendedTitles.map((title) => this.findMovieByTitle(title)),
       );
 
+      // Double-check: filter out any movies already in user's watchlist
+      // This ensures AI mistakes are caught at the backend level
       const results = tmdbResults
-        .filter((movie): movie is MovieResultDto => movie !== null)
+        .filter(
+          (movie): movie is MovieResultDto =>
+            movie !== null && !allWatchlistIds.has(movie.id),
+        )
         .slice(0, this.RECOMMENDATIONS_LIMIT);
 
       await this.cacheManager.set(cacheKey, results, this.TTL_1H);
