@@ -13,6 +13,7 @@ import ResetPassword from "./pages/ResetPassword";
 import PublicProfile from "./pages/PublicProfile";
 import ActorDetails from "./pages/ActorDetails";
 import Top100 from "./pages/Top100";
+import { ApiNotification } from "./components/ApiNotification";
 import type { JSX } from "react";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -37,6 +38,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className="min-h-[100dvh] bg-[#12100e] text-[#f0e6cc] font-sans overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
+        <ApiNotification />
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
