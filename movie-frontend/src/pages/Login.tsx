@@ -4,7 +4,6 @@ import { api } from "../api";
 import { useLang } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import { STORAGE_KEYS } from "../constants/storage";
-import LangToggle from "../components/LangToggle";
 
 export default function Login() {
   const { t } = useLang();
@@ -117,10 +116,6 @@ export default function Login() {
     <div className="flex items-center justify-center min-h-screen bg-[#12100e] px-4 sm:px-6 selection:bg-[#c8963c] selection:text-[#12100e]">
       <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/20 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
-
-        <div className="absolute top-4 right-4">
-          <LangToggle />
-        </div>
 
         <div className="text-center">
           <h2 className="text-3xl sm:text-4xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">

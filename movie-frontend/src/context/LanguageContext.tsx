@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
 type Lang = "en" | "uk";
 
@@ -547,14 +547,10 @@ interface LangContextType {
 const LangContext = createContext<LangContextType | null>(null);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Lang>(
-    () => (localStorage.getItem("app_lang") as Lang) || "en",
-  );
+  const lang: Lang = "en";
 
   const toggleLang = () => {
-    const next: Lang = lang === "en" ? "uk" : "en";
-    setLang(next);
-    localStorage.setItem("app_lang", next);
+    // Language toggle disabled - always using English
   };
 
   const t = (key: TranslationKey): string => translations[lang][key];
@@ -566,6 +562,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useLang() {
   const ctx = useContext(LangContext);
   if (!ctx) throw new Error("useLang must be used inside LanguageProvider");

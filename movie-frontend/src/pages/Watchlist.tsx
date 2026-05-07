@@ -13,7 +13,6 @@ import {
 import LogoImg from "../assets/logo.png";
 import { api } from "../api";
 import { useLang } from "../context/LanguageContext";
-import LangToggle from "../components/LangToggle";
 
 interface WatchlistItem {
   id: string;
@@ -933,7 +932,7 @@ export default function Watchlist() {
             >
               {t("nav_profile")}
             </Link>
-            <LangToggle />
+
             <button
               onClick={handleLogout}
               className="text-[9px] sm:text-xs px-2 py-1.5 sm:px-3 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"

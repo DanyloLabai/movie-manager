@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import LogoImg from "../assets/logo.png";
-import LangToggle from "../components/LangToggle";
+
 import { useLang } from "../context/LanguageContext";
 
 interface MovieResult {
@@ -316,7 +316,6 @@ export default function AiChat() {
             </Link>
 
             {/* Language toggle */}
-            <LangToggle />
 
             <button
               onClick={handleLogout}

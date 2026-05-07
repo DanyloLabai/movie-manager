@@ -3,7 +3,6 @@ import { useNavigate, Link } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
 import { api } from "../api";
 import { useLang } from "../context/LanguageContext";
-import LangToggle from "../components/LangToggle";
 
 export default function Register() {
   const { t } = useLang();
@@ -92,10 +91,6 @@ export default function Register() {
         <div className="w-full max-w-md p-8 sm:p-10 space-y-6 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/30 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
 
-          <div className="absolute top-4 right-4">
-            <LangToggle />
-          </div>
-
           <div className="w-20 h-20 bg-[#12100e] border border-[#c8963c]/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
             <svg
               className="w-10 h-10 text-[#c8963c]"
@@ -137,10 +132,6 @@ export default function Register() {
     <div className="flex items-center justify-center min-h-screen bg-[#12100e] px-4 py-8 sm:px-6 selection:bg-[#c8963c] selection:text-[#12100e]">
       <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/20 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
-
-        <div className="absolute top-4 right-4">
-          <LangToggle />
-        </div>
 
         <div className="text-center">
           <h2 className="text-3xl sm:text-4xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
