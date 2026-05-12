@@ -193,8 +193,9 @@ export class MoviesService {
   async findMovieByTitle(
     title: string,
     year?: number,
+    type?: 'movie' | 'tv',
   ): Promise<MovieResultDto | null> {
-    const cacheKey = `find_title_v2:${title.toLowerCase()}:${year || 'any'}`;
+    const cacheKey = `find_title_v3:${title.toLowerCase()}:${year || 'any'}:${type || 'any'}`;
     const cached = await this.cacheManager.get<MovieResultDto>(cacheKey);
     if (cached) return cached;
 
@@ -212,9 +213,12 @@ export class MoviesService {
       if (!data.results || data.results.length === 0) return null;
 
       let results: TmdbMultiSearchResultDto[] = data.results.filter(
-        (r: TmdbMultiSearchResultDto) =>
-          (r.media_type === 'movie' || r.media_type === 'tv') &&
-          r.original_language !== 'ru',
+        (r: TmdbMultiSearchResultDto) => {
+          const isCorrectType = type
+            ? r.media_type === type
+            : r.media_type === 'movie' || r.media_type === 'tv';
+          return isCorrectType && r.original_language !== 'ru';
+        },
       );
 
       if (year && results.length > 0) {

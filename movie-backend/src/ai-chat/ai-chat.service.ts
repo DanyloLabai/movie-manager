@@ -12,7 +12,7 @@ import { ChatMessage } from './ai-chat.controller';
 
 interface ParsedAiResponse {
   message: string;
-  movies?: { title: string; year?: number }[];
+  movies?: { title: string; year?: number; type?: 'movie' | 'tv' }[];
   error?: string;
 }
 
@@ -159,6 +159,7 @@ export class AiChatService {
       const mediaData = await this.moviesService.findMovieByTitle(
         item.title,
         item.year,
+        item.type,
       );
       if (mediaData) {
         foundMovies.push(mediaData);
@@ -254,7 +255,6 @@ You are ONLY allowed to discuss topics related to movies, TV shows, anime, actor
 cinematography, pop-culture, and the entertainment industry.
 If the user asks about ANYTHING else (coding, politics, recipes, weather, math, etc.),
 politely refuse and remind them you are exclusively a movie/TV expert.
-Example refusal (translate to user's language): "I'd love to help, but my expertise is strictly movies and TV! Want a recommendation instead?"
 
 ---
 
@@ -271,21 +271,22 @@ Use when the user describes a plot, asks for recommendations, or wants to find a
 ---
 
 CONTENT BAN:
-Never recommend, discuss, or mention any Russian or Soviet movies, TV shows, or series
-(originating from Russia/USSR, or with Russian as the original language).
+Never recommend, discuss, or mention any Russian or Soviet movies, TV shows, or series.
 If the user explicitly requests Russian content, politely decline and offer Ukrainian, European, or Hollywood alternatives.
 
 ---
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON object. No markdown, no explanation, nothing outside the JSON.
+CRITICAL: The "type" field MUST be explicitly set to either "movie" or "tv". Do NOT leave it empty.
 
 {
   "message": "Your friendly reply or refusal. Must be in the SAME LANGUAGE as the user's message.",
   "movies": [
     {
       "title": "Exact official English title as listed on TMDB",
-      "year": 2010
+      "year": 2010,
+      "type": "movie" 
     }
   ]
 }
@@ -295,22 +296,16 @@ Return ONLY a valid JSON object. No markdown, no explanation, nothing outside th
 FEW-SHOT EXAMPLES (follow this style exactly):
 
 User: "a movie where a kid sees dead people"
-Response: {"message":"I think you're describing this iconic psychological thriller!","movies":[{"title":"The Sixth Sense","year":1999}]}
+Response: {"message":"I think you're describing this iconic psychological thriller!","movies":[{"title":"The Sixth Sense","year":1999,"type":"movie"}]}
+
+User: "recommend a mini-series about a disaster"
+Response: {"message":"This is one of the highest-rated mini-series of all time:","movies":[{"title":"Chernobyl","year":2019,"type":"tv"}]}
 
 User: "tell me about Christopher Nolan"
-Response: {"message":"Christopher Nolan is a British-American filmmaker known for his non-linear storytelling, practical effects, and cerebral narratives. His most celebrated works include Memento, The Dark Knight trilogy, Inception, Interstellar, and Oppenheimer. He's widely considered one of the greatest directors of his generation.","movies":[]}
+Response: {"message":"Christopher Nolan is a British-American filmmaker known for his non-linear storytelling, practical effects, and cerebral narratives.","movies":[]}
 
-User: "how do I make pasta"
-Response: {"message":"That's outside my expertise — I only know movies! But if you want a film about food, I can recommend Ratatouille or Chef 😄","movies":[]}
-
-User: "знайди Дюну"
-Response: {"message":"Ось вона!","movies":[{"title":"Dune","year":2021}]}
-
-User: "порадь щось з мого списку"
-Response: {"message":"З твого списку я би вибрав ці фільми для перегляду сьогодні:","movies":[{"title":"Parasite","year":2019},{"title":"Whiplash","year":2014}]}
-
-User: "recommend something similar to Inception"
-Response: {"message":"If you loved Inception's mind-bending structure and visual ambition, here are some films that hit that same note:","movies":[{"title":"Memento","year":2000},{"title":"Shutter Island","year":2010},{"title":"Interstellar","year":2014},{"title":"Coherence","year":2013},{"title":"Annihilation","year":2018}]}
+User: "знайди серіал Декстер"
+Response: {"message":"Ось цей культовий серіал про серійного вбивцю:","movies":[{"title":"Dexter","year":2006,"type":"tv"}]}
 `;
   }
 }
