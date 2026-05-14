@@ -355,7 +355,7 @@ export default function AiChat() {
 
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e]"
+        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e] pb-24"
       >
         <div className="max-w-2xl mx-auto space-y-4 pb-2">
           {isHistoryLoading ? (
@@ -511,7 +511,7 @@ export default function AiChat() {
         </div>
       </div>
 
-      <div className="flex-none px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 z-40 relative">
+      <div className="fixed bottom-0 left-0 right-0 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 z-40">
         <div className="max-w-2xl w-full mx-auto space-y-2">
           <div className="flex items-center gap-2">
             <button
