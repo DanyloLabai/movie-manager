@@ -27,7 +27,6 @@ const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
 const CHAT_EXPIRATION_MS =
   Number(import.meta.env.VITE_CHAT_EXPIRATION_MS) || 7 * 24 * 60 * 60 * 1000;
 const MAX_HISTORY = Number(import.meta.env.VITE_MAX_HISTORY) || 20;
-
 const COOLDOWN_SECONDS = 3;
 
 export default function AiChat() {
@@ -65,7 +64,6 @@ export default function AiChat() {
       try {
         const { messages, timestamp } = JSON.parse(saved);
         if (Date.now() - timestamp < CHAT_EXPIRATION_MS) return messages;
-        else localStorage.removeItem(CHAT_STORAGE_KEY);
       } catch (e) {
         console.error("Error parsing chat history", e);
       }
@@ -74,6 +72,14 @@ export default function AiChat() {
   };
 
   const [messages, setMessages] = useState<Message[]>([getWelcomeMessage()]);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = "auto";
+    };
+  }, []);
 
   // Таймер кулдауну
   useEffect(() => {
@@ -271,10 +277,9 @@ export default function AiChat() {
   };
 
   return (
-    // 🔥 Використовуємо flex-1 та h-full, щоб контейнер ідеально розтягнувся всередині #root
-    <div className="flex-1 w-full flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* Header */}
-      <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 pt-[env(safe-area-inset-top)]">
+    <div className="flex-1 w-full h-full flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+      {/* Header (Верх) */}
+      <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
@@ -319,10 +324,10 @@ export default function AiChat() {
         </header>
       </div>
 
-      {/* Messages Area - flex-1 змушує його займати весь вільний простір, а overflow-y-auto додає скрол */}
+      {/* Messages Area (Центр) - flex-1 розтягує його, виштовхуючи поле вводу вниз */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e]"
+        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e]"
       >
         <div className="max-w-2xl mx-auto space-y-4 pb-4">
           {isHistoryLoading ? (
@@ -406,7 +411,7 @@ export default function AiChat() {
                                 className="p-1.5 rounded-md hover:bg-[#c8963c]/20 transition"
                               >
                                 <svg
-                                  className={`w-4 h-4 transition ${favoriteIds.includes(movie.id) ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30"}`}
+                                  className={`w-4 h-4 transition ${favoriteIds.includes(movie.id) ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30 hover:text-red-500"}`}
                                   stroke="currentColor"
                                   viewBox="0 0 24 24"
                                 >
@@ -455,8 +460,8 @@ export default function AiChat() {
         </div>
       </div>
 
-      {/* Input Area - flex-none гарантує, що поле вводу завжди знизу контейнера */}
-      <div className="flex-none px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 z-40">
+      {/* Input Area (Низ) - flex-none гарантує, що він завжди внизу */}
+      <div className="flex-none px-3 pt-2 pb-4 bg-[#12100e] border-t border-[#c8963c]/20 z-40">
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button
             onClick={handleClearChat}
