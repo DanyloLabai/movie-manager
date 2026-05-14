@@ -276,9 +276,9 @@ export default function AiChat() {
   };
 
   return (
-    <div className="w-full h-[100dvh] flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+    <div className="fixed inset-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
       {/* Header (Верх) - fixed щоб не рухався з клавіатурою */}
-      <div className="shrink-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
+      <div className="shrink-0 z-40 bg-[#12100e]/95 pt-[env(safe-area-inset-top)] backdrop-blur-md border-b border-[#c8963c]/10">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
@@ -495,7 +495,12 @@ export default function AiChat() {
               value={input}
               disabled={isLoading || cooldownTime > 0}
               onChange={(e) => setInput(e.target.value)}
-              onFocus={() => setTimeout(scrollToBottom, 300)}
+              onFocus={() => {
+                setTimeout(() => {
+                  window.scrollTo(0, 0);
+                  scrollToBottom();
+                }, 50);
+              }}
               placeholder={
                 isLoading
                   ? t("chat_thinking")
