@@ -276,9 +276,9 @@ export default function AiChat() {
   };
 
   return (
-    <div className="w-full h-screen flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+    <div className="w-full h-[100dvh] flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
       {/* Header (Верх) - fixed щоб не рухався з клавіатурою */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
+      <div className="shrink-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
@@ -325,7 +325,7 @@ export default function AiChat() {
       {/* Messages Area (Центр) - flex-1 розтягує його, з padding для хедера */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e] pb-28 pt-20 sm:pt-24 mt-auto"
+        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e]"
       >
         <div className="max-w-2xl mx-auto space-y-4 pb-4">
           {isHistoryLoading ? (
@@ -460,7 +460,7 @@ export default function AiChat() {
 
       {/* Input Area (Низ) - fixed позиція для мобільних, висунеться над клавіатурою */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-3 pt-2 bg-[#12100e] border-t border-[#c8963c]/20 z-40"
+        className="shrink-0 w-full px-3 pt-2 bg-[#12100e] border-t border-[#c8963c]/20 z-40"
         style={{
           paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
           marginTop: "auto",
