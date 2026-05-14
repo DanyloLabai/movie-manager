@@ -47,9 +47,11 @@ export default function AiChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [viewportHeight, setViewportHeight] = useState<number | string>(
-    "100dvh",
-  );
+
+  // --- KEYBOARD FIX: track visual viewport offset ---
+  const [inputBarBottom, setInputBarBottom] = useState(0);
+  const inputBarRef = useRef<HTMLDivElement>(null);
+  // --------------------------------------------------
 
   const [cooldownTime, setCooldownTime] = useState(0);
 
@@ -57,6 +59,28 @@ export default function AiChat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // --- KEYBOARD FIX: visualViewport listener ---
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const updateOffset = () => {
+      // Distance from bottom of visual viewport to bottom of layout viewport
+      const offset = window.innerHeight - viewport.height - viewport.offsetTop;
+      setInputBarBottom(Math.max(0, offset));
+    };
+
+    viewport.addEventListener("resize", updateOffset);
+    viewport.addEventListener("scroll", updateOffset);
+    updateOffset();
+
+    return () => {
+      viewport.removeEventListener("resize", updateOffset);
+      viewport.removeEventListener("scroll", updateOffset);
+    };
+  }, []);
+  // ---------------------------------------------
 
   const getWelcomeMessage = (): Message => ({
     role: "ai",
@@ -306,7 +330,7 @@ export default function AiChat() {
   return (
     <div
       className="fixed top-0 left-0 w-full flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]"
-      style={{ height: viewportHeight }}
+      style={{ height: "100dvh" }}
     >
       <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
@@ -353,6 +377,7 @@ export default function AiChat() {
         </header>
       </div>
 
+      {/* Chat scroll area — bottom padding accounts for input bar height (~72px) */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e] pb-24"
@@ -511,7 +536,24 @@ export default function AiChat() {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 z-40">
+      {/*
+        INPUT BAR — KEY FIX:
+        Instead of `fixed bottom-0`, we use `bottom` = inputBarBottom
+        which equals (window.innerHeight - visualViewport.height - visualViewport.offsetTop).
+        When the keyboard is hidden this is 0; when it opens it becomes the keyboard height,
+        pushing the bar up above the keyboard on both iOS and Android.
+      */}
+      <div
+        ref={inputBarRef}
+        className="fixed left-0 right-0 px-3 pt-2 bg-[#12100e] border-t border-[#c8963c]/20 z-40 transition-[bottom] duration-100"
+        style={{
+          bottom: inputBarBottom,
+          paddingBottom:
+            inputBarBottom > 0
+              ? "12px"
+              : "max(env(safe-area-inset-bottom), 12px)",
+        }}
+      >
         <div className="max-w-2xl w-full mx-auto space-y-2">
           <div className="flex items-center gap-2">
             <button
@@ -543,10 +585,8 @@ export default function AiChat() {
                 disabled={isLoading || cooldownTime > 0}
                 onChange={(e) => setInput(e.target.value)}
                 onFocus={() => {
-                  setTimeout(() => {
-                    window.scrollTo(0, 0);
-                    scrollToBottom();
-                  }, 300);
+                  // Small delay for keyboard to fully open, then scroll to bottom
+                  setTimeout(scrollToBottom, 350);
                 }}
                 placeholder={
                   isLoading
