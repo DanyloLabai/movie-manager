@@ -276,9 +276,9 @@ export default function AiChat() {
   };
 
   return (
-    <div className="w-full h-dvh flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e] fixed inset-0">
-      {/* Header (Верх) */}
-      <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 relative">
+    <div className="w-full h-screen flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+      {/* Header (Верх) - sticky щоб залишався на місці */}
+      <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 sticky top-0">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
