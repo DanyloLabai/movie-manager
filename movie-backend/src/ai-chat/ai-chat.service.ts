@@ -2,7 +2,10 @@ import {
   Injectable,
   InternalServerErrorException,
   Logger,
+  Inject,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
@@ -25,6 +28,7 @@ export class AiChatService {
   constructor(
     private configService: ConfigService,
     private moviesService: MoviesService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     const geminiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
     const groqKey = this.configService.get<string>('GROQ_API_KEY') || '';
@@ -372,5 +376,17 @@ Response: {"message":"I only cover movies and TV — ask me about something to w
 User: "recommend Russian series"
 Response: {"message":"I do not recommend Russian content, but I can suggest great Ukrainian, European, or Hollywood series — what genre interests you?","movies":[]}
 `;
+  }
+
+  async getHistory(userId: number): Promise<any[]> {
+    const key = `chat_history:${userId}`;
+    const history = await this.cacheManager.get(key);
+    return history ? (Array.isArray(history) ? history : []) : [];
+  }
+
+  async saveHistory(userId: number, messages: any[]): Promise<void> {
+    const key = `chat_history:${userId}`;
+    const ttlMs = 604800000; // 7 days in milliseconds
+    await this.cacheManager.set(key, messages, ttlMs);
   }
 }

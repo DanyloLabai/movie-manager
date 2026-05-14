@@ -45,6 +45,7 @@ export default function AiChat() {
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [viewportHeight, setViewportHeight] = useState<number | string>(
     "100dvh",
@@ -76,7 +77,7 @@ export default function AiChat() {
     return [getWelcomeMessage()];
   };
 
-  const [messages, setMessages] = useState<Message[]>(loadSavedMessages);
+  const [messages, setMessages] = useState<Message[]>([getWelcomeMessage()]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
@@ -100,23 +101,50 @@ export default function AiChat() {
   };
 
   useEffect(() => {
-    const visualViewport = window.visualViewport;
-    if (!visualViewport) return;
-    const handleResize = () => {
-      setViewportHeight(visualViewport.height);
-      window.scrollTo(0, 0);
-      setTimeout(scrollToBottom, 50);
-    };
-    visualViewport.addEventListener("resize", handleResize);
-    handleResize();
-    return () => visualViewport.removeEventListener("resize", handleResize);
+    window.scrollTo(0, 0);
+    setTimeout(scrollToBottom, 50);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
-      CHAT_STORAGE_KEY,
-      JSON.stringify({ messages, timestamp: Date.now() }),
-    );
+    const loadHistory = async () => {
+      try {
+        const response = await api.get("/ai/history");
+        if (Array.isArray(response.data) && response.data.length > 1) {
+          setMessages(response.data);
+        } else {
+          setMessages([getWelcomeMessage()]);
+        }
+      } catch (error) {
+        console.error("Failed to load history from server:", error);
+        setMessages(loadSavedMessages());
+      } finally {
+        setIsHistoryLoading(false);
+      }
+    };
+
+    loadHistory();
+  }, []);
+
+  useEffect(() => {
+    if (messages.length <= 1) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        await api.post("/ai/history", { messages });
+        localStorage.setItem(
+          CHAT_STORAGE_KEY,
+          JSON.stringify({ messages, timestamp: Date.now() }),
+        );
+      } catch (error) {
+        console.error("Failed to save history:", error);
+        localStorage.setItem(
+          CHAT_STORAGE_KEY,
+          JSON.stringify({ messages, timestamp: Date.now() }),
+        );
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [messages]);
 
   useEffect(() => {
@@ -158,6 +186,7 @@ export default function AiChat() {
   const handleClearChat = () => {
     setMessages([{ role: "ai", text: t("chat_cleared") }]);
     localStorage.removeItem(CHAT_STORAGE_KEY);
+    api.post("/ai/history", { messages: [] }).catch(() => {});
     showToast(t("chat_history_cleared"));
   };
 
@@ -279,7 +308,6 @@ export default function AiChat() {
       className="fixed top-0 left-0 w-full flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]"
       style={{ height: viewportHeight }}
     >
-      {/* Header */}
       <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
@@ -315,8 +343,6 @@ export default function AiChat() {
               {t("nav_profile")}
             </Link>
 
-            {/* Language toggle */}
-
             <button
               onClick={handleLogout}
               className="text-[9px] sm:text-xs px-2 py-1.5 sm:px-3 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
@@ -327,155 +353,166 @@ export default function AiChat() {
         </header>
       </div>
 
-      {/* Messages */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide overscroll-none bg-[#12100e]"
       >
         <div className="max-w-2xl mx-auto space-y-4 pb-2">
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
-            >
-              <div
-                className={`max-w-[92%] p-3 rounded-2xl shadow-xl text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-[#c8963c] text-[#12100e] rounded-tr-sm font-medium"
-                    : "bg-[#1a1714] border border-[#c8963c]/30 text-[#f0e6cc] rounded-tl-sm"
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{msg.text}</p>
+          {isHistoryLoading ? (
+            <div className="flex items-center justify-center pt-20">
+              <div className="flex gap-2">
+                <div className="w-2 h-2 bg-[#c8963c] rounded-full animate-bounce" />
+                <div className="w-2 h-2 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.2s]" />
+                <div className="w-2 h-2 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.4s]" />
+              </div>
+            </div>
+          ) : (
+            <>
+              {messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
+                >
+                  <div
+                    className={`max-w-[92%] p-3 rounded-2xl shadow-xl text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-[#c8963c] text-[#12100e] rounded-tr-sm font-medium"
+                        : "bg-[#1a1714] border border-[#c8963c]/30 text-[#f0e6cc] rounded-tl-sm"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{msg.text}</p>
 
-                {msg.movies && msg.movies.length > 0 && (
-                  <div className="mt-3 flex flex-col gap-1.5 bg-[#12100e]/60 p-2 rounded-xl border border-[#c8963c]/20">
-                    <h5 className="text-[#c8963c] text-[9px] font-bold uppercase tracking-widest px-1 pt-0.5 pb-1.5">
-                      {t("chat_recommended")}
-                    </h5>
-                    {msg.movies.map((movie) => {
-                      const released = isReleased(movie);
-                      return (
-                        <div
-                          key={movie.id}
-                          className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-[#c8963c]/10 transition border border-transparent hover:border-[#c8963c]/20 cursor-pointer group"
-                          onClick={() =>
-                            navigate(
-                              `/movie/${movie.id}?type=${movie.mediaType}`,
-                            )
-                          }
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <div className="w-9 h-12 bg-[#12100e] rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20">
-                              {movie.posterUrl ? (
-                                <img
-                                  src={movie.posterUrl}
-                                  alt={movie.title}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/30">
-                                  N/A
+                    {msg.movies && msg.movies.length > 0 && (
+                      <div className="mt-3 flex flex-col gap-1.5 bg-[#12100e]/60 p-2 rounded-xl border border-[#c8963c]/20">
+                        <h5 className="text-[#c8963c] text-[9px] font-bold uppercase tracking-widest px-1 pt-0.5 pb-1.5">
+                          {t("chat_recommended")}
+                        </h5>
+                        {msg.movies.map((movie) => {
+                          const released = isReleased(movie);
+                          return (
+                            <div
+                              key={movie.id}
+                              className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-[#c8963c]/10 transition border border-transparent hover:border-[#c8963c]/20 cursor-pointer group"
+                              onClick={() =>
+                                navigate(
+                                  `/movie/${movie.id}?type=${movie.mediaType}`,
+                                )
+                              }
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <div className="w-9 h-12 bg-[#12100e] rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20">
+                                  {movie.posterUrl ? (
+                                    <img
+                                      src={movie.posterUrl}
+                                      alt={movie.title}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/30">
+                                      N/A
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <h4 className="font-bold text-[#f0e6cc] text-xs truncate group-hover:text-[#c8963c] transition">
-                                {movie.title}{" "}
-                                <span className="font-normal text-[#f0e6cc]/50">
-                                  (
-                                  {movie.releaseDate
-                                    ? new Date(movie.releaseDate).getFullYear()
-                                    : movie.releaseYear}
-                                  )
-                                </span>
-                              </h4>
-                              <p className="text-[8px] text-[#f0e6cc]/50 mt-0.5 uppercase font-semibold tracking-wider">
-                                {movie.mediaType === "tv"
-                                  ? t("chat_tv")
-                                  : t("chat_movie")}
-                                {released &&
-                                  ` • ${Number(movie.rating || 0).toFixed(1)}`}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="shrink-0 flex items-center gap-1">
-                            {released ? (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleToggleFavorite(movie);
-                                }}
-                                className="p-1.5 rounded-md hover:bg-[#c8963c]/20 transition"
-                              >
-                                <svg
-                                  className={`w-4 h-4 transition ${favoriteIds.includes(movie.id) ? "text-red-500" : "text-[#f0e6cc]/30 hover:text-red-500"}`}
-                                  fill={
-                                    favoriteIds.includes(movie.id)
-                                      ? "currentColor"
-                                      : "none"
-                                  }
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                  />
-                                </svg>
-                              </button>
-                            ) : (
-                              <div className="p-1.5 text-[#c8963c] text-xs">
-                                ⏳
+                                <div className="flex flex-col min-w-0">
+                                  <h4 className="font-bold text-[#f0e6cc] text-xs truncate group-hover:text-[#c8963c] transition">
+                                    {movie.title}{" "}
+                                    <span className="font-normal text-[#f0e6cc]/50">
+                                      (
+                                      {movie.releaseDate
+                                        ? new Date(
+                                            movie.releaseDate,
+                                          ).getFullYear()
+                                        : movie.releaseYear}
+                                      )
+                                    </span>
+                                  </h4>
+                                  <p className="text-[8px] text-[#f0e6cc]/50 mt-0.5 uppercase font-semibold tracking-wider">
+                                    {movie.mediaType === "tv"
+                                      ? t("chat_tv")
+                                      : t("chat_movie")}
+                                    {released &&
+                                      ` • ${Number(movie.rating || 0).toFixed(1)}`}
+                                  </p>
+                                </div>
                               </div>
-                            )}
 
-                            {addedIds.includes(movie.id) ? (
-                              <div className="text-[9px] text-[#c8963c] px-2 py-1 font-bold flex items-center gap-0.5 opacity-70">
-                                <span>✓</span>
+                              <div className="shrink-0 flex items-center gap-1">
+                                {released ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleToggleFavorite(movie);
+                                    }}
+                                    className="p-1.5 rounded-md hover:bg-[#c8963c]/20 transition"
+                                  >
+                                    <svg
+                                      className={`w-4 h-4 transition ${favoriteIds.includes(movie.id) ? "text-red-500" : "text-[#f0e6cc]/30 hover:text-red-500"}`}
+                                      fill={
+                                        favoriteIds.includes(movie.id)
+                                          ? "currentColor"
+                                          : "none"
+                                      }
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth="2"
+                                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                                      />
+                                    </svg>
+                                  </button>
+                                ) : (
+                                  <div className="p-1.5 text-[#c8963c] text-xs">
+                                    ⏳
+                                  </div>
+                                )}
+
+                                {addedIds.includes(movie.id) ? (
+                                  <div className="text-[9px] text-[#c8963c] px-2 py-1 font-bold flex items-center gap-0.5 opacity-70">
+                                    <span>✓</span>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddFromChat(movie);
+                                    }}
+                                    className="text-[9px] border border-[#c8963c]/50 text-[#c8963c] px-2.5 py-1 rounded-lg font-bold hover:bg-[#c8963c] hover:text-[#12100e] transition active:scale-95 whitespace-nowrap"
+                                  >
+                                    {t("chat_add_btn")}
+                                  </button>
+                                )}
                               </div>
-                            ) : (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddFromChat(movie);
-                                }}
-                                className="text-[9px] border border-[#c8963c]/50 text-[#c8963c] px-2.5 py-1 rounded-lg font-bold hover:bg-[#c8963c] hover:text-[#12100e] transition active:scale-95 whitespace-nowrap"
-                              >
-                                {t("chat_add_btn")}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-[#1a1714] border border-[#c8963c]/30 p-4 rounded-2xl rounded-tl-sm shadow">
-                <div className="flex gap-1.5">
-                  <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce" />
-                  <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.2s]" />
-                  <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.4s]" />
                 </div>
-              </div>
-            </div>
+              ))}
+
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-[#1a1714] border border-[#c8963c]/30 p-4 rounded-2xl rounded-tl-sm shadow">
+                    <div className="flex gap-1.5">
+                      <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce" />
+                      <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.2s]" />
+                      <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.4s]" />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
           <div ref={messagesEndRef} />
         </div>
       </div>
 
-      {/* Input area */}
       <div className="flex-none px-3 pt-2 pb-[max(env(safe-area-inset-bottom),12px)] bg-[#12100e] border-t border-[#c8963c]/20 z-40 relative">
         <div className="max-w-2xl w-full mx-auto space-y-2">
-          {/* Input row */}
           <div className="flex items-center gap-2">
             <button
               onClick={handleClearChat}
