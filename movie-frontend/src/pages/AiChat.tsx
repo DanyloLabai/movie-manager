@@ -25,7 +25,7 @@ interface Message {
 const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
 const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
 const CHAT_EXPIRATION_MS =
-  Number(import.meta.env.VITE_CHAT_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
+  Number(import.meta.env.VITE_CHAT_EXPIRATION_MS) || 7 * 24 * 60 * 60 * 1000;
 const MAX_HISTORY = Number(import.meta.env.VITE_MAX_HISTORY) || 20;
 
 const COOLDOWN_SECONDS = 3;
