@@ -276,9 +276,9 @@ export default function AiChat() {
   };
 
   return (
-    <div className="flex-1 w-full h-full flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+    <div className="w-full h-dvh flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e] fixed inset-0">
       {/* Header (Верх) */}
-      <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
+      <div className="flex-none z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 relative">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
@@ -325,7 +325,7 @@ export default function AiChat() {
       {/* Messages Area (Центр) - flex-1 розтягує його, виштовхуючи поле вводу вниз */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e] pb-32 sm:pb-24"
+        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e] pb-28"
       >
         <div className="max-w-2xl mx-auto space-y-4 pb-4">
           {isHistoryLoading ? (
@@ -458,10 +458,13 @@ export default function AiChat() {
         </div>
       </div>
 
-      {/* Input Area (Низ) - fixed позиція для мобільних */}
+      {/* Input Area (Низ) - fixed позиція для мобільних, висунеться над клавіатурою */}
       <div
-        className="fixed bottom-0 left-0 right-0 px-3 pt-2 pb-4 bg-[#12100e] border-t border-[#c8963c]/20 z-40 max-w-full"
-        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+        className="fixed bottom-0 left-0 right-0 px-3 pt-2 bg-[#12100e] border-t border-[#c8963c]/20 z-40"
+        style={{
+          paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+          marginTop: "auto",
+        }}
       >
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button
