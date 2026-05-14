@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { api } from "../api";
 import LogoImg from "../assets/logo.png";
-import LangToggle from "../components/LangToggle";
 import { useLang } from "../context/LanguageContext";
 
 interface MovieResult {
@@ -313,7 +312,6 @@ export default function AiChat() {
             >
               {t("nav_profile")}
             </Link>
-            <LangToggle />
             <button
               onClick={handleLogout}
               className="text-[9px] sm:text-xs px-2 py-1.5 sm:px-3 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap"
@@ -327,7 +325,7 @@ export default function AiChat() {
       {/* Messages Area (Центр) - flex-1 розтягує його, виштовхуючи поле вводу вниз */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e]"
+        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e] pb-32 sm:pb-24"
       >
         <div className="max-w-2xl mx-auto space-y-4 pb-4">
           {isHistoryLoading ? (
@@ -460,8 +458,11 @@ export default function AiChat() {
         </div>
       </div>
 
-      {/* Input Area (Низ) - flex-none гарантує, що він завжди внизу */}
-      <div className="flex-none px-3 pt-2 pb-4 bg-[#12100e] border-t border-[#c8963c]/20 z-40">
+      {/* Input Area (Низ) - fixed позиція для мобільних */}
+      <div
+        className="fixed bottom-0 left-0 right-0 px-3 pt-2 pb-4 bg-[#12100e] border-t border-[#c8963c]/20 z-40 max-w-full"
+        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+      >
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button
             onClick={handleClearChat}
