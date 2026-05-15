@@ -47,11 +47,16 @@ export default function AiChat() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [cooldownTime, setCooldownTime] = useState(0);
 
-  const [inputBarBottom, setInputBarBottom] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(
+    () => window.visualViewport?.height ?? window.innerHeight,
+  );
+  const [viewportTop, setViewportTop] = useState(
+    () => window.visualViewport?.offsetTop ?? 0,
+  );
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const navigate = useNavigate();
 
   const getWelcomeMessage = (): Message => ({
@@ -79,19 +84,8 @@ export default function AiChat() {
     if (!vv) return;
 
     const update = () => {
-      const windowHeight = window.innerHeight;
-      const visibleBottom = vv.offsetTop + vv.height;
-      const offset = Math.max(0, windowHeight - visibleBottom);
-      setInputBarBottom(offset);
-
-      if (offset > 0) {
-        setTimeout(() => {
-          chatContainerRef.current?.scrollTo({
-            top: chatContainerRef.current.scrollHeight,
-            behavior: "smooth",
-          });
-        }, 60);
-      }
+      setViewportHeight(vv.height);
+      setViewportTop(vv.offsetTop);
     };
 
     vv.addEventListener("resize", update);
@@ -104,6 +98,21 @@ export default function AiChat() {
     };
   }, []);
 
+  const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
+    chatContainerRef.current?.scrollTo({
+      top: chatContainerRef.current.scrollHeight,
+      behavior,
+    });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    setTimeout(() => scrollToBottom("smooth"), 60);
+  }, [viewportHeight]);
+
   // ── Cooldown timer ──────────────────────────────────────────────────────────
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
@@ -112,17 +121,6 @@ export default function AiChat() {
     }
     return () => clearInterval(timer);
   }, [cooldownTime]);
-
-  const scrollToBottom = () => {
-    chatContainerRef.current?.scrollTo({
-      top: chatContainerRef.current.scrollHeight,
-      behavior: "smooth",
-    });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
 
   // ── Load history from Redis ─────────────────────────────────────────────────
   useEffect(() => {
@@ -143,7 +141,6 @@ export default function AiChat() {
     loadHistory();
   }, []);
 
-  // ── Save history (debounced) ────────────────────────────────────────────────
   useEffect(() => {
     if (messages.length <= 1) return;
     const timer = setTimeout(async () => {
@@ -163,7 +160,6 @@ export default function AiChat() {
     return () => clearTimeout(timer);
   }, [messages]);
 
-  // ── Fetch profile ───────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
@@ -203,7 +199,7 @@ export default function AiChat() {
 
   const sendMessageToAi = async (userText: string) => {
     if (isLoading || cooldownTime > 0) return;
-    if (window.innerWidth < 768) inputRef.current?.blur();
+    inputRef.current?.blur();
 
     const newMessages: Message[] = [
       ...messages,
@@ -294,18 +290,16 @@ export default function AiChat() {
     navigate("/login");
   };
 
-  // Approximate input bar height so the message list doesn't hide behind it
-  const INPUT_BAR_HEIGHT = 64;
-
   return (
-    /*
-     * fixed inset-0: the chat occupies exactly the full screen.
-     * The header and message list never move.
-     * Only the input bar is repositioned via `bottom: inputBarBottom`.
-     */
-    <div className="fixed inset-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* ── Header — never moves ── */}
-      <div className="shrink-0 z-40 bg-[#12100e]/95 pt-[env(safe-area-inset-top)] backdrop-blur-md border-b border-[#c8963c]/10">
+    <div
+      className="fixed left-0 right-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]"
+      style={{
+        top: viewportTop,
+        height: viewportHeight,
+      }}
+    >
+      {/* ── Header ── */}
+      <div className="shrink-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
@@ -349,13 +343,12 @@ export default function AiChat() {
         </header>
       </div>
 
-      {/* ── Messages — scrollable, padded so last message clears the input bar ── */}
+      {/* ── Messages ── */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e]"
-        style={{ paddingBottom: INPUT_BAR_HEIGHT + 16 }}
       >
-        <div className="max-w-2xl mx-auto space-y-4">
+        <div className="max-w-2xl mx-auto space-y-4 pb-2">
           {isHistoryLoading ? (
             <div className="flex items-center justify-center pt-20">
               <div className="flex gap-2">
@@ -483,19 +476,11 @@ export default function AiChat() {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} />
         </div>
       </div>
 
-      <div
-        className="fixed left-0 right-0 z-50 px-3 pt-2 bg-[#12100e] border-t border-[#c8963c]/20"
-        style={{
-          bottom: inputBarBottom,
-          paddingBottom:
-            inputBarBottom > 0 ? 8 : "max(env(safe-area-inset-bottom), 12px)",
-          transition: inputBarBottom === 0 ? "bottom 0.25s ease" : "none",
-        }}
-      >
+      {/* ── Input bar — flex-none so it always sits at the bottom of the shrunk container ── */}
+      <div className="shrink-0 px-3 pt-2 pb-3 bg-[#12100e] border-t border-[#c8963c]/20 z-40">
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button
             onClick={handleClearChat}
@@ -525,7 +510,7 @@ export default function AiChat() {
               value={input}
               disabled={isLoading || cooldownTime > 0}
               onChange={(e) => setInput(e.target.value)}
-              onFocus={() => setTimeout(scrollToBottom, 300)}
+              onFocus={() => setTimeout(() => scrollToBottom("smooth"), 300)}
               placeholder={
                 isLoading
                   ? t("chat_thinking")
