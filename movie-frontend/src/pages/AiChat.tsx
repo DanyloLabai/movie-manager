@@ -47,6 +47,8 @@ export default function AiChat() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [cooldownTime, setCooldownTime] = useState(0);
 
+  const [inputBarBottom, setInputBarBottom] = useState(0);
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -73,39 +75,56 @@ export default function AiChat() {
   const [messages, setMessages] = useState<Message[]>([getWelcomeMessage()]);
 
   useEffect(() => {
-    document.body.style.overflow = "hidden";
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      const windowHeight = window.innerHeight;
+      const visibleBottom = vv.offsetTop + vv.height;
+      const offset = Math.max(0, windowHeight - visibleBottom);
+      setInputBarBottom(offset);
+
+      if (offset > 0) {
+        setTimeout(() => {
+          chatContainerRef.current?.scrollTo({
+            top: chatContainerRef.current.scrollHeight,
+            behavior: "smooth",
+          });
+        }, 60);
+      }
+    };
+
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    update();
 
     return () => {
-      document.body.style.overflow = "auto";
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
     };
   }, []);
 
-  // Таймер кулдауну
+  // ── Cooldown timer ──────────────────────────────────────────────────────────
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
     if (cooldownTime > 0) {
-      timer = setInterval(() => {
-        setCooldownTime((prev) => prev - 1);
-      }, 1000);
+      timer = setInterval(() => setCooldownTime((p) => p - 1), 1000);
     }
-    return () => {
-      if (timer) clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, [cooldownTime]);
 
   const scrollToBottom = () => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTo({
-        top: chatContainerRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-    }
+    chatContainerRef.current?.scrollTo({
+      top: chatContainerRef.current.scrollHeight,
+      behavior: "smooth",
+    });
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
+  // ── Load history from Redis ─────────────────────────────────────────────────
   useEffect(() => {
     const loadHistory = async () => {
       try {
@@ -115,7 +134,7 @@ export default function AiChat() {
         } else {
           setMessages([getWelcomeMessage()]);
         }
-      } catch (error) {
+      } catch {
         setMessages(loadSavedMessages());
       } finally {
         setIsHistoryLoading(false);
@@ -124,6 +143,7 @@ export default function AiChat() {
     loadHistory();
   }, []);
 
+  // ── Save history (debounced) ────────────────────────────────────────────────
   useEffect(() => {
     if (messages.length <= 1) return;
     const timer = setTimeout(async () => {
@@ -133,7 +153,7 @@ export default function AiChat() {
           CHAT_STORAGE_KEY,
           JSON.stringify({ messages, timestamp: Date.now() }),
         );
-      } catch (error) {
+      } catch {
         localStorage.setItem(
           CHAT_STORAGE_KEY,
           JSON.stringify({ messages, timestamp: Date.now() }),
@@ -143,6 +163,7 @@ export default function AiChat() {
     return () => clearTimeout(timer);
   }, [messages]);
 
+  // ── Fetch profile ───────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
@@ -156,7 +177,7 @@ export default function AiChat() {
             response.data.recent?.map((r: any) => r.tmdbId) || [];
           setAddedIds(Array.from(new Set([...favIds, ...recentIds])));
         }
-      } catch (error) {}
+      } catch {}
     };
     fetchProfileData();
   }, []);
@@ -182,8 +203,6 @@ export default function AiChat() {
 
   const sendMessageToAi = async (userText: string) => {
     if (isLoading || cooldownTime > 0) return;
-
-    // Ховаємо клавіатуру на мобільних при відправці, щоб побачити відповідь
     if (window.innerWidth < 768) inputRef.current?.blur();
 
     const newMessages: Message[] = [
@@ -265,7 +284,7 @@ export default function AiChat() {
       setFavoriteIds(newIds);
       localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
       showToast(t("chat_fav_updated"));
-    } catch (error: any) {
+    } catch {
       showToast(t("chat_server_error"));
     }
   };
@@ -275,9 +294,17 @@ export default function AiChat() {
     navigate("/login");
   };
 
+  // Approximate input bar height so the message list doesn't hide behind it
+  const INPUT_BAR_HEIGHT = 64;
+
   return (
+    /*
+     * fixed inset-0: the chat occupies exactly the full screen.
+     * The header and message list never move.
+     * Only the input bar is repositioned via `bottom: inputBarBottom`.
+     */
     <div className="fixed inset-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
-      {/* Header (Верх) - fixed щоб не рухався з клавіатурою */}
+      {/* ── Header — never moves ── */}
       <div className="shrink-0 z-40 bg-[#12100e]/95 pt-[env(safe-area-inset-top)] backdrop-blur-md border-b border-[#c8963c]/10">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
@@ -322,12 +349,13 @@ export default function AiChat() {
         </header>
       </div>
 
-      {/* Messages Area (Центр) - flex-1 розтягує його, з padding для хедера */}
+      {/* ── Messages — scrollable, padded so last message clears the input bar ── */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e]"
+        style={{ paddingBottom: INPUT_BAR_HEIGHT + 16 }}
       >
-        <div className="max-w-2xl mx-auto space-y-4 pb-4">
+        <div className="max-w-2xl mx-auto space-y-4">
           {isHistoryLoading ? (
             <div className="flex items-center justify-center pt-20">
               <div className="flex gap-2">
@@ -393,7 +421,7 @@ export default function AiChat() {
                               <p className="text-[8px] text-[#f0e6cc]/50 mt-0.5 uppercase font-semibold tracking-wider">
                                 {movie.mediaType === "tv"
                                   ? t("chat_tv")
-                                  : t("chat_movie")}{" "}
+                                  : t("chat_movie")}
                                 {isReleased(movie) &&
                                   ` • ★ ${Number(movie.rating || 0).toFixed(1)}`}
                               </p>
@@ -443,6 +471,7 @@ export default function AiChat() {
               </div>
             ))
           )}
+
           {isLoading && (
             <div className="flex justify-start">
               <div className="bg-[#1a1714] border border-[#c8963c]/30 p-4 rounded-2xl rounded-tl-sm shadow">
@@ -458,12 +487,13 @@ export default function AiChat() {
         </div>
       </div>
 
-      {/* Input Area (Низ) - fixed позиція для мобільних, висунеться над клавіатурою */}
       <div
-        className="shrink-0 w-full px-3 pt-2 bg-[#12100e] border-t border-[#c8963c]/20 z-40"
+        className="fixed left-0 right-0 z-50 px-3 pt-2 bg-[#12100e] border-t border-[#c8963c]/20"
         style={{
-          paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
-          marginTop: "auto",
+          bottom: inputBarBottom,
+          paddingBottom:
+            inputBarBottom > 0 ? 8 : "max(env(safe-area-inset-bottom), 12px)",
+          transition: inputBarBottom === 0 ? "bottom 0.25s ease" : "none",
         }}
       >
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
@@ -495,12 +525,7 @@ export default function AiChat() {
               value={input}
               disabled={isLoading || cooldownTime > 0}
               onChange={(e) => setInput(e.target.value)}
-              onFocus={() => {
-                setTimeout(() => {
-                  window.scrollTo(0, 0);
-                  scrollToBottom();
-                }, 50);
-              }}
+              onFocus={() => setTimeout(scrollToBottom, 300)}
               placeholder={
                 isLoading
                   ? t("chat_thinking")
