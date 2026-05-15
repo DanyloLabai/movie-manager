@@ -296,6 +296,7 @@ export default function AiChat() {
       style={{
         top: viewportTop,
         height: viewportHeight,
+        paddingTop: "env(safe-area-inset-top)",
       }}
     >
       {/* ── Header ── */}
