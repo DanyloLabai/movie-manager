@@ -169,9 +169,10 @@ export default function AiChat() {
             response.data.favorites?.map((f: any) => f.tmdbId) || [];
           setFavoriteIds(favIds);
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(favIds));
-          const recentIds =
-            response.data.recent?.map((r: any) => r.tmdbId) || [];
-          setAddedIds(Array.from(new Set([...favIds, ...recentIds])));
+
+          const watchedIds = response.data.watchedIds || [];
+          const inPlansIds = response.data.inPlansIds || [];
+          setAddedIds(Array.from(new Set([...watchedIds, ...inPlansIds])));
         }
       } catch {}
     };
