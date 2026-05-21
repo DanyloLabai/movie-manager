@@ -69,6 +69,9 @@ export class AiChatService {
           )
           .join(', ') || 'None';
 
+      const allWatchedTitles =
+        watched.map((m: any) => m.title).join(', ') || 'None';
+
       let upcomingList = 'No upcoming movies available.';
       try {
         const upcomingMovies = await this.moviesService.getUpcomingMovies();
@@ -90,6 +93,7 @@ export class AiChatService {
            → Use these to understand their taste and genre preferences.
         2. WATCHLIST (planned to watch): ${inPlans}
         3. RECENTLY WATCHED & RATED: ${recentWatched}
+        4. ALL WATCHED MOVIES (NEVER recommend these): ${allWatchedTitles}
 
         UPCOMING MOVIES CHEAT SHEET (Live TMDB data):
         ${upcomingList}
@@ -108,9 +112,12 @@ export class AiChatService {
           "new movies", "upcoming movies", or movies from ${currentYear}.
           Otherwise, recommend already-released, well-known, high-quality films.
 
-        RULE 4 — NO REPEATS:
-          Never recommend movies the user already has in their Favorites, Highly Rated, or Recently Watched lists,
-          unless Rule 1 applies.
+        RULE 4 — NO REPEATS (STRICTLY ENFORCED):
+          NEVER recommend any movie from the "ALL WATCHED MOVIES" list: [${allWatchedTitles}].
+          NEVER recommend any movie from Favorites or Highly Rated: [${favs}, ${highlyRated}].
+          This rule applies to ALL recommendations — even if the movie perfectly matches the user's taste.
+          If a great match is already watched, find the NEXT best alternative instead.
+          Exception: Rule 1 (direct search by name) overrides this rule.
 
         RULE 5 — NO INVENTED TITLES:
           Only suggest real movies that exist on TMDB. Never fabricate titles or release years.
@@ -275,56 +282,46 @@ WARNING: Do NOT use MODE 1 if the user mentions a title, character name, actor, 
 MODE 2 — RECOMMENDATIONS / SEARCH (always populate movies array):
 Use when the user:
   - Asks to find, show, search, recommend, or suggest ANY movie or TV show
-  - Mentions a specific title, character (e.g. "Walter White"), actor, director, franchise, or universe
+  - Mentions a specific title, character, actor, director, franchise, or universe
   - Describes a plot, mood, theme, genre, or era
   - Uses phrases like: "give me", "show me", "find me", "recommend", "suggest", "what to watch", "дай мені", "покажи", "знайди", "що подивитись"
 → Suggest up to 10 highly relevant titles in "movies". Write a short intro (1-2 sentences) in "message".
-CRITICAL: If the request is about a real character, actor, franchise, or topic tied to a specific show — return that content in "movies". NEVER respond with just text in these cases.
 
 ---
 
 NO-REPEAT RULE:
 The conversation history may contain [System note: I already showed these movies: ...] markers.
 - For general recommendations: NEVER suggest any title listed in those markers. Pick fresh alternatives.
-- EXCEPTION: If the user EXPLICITLY requests a specific title that was already shown
-  (e.g. "find Inception", "show me Breaking Bad again", "знайди Декстер"), return it anyway —
-  the user is asking for it on purpose. In this case you may include it in "movies".
+- EXCEPTION: If the user EXPLICITLY requests a specific title that was already shown, return it anyway.
 
 ---
 
 ANTI-HALLUCINATION RULE:
 Only suggest real titles that exist on TMDB.
 Never invent movie titles, directors, cast members, or release years.
-If you are not certain a title exists, omit it and replace with a verified alternative.
-Prefer well-known, confirmed titles over obscure ones.
 
 ---
 
 RESULT COUNT BY REQUEST TYPE:
-- Direct title search ("find Inception", "show me Dexter") → return exactly 1-3 results
-- Franchise / filmography ("Batman movies", "movies with Keanu Reeves") → return 3-6 results, sorted by release year ascending
-- Open recommendation ("recommend something scary") → return 5-10 results
+- Direct title search → return exactly 1-3 results
+- Franchise / filmography → return 3-6 results, sorted by release year ascending
+- Open recommendation → return 5-10 results
 
 ---
 
 TONE RULES:
 - "message" must be 1-2 sentences maximum. Be concise and direct.
-- No filler phrases: never start with "Great question!", "Of course!", "Certainly!", or similar.
-- If you cannot identify what the user is looking for, ask ONE short clarifying question in "message" and return movies: [].
+- No filler phrases: never start with "Great question!", "Of course!", "Certainly!".
 
 ---
 
 CONTENT BAN:
 Never recommend, discuss, or mention any Russian or Soviet movies, TV shows, or series.
-If the user requests Russian content, politely decline in their language, suggest Ukrainian/European/Hollywood alternatives, and return movies: [].
+If the user requests Russian content, politely decline and suggest Ukrainian/European/Hollywood alternatives.
 
 ---
 
-OUTPUT FORMAT:
-Return ONLY a valid JSON object. No markdown, no explanation, no text outside the JSON.
-CRITICAL: "type" MUST be either "movie" or "tv" — never empty or null.
-CRITICAL: "title" must be the exact official English title as listed on TMDB.
-
+OUTPUT FORMAT — return ONLY valid JSON, nothing else:
 {
   "message": "Your reply in the SAME LANGUAGE as the user's message. Max 1-2 sentences.",
   "movies": [
@@ -386,7 +383,7 @@ Response: {"message":"I do not recommend Russian content, but I can suggest grea
 
   async saveHistory(userId: number, messages: any[]): Promise<void> {
     const key = `chat_history:${userId}`;
-    const ttlMs = 604800000; // 7 days in milliseconds
+    const ttlMs = 604800000;
     await this.cacheManager.set(key, messages, ttlMs);
   }
 }
