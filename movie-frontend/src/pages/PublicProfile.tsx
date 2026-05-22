@@ -13,6 +13,7 @@ import {
 import { api } from "../api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
+import AchievementTooltip from "../components/AchievementTooltip";
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
 
@@ -132,13 +133,62 @@ export default function PublicProfile() {
   );
 
   const achievementsList = [
-    { id: "fb", isUnlocked: totalCount > 0, text: "🏆 First Blood" },
-    { id: "crit", isUnlocked: favoritesCount >= 5, text: "⭐ Critic" },
-    { id: "cine", isUnlocked: watchedCount >= 10, text: "🍿 Cinephile" },
-    { id: "coll", isUnlocked: totalCount >= 20, text: "📚 Collector" },
-    { id: "taste", isUnlocked: favoritesCount >= 20, text: "💖 Tastemaker" },
-    { id: "buff", isUnlocked: watchedCount >= 50, text: "🎬 Film Buff" },
-    { id: "lib", isUnlocked: totalCount >= 100, text: "🏛️ Librarian" },
+    {
+      id: "fb",
+      isUnlocked: totalCount > 0,
+      text: "🏆 First Blood",
+      requirement: "Add 1 movie to watchlist or mark as watched",
+      current: totalCount,
+      needed: 1,
+    },
+    {
+      id: "crit",
+      isUnlocked: favoritesCount >= 5,
+      text: "⭐ Critic",
+      requirement: "Add 5 movies to favorites",
+      current: favoritesCount,
+      needed: 5,
+    },
+    {
+      id: "cine",
+      isUnlocked: watchedCount >= 10,
+      text: "🍿 Cinephile",
+      requirement: "Mark 10 movies as watched",
+      current: watchedCount,
+      needed: 10,
+    },
+    {
+      id: "coll",
+      isUnlocked: totalCount >= 20,
+      text: "📚 Collector",
+      requirement: "Collect 20 movies total (watched + watchlist)",
+      current: totalCount,
+      needed: 20,
+    },
+    {
+      id: "taste",
+      isUnlocked: favoritesCount >= 20,
+      text: "💖 Tastemaker",
+      requirement: "Add 20 movies to favorites",
+      current: favoritesCount,
+      needed: 20,
+    },
+    {
+      id: "buff",
+      isUnlocked: watchedCount >= 50,
+      text: "🎬 Film Buff",
+      requirement: "Mark 50 movies as watched",
+      current: watchedCount,
+      needed: 50,
+    },
+    {
+      id: "lib",
+      isUnlocked: totalCount >= 100,
+      text: "🏛️ Librarian",
+      requirement: "Collect 100 movies total (watched + watchlist)",
+      current: totalCount,
+      needed: 100,
+    },
   ];
 
   const displayedMovies =
@@ -233,16 +283,7 @@ export default function PublicProfile() {
 
           <div className="flex flex-wrap gap-1.5 mb-4">
             {achievementsList.map((ach) => (
-              <div
-                key={ach.id}
-                className={`px-2 py-1 rounded-md text-[8px] font-bold border uppercase tracking-wider ${
-                  ach.isUnlocked
-                    ? "bg-[#c8963c]/10 border-[#c8963c]/40 text-[#c8963c]"
-                    : "bg-[#12100e]/50 border-[#c8963c]/5 text-[#f0e6cc]/15 grayscale"
-                }`}
-              >
-                {ach.text}
-              </div>
+              <AchievementTooltip key={ach.id} achievement={ach} />
             ))}
           </div>
 
