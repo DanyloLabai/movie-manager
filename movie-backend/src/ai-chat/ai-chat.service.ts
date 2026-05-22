@@ -42,16 +42,23 @@ export class AiChatService {
     userId: number,
   ): Promise<{ message: string; movies?: MovieResultDto[] }> {
     let aiResponse: ParsedAiResponse;
+    let watchedTmdbIds = new Set<number>();
+    let watchlistTmdbIds = new Set<number>();
 
     let userContext = 'No specific user preferences available.';
     try {
       const profile = await this.moviesService.getProfileData(userId);
       const favs =
         profile.favorites?.map((f: any) => f.title).join(', ') || 'None';
+
+      // Use getWatchlist (isWatched: false) for accurate "in plans" list
+      const watchlistItems = await this.moviesService.getWatchlist(userId);
       const inPlans =
-        profile.recent?.map((r: any) => r.title).join(', ') || 'None';
+        watchlistItems.map((r: any) => r.title).join(', ') || 'None';
 
       const watched = await this.moviesService.getWatchedMovies(userId);
+      watchedTmdbIds = new Set(watched.map((m: any) => m.tmdbId));
+      watchlistTmdbIds = new Set(watchlistItems.map((m: any) => m.tmdbId));
 
       const highlyRated =
         watched
@@ -69,8 +76,19 @@ export class AiChatService {
           )
           .join(', ') || 'None';
 
+      // Limit to 50 most recent to avoid overwhelming LLM context
       const allWatchedTitles =
-        watched.map((m: any) => m.title).join(', ') || 'None';
+        watched
+          .slice(0, 50)
+          .map((m: any) => m.title)
+          .join(', ') || 'None';
+
+      // Also include watchlist (in-plans) titles — never recommend what user already saved
+      const allWatchlistTitles =
+        watchlistItems
+          .slice(0, 30)
+          .map((m: any) => m.title)
+          .join(', ') || 'None';
 
       let upcomingList = 'No upcoming movies available.';
       try {
@@ -94,6 +112,7 @@ export class AiChatService {
         2. WATCHLIST (planned to watch): ${inPlans}
         3. RECENTLY WATCHED & RATED: ${recentWatched}
         4. ALL WATCHED MOVIES (NEVER recommend these): ${allWatchedTitles}
+        5. ALL WATCHLIST MOVIES (NEVER recommend these — already saved): ${allWatchlistTitles}
 
         UPCOMING MOVIES CHEAT SHEET (Live TMDB data):
         ${upcomingList}
@@ -114,9 +133,10 @@ export class AiChatService {
 
         RULE 4 — NO REPEATS (STRICTLY ENFORCED):
           NEVER recommend any movie from the "ALL WATCHED MOVIES" list: [${allWatchedTitles}].
+          NEVER recommend any movie from the "ALL WATCHLIST MOVIES" list: [${allWatchlistTitles}].
           NEVER recommend any movie from Favorites or Highly Rated: [${favs}, ${highlyRated}].
           This rule applies to ALL recommendations — even if the movie perfectly matches the user's taste.
-          If a great match is already watched, find the NEXT best alternative instead.
+          If a great match is already watched or saved, find the NEXT best alternative instead.
           Exception: Rule 1 (direct search by name) overrides this rule.
 
         RULE 5 — NO INVENTED TITLES:
@@ -173,6 +193,16 @@ export class AiChatService {
         item.type,
       );
       if (mediaData) {
+        // Post-filter: skip movies the user already watched or has in watchlist
+        if (
+          watchedTmdbIds.has(mediaData.id) ||
+          watchlistTmdbIds.has(mediaData.id)
+        ) {
+          this.logger.warn(
+            `Post-filter removed already-seen/saved movie: ${mediaData.title}`,
+          );
+          continue;
+        }
         foundMovies.push(mediaData);
       }
     }
