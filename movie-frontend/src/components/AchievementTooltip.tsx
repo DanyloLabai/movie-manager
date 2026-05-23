@@ -14,18 +14,18 @@ interface AchievementTooltipProps {
   achievement: Achievement;
 }
 
-type VerticalPos = "top" | "bottom";
-type HorizontalPos = "left" | "center" | "right";
-
 export default function AchievementTooltip({
   achievement,
 }: AchievementTooltipProps) {
   const { t } = useLang();
   const [isTooltipVisible, setIsTooltipVisible] = useState(false);
-  const [vPos, setVPos] = useState<VerticalPos>("top");
-  const [hPos, setHPos] = useState<HorizontalPos>("center");
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+
+  // Tooltip position state (fixed px values)
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+  const [arrowLeft, setArrowLeft] = useState<string>("50%");
+  const [showAbove, setShowAbove] = useState(true);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -36,58 +36,54 @@ export default function AchievementTooltip({
         setIsTooltipVisible(false);
       }
     };
-
     if (isTooltipVisible) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isTooltipVisible]);
 
   useEffect(() => {
-    if (isTooltipVisible && tooltipRef.current && containerRef.current) {
-      const container = containerRef.current.getBoundingClientRect();
-      const tooltip = tooltipRef.current.getBoundingClientRect();
-      const isMobile = window.innerWidth < 768;
+    if (!isTooltipVisible || !containerRef.current) return;
 
-      // Vertical positioning
-      if (isMobile) {
-        setVPos("bottom");
-      } else {
-        const spaceAbove = container.top;
-        const spaceBelow = window.innerHeight - container.bottom;
-        const tooltipHeight = tooltip.height || 150;
+    requestAnimationFrame(() => {
+      if (!containerRef.current || !tooltipRef.current) return;
 
-        setVPos(spaceAbove > tooltipHeight + 20 ? "top" : "bottom");
-      }
+      const PADDING = 8;
+      const TOOLTIP_WIDTH = 220;
+      const TOOLTIP_HEIGHT = tooltipRef.current.offsetHeight || 160;
 
-      // Horizontal positioning
-      const containerCenterX = container.left + container.width / 2;
-      const tooltipWidth = tooltip.width || 200;
-      const leftSpace = containerCenterX;
-      const rightSpace = window.innerWidth - containerCenterX;
-      const padding = 16;
+      const anchor = containerRef.current.getBoundingClientRect();
+      const anchorCenterX = anchor.left + anchor.width / 2;
+      const anchorCenterY = anchor.top + anchor.height / 2;
 
-      if (isMobile) {
-        setHPos("center");
-      } else {
-        // Перевіряємо, чи є достатньо місця для центрованого позиціонування
-        if (
-          containerCenterX - tooltipWidth / 2 > padding &&
-          containerCenterX + tooltipWidth / 2 < window.innerWidth - padding
-        ) {
-          setHPos("center");
-        } else if (rightSpace > leftSpace) {
-          // Більше місця праворуч
-          setHPos("left");
-        } else {
-          // Більше місця ліворуч
-          setHPos("right");
-        }
-      }
-    }
+      const spaceAbove = anchor.top;
+      const above = spaceAbove >= TOOLTIP_HEIGHT + 8;
+      setShowAbove(above);
+
+      let left = anchorCenterX - TOOLTIP_WIDTH / 2;
+      left = Math.max(
+        PADDING,
+        Math.min(left, window.innerWidth - TOOLTIP_WIDTH - PADDING),
+      );
+
+      // Arrow offset relative to tooltip box
+      const arrowAbsolute = anchorCenterX - left;
+      const arrowClamped = Math.max(
+        12,
+        Math.min(arrowAbsolute, TOOLTIP_WIDTH - 12),
+      );
+      setArrowLeft(`${arrowClamped}px`);
+
+      setTooltipStyle({
+        position: "fixed",
+        left,
+        width: TOOLTIP_WIDTH,
+        ...(above
+          ? { top: anchor.top - TOOLTIP_HEIGHT - 8 }
+          : { top: anchor.bottom + 8 }),
+        zIndex: 9999,
+      });
+    });
   }, [isTooltipVisible]);
 
   const progressPercentage =
@@ -95,36 +91,15 @@ export default function AchievementTooltip({
       ? Math.min((achievement.current / achievement.needed) * 100, 100)
       : 100;
 
-  const getHorizontalClasses = () => {
-    switch (hPos) {
-      case "left":
-        return "left-0";
-      case "right":
-        return "right-0";
-      default:
-        return "left-1/2 transform -translate-x-1/2";
-    }
-  };
-
-  const getArrowClasses = () => {
-    switch (hPos) {
-      case "left":
-        return "left-3";
-      case "right":
-        return "right-3";
-      default:
-        return "left-1/2 transform -translate-x-1/2";
-    }
-  };
-
   return (
     <div
       ref={containerRef}
-      className="relative inline-block group"
+      className="relative inline-block"
       onMouseEnter={() => setIsTooltipVisible(true)}
       onMouseLeave={() => setIsTooltipVisible(false)}
-      onClick={() => setIsTooltipVisible(!isTooltipVisible)}
+      onClick={() => setIsTooltipVisible((v) => !v)}
     >
+      {/* Badge */}
       <div
         className={`px-2 py-1 rounded-md text-[8px] sm:text-[9px] font-bold border uppercase tracking-wider cursor-pointer transition-all ${
           achievement.isUnlocked
@@ -135,57 +110,47 @@ export default function AchievementTooltip({
         {achievement.text}
       </div>
 
+      {/* Tooltip — rendered in place but positioned with fixed coords */}
       {isTooltipVisible && (
-        <div
-          ref={tooltipRef}
-          className={`absolute z-50 pointer-events-auto ${getHorizontalClasses()} ${
-            vPos === "top"
-              ? "bottom-full mb-1 sm:mb-2"
-              : "top-full mt-1 sm:mt-2"
-          }`}
-        >
-          <div className="bg-[#1a1714] border border-[#c8963c]/30 rounded-lg shadow-2xl p-2 sm:p-3 mx-2 w-auto max-w-[calc(100vw-1rem)] sm:max-w-none sm:w-max relative">
-            {/* Arrow - Top */}
-            {vPos === "top" && (
+        <div ref={tooltipRef} style={tooltipStyle}>
+          <div className="bg-[#1a1714] border border-[#c8963c]/30 rounded-xl shadow-2xl p-3 relative">
+            {/* Arrow above tooltip (pointing down toward anchor) */}
+            {showAbove && (
               <div
-                className={`absolute top-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-l-transparent border-r-transparent border-t-[#c8963c]/30 ${getArrowClasses()}`}
+                className="absolute bottom-[-6px] w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-[#c8963c]/30"
+                style={{ left: arrowLeft, transform: "translateX(-50%)" }}
+              />
+            )}
+            {/* Arrow below tooltip (pointing up toward anchor) */}
+            {!showAbove && (
+              <div
+                className="absolute top-[-6px] w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-[#c8963c]/30"
+                style={{ left: arrowLeft, transform: "translateX(-50%)" }}
               />
             )}
 
-            {/* Arrow - Bottom */}
-            {vPos === "bottom" && (
-              <div
-                className={`absolute bottom-full w-0 h-0 border-l-4 border-r-4 border-b-4 border-l-transparent border-r-transparent border-b-[#c8963c]/30 ${getArrowClasses()}`}
-              />
-            )}
-
-            <div className="text-[9px] sm:text-xs font-bold text-[#c8963c] mb-2 flex items-center gap-1">
-              <span className="break-words flex-shrink-0">
-                {achievement.text.split(" ")[0]}
-              </span>
-              {achievement.isUnlocked && (
-                <span className="text-[#c8963c] text-xs flex-shrink-0">✓</span>
-              )}
+            <div className="text-[10px] font-bold text-[#c8963c] mb-1.5 flex items-center gap-1">
+              {achievement.text}
+              {achievement.isUnlocked && <span className="text-xs">✓</span>}
             </div>
 
-            <div className="text-[7px] sm:text-[9px] text-[#f0e6cc]/70 mb-2 leading-snug max-w-xs">
+            <div className="text-[9px] text-[#f0e6cc]/70 mb-2 leading-snug">
               {achievement.requirement}
             </div>
 
             {!achievement.isUnlocked && (
-              <div className="w-full min-w-[8rem]">
-                <div className="flex justify-between items-center mb-1.5 gap-1">
-                  <span className="text-[7px] sm:text-[9px] text-[#f0e6cc]/50 flex-shrink-0">
-                    {t("watchlist_progress") || "Прогрес"}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[9px] text-[#f0e6cc]/50">
+                    {t("watchlist_progress") || "Progress"}
                   </span>
-                  <span className="text-[7px] sm:text-[9px] font-bold text-[#c8963c] flex-shrink-0">
+                  <span className="text-[9px] font-bold text-[#c8963c]">
                     {achievement.current}/{achievement.needed}
                   </span>
                 </div>
-
                 <div className="w-full bg-[#12100e] rounded-full h-1.5 overflow-hidden border border-[#c8963c]/20">
                   <div
-                    className="h-full bg-gradient-to-r from-[#c8963c] to-[#9a732a] transition-all duration-300 rounded-full"
+                    className="h-full bg-gradient-to-r from-[#c8963c] to-[#9a732a] rounded-full transition-all duration-300"
                     style={{ width: `${progressPercentage}%` }}
                   />
                 </div>
