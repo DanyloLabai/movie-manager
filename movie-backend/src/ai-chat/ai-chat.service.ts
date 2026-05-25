@@ -42,8 +42,6 @@ export class AiChatService {
     userId: number,
   ): Promise<{ message: string; movies?: MovieResultDto[] }> {
     let aiResponse: ParsedAiResponse;
-    let watchedTmdbIds = new Set<number>();
-    let watchlistTmdbIds = new Set<number>();
 
     let userContext = 'No specific user preferences available.';
     try {
@@ -51,14 +49,11 @@ export class AiChatService {
       const favs =
         profile.favorites?.map((f: any) => f.title).join(', ') || 'None';
 
-      // Use getWatchlist (isWatched: false) for accurate "in plans" list
       const watchlistItems = await this.moviesService.getWatchlist(userId);
       const inPlans =
         watchlistItems.map((r: any) => r.title).join(', ') || 'None';
 
       const watched = await this.moviesService.getWatchedMovies(userId);
-      watchedTmdbIds = new Set(watched.map((m: any) => m.tmdbId));
-      watchlistTmdbIds = new Set(watchlistItems.map((m: any) => m.tmdbId));
 
       const highlyRated =
         watched
@@ -121,9 +116,10 @@ export class AiChatService {
           "new movies", "upcoming movies", or movies from ${currentYear}.
           Otherwise, recommend already-released, well-known, high-quality films.
 
-        RULE 4 — NO REPEATS:
-          Never recommend movies the user already has in their Favorites, Highly Rated, or Recently Watched lists,
-          unless Rule 1 applies.
+        RULE 4 — NO REPEATS (for open recommendations only):
+          For general recommendations: never suggest movies already in Favorites, Highly Rated, or Recently Watched.
+          EXCEPTION: If the user asks for a specific franchise, title, actor, or director — show them regardless,
+          even if already in watchlist. The user wants to see those results on purpose.
 
         RULE 5 — NO INVENTED TITLES:
           Only suggest real movies that exist on TMDB. Never fabricate titles or release years.
@@ -179,16 +175,6 @@ export class AiChatService {
         item.type,
       );
       if (mediaData) {
-        // Post-filter: skip movies the user already watched or has in watchlist
-        if (
-          watchedTmdbIds.has(mediaData.id) ||
-          watchlistTmdbIds.has(mediaData.id)
-        ) {
-          this.logger.warn(
-            `Post-filter removed already-seen/saved movie: ${mediaData.title}`,
-          );
-          continue;
-        }
         foundMovies.push(mediaData);
       }
     }
@@ -409,7 +395,7 @@ Response: {"message":"I do not recommend Russian content, but I can suggest grea
 
   async saveHistory(userId: number, messages: any[]): Promise<void> {
     const key = `chat_history:${userId}`;
-    const ttlMs = 604800000; // 7 days in milliseconds
+    const ttlMs = 604800000;
     await this.cacheManager.set(key, messages, ttlMs);
   }
 }

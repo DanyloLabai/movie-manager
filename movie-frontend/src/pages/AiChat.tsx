@@ -293,7 +293,7 @@ export default function AiChat() {
 
   return (
     <div
-      className="fixed left-0 right-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]"
+      className="fixed left-0 right-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden"
       style={{
         top: viewportTop,
         height: viewportHeight,
@@ -372,7 +372,8 @@ export default function AiChat() {
                       : "bg-[#1a1714] border border-[#c8963c]/30 text-[#f0e6cc] rounded-tl-sm"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                  {/* select-text allows copying, cursor-text shows text cursor on hover */}
+                  <p className="whitespace-pre-wrap select-text cursor-text">{msg.text}</p>
                   {msg.movies && msg.movies.length > 0 && (
                     <div className="mt-3 flex flex-col gap-1.5 bg-[#12100e]/60 p-2 rounded-xl border border-[#c8963c]/20">
                       <h5 className="text-[#c8963c] text-[9px] font-bold uppercase tracking-widest px-1 pt-0.5 pb-1.5">
@@ -481,7 +482,7 @@ export default function AiChat() {
         </div>
       </div>
 
-      {/* ── Input bar — flex-none so it always sits at the bottom of the shrunk container ── */}
+      {/* ── Input bar ── */}
       <div className="shrink-0 px-3 pt-2 pb-3 bg-[#12100e] border-t border-[#c8963c]/20 z-40">
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button
