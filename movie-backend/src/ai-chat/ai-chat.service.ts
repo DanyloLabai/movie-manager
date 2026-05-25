@@ -41,7 +41,7 @@ export class AiChatService {
     messages: ChatMessage[],
     userId: number,
   ): Promise<{ message: string; movies?: MovieResultDto[] }> {
-    let aiResponse: ParsedAiResponse;
+    let aiResponse: ParsedAiResponse | undefined = undefined;
     let watchedTmdbIds = new Set<number>();
     let watchlistTmdbIds = new Set<number>();
 
@@ -138,66 +138,97 @@ export class AiChatService {
       this.logger.warn('Could not fetch user profile for AI context');
     }
 
-    try {
-      this.logger.log('Calling Groq (primary)...');
-      const rawText = await this.getMovieTitleFromGroq(messages, userContext);
-      aiResponse = this.parseJson(rawText) as ParsedAiResponse;
-    } catch (groqError: any) {
-      this.logger.error(`Groq failed: ${groqError.message || groqError}`);
-      this.logger.warn('Falling back to Gemini...');
+    let foundMovies: MovieResultDto[] = [];
+    let attempts = 0;
+    const MAX_ATTEMPTS = 2; // Основний запит + 1 повторна спроба
+    let dynamicallyRejected = '';
+
+    while (attempts < MAX_ATTEMPTS && foundMovies.length === 0) {
+      attempts++;
+
+      let currentContext = userContext;
+      // Якщо це друга спроба, жорстко вказуємо ШІ, що він помилився
+      if (attempts > 1 && dynamicallyRejected) {
+        this.logger.warn(
+          `Спроба ${attempts}: ШІ видав дублікати. Робимо повторний запит...`,
+        );
+        currentContext += `\n\nCRITICAL UPDATE: You just suggested [${dynamicallyRejected}]. The user HAS ALREADY SEEN THEM. You MUST suggest DIFFERENT movies now!`;
+      }
 
       try {
-        const rawText = await this.getMovieTitleFromGemini(
+        this.logger.log(`Calling Groq (primary) - Attempt ${attempts}...`);
+        const rawText = await this.getMovieTitleFromGroq(
           messages,
-          userContext,
+          currentContext,
         );
         aiResponse = this.parseJson(rawText) as ParsedAiResponse;
-      } catch (geminiError: any) {
-        const geminiMessage =
-          geminiError instanceof Error
-            ? geminiError.message
-            : 'Unknown Gemini error';
-        throw new InternalServerErrorException(
-          'All AI services are currently unavailable',
-          geminiMessage,
-        );
-      }
-    }
+      } catch (groqError: any) {
+        this.logger.error(`Groq failed: ${groqError.message || groqError}`);
+        this.logger.warn('Falling back to Gemini...');
 
-    if (!aiResponse.movies || aiResponse.movies.length === 0) {
-      return {
-        message:
-          aiResponse.message ||
-          "I couldn't find specific movies for that, but I'm always happy to chat!",
-      };
-    }
-
-    const foundMovies: MovieResultDto[] = [];
-    for (const item of aiResponse.movies.slice(0, 10)) {
-      const mediaData = await this.moviesService.findMovieByTitle(
-        item.title,
-        item.year,
-        item.type,
-      );
-      if (mediaData) {
-        const tmdbIdNum = Number(mediaData.id);
-
-        if (watchedTmdbIds.has(tmdbIdNum) || watchlistTmdbIds.has(tmdbIdNum)) {
-          this.logger.warn(`Відфільтровано ШІ-дублікат: ${mediaData.title}`);
-          continue;
+        try {
+          const rawText = await this.getMovieTitleFromGemini(
+            messages,
+            currentContext,
+          );
+          aiResponse = this.parseJson(rawText) as ParsedAiResponse;
+        } catch (geminiError: any) {
+          if (attempts === 1) {
+            const geminiMessage =
+              geminiError instanceof Error
+                ? geminiError.message
+                : 'Unknown Gemini error';
+            throw new InternalServerErrorException(
+              'All AI services are currently unavailable',
+              geminiMessage,
+            );
+          }
+          break; // Виходимо з циклу, якщо впали обидва API
         }
-        foundMovies.push(mediaData);
       }
+
+      if (!aiResponse || !aiResponse.movies || aiResponse.movies.length === 0) {
+        break; // Якщо масив порожній, немає сенсу фільтрувати
+      }
+
+      const tempRejected: string[] = [];
+      const currentFoundMovies: MovieResultDto[] = [];
+
+      // Збільшили ліміт slice до 15, щоб був "запас" для фільтрації
+      for (const item of aiResponse.movies.slice(0, 15)) {
+        const mediaData = await this.moviesService.findMovieByTitle(
+          item.title,
+          item.year,
+          item.type,
+        );
+
+        if (mediaData) {
+          const tmdbIdNum = Number(mediaData.id);
+          // БЕКЕНД-ФІЛЬТР
+          if (
+            watchedTmdbIds.has(tmdbIdNum) ||
+            watchlistTmdbIds.has(tmdbIdNum)
+          ) {
+            this.logger.warn(`Відфільтровано ШІ-дублікат: ${mediaData.title}`);
+            tempRejected.push(item.title);
+            continue;
+          }
+          currentFoundMovies.push(mediaData);
+        }
+      }
+
+      foundMovies = currentFoundMovies;
+      dynamicallyRejected = tempRejected.join(', ');
     }
 
     if (foundMovies.length === 0) {
       return {
-        message: `${aiResponse.message}\n\n(P.S. I found some titles but couldn't load their posters from the database.)`,
+        message: `${aiResponse?.message || 'Я намагався підібрати фільми'}\n\n*(P.S. Я перебрав кілька варіантів, але мій фільтр показує, що ви їх усі вже дивились! Ви справжній кіноман. Спробуйте звузити пошук).*`,
       };
     }
 
     return {
-      message: aiResponse.message,
+      message: aiResponse?.message || 'Ось фільми, які можуть вам сподобатися:',
       movies: foundMovies,
     };
   }
