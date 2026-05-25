@@ -67,15 +67,20 @@ export class AiChatService {
           .slice(0, 15)
           .join(', ') || 'None';
 
-      const recentWatched =
+      const recentWatchedContext =
         watched
-          .slice(0, 5)
+          .slice(0, 15)
           .map(
             (m: any) =>
               `"${m.title}" (Rating: ${m.rating ? m.rating + '/5' : 'Unrated'})`,
           )
           .join(', ') || 'None';
 
+      const allWatchedTitles =
+        watched
+          .slice(0, 500)
+          .map((m: any) => `"${m.title}"`)
+          .join(', ') || 'None';
       let upcomingList = 'No upcoming movies available.';
       try {
         const upcomingMovies = await this.moviesService.getUpcomingMovies();
@@ -96,7 +101,8 @@ export class AiChatService {
         1. FAVORITES & HIGHLY RATED (4-5 stars): ${favs}, ${highlyRated}
            → Use these to understand their taste and genre preferences.
         2. WATCHLIST (planned to watch): ${inPlans}
-        3. RECENTLY WATCHED & RATED: ${recentWatched}
+        3. RECENTLY WATCHED (for taste analysis): ${recentWatchedContext}
+        4. ALREADY WATCHED LIBRARY (DO NOT RECOMMEND THESE): ${allWatchedTitles}
 
         UPCOMING MOVIES CHEAT SHEET (Live TMDB data):
         ${upcomingList}
