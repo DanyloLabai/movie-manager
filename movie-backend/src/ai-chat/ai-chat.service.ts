@@ -42,6 +42,8 @@ export class AiChatService {
     userId: number,
   ): Promise<{ message: string; movies?: MovieResultDto[] }> {
     let aiResponse: ParsedAiResponse;
+    let watchedTmdbIds = new Set<number>();
+    let watchlistTmdbIds = new Set<number>();
 
     let userContext = 'No specific user preferences available.';
     try {
@@ -54,7 +56,10 @@ export class AiChatService {
         watchlistItems.map((r: any) => r.title).join(', ') || 'None';
 
       const watched = await this.moviesService.getWatchedMovies(userId);
-
+      watchedTmdbIds = new Set(watched.map((m: any) => Number(m.tmdbId)));
+      watchlistTmdbIds = new Set(
+        watchlistItems.map((m: any) => Number(m.tmdbId)),
+      );
       const highlyRated =
         watched
           .filter((m: any) => m.rating >= 4)
@@ -175,6 +180,12 @@ export class AiChatService {
         item.type,
       );
       if (mediaData) {
+        const tmdbIdNum = Number(mediaData.id);
+
+        if (watchedTmdbIds.has(tmdbIdNum) || watchlistTmdbIds.has(tmdbIdNum)) {
+          this.logger.warn(`Відфільтровано ШІ-дублікат: ${mediaData.title}`);
+          continue;
+        }
         foundMovies.push(mediaData);
       }
     }
