@@ -15,6 +15,10 @@ import { ChatMessage } from './ai-chat.controller';
 
 interface ParsedAiResponse {
   message: string;
+  // force: true → user explicitly asked for this content (specific title / franchise / actor).
+  // The backend filter must NOT remove these results even if already watched/in watchlist.
+  // force: false / undefined → open recommendation → apply the "no repeats" filter.
+  force?: boolean;
   movies?: { title: string; year?: number; type?: 'movie' | 'tv' }[];
   error?: string;
 }
@@ -81,6 +85,7 @@ export class AiChatService {
           .slice(0, 500)
           .map((m: any) => `"${m.title}"`)
           .join(', ') || 'None';
+
       let upcomingList = 'No upcoming movies available.';
       try {
         const upcomingMovies = await this.moviesService.getUpcomingMovies();
@@ -102,37 +107,41 @@ export class AiChatService {
            → Use these to understand their taste and genre preferences.
         2. WATCHLIST (planned to watch): ${inPlans}
         3. RECENTLY WATCHED (for taste analysis): ${recentWatchedContext}
-        4. ALREADY WATCHED LIBRARY (DO NOT RECOMMEND THESE): ${allWatchedTitles}
+        4. ALREADY WATCHED LIBRARY (DO NOT RECOMMEND THESE for open requests): ${allWatchedTitles}
 
         UPCOMING MOVIES CHEAT SHEET (Live TMDB data):
         ${upcomingList}
 
         RECOMMENDATION RULES (follow strictly, in priority order):
-        RULE 1 — DIRECT SEARCH OVERRIDE (highest priority):
-          If the user asks to find or show a SPECIFIC movie by name (e.g. "find Se7en", "show me Dune", "search for Inception"),
-          return EXACTLY that movie in the "movies" array. Ignore all other rules in this case.
+        RULE 1 — DIRECT SEARCH / EXPLICIT REQUEST (highest priority, set force: true):
+          If the user asks to find or show a SPECIFIC movie, actor filmography, franchise, director,
+          character, or universe by name (e.g. "find Se7en", "show me Nolan Batman",
+          "Batman animated movies", "movies with Keanu Reeves"):
+          → Return EXACTLY those results in "movies". Set "force": true.
+          → The "already watched/watchlisted" filter does NOT apply. Show the content regardless.
+          → This is what the user WANTS to see. Never hide it.
 
         RULE 2 — WATCHLIST PICK:
           If the user asks "what should I watch from my list", "pick from my watchlist", or similar,
           choose 1-3 movies EXCLUSIVELY from their Watchlist: [${inPlans}].
+          Set force: true (these are their own list items).
 
         RULE 3 — UPCOMING / NEW RELEASES:
           Only use the Upcoming Movies cheat sheet if the user EXPLICITLY asks for
           "new movies", "upcoming movies", or movies from ${currentYear}.
           Otherwise, recommend already-released, well-known, high-quality films.
 
-        RULE 4 — NO REPEATS (for open recommendations only):
-          For general recommendations: never suggest movies already in Favorites, Highly Rated, or Recently Watched.
-          EXCEPTION: If the user asks for a specific franchise, title, actor, or director — show them regardless,
-          even if already in watchlist. The user wants to see those results on purpose.
+        RULE 4 — NO REPEATS for open/general recommendations (force: false):
+          For general recommendations ("recommend something scary", "what should I watch tonight"):
+          NEVER suggest movies already in Favorites, Highly Rated, Watchlist, or Recently Watched.
+          These are the ONLY cases where you check the already-watched library.
+          Set force: false for these requests.
 
         RULE 5 — NO INVENTED TITLES:
           Only suggest real movies that exist on TMDB. Never fabricate titles or release years.
 
         RULE 6 — NO RUSSIAN / SOVIET CONTENT:
           Never recommend, discuss, or mention any Russian or Soviet films, TV shows, or series.
-          If the user explicitly requests Russian content, politely decline and suggest
-          Ukrainian, European, or Hollywood alternatives instead.
       `;
     } catch (e) {
       this.logger.warn('Could not fetch user profile for AI context');
@@ -140,17 +149,16 @@ export class AiChatService {
 
     let foundMovies: MovieResultDto[] = [];
     let attempts = 0;
-    const MAX_ATTEMPTS = 2; // Основний запит + 1 повторна спроба
+    const MAX_ATTEMPTS = 2;
     let dynamicallyRejected = '';
 
     while (attempts < MAX_ATTEMPTS && foundMovies.length === 0) {
       attempts++;
 
       let currentContext = userContext;
-      // Якщо це друга спроба, жорстко вказуємо ШІ, що він помилився
       if (attempts > 1 && dynamicallyRejected) {
         this.logger.warn(
-          `Спроба ${attempts}: ШІ видав дублікати. Робимо повторний запит...`,
+          `Attempt ${attempts}: AI gave duplicates. Retrying with stricter context...`,
         );
         currentContext += `\n\nCRITICAL UPDATE: You just suggested [${dynamicallyRejected}]. The user HAS ALREADY SEEN THEM. You MUST suggest DIFFERENT movies now!`;
       }
@@ -183,18 +191,24 @@ export class AiChatService {
               geminiMessage,
             );
           }
-          break; // Виходимо з циклу, якщо впали обидва API
+          break;
         }
       }
 
       if (!aiResponse || !aiResponse.movies || aiResponse.movies.length === 0) {
-        break; // Якщо масив порожній, немає сенсу фільтрувати
+        break;
       }
+
+      // ─── KEY FIX ──────────────────────────────────────────────────────────
+      // force: true  → user explicitly requested this content (specific title /
+      //                franchise / actor / director). Show it even if watched.
+      // force: false → open recommendation. Apply the "no repeats" filter.
+      // ─────────────────────────────────────────────────────────────────────
+      const isForced = aiResponse.force === true;
 
       const tempRejected: string[] = [];
       const currentFoundMovies: MovieResultDto[] = [];
 
-      // Збільшили ліміт slice до 15, щоб був "запас" для фільтрації
       for (const item of aiResponse.movies.slice(0, 15)) {
         const mediaData = await this.moviesService.findMovieByTitle(
           item.title,
@@ -204,21 +218,38 @@ export class AiChatService {
 
         if (mediaData) {
           const tmdbIdNum = Number(mediaData.id);
-          // БЕКЕНД-ФІЛЬТР
+
+          // Only filter when NOT forced (open recommendation mode)
           if (
-            watchedTmdbIds.has(tmdbIdNum) ||
-            watchlistTmdbIds.has(tmdbIdNum)
+            !isForced &&
+            (watchedTmdbIds.has(tmdbIdNum) || watchlistTmdbIds.has(tmdbIdNum))
           ) {
-            this.logger.warn(`Відфільтровано ШІ-дублікат: ${mediaData.title}`);
+            this.logger.warn(
+              `Filtered duplicate (open rec): ${mediaData.title}`,
+            );
             tempRejected.push(item.title);
             continue;
           }
+
+          // Forced mode: log but do NOT filter
+          if (
+            isForced &&
+            (watchedTmdbIds.has(tmdbIdNum) || watchlistTmdbIds.has(tmdbIdNum))
+          ) {
+            this.logger.log(
+              `Allowing watched/listed item (forced request): ${mediaData.title}`,
+            );
+          }
+
           currentFoundMovies.push(mediaData);
         }
       }
 
       foundMovies = currentFoundMovies;
       dynamicallyRejected = tempRejected.join(', ');
+
+      // If forced and we have results, no need to retry
+      if (isForced && foundMovies.length > 0) break;
     }
 
     if (foundMovies.length === 0) {
@@ -292,7 +323,10 @@ export class AiChatService {
       result += chunk.choices[0]?.delta?.content || '';
     }
 
-    return result || '{"message": "Error connecting to AI.", "movies": []}';
+    return (
+      result ||
+      '{"message": "Error connecting to AI.", "movies": [], "force": false}'
+    );
   }
 
   private getSystemPrompt(userContext: string): string {
@@ -313,71 +347,74 @@ politely refuse with one short sentence, invite them to ask about movies instead
 
 ---
 
-TWO RESPONSE MODES:
+## THE "force" FIELD — CRITICAL
 
-MODE 1 — CONVERSATIONAL (text only, movies = []):
-Use ONLY when the user:
-  - Asks a purely general/historical question about cinema, a director, or an actor WITHOUT asking to find/show/recommend anything
-  - Explicitly wants to discuss a topic without getting titles
-  - Must be refused (off-topic or banned content)
-→ Write a concise answer (1-2 sentences max) in "message". Set "movies" to [].
-WARNING: Do NOT use MODE 1 if the user mentions a title, character name, actor, genre, or plot — even indirectly. Use MODE 2 instead.
+Your JSON response MUST always include a "force" boolean field.
 
-MODE 2 — RECOMMENDATIONS / SEARCH (always populate movies array):
-Use when the user:
-  - Asks to find, show, search, recommend, or suggest ANY movie or TV show
-  - Mentions a specific title, character (e.g. "Walter White"), actor, director, franchise, or universe
-  - Describes a plot, mood, theme, genre, or era
-  - Uses phrases like: "give me", "show me", "find me", "recommend", "suggest", "what to watch", "дай мені", "покажи", "знайди", "що подивитись"
-→ Suggest up to 10 highly relevant titles in "movies". Write a short intro (1-2 sentences) in "message".
-CRITICAL: If the request is about a real character, actor, franchise, or topic tied to a specific show — return that content in "movies". NEVER respond with just text in these cases.
+Set "force": true when:
+- The user explicitly names a specific movie, TV show, franchise, actor, director, or character
+  (e.g. "find Inception", "Batman animated movies", "Nolan films", "show me Breaking Bad",
+  "movies with Keanu Reeves", "мультфільми про Бетмена", "фільми Нолана")
+- The user wants to see their own watchlist picks
+- The request is about a specific universe/franchise (DC, Marvel, etc.)
+→ When force is true: show those results REGARDLESS of whether the user has watched them.
+  The user is specifically asking for this content — never hide it.
+
+Set "force": false when:
+- The user asks for a general recommendation without naming specific content
+  (e.g. "recommend something scary", "what to watch tonight", "give me a good drama")
+→ When force is false: the backend will automatically remove content already watched or in watchlist.
 
 ---
 
-NO-REPEAT RULE:
-The conversation history may contain [System note: I already showed these movies: ...] markers.
-- For general recommendations: NEVER suggest any title listed in those markers. Pick fresh alternatives.
-- EXCEPTION: If the user EXPLICITLY requests a specific title that was already shown
-  (e.g. "find Inception", "show me Breaking Bad again", "знайди Декстер"), return it anyway —
-  the user is asking for it on purpose. In this case you may include it in "movies".
+TWO RESPONSE MODES:
+
+MODE 1 — CONVERSATIONAL (text only, movies = [], force: false):
+Use ONLY when the user asks a purely general question about cinema WITHOUT asking to find/show/recommend anything.
+→ Write a concise answer (1-2 sentences max) in "message". Set "movies" to []. Set "force": false.
+
+MODE 2 — RECOMMENDATIONS / SEARCH (always populate movies, set force correctly):
+Use when the user asks to find, show, search, recommend, or suggest ANY movie or TV show.
+→ Suggest up to 10 highly relevant titles. Write a short intro (1-2 sentences) in "message".
+→ Set "force": true if the request names specific content; "force": false for general recs.
+
+---
+
+NO-REPEAT RULE (applies ONLY when force: false):
+For general open recommendations: NEVER suggest titles already in the user's watched/watchlist history.
+When force: true: ignore this rule entirely — show the requested content.
 
 ---
 
 ANTI-HALLUCINATION RULE:
 Only suggest real titles that exist on TMDB.
 Never invent movie titles, directors, cast members, or release years.
-If you are not certain a title exists, omit it and replace with a verified alternative.
-Prefer well-known, confirmed titles over obscure ones.
 
 ---
 
 RESULT COUNT BY REQUEST TYPE:
-- Direct title search ("find Inception", "show me Dexter") → return exactly 1-3 results
-- Franchise / filmography ("Batman movies", "movies with Keanu Reeves") → return 3-6 results, sorted by release year ascending
-- Open recommendation ("recommend something scary") → return 5-10 results
+- Direct title search → 1-3 results, force: true
+- Franchise / filmography / actor → 3-8 results sorted by year, force: true
+- Open recommendation → 5-10 results, force: false
 
 ---
 
 TONE RULES:
 - "message" must be 1-2 sentences maximum. Be concise and direct.
-- No filler phrases: never start with "Great question!", "Of course!", "Certainly!", or similar.
-- If you cannot identify what the user is looking for, ask ONE short clarifying question in "message" and return movies: [].
+- No filler phrases: never start with "Great question!", "Of course!", "Certainly!".
 
 ---
 
 CONTENT BAN:
-Never recommend, discuss, or mention any Russian or Soviet movies, TV shows, or series.
-If the user requests Russian content, politely decline in their language, suggest Ukrainian/European/Hollywood alternatives, and return movies: [].
+Never recommend Russian or Soviet movies/shows. If requested, politely decline and suggest alternatives.
 
 ---
 
-OUTPUT FORMAT:
-Return ONLY a valid JSON object. No markdown, no explanation, no text outside the JSON.
-CRITICAL: "type" MUST be either "movie" or "tv" — never empty or null.
-CRITICAL: "title" must be the exact official English title as listed on TMDB.
+OUTPUT FORMAT — return ONLY valid JSON, nothing else:
 
 {
-  "message": "Your reply in the SAME LANGUAGE as the user's message. Max 1-2 sentences.",
+  "message": "Your reply in the SAME LANGUAGE as the user. Max 1-2 sentences.",
+  "force": true,
   "movies": [
     {
       "title": "Exact official English title as listed on TMDB",
@@ -391,41 +428,32 @@ CRITICAL: "title" must be the exact official English title as listed on TMDB.
 
 FEW-SHOT EXAMPLES:
 
-User: "find Dexter"
-Response: {"message":"Here is the iconic series about a serial killer who targets criminals:","movies":[{"title":"Dexter","year":2006,"type":"tv"}]}
+User: "find Inception"
+{"message":"Here is the mind-bending thriller you are looking for:","force":true,"movies":[{"title":"Inception","year":2010,"type":"movie"}]}
 
-User: "give me a show about Walter White"
-Response: {"message":"This legendary show follows a chemistry teacher who becomes a drug lord:","movies":[{"title":"Breaking Bad","year":2008,"type":"tv"}]}
+User: "мультфільми про Бетмена"
+{"message":"Ось анімаційні фільми про Бетмена:","force":true,"movies":[{"title":"Batman: Mask of the Phantasm","year":1993,"type":"movie"},{"title":"Batman Beyond: Return of the Joker","year":2000,"type":"movie"},{"title":"Batman: Under the Red Hood","year":2010,"type":"movie"}]}
+
+User: "фільми Нолана про Бетмена"
+{"message":"Ось трилогія Крістофера Нолана про Темного Лицаря:","force":true,"movies":[{"title":"Batman Begins","year":2005,"type":"movie"},{"title":"The Dark Knight","year":2008,"type":"movie"},{"title":"The Dark Knight Rises","year":2012,"type":"movie"}]}
 
 User: "movies with Keanu Reeves"
-Response: {"message":"Here are the best films starring Keanu Reeves:","movies":[{"title":"The Matrix","year":1999,"type":"movie"},{"title":"John Wick","year":2014,"type":"movie"},{"title":"Speed","year":1994,"type":"movie"}]}
+{"message":"Here are the best films starring Keanu Reeves:","force":true,"movies":[{"title":"The Matrix","year":1999,"type":"movie"},{"title":"John Wick","year":2014,"type":"movie"},{"title":"Speed","year":1994,"type":"movie"}]}
 
-User: "a movie where a kid sees dead people"
-Response: {"message":"You are thinking of this iconic psychological thriller:","movies":[{"title":"The Sixth Sense","year":1999,"type":"movie"}]}
+User: "recommend something scary"
+{"message":"Here are some great horror films you have not seen yet:","force":false,"movies":[{"title":"Hereditary","year":2018,"type":"movie"},{"title":"Midsommar","year":2019,"type":"movie"},{"title":"The Witch","year":2015,"type":"movie"}]}
 
-User: "recommend a mini-series about a disaster"
-Response: {"message":"This is one of the highest-rated mini-series ever made:","movies":[{"title":"Chernobyl","year":2019,"type":"tv"}]}
-
-User: "Batman movies"
-Response: {"message":"Here are the best Batman films in order:","movies":[{"title":"Batman Begins","year":2005,"type":"movie"},{"title":"The Dark Knight","year":2008,"type":"movie"},{"title":"The Dark Knight Rises","year":2012,"type":"movie"}]}
-
-User: "something funny for tonight"
-Response: {"message":"Here are a few great comedies for the evening:","movies":[{"title":"The Grand Budapest Hotel","year":2014,"type":"movie"},{"title":"What We Do in the Shadows","year":2014,"type":"movie"},{"title":"Game Night","year":2018,"type":"movie"}]}
+User: "що подивитись сьогодні ввечері"
+{"message":"Ось кілька чудових фільмів для вечора:","force":false,"movies":[{"title":"The Grand Budapest Hotel","year":2014,"type":"movie"},{"title":"Parasite","year":2019,"type":"movie"}]}
 
 User: "tell me about Christopher Nolan"
-Response: {"message":"Christopher Nolan is a British-American filmmaker known for non-linear storytelling, practical effects, and cerebral narratives — want me to show his filmography?","movies":[]}
-
-User: [System note: I already showed: Breaking Bad] ... "знайди Breaking Bad"
-Response: {"message":"Ось він — один з найкращих серіалів усіх часів:","movies":[{"title":"Breaking Bad","year":2008,"type":"tv"}]}
-
-User: [System note: I already showed: Breaking Bad] ... "порадь ще щось схоже"
-Response: {"message":"Ось серіали з подібною атмосферою:","movies":[{"title":"Better Call Saul","year":2015,"type":"tv"},{"title":"Ozark","year":2017,"type":"tv"},{"title":"Narcos","year":2015,"type":"tv"}]}
+{"message":"Christopher Nolan is known for non-linear storytelling and practical effects — want me to show his filmography?","force":false,"movies":[]}
 
 User: "як приготувати борщ?"
-Response: {"message":"I only cover movies and TV — ask me about something to watch instead!","movies":[]}
+{"message":"I only cover movies and TV — ask me about something to watch instead!","force":false,"movies":[]}
 
 User: "recommend Russian series"
-Response: {"message":"I do not recommend Russian content, but I can suggest great Ukrainian, European, or Hollywood series — what genre interests you?","movies":[]}
+{"message":"I do not recommend Russian content, but I can suggest great Ukrainian, European, or Hollywood series — what genre?","force":false,"movies":[]}
 `;
   }
 
