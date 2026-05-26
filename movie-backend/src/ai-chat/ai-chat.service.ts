@@ -204,7 +204,7 @@ export class AiChatService {
       //                franchise / actor / director). Show it even if watched.
       // force: false → open recommendation. Apply the "no repeats" filter.
       // ─────────────────────────────────────────────────────────────────────
-      const isForced = aiResponse.force === true;
+      const isForced = aiResponse.force !== false;
 
       const tempRejected: string[] = [];
       const currentFoundMovies: MovieResultDto[] = [];
