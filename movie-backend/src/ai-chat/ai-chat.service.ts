@@ -204,7 +204,7 @@ export class AiChatService {
       //                franchise / actor / director). Show it even if watched.
       // force: false → open recommendation. Apply the "no repeats" filter.
       // ─────────────────────────────────────────────────────────────────────
-      const isForced = aiResponse.force !== false;
+      const isForced = aiResponse.force === true;
 
       const tempRejected: string[] = [];
       const currentFoundMovies: MovieResultDto[] = [];
@@ -354,7 +354,7 @@ Your JSON response MUST always include a "force" boolean field.
 Set "force": true when:
 - The user explicitly names a specific movie, TV show, franchise, actor, director, or character
   (e.g. "find Inception", "Batman animated movies", "Nolan films", "show me Breaking Bad",
-  "movies with Keanu Reeves", "мультфільми про Бетмена", "фільми Нолана")
+  "movies with Keanu Reeves", "мультфільми про Бетмена", "фільми Нолана", "серіал про Андора")
 - The user wants to see their own watchlist picks
 - The request is about a specific universe/franchise (DC, Marvel, etc.)
 → When force is true: show those results REGARDLESS of whether the user has watched them.
@@ -364,6 +364,23 @@ Set "force": false when:
 - The user asks for a general recommendation without naming specific content
   (e.g. "recommend something scary", "what to watch tonight", "give me a good drama")
 → When force is false: the backend will automatically remove content already watched or in watchlist.
+
+---
+
+## CRITICAL TYPE RULE — NEVER GET THIS WRONG:
+
+"type": "tv" MUST be used for:
+- ANY series, show, serial — no matter the language
+- Keywords: "серіал", "серію", "series", "show", "шоу", "сезон", "season", "episodes"
+- Known TV shows: Game of Thrones, Breaking Bad, Andor, The Sopranos, Chernobyl, etc.
+- Anime series (Attack on Titan, Naruto, etc.)
+
+"type": "movie" MUST be used for:
+- Standalone films, movies, мультфільми (non-series)
+- Keywords: "фільм", "кіно", "movie", "film"
+
+WHEN IN DOUBT — if it aired as a series with episodes and seasons → use "tv".
+NEVER use "type": "movie" for a TV series. This causes the search to completely fail.
 
 ---
 
@@ -440,11 +457,26 @@ User: "фільми Нолана про Бетмена"
 User: "movies with Keanu Reeves"
 {"message":"Here are the best films starring Keanu Reeves:","force":true,"movies":[{"title":"The Matrix","year":1999,"type":"movie"},{"title":"John Wick","year":2014,"type":"movie"},{"title":"Speed","year":1994,"type":"movie"}]}
 
+User: "Серіал про Касіана Андора"
+{"message":"Ось серіал про Касіана Андора:","force":true,"movies":[{"title":"Andor","year":2022,"type":"tv"}]}
+
+User: "Серіал по грі престолів"
+{"message":"Ось легендарний серіал Гра Престолів:","force":true,"movies":[{"title":"Game of Thrones","year":2011,"type":"tv"}]}
+
+User: "Серіал сопрано"
+{"message":"Ось легендарний серіал Сопрано:","force":true,"movies":[{"title":"The Sopranos","year":1999,"type":"tv"}]}
+
+User: "покажи breaking bad"
+{"message":"Ось культовий серіал:","force":true,"movies":[{"title":"Breaking Bad","year":2008,"type":"tv"}]}
+
 User: "recommend something scary"
 {"message":"Here are some great horror films you have not seen yet:","force":false,"movies":[{"title":"Hereditary","year":2018,"type":"movie"},{"title":"Midsommar","year":2019,"type":"movie"},{"title":"The Witch","year":2015,"type":"movie"}]}
 
 User: "що подивитись сьогодні ввечері"
 {"message":"Ось кілька чудових фільмів для вечора:","force":false,"movies":[{"title":"The Grand Budapest Hotel","year":2014,"type":"movie"},{"title":"Parasite","year":2019,"type":"movie"}]}
+
+User: "порадь хороший серіал"
+{"message":"Ось кілька серіалів які варто подивитись:","force":false,"movies":[{"title":"Chernobyl","year":2019,"type":"tv"},{"title":"True Detective","year":2014,"type":"tv"},{"title":"Severance","year":2022,"type":"tv"}]}
 
 User: "tell me about Christopher Nolan"
 {"message":"Christopher Nolan is known for non-linear storytelling and practical effects — want me to show his filmography?","force":false,"movies":[]}
