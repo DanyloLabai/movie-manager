@@ -373,7 +373,9 @@ export default function AiChat() {
                   }`}
                 >
                   {/* select-text allows copying, cursor-text shows text cursor on hover */}
-                  <p className="whitespace-pre-wrap select-text cursor-text">{msg.text}</p>
+                  <p className="whitespace-pre-wrap select-text cursor-text">
+                    {msg.text}
+                  </p>
                   {msg.movies && msg.movies.length > 0 && (
                     <div className="mt-3 flex flex-col gap-1.5 bg-[#12100e]/60 p-2 rounded-xl border border-[#c8963c]/20">
                       <h5 className="text-[#c8963c] text-[9px] font-bold uppercase tracking-widest px-1 pt-0.5 pb-1.5">
@@ -427,25 +429,6 @@ export default function AiChat() {
                             className="shrink-0 flex items-center gap-1"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {isReleased(movie) && (
-                              <button
-                                onClick={() => handleToggleFavorite(movie)}
-                                className="p-1.5 rounded-md hover:bg-[#c8963c]/20 transition"
-                              >
-                                <svg
-                                  className={`w-4 h-4 transition ${favoriteIds.includes(movie.id) ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30 hover:text-red-500"}`}
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                                  />
-                                </svg>
-                              </button>
-                            )}
                             {addedIds.includes(movie.id) ? (
                               <div className="text-[9px] text-[#c8963c] px-2 py-1 font-bold">
                                 ✓
