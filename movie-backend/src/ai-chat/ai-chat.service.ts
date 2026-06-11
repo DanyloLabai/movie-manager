@@ -248,16 +248,19 @@ export class AiChatService {
       foundMovies = currentFoundMovies;
       dynamicallyRejected = tempRejected.join(', ');
 
-      // If forced and we have results, no need to retry
       if (isForced && foundMovies.length > 0) break;
     }
 
     if (foundMovies.length === 0) {
+      if (!aiResponse?.movies || aiResponse.movies.length === 0) {
+        return {
+          message: aiResponse?.message || 'Not found.',
+        };
+      }
       return {
-        message: `${aiResponse?.message || 'Я намагався підібрати фільми'}\n\n*(P.S. Я перебрав кілька варіантів, але мій фільтр показує, що ви їх усі вже дивились! Ви справжній кіноман. Спробуйте звузити пошук).*`,
+        message: `${aiResponse?.message || 'I tried to find some movies'}\n\n*(P.S. It looks like you've already watched all the options I found! You're a true cinephile. Try narrowing your search).*`,
       };
     }
-
     return {
       message: aiResponse?.message || 'Ось фільми, які можуть вам сподобатися:',
       movies: foundMovies,
@@ -486,6 +489,14 @@ User: "як приготувати борщ?"
 
 User: "recommend Russian series"
 {"message":"I do not recommend Russian content, but I can suggest great Ukrainian, European, or Hollywood series — what genre?","force":false,"movies":[]}
+User: "who wrote the Harry Potter books?"
+{"message":"The Harry Potter books were written by J.K. Rowling.","force":false,"movies":[]}
+
+User: "what is this movie based on?"
+{"message":"This movie is based on the novel by the original author.","force":false,"movies":[]}
+
+User: "tell me more about this"
+{"message":"Here is some more information about that topic.","force":false,"movies":[]}
 `;
   }
 
