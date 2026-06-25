@@ -11,13 +11,11 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import Groq from 'groq-sdk';
 import { MoviesService } from '../movies/movies.service';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
+import { WatchlistItem } from '../movies/watchlist-entity';
 import { ChatMessage } from './ai-chat.controller';
 
 interface ParsedAiResponse {
   message: string;
-  // force: true → user explicitly asked for this content (specific title / franchise / actor).
-  // The backend filter must NOT remove these results even if already watched/in watchlist.
-  // force: false / undefined → open recommendation → apply the "no repeats" filter.
   force?: boolean;
   movies?: { title: string; year?: number; type?: 'movie' | 'tv' }[];
   error?: string;
@@ -44,7 +42,9 @@ export class AiChatService {
   async searchMovieByDescription(
     messages: ChatMessage[],
     userId: number,
-  ): Promise<{ message: string; movies?: MovieResultDto[] }> {
+  ): Promise<
+    { message: string; movies?: MovieResultDto[] } | { message: string }
+  > {
     let aiResponse: ParsedAiResponse | undefined = undefined;
     let watchedTmdbIds = new Set<number>();
     let watchlistTmdbIds = new Set<number>();
@@ -53,21 +53,24 @@ export class AiChatService {
     try {
       const profile = await this.moviesService.getProfileData(userId);
       const favs =
-        profile.favorites?.map((f: any) => f.title).join(', ') || 'None';
+        profile.favorites?.map((f: WatchlistItem) => f.title).join(', ') ||
+        'None';
 
       const watchlistItems = await this.moviesService.getWatchlist(userId);
       const inPlans =
-        watchlistItems.map((r: any) => r.title).join(', ') || 'None';
+        watchlistItems.map((r: WatchlistItem) => r.title).join(', ') || 'None';
 
       const watched = await this.moviesService.getWatchedMovies(userId);
-      watchedTmdbIds = new Set(watched.map((m: any) => Number(m.tmdbId)));
+      watchedTmdbIds = new Set(
+        watched.map((m: WatchlistItem) => Number(m.tmdbId)),
+      );
       watchlistTmdbIds = new Set(
-        watchlistItems.map((m: any) => Number(m.tmdbId)),
+        watchlistItems.map((m: WatchlistItem) => Number(m.tmdbId)),
       );
       const highlyRated =
         watched
-          .filter((m: any) => m.rating >= 4)
-          .map((m: any) => m.title)
+          .filter((m: WatchlistItem) => m.rating >= 4)
+          .map((m: WatchlistItem) => m.title)
           .slice(0, 15)
           .join(', ') || 'None';
 
@@ -75,7 +78,7 @@ export class AiChatService {
         watched
           .slice(0, 15)
           .map(
-            (m: any) =>
+            (m: WatchlistItem) =>
               `"${m.title}" (Rating: ${m.rating ? m.rating + '/5' : 'Unrated'})`,
           )
           .join(', ') || 'None';
@@ -83,7 +86,7 @@ export class AiChatService {
       const allWatchedTitles =
         watched
           .slice(0, 500)
-          .map((m: any) => `"${m.title}"`)
+          .map((m: WatchlistItem) => `"${m.title}"`)
           .join(', ') || 'None';
 
       let upcomingList = 'No upcoming movies available.';
@@ -170,8 +173,10 @@ export class AiChatService {
           currentContext,
         );
         aiResponse = this.parseJson(rawText) as ParsedAiResponse;
-      } catch (groqError: any) {
-        this.logger.error(`Groq failed: ${groqError.message || groqError}`);
+      } catch (groqError: unknown) {
+        this.logger.error(
+          `Groq failed: ${groqError instanceof Error ? groqError.message : String(groqError)}`,
+        );
         this.logger.warn('Falling back to Gemini...');
 
         try {
@@ -180,12 +185,12 @@ export class AiChatService {
             currentContext,
           );
           aiResponse = this.parseJson(rawText) as ParsedAiResponse;
-        } catch (geminiError: any) {
+        } catch (geminiError: unknown) {
           if (attempts === 1) {
             const geminiMessage =
               geminiError instanceof Error
                 ? geminiError.message
-                : 'Unknown Gemini error';
+                : String(geminiError);
             throw new InternalServerErrorException(
               'All AI services are currently unavailable',
               geminiMessage,
@@ -267,7 +272,7 @@ export class AiChatService {
     };
   }
 
-  private parseJson(raw: string): any {
+  private parseJson(raw: string): ParsedAiResponse {
     try {
       const match = raw.match(/\{[\s\S]*\}/);
       if (!match) throw new Error('No JSON object found in AI response');
@@ -500,13 +505,13 @@ User: "tell me more about this"
 `;
   }
 
-  async getHistory(userId: number): Promise<any[]> {
+  async getHistory(userId: number): Promise<ChatMessage[]> {
     const key = `chat_history:${userId}`;
-    const history = await this.cacheManager.get(key);
+    const history = await this.cacheManager.get<ChatMessage[]>(key);
     return history ? (Array.isArray(history) ? history : []) : [];
   }
 
-  async saveHistory(userId: number, messages: any[]): Promise<void> {
+  async saveHistory(userId: number, messages: ChatMessage[]): Promise<void> {
     const key = `chat_history:${userId}`;
     const ttlMs = 604800000;
     await this.cacheManager.set(key, messages, ttlMs);
