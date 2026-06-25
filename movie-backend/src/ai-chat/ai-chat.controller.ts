@@ -5,12 +5,19 @@ import {
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { AiChatService } from './ai-chat.service';
 import { AuthGuard } from '@nestjs/passport';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+}
+
+export interface AuthenticatedRequest extends Request {
+  user: {
+    userId: number;
+  };
 }
 
 @ApiTags('AI Chat')
@@ -27,7 +34,10 @@ export class AiChatController {
   })
   @ApiResponse({ status: 200, description: 'AI search results' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async search(@Req() req, @Body('messages') messages: ChatMessage[]) {
+  async search(
+    @Req() req: AuthenticatedRequest,
+    @Body('messages') messages: ChatMessage[],
+  ) {
     const userId = req.user.userId;
     return this.aiChatService.searchMovieByDescription(messages, userId);
   }
@@ -41,7 +51,7 @@ export class AiChatController {
   })
   @ApiResponse({ status: 200, description: 'User chat history' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getHistory(@Req() req) {
+  async getHistory(@Req() req: AuthenticatedRequest) {
     const userId = req.user.userId;
     return this.aiChatService.getHistory(userId);
   }
@@ -55,7 +65,10 @@ export class AiChatController {
   })
   @ApiResponse({ status: 200, description: 'Chat history saved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async saveHistory(@Req() req, @Body() body: { messages: any[] }) {
+  async saveHistory(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: { messages: ChatMessage[] },
+  ) {
     const userId = req.user.userId;
     await this.aiChatService.saveHistory(userId, body.messages);
     return { success: true };
