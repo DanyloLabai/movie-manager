@@ -22,7 +22,7 @@ import {
 import { MoviesService } from './movies.service';
 import { MovieResultDto } from './dto/movie-result.dto';
 import { AuthGuard } from '@nestjs/passport';
-import { MovieDetailsResponse } from './dto/movies-details-response.dto';
+import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
 
 interface RequestWithUser extends Request {
   user: {
@@ -216,7 +216,7 @@ export class MoviesController {
   async getMovieDetails(
     @Param('tmdbId', ParseIntPipe) tmdbId: number,
     @Query('type') type?: string,
-  ): Promise<MovieDetailsResponse> {
+  ): Promise<MovieDetailsExtendedDto> {
     return this.moviesService.getMovieDetails(tmdbId, type);
   }
 
