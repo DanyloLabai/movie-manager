@@ -29,7 +29,7 @@ export class VectorService implements OnModuleInit {
 
     const embeddings = new GoogleGenerativeAIEmbeddings({
       apiKey: geminiApiKey,
-      modelName: 'text-embedding-004',
+      modelName: 'embedding-001',
     });
 
     const dbConfig: PoolConfig = {

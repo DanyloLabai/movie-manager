@@ -35,6 +35,7 @@ import {
   TmdbPersonRecordDto,
 } from './dto/person.dto';
 import { WatchProviderDto } from './dto/watch-provider.dto';
+import { VectorService } from 'src/vector/vector.service';
 
 @Injectable()
 export class MoviesService {
@@ -70,6 +71,7 @@ export class MoviesService {
     private usersRepo: Repository<User>,
     @InjectRepository(WatchlistItem)
     private watchlistRepo: Repository<WatchlistItem>,
+    private readonly vectorService: VectorService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.tmdbToken = this.configService.get<string>('TMDB_API_TOKEN') as string;
@@ -758,7 +760,24 @@ export class MoviesService {
       .del(`recommendations:user:${userId}`)
       .catch(() => {});
 
-    return this.watchlistRepo.save(newItem);
+    const savedItem = await this.watchlistRepo.save(newItem);
+
+    this.getMovieDetails(tmdbId, mediaType)
+      .then((details) => {
+        this.vectorService.addMovieToVectorStore({
+          id: tmdbId,
+          title: title,
+          description: details.overview || '',
+          genres: details.genres?.map((g) => g.name) || [],
+        });
+      })
+      .catch((err) =>
+        this.logger.error(
+          `Failed to auto-index movie ${tmdbId} into vector store: ${err.message}`,
+        ),
+      );
+
+    return savedItem;
   }
 
   async getWatchlist(userId: number) {

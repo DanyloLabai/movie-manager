@@ -6,12 +6,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
 import { AuthModule } from 'src/auth/auth.module';
 import { User } from 'src/users/users.entity';
+import { VectorModule } from 'src/vector/vector.module';
 
 @Module({
   imports: [
     HttpModule,
     TypeOrmModule.forFeature([WatchlistItem, User]),
     AuthModule,
+    VectorModule,
   ],
   providers: [MoviesService],
   controllers: [MoviesController],

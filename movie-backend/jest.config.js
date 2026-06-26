@@ -21,6 +21,7 @@ module.exports = {
       },
     ],
   },
+  transformIgnorePatterns: ['node_modules/(?!(@ai-sdk|ai|@workflow)/)'],
   collectCoverageFrom: [
     '**/*.(t|j)s',
     '!**/*.module.ts',
