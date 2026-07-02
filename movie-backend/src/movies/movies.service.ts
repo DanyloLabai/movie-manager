@@ -1148,4 +1148,28 @@ export class MoviesService {
       return [];
     }
   }
+
+  async syncMoviesToVectorDB() {
+    this.logger.log('Starting manual sync to Vector DB...');
+    const movies = await this.getTop100('movie');
+    const total = movies.length;
+    let syncedCount = 0;
+
+    for (const movie of movies) {
+      await this.vectorService.addMovieToVectorStore({
+        id: movie.id,
+        title: movie.title,
+        description: movie.description || '',
+        genres: [],
+      });
+
+      syncedCount += 1;
+      this.logger.log(`Synced movie ${syncedCount}/${total}: ${movie.title}`);
+    }
+
+    return {
+      syncedMovies: syncedCount,
+      message: `Successfully synced ${syncedCount} movie(s) to the vector database.`,
+    };
+  }
 }

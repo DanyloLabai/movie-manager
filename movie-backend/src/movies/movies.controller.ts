@@ -10,6 +10,7 @@ import {
   Query,
   Req,
   UseGuards,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -23,6 +24,7 @@ import { MoviesService } from './movies.service';
 import { MovieResultDto } from './dto/movie-result.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
+import { VectorService } from '../vector/vector.service';
 
 interface RequestWithUser extends Request {
   user: {
@@ -34,7 +36,12 @@ interface RequestWithUser extends Request {
 @ApiTags('Movies')
 @Controller('api/movies')
 export class MoviesController {
-  constructor(private readonly moviesService: MoviesService) {}
+  private readonly logger = new Logger(MoviesController.name);
+
+  constructor(
+    private readonly moviesService: MoviesService,
+    private readonly vectorService: VectorService, // Додали VectorService
+  ) {}
 
   @Get('upcoming')
   @ApiOperation({
@@ -247,5 +254,11 @@ export class MoviesController {
   @Get('actor/:id')
   async getActorDetails(@Param('id', ParseIntPipe) id: number) {
     return this.moviesService.getActorDetails(id);
+  }
+
+  @Post('sync')
+  @ApiOperation({ summary: 'Sync movies to the vector database' })
+  async syncMoviesToVectorDB() {
+    return this.moviesService.syncMoviesToVectorDB();
   }
 }

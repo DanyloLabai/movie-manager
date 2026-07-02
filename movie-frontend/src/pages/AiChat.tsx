@@ -29,7 +29,7 @@ const MAX_HISTORY = Number(import.meta.env.VITE_MAX_HISTORY) || 20;
 const COOLDOWN_SECONDS = 3;
 
 export default function AiChat() {
-  const { lang, t } = useLang();
+  const { t } = useLang();
   const [input, setInput] = useState("");
 
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
@@ -82,16 +82,13 @@ export default function AiChat() {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-
     const update = () => {
       setViewportHeight(vv.height);
       setViewportTop(vv.offsetTop);
     };
-
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
     update();
-
     return () => {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
@@ -108,12 +105,10 @@ export default function AiChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
   useEffect(() => {
     setTimeout(() => scrollToBottom("smooth"), 60);
   }, [viewportHeight]);
 
-  // ── Cooldown timer ──────────────────────────────────────────────────────────
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
     if (cooldownTime > 0) {
@@ -122,7 +117,6 @@ export default function AiChat() {
     return () => clearInterval(timer);
   }, [cooldownTime]);
 
-  // ── Load history from Redis ─────────────────────────────────────────────────
   useEffect(() => {
     const loadHistory = async () => {
       try {
@@ -169,7 +163,6 @@ export default function AiChat() {
             response.data.favorites?.map((f: any) => f.tmdbId) || [];
           setFavoriteIds(favIds);
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(favIds));
-
           const watchedIds = response.data.watchedIds || [];
           const inPlansIds = response.data.inPlansIds || [];
           setAddedIds(Array.from(new Set([...watchedIds, ...inPlansIds])));
@@ -211,6 +204,12 @@ export default function AiChat() {
 
     try {
       const trimmedMessages = newMessages.slice(-MAX_HISTORY);
+
+      // Збираємо всі вже показані id фільмів
+      const shownMovieIds = trimmedMessages
+        .filter((m) => m.movies && m.movies.length > 0)
+        .flatMap((m) => m.movies!.map((movie) => movie.id));
+
       const chatHistory = trimmedMessages.map((msg) => {
         let content = msg.text;
         if (msg.role === "ai" && msg.movies && msg.movies.length > 0) {
@@ -223,7 +222,11 @@ export default function AiChat() {
         };
       });
 
-      const response = await api.post("/ai/search", { messages: chatHistory });
+      const response = await api.post("/ai/search", {
+        messages: chatHistory,
+        shownMovieIds, // ← передаємо на бекенд
+      });
+
       setMessages((prev) => [
         ...prev,
         {
@@ -300,7 +303,6 @@ export default function AiChat() {
         paddingTop: "env(safe-area-inset-top)",
       }}
     >
-      {/* ── Header ── */}
       <div className="shrink-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
@@ -345,7 +347,6 @@ export default function AiChat() {
         </header>
       </div>
 
-      {/* ── Messages ── */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e]"
@@ -372,7 +373,6 @@ export default function AiChat() {
                       : "bg-[#1a1714] border border-[#c8963c]/30 text-[#f0e6cc] rounded-tl-sm"
                   }`}
                 >
-                  {/* select-text allows copying, cursor-text shows text cursor on hover */}
                   <p className="whitespace-pre-wrap select-text cursor-text">
                     {msg.text}
                   </p>
@@ -465,7 +465,6 @@ export default function AiChat() {
         </div>
       </div>
 
-      {/* ── Input bar ── */}
       <div className="shrink-0 px-3 pt-2 pb-3 bg-[#12100e] border-t border-[#c8963c]/20 z-40">
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button

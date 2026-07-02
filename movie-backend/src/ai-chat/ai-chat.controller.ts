@@ -36,10 +36,14 @@ export class AiChatController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async search(
     @Req() req: AuthenticatedRequest,
-    @Body('messages') messages: ChatMessage[],
+    @Body() body: { messages: ChatMessage[]; shownMovieIds?: number[] },
   ) {
     const userId = req.user.userId;
-    return this.aiChatService.searchMovieByDescription(messages, userId);
+    return this.aiChatService.searchMovieByDescription(
+      body.messages,
+      userId,
+      body.shownMovieIds || [],
+    );
   }
 
   @Get('history')

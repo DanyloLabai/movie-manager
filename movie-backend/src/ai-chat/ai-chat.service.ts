@@ -8,7 +8,6 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { generateText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { MoviesService } from '../movies/movies.service';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
@@ -23,6 +22,7 @@ export interface UserContextData {
   watchedMovies: WatchlistItem[];
   upcomingMovies: MovieResultDto[];
   currentYear: number;
+  longTermMemory: string[];
 }
 
 @Injectable()
@@ -37,28 +37,46 @@ export class AiChatService {
     private vectorService: VectorService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
-    const groqBaseUrl =
-      this.configService.get<string>('GROQ_BASE_URL') ||
-      'https://api.groq.com/openai/v1';
     const groqApiKey = this.configService.get<string>('GROQ_API_KEY') || '';
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
-
-    this.groqClient = createGroq({
-      apiKey: groqApiKey,
-    });
-
-    this.geminiClient = createGoogleGenerativeAI({
-      apiKey: geminiApiKey,
-    });
+    this.groqClient = createGroq({ apiKey: groqApiKey });
+    this.geminiClient = createGoogleGenerativeAI({ apiKey: geminiApiKey });
   }
 
   async searchMovieByDescription(
     messages: ChatMessage[],
     userId: number,
+    shownMovieIds: number[] = [],
   ): Promise<{ message: string; movies?: MovieResultDto[] }> {
-    const userContextData = await this.getUserContextData(userId);
-    const systemPrompt = this.buildSystemPrompt(userContextData);
+    const latestUserMessage =
+      [...messages].reverse().find((m) => m.role === 'user')?.content || '';
 
+    const [baseContextData, relevantMemories] = await Promise.all([
+      this.getUserContextData(userId),
+      latestUserMessage
+        ? this.vectorService.getRelevantUserFacts(userId, latestUserMessage, 3)
+        : Promise.resolve([]),
+    ]);
+
+    const userContextData: UserContextData = {
+      ...baseContextData,
+      longTermMemory: relevantMemories,
+    };
+
+    if (latestUserMessage) {
+      this.extractAndSaveUserFact(userId, latestUserMessage).catch((err) =>
+        this.logger.error(
+          `Background memory extraction failed: ${err.message}`,
+        ),
+      );
+    }
+
+    const alreadyShownIds = new Set<number>(shownMovieIds.map(Number));
+    this.logger.log(
+      `Already shown movie ids: ${[...alreadyShownIds].join(', ') || 'none'}`,
+    );
+
+    const systemPrompt = this.buildSystemPrompt(userContextData);
     const formattedMessages = messages.map((m) => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,
@@ -71,6 +89,7 @@ export class AiChatService {
         systemPrompt,
         formattedMessages,
         userContextData,
+        alreadyShownIds,
       );
       return response;
     } catch (groqError: unknown) {
@@ -78,13 +97,13 @@ export class AiChatService {
         `Groq failed: ${groqError instanceof Error ? groqError.message : String(groqError)}`,
       );
       this.logger.warn('Falling back to Gemini...');
-
       try {
         const response = await this.generateAiResponse(
           this.geminiClient('gemini-1.5-flash-latest'),
           systemPrompt,
           formattedMessages,
           userContextData,
+          alreadyShownIds,
         );
         return response;
       } catch (geminiError: unknown) {
@@ -105,6 +124,7 @@ export class AiChatService {
     systemPrompt: string,
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
     userContextData: UserContextData,
+    alreadyShownIds: Set<number>,
   ): Promise<{ message: string; movies?: MovieResultDto[] }> {
     const result = await generateText({
       model,
@@ -115,7 +135,6 @@ export class AiChatService {
 
     const text = result.text || '';
     let cleanMessage = text;
-
     let queries: string[] = [];
     let force = false;
 
@@ -123,12 +142,9 @@ export class AiChatService {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        if (parsed.queries && Array.isArray(parsed.queries)) {
+        if (parsed.queries && Array.isArray(parsed.queries))
           queries = parsed.queries;
-        }
-        if (typeof parsed.force === 'boolean') {
-          force = parsed.force;
-        }
+        if (typeof parsed.force === 'boolean') force = parsed.force;
         cleanMessage = text.replace(jsonMatch[0], '').trim();
       }
     } catch (e) {
@@ -152,6 +168,7 @@ export class AiChatService {
         queries,
         force,
         userContextData,
+        alreadyShownIds,
       );
       foundMovies = searchResult.foundMovies;
     }
@@ -164,13 +181,14 @@ export class AiChatService {
 
   private extractMovieTitlesFromText(text: string): string[] {
     const quotes = text.match(/"([^"]+)"/g);
-    if (quotes && quotes.length > 0) {
+    if (quotes && quotes.length > 0)
       return quotes.map((q) => q.replace(/"/g, ''));
-    }
     return [];
   }
 
-  private async getUserContextData(userId: number): Promise<UserContextData> {
+  private async getUserContextData(
+    userId: number,
+  ): Promise<Omit<UserContextData, 'longTermMemory'>> {
     try {
       const [profile, watchlistItems, watchedMovies] = await Promise.all([
         this.moviesService.getProfileData(userId),
@@ -207,6 +225,7 @@ export class AiChatService {
     queries: string[],
     force: boolean,
     userContextData: UserContextData,
+    alreadyShownIds: Set<number>,
   ): Promise<{ foundMovies: MovieResultDto[]; rejected: string[] }> {
     const watchedTmdbIds = new Set<number>(
       userContextData.watchedMovies.map((m) => Number(m.tmdbId)),
@@ -214,7 +233,6 @@ export class AiChatService {
     const watchlistTmdbIds = new Set<number>(
       userContextData.watchlistItems.map((m) => Number(m.tmdbId)),
     );
-
     const foundMoviesMap = new Map<number, MovieResultDto>();
     const rejected: string[] = [];
 
@@ -230,28 +248,63 @@ export class AiChatService {
             foundMoviesMap,
             rejected,
             query,
+            alreadyShownIds,
           );
         }
       } else {
         this.logger.log(`Performing Vector Search for concept: "${query}"`);
-        const similarDocs = await this.vectorService.searchSimilarMovies(
-          query,
-          3,
-        );
-
-        for (const doc of similarDocs) {
-          const mediaData = await this.moviesService.findMovieByTitle(
-            doc.metadata.title,
+        try {
+          const similarDocs = await this.vectorService.searchSimilarMovies(
+            query,
+            10,
           );
-          if (mediaData) {
-            this.processFoundMovie(
-              mediaData,
-              force,
-              watchedTmdbIds,
-              watchlistTmdbIds,
-              foundMoviesMap,
-              rejected,
-              query,
+          for (const doc of similarDocs) {
+            const mediaData = await this.moviesService.findMovieByTitle(
+              doc.metadata.title,
+            );
+            if (mediaData) {
+              this.processFoundMovie(
+                mediaData,
+                force,
+                watchedTmdbIds,
+                watchlistTmdbIds,
+                foundMoviesMap,
+                rejected,
+                query,
+                alreadyShownIds,
+              );
+            }
+            if (foundMoviesMap.size >= 3) break;
+          }
+        } catch (err) {
+          this.logger.error(
+            `Vector search failed for query "${query}": ${(err as Error).message}`,
+          );
+        }
+
+        // Fallback на TMDB якщо вектор не дав нових результатів
+        if (foundMoviesMap.size === 0) {
+          this.logger.log(
+            `Vector returned no new results, falling back to TMDB for "${query}"`,
+          );
+          try {
+            const tmdbResults = await this.moviesService.searchMovies(query);
+            for (const movie of tmdbResults.slice(0, 10)) {
+              this.processFoundMovie(
+                movie,
+                force,
+                watchedTmdbIds,
+                watchlistTmdbIds,
+                foundMoviesMap,
+                rejected,
+                query,
+                alreadyShownIds,
+              );
+              if (foundMoviesMap.size >= 3) break;
+            }
+          } catch (err) {
+            this.logger.error(
+              `TMDB fallback failed: ${(err as Error).message}`,
             );
           }
         }
@@ -269,8 +322,14 @@ export class AiChatService {
     foundMoviesMap: Map<number, MovieResultDto>,
     rejected: string[],
     originalQuery: string,
+    alreadyShownIds: Set<number>,
   ) {
     const tmdbIdNum = Number(mediaData.id);
+
+    if (!force && alreadyShownIds.has(tmdbIdNum)) {
+      this.logger.warn(`Skipping already shown movie: ${mediaData.title}`);
+      return;
+    }
 
     if (
       !force &&
@@ -315,6 +374,11 @@ export class AiChatService {
       userContextData.upcomingMovies
         .map((m) => `"${m.title}" (${m.releaseYear})`)
         .join(', ') || 'None';
+    const memoryString =
+      userContextData.longTermMemory &&
+      userContextData.longTermMemory.length > 0
+        ? userContextData.longTermMemory.map((m) => `- ${m}`).join('\n')
+        : 'None';
 
     return `You are an elite movie, TV series, anime, and pop-culture expert assistant.
 You understand all languages perfectly, including Ukrainian, and always reply in the SAME LANGUAGE the user writes in.
@@ -327,8 +391,11 @@ USER PROFILE (FOR CONTEXT ONLY — do not expose this data to the user):
 3. RECENTLY WATCHED: ${recentWatchedTitles}
 4. ALREADY WATCHED LIBRARY: ${allWatchedTitles}
 5. UPCOMING MOVIES (current year ${userContextData.currentYear}): ${upcomingTitles}
+6. LONG-TERM MEMORY (Crucial user preferences and facts to follow):
+${memoryString}
 
 When the user asks for recommendations "based on my taste", "for me", or similar — use this data to personalize your suggestions.
+Pay special attention to LONG-TERM MEMORY to avoid suggesting things they hate or to prioritize things they love.
 
 ---
 
@@ -367,11 +434,11 @@ Only use upcoming movies if the user EXPLICITLY asks for "new movies", "upcoming
 
 RULE 4 — OPEN RECOMMENDATIONS / VIBE SEARCH (force: false):
 For general recommendations ("recommend something scary", "what should I watch tonight", "movies about space"):
-→ Write your text, then output JSON with a generic conceptual query and force: false.
-→ Example response:
-Звучить круто! Ось кілька атмосферних фільмів:
-{"queries": ["scary atmospheric space time travel thriller"], "force": false}
-→ The backend will automatically perform semantic vector search and filter out movies they've seen.
+→ Write your text, then output JSON with a VARIED conceptual query and force: false.
+→ If the user asks for MORE or DIFFERENT movies on the same topic — use a DIFFERENT query angle.
+→ Example first request: {"queries": ["epic space adventure sci-fi"], "force": false}
+→ Example follow-up "show me more": {"queries": ["space exploration drama philosophical"], "force": false}
+→ The backend will automatically filter out already shown movies — you do NOT need to worry about repeats.
 
 RULE 5 — NO INVENTED TITLES:
 Only suggest real movies/shows that exist on TMDB. Never fabricate titles.
@@ -386,6 +453,45 @@ RESPONSE TONE:
 - No filler phrases: never start with "Great question!", "Of course!", "Certainly!".
 - Always respond in the user's language.
 `;
+  }
+
+  private async extractAndSaveUserFact(userId: number, text: string) {
+    const prompt = `
+      Analyze the following user message. Does the user explicitly state a long-term preference, dislike, habit, or fact about their movie/TV tastes?
+      Examples of facts to extract: "I hate horror movies", "I love Hans Zimmer soundtracks", "My favorite actor is Ryan Gosling", "I usually watch movies with friends".
+      
+      If YES, extract it as a short, clear, third-person statement (e.g., "The user hates horror movies", "The user loves sci-fi").
+      If NO (it's just a regular search or greeting like "find matrix", "hello", "what to watch"), output EXACTLY the word "NO".
+      
+      Do not output any explanations. Only the extracted fact or "NO".
+
+      User message: "${text}"
+    `;
+
+    try {
+      const result = await generateText({
+        model: this.groqClient('llama-3.3-70b-versatile'),
+        prompt: prompt,
+        temperature: 0.1,
+      });
+
+      const extractedFact = result.text.trim();
+
+      if (
+        extractedFact !== 'NO' &&
+        extractedFact.length > 5 &&
+        extractedFact.length < 200
+      ) {
+        await this.vectorService.saveUserFact(userId, extractedFact);
+        this.logger.log(
+          `Extracted and saved new long-term memory for user ${userId}`,
+        );
+      }
+    } catch (e) {
+      this.logger.debug(
+        `Background memory extraction failed silently: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    }
   }
 
   async getHistory(userId: number): Promise<ChatMessage[]> {
