@@ -49,6 +49,16 @@ export async function changePassword(body: {
   return res.data;
 }
 
+export async function refreshToken() {
+  const res = await api.post(`/auth/refresh`);
+  return res.data;
+}
+
+export async function logout() {
+  const res = await api.post(`/auth/logout`);
+  return res.data;
+}
+
 export default {
   login,
   register,
@@ -57,4 +67,6 @@ export default {
   forgotPassword,
   resetPassword,
   changePassword,
+  refreshToken,
+  logout,
 };

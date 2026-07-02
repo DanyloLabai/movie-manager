@@ -116,6 +116,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    // Best-effort: revoke the refresh token cookie server-side.
+    api.post("/auth/logout").catch(() => {
+      // Ignore errors - we clear local state regardless.
+    });
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     delete api.defaults.headers.common["Authorization"];

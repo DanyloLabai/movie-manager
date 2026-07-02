@@ -6,11 +6,25 @@ export class SignUpResponseDto {
 
 export class SignInResponseDto {
   access_token: string;
+  refresh_token: string;
   user: {
     id: number;
     username: string;
     email: string;
   };
+}
+
+export class RefreshResponseDto {
+  access_token: string;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+  };
+}
+
+export class LogoutResponseDto {
+  message: string;
 }
 
 export class VerifyEmailResponseDto {
@@ -33,17 +47,4 @@ export class ForgotPasswordResponseDto {
 export class ResetPasswordResponseDto {
   message: string;
   access_token?: string;
-}
-
-export class RefreshResponseDto {
-  access_token: string;
-  user: {
-    id: number;
-    username: string;
-    email: string;
-  };
-}
-
-export class LogoutResponseDto {
-  message: string;
 }

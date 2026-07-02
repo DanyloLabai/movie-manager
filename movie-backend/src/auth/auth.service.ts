@@ -126,6 +126,7 @@ export class AuthService {
 
   async signIn(signInDto: SignInDto): Promise<{
     access_token: string;
+    refresh_token: string;
     user: { id: number; username: string; email: string };
   }> {
     const { email, password } = signInDto;
@@ -142,20 +143,106 @@ export class AuthService {
       );
     }
 
-    const payload = {
-      sub: user.id,
-      username: user.username,
-      email: user.email,
-    };
+    const { access_token, refresh_token } = await this.generateTokens(user);
+    await this.setCurrentRefreshToken(user.id, refresh_token);
 
     return {
-      access_token: await this.jwtService.signAsync(payload),
+      access_token,
+      refresh_token,
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
       },
     };
+  }
+
+  private async generateTokens(
+    user: User,
+  ): Promise<{ access_token: string; refresh_token: string }> {
+    const payload = {
+      sub: user.id,
+      username: user.username,
+      email: user.email,
+    };
+
+    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+    const refreshExpiresIn =
+      this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '30d';
+
+    const [access_token, refresh_token] = await Promise.all([
+      this.jwtService.signAsync(payload),
+      this.jwtService.signAsync(payload, {
+        secret: refreshSecret,
+        expiresIn: refreshExpiresIn as unknown as number,
+      }),
+    ]);
+
+    return { access_token, refresh_token };
+  }
+
+  private async setCurrentRefreshToken(
+    userId: number,
+    refreshToken: string,
+  ): Promise<void> {
+    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    await this.usersRepository.update({ id: userId }, { hashedRefreshToken });
+  }
+
+  async refreshTokens(
+    userId: number,
+    incomingRefreshToken: string | null,
+  ): Promise<{
+    access_token: string;
+    refresh_token: string;
+    user: { id: number; username: string; email: string };
+  }> {
+    if (!incomingRefreshToken) {
+      throw new UnauthorizedException('Refresh token missing');
+    }
+
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user || !user.hashedRefreshToken) {
+      throw new UnauthorizedException('Access denied');
+    }
+
+    const refreshTokenMatches = await bcrypt.compare(
+      incomingRefreshToken,
+      user.hashedRefreshToken,
+    );
+
+    if (!refreshTokenMatches) {
+      // Possible token theft/reuse - revoke stored token defensively
+      await this.usersRepository.update(
+        { id: userId },
+        { hashedRefreshToken: null },
+      );
+      throw new UnauthorizedException('Access denied');
+    }
+
+    const { access_token, refresh_token } = await this.generateTokens(user);
+    await this.setCurrentRefreshToken(user.id, refresh_token);
+
+    return {
+      access_token,
+      refresh_token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      },
+    };
+  }
+
+  async logout(userId: number): Promise<{ message: string }> {
+    await this.usersRepository.update(
+      { id: userId },
+      { hashedRefreshToken: null },
+    );
+    return { message: 'Logged out successfully' };
   }
 
   private async verifyCaptcha(token: string): Promise<boolean> {

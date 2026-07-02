@@ -7,7 +7,12 @@ import {
   Patch,
   Get,
   Query,
+  Req,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import type { Request, Response } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -22,12 +27,30 @@ import { UpdatePasswordDto } from './dto/update-password.dto';
 import {
   SignUpResponseDto,
   SignInResponseDto,
+  RefreshResponseDto,
+  LogoutResponseDto,
   VerifyEmailResponseDto,
   PasswordChangeResponseDto,
   ResendVerificationResponseDto,
   ForgotPasswordResponseDto,
   ResetPasswordResponseDto,
 } from '../common/dto/auth-response.dto';
+
+interface AuthenticatedRequest extends Request {
+  user: { userId: number; username: string; refreshToken?: string | null };
+}
+
+const REFRESH_COOKIE_NAME = 'refresh_token';
+const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as
+    | 'none'
+    | 'lax',
+  path: '/api/auth',
+};
 
 @ApiTags('Auth')
 @Controller('api/auth')
@@ -64,8 +87,75 @@ export class AuthController {
     type: SignInResponseDto,
   })
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
-  async signIn(@Body() signInDto: SignInDto): Promise<SignInResponseDto> {
-    return this.authService.signIn(signInDto);
+  async signIn(
+    @Body() signInDto: SignInDto,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<SignInResponseDto> {
+    const result = await this.authService.signIn(signInDto);
+
+    res.cookie(REFRESH_COOKIE_NAME, result.refresh_token, {
+      ...refreshCookieOptions,
+      maxAge: REFRESH_COOKIE_MAX_AGE_MS,
+    });
+
+    return result;
+  }
+
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt-refresh'))
+  @ApiOperation({
+    summary: 'Refresh access token',
+    description:
+      'Exchange a valid refresh token (httpOnly cookie) for a new access token and rotated refresh token',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Token refreshed successfully',
+    type: RefreshResponseDto,
+  })
+  @ApiResponse({ status: 401, description: 'Invalid or expired refresh token' })
+  async refresh(
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<RefreshResponseDto> {
+    const { userId, refreshToken } = req.user;
+    const result = await this.authService.refreshTokens(
+      userId,
+      refreshToken ?? null,
+    );
+
+    res.cookie(REFRESH_COOKIE_NAME, result.refresh_token, {
+      ...refreshCookieOptions,
+      maxAge: REFRESH_COOKIE_MAX_AGE_MS,
+    });
+
+    return {
+      access_token: result.access_token,
+      user: result.user,
+    };
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Logout',
+    description: 'Revoke the refresh token and clear the refresh cookie',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Logged out successfully',
+    type: LogoutResponseDto,
+  })
+  async logout(
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<LogoutResponseDto> {
+    const result = await this.authService.logout(req.user.userId);
+    res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
+    return result;
   }
 
   @Patch('change-password')

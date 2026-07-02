@@ -46,6 +46,10 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   resetToken: string | null;
 
+  @Exclude()
+  @Column({ type: 'varchar', nullable: true })
+  hashedRefreshToken: string | null;
+
   @OneToMany(() => WatchlistItem, (watchlistItem) => watchlistItem.user)
   watchlist: WatchlistItem[];
 
