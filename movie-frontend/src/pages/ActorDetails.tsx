@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { api } from "../api";
+import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 
 interface KnownFor {
@@ -31,24 +31,33 @@ export default function ActorDetails() {
   const sliderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (id) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      fetchActorData(Number(id));
-    }
+    if (!id) return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    (async () => {
+      try {
+        setIsLoading(true);
+        const res = await moviesApi.getActor(Number(id));
+        if (isActorDetailsData(res)) setActor(res);
+        else setActor(null);
+      } catch (error) {
+        console.error("Failed to fetch actor:", error);
+        setActor(null);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, [id]);
 
-  const fetchActorData = async (personId: number) => {
-    try {
-      setIsLoading(true);
-      const res = await api.get(`/movies/actor/${personId}`);
-      setActor(res.data);
-    } catch (error) {
-      console.error("Failed to fetch actor:", error);
-      setActor(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  function isActorDetailsData(obj: unknown): obj is ActorDetailsData {
+    if (!obj || typeof obj !== "object") return false;
+    const maybe = obj as Record<string, unknown>;
+    return (
+      typeof maybe.id === "number" &&
+      typeof maybe.name === "string" &&
+      typeof maybe.biography === "string" &&
+      (maybe.profileUrl === null || typeof maybe.profileUrl === "string")
+    );
+  }
 
   const scrollSlider = (direction: "left" | "right") => {
     if (sliderRef.current) {
@@ -90,25 +99,25 @@ export default function ActorDetails() {
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] pb-10 selection:bg-[#c8963c] selection:text-[#12100e]">
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5 pt-[env(safe-area-inset-top,12px)]">
-          <Link
-            to="/search"
-            className="flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
-          >
-            <img
-              src={LogoImg}
-              alt="LUMEN™ Logo"
-              className="h-10 sm:h-12 w-auto object-contain"
-            />
-            
-            <div className="flex flex-col justify-center">
-              <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-                LUMEN
-              </h1>
-              <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-                Movie Tracker
-              </span>
-            </div>
-          </Link>
+        <Link
+          to="/search"
+          className="flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
+        >
+          <img
+            src={LogoImg}
+            alt="LUMEN™ Logo"
+            className="h-10 sm:h-12 w-auto object-contain"
+          />
+
+          <div className="flex flex-col justify-center">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+              LUMEN
+            </h1>
+            <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
+              Movie Tracker
+            </span>
+          </div>
+        </Link>
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-xs font-black uppercase text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"

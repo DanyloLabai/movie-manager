@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { api } from "../api";
+import * as usersApi from "../api/users.api";
 import { useLang } from "../context/LanguageContext";
 
 interface EditProfileProps {
@@ -45,12 +45,13 @@ export default function EditProfile({
     }
 
     try {
-      const response = await api.patch("/users/profile", formData);
+      const response = await usersApi.updateProfile(formData);
 
-      onUpdate(response.data.username, response.data.avatarUrl);
+      onUpdate(response.username, response.avatarUrl);
       onClose();
-    } catch (err: any) {
-      if (err.response?.status === 409) {
+    } catch (err: unknown) {
+      const apiError = err as { response?: { status?: number } };
+      if (apiError.response?.status === 409) {
         setError(t("edit_username_taken"));
       } else {
         setError(t("edit_error"));

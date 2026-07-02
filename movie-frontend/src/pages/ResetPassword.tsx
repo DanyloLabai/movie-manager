@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { api } from "../api";
+import * as authApi from "../api/auth.api";
 import { useLang } from "../context/LanguageContext";
 
 export default function ResetPassword() {
@@ -29,16 +29,18 @@ export default function ResetPassword() {
 
     setIsLoading(true);
     try {
-      const response = await api.patch("/auth/reset-password", {
-        token,
-        newPassword,
+      const response = await authApi.resetPassword({ token, newPassword });
+      setStatus({
+        type: "success",
+        message: response.message || response.data?.message || "",
       });
-      setStatus({ type: "success", message: response.data.message });
       setTimeout(() => navigate("/login"), 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: string } } };
       setStatus({
         type: "error",
-        message: err.response?.data?.message || "Error resetting password.",
+        message:
+          apiError.response?.data?.message || "Error resetting password.",
       });
     } finally {
       setIsLoading(false);

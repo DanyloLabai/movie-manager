@@ -1,30 +1,34 @@
 import { useState, useEffect, useRef } from "react";
+import type { ReactNode } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { api } from "../api";
+import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 
 import { useLang } from "../context/LanguageContext";
+import { MovieCard } from "../components/movie/MovieCard";
+import type { MovieResult } from "../types/movie.types";
 
-interface MovieResult {
-  id: number;
+type ProfileResponse = {
+  favorites?: Array<{ tmdbId: number }>;
+  watchedIds?: number[];
+  inPlansIds?: number[];
+};
+
+type MovieCarouselProps = {
   title: string;
-  description: string;
-  releaseYear: string;
-  releaseDate?: string;
-  rating: number;
-  posterUrl: string | null;
-  mediaType: "movie" | "tv";
-}
-
-export interface MovieCardProps {
-  movie: any;
+  badge?: string;
+  badgeClass?: string;
+  movies: MovieResult[];
+  isLoading: boolean;
+  fallback: ReactNode;
+  emptyElement?: ReactNode;
   favoriteIds: number[];
   addedIds: number[];
   watchedIds: number[];
-  onToggleFavorite: (item: any) => void;
-  onAdd: (item: any) => void;
-  onRemove: (item: any) => void;
-}
+  onToggleFavorite: (item: MovieResult) => void;
+  onAdd: (item: MovieResult) => void;
+  onRemove: (item: MovieResult) => void;
+};
 
 const getUserId = (): string => {
   const token = localStorage.getItem("token");
@@ -50,130 +54,6 @@ const ADDED_CACHE_KEY = `added_cache_${uid}`;
 const CACHE_EXPIRATION_MS =
   Number(import.meta.env.VITE_CACHE_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
 
-const isReleased = (movie: MovieResult) => {
-  if (movie.releaseDate) return new Date(movie.releaseDate) <= new Date();
-  if (movie.releaseYear && movie.releaseYear !== "N/A")
-    return parseInt(movie.releaseYear) <= new Date().getFullYear();
-  return true;
-};
-
-export const MovieCard = ({
-  movie,
-  favoriteIds,
-  addedIds,
-  watchedIds,
-  onToggleFavorite,
-  onAdd,
-  onRemove,
-}: MovieCardProps) => {
-  const { t } = useLang();
-  const released = isReleased(movie);
-  const isWatched = watchedIds.includes(movie.id);
-  const isInPlans = addedIds.includes(movie.id);
-
-  return (
-    <div className="group relative overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 shadow rounded-xl flex flex-col hover:border-[#c8963c]/70 hover:-translate-y-0.5 transition h-full">
-      {released ? (
-        <button
-          className="absolute top-1.5 left-1.5 z-10 w-7 h-7 flex items-center justify-center bg-[#12100e]/80 rounded-full backdrop-blur-sm border border-[#c8963c]/30 transition group/heart"
-          onClick={() => onToggleFavorite(movie)}
-        >
-          <svg
-            className={`w-3 h-3 transition ${favoriteIds.includes(movie.id) ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30 group-hover/heart:text-red-500"}`}
-            fill={favoriteIds.includes(movie.id) ? "currentColor" : "none"}
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-            />
-          </svg>
-        </button>
-      ) : (
-        <div className="absolute top-1.5 left-1.5 z-10 w-7 h-7 flex items-center justify-center bg-[#12100e]/90 rounded-full border border-[#c8963c]/50 text-[#c8963c] text-[11px]">
-          ⏳
-        </div>
-      )}
-
-      <Link
-        to={`/movie/${movie.id}?type=${movie.mediaType}`}
-        className="relative w-full aspect-[2/3] bg-[#12100e] block overflow-hidden"
-      >
-        {movie.posterUrl ? (
-          <img
-            src={movie.posterUrl}
-            alt={movie.title}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex items-center justify-center w-full h-full text-[9px] text-[#f0e6cc]/30">
-            {t("search_no_poster")}
-          </div>
-        )}
-      </Link>
-
-      <div className="p-2.5 flex flex-col flex-grow bg-[#1a1714]">
-        <Link to={`/movie/${movie.id}?type=${movie.mediaType}`}>
-          <h4
-            className="text-[11px] font-bold mb-1 truncate text-[#f0e6cc] hover:text-[#c8963c] transition-colors"
-            title={movie.title}
-          >
-            {movie.title}
-          </h4>
-        </Link>
-        <p className="text-[8px] text-[#f0e6cc]/50 mb-2 uppercase tracking-wider flex items-center gap-1 flex-wrap font-semibold">
-          <span>
-            {movie.releaseDate
-              ? new Date(movie.releaseDate).toLocaleDateString("en-US", {
-                  month: "short",
-                  year: "numeric",
-                })
-              : movie.releaseYear}
-          </span>
-          {released && (
-            <>
-              <span>•</span>
-              <span className="text-[#c8963c] font-bold">
-                ★ {Number(movie.rating || 0).toFixed(1)}
-              </span>
-            </>
-          )}
-          <span className="ml-auto px-1 py-0.5 bg-[#2a241f] rounded text-[7px] text-[#f0e6cc]/70 border border-[#c8963c]/20">
-            {movie.mediaType === "tv" ? t("common_tv") : t("common_movie")}
-          </span>
-        </p>
-
-        <div className="mt-auto pt-2 border-t border-[#c8963c]/20">
-          {isInPlans ? (
-            <button
-              onClick={() => onRemove(movie)}
-              className={`w-full py-1.5 font-bold rounded-lg uppercase text-[9px] tracking-wider border flex items-center justify-center gap-1 active:scale-95 transition ${
-                isWatched
-                  ? "bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20"
-                  : "bg-[#c8963c]/10 text-[#c8963c] border-[#c8963c]/30 hover:bg-[#c8963c]/20"
-              }`}
-            >
-              <span>✓</span> {t("search_added_btn")}
-            </button>
-          ) : (
-            <button
-              onClick={() => onAdd(movie)}
-              className="w-full py-1.5 bg-[#2a241f] hover:bg-[#c8963c] hover:text-[#12100e] text-[#c8963c] border border-[#c8963c]/30 font-bold rounded-lg transition-all active:scale-95 uppercase text-[9px] tracking-wider shadow-sm"
-            >
-              + {t("search_add")}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
 const MovieCarousel = ({
   title,
   badge,
@@ -188,7 +68,7 @@ const MovieCarousel = ({
   onToggleFavorite,
   onAdd,
   onRemove,
-}: any) => {
+}: MovieCarouselProps) => {
   const { t } = useLang();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -289,6 +169,19 @@ const MovieCarousel = ({
   );
 };
 
+const isReleased = (movie: MovieResult) => {
+  if (movie.releaseDate) {
+    const today = new Date();
+    const release = new Date(movie.releaseDate);
+    today.setHours(0, 0, 0, 0);
+    release.setHours(0, 0, 0, 0);
+    return release <= today;
+  }
+  if (movie.releaseYear && movie.releaseYear !== "N/A")
+    return parseInt(movie.releaseYear, 10) <= new Date().getFullYear();
+  return true;
+};
+
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState(() => {
     try {
@@ -387,15 +280,12 @@ export default function Search() {
 
     localStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
 
-    api
-      .get("/movies/recommendations")
+    moviesApi
+      .getRecommendations()
       .then((res) => {
-        if (res.data?.length > 0) {
-          setRecommendations(res.data);
-          localStorage.setItem(
-            RECOMMENDATIONS_CACHE_KEY,
-            JSON.stringify(res.data),
-          );
+        if (res?.length > 0) {
+          setRecommendations(res);
+          localStorage.setItem(RECOMMENDATIONS_CACHE_KEY, JSON.stringify(res));
         }
       })
       .catch(() => {});
@@ -424,40 +314,40 @@ export default function Search() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [trendingRes, profileRes, recsRes, upcomingRes] =
+        const [trendingData, profileData, recsData, upcomingData] =
           await Promise.all([
-            api.get("/movies/trending").catch(() => ({ data: [] })),
-            api.get("/movies/profile").catch(() => ({ data: null })),
-            api.get("/movies/recommendations").catch(() => ({ data: [] })),
-            api.get("/movies/upcoming").catch(() => ({ data: [] })),
+            moviesApi.getTrending().catch(() => []),
+            moviesApi.getProfile().catch(() => null),
+            moviesApi.getRecommendations().catch(() => []),
+            moviesApi.getUpcoming().catch(() => []),
           ]);
 
-        if (trendingRes.data?.length > 0) {
-          setTrending(trendingRes.data);
+        if (trendingData?.length > 0) {
+          setTrending(trendingData);
           localStorage.setItem(
             TRENDING_CACHE_KEY,
-            JSON.stringify(trendingRes.data),
+            JSON.stringify(trendingData),
           );
         }
-        if (upcomingRes.data?.length > 0) {
-          setUpcoming(upcomingRes.data);
+        if (upcomingData?.length > 0) {
+          setUpcoming(upcomingData);
           localStorage.setItem(
             UPCOMING_CACHE_KEY,
-            JSON.stringify(upcomingRes.data),
+            JSON.stringify(upcomingData),
           );
         }
-        if (recsRes.data?.length > 0) {
-          setRecommendations(recsRes.data);
+        if (recsData?.length > 0) {
+          setRecommendations(recsData);
           localStorage.setItem(
             RECOMMENDATIONS_CACHE_KEY,
-            JSON.stringify(recsRes.data),
+            JSON.stringify(recsData),
           );
         }
-        if (profileRes.data) {
-          const favs =
-            profileRes.data.favorites?.map((f: any) => f.tmdbId) || [];
-          const watched = profileRes.data.watchedIds || [];
-          const inPlans = profileRes.data.inPlansIds || [];
+        if (profileData) {
+          const profile = profileData as ProfileResponse;
+          const favs = profile.favorites?.map((f) => f.tmdbId) || [];
+          const watched = profile.watchedIds || [];
+          const inPlans = profile.inPlansIds || [];
 
           setFavoriteIds(favs);
           setWatchedIds(watched);
@@ -488,16 +378,11 @@ export default function Search() {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
     try {
-      const response = await api.get("/movies/search", {
-        params: { title: searchQuery },
-      });
-      setResults(response.data);
-      localStorage.setItem(
-        SEARCH_RESULTS_CACHE_KEY,
-        JSON.stringify(response.data),
-      );
+      const response = await moviesApi.searchMovies({ title: searchQuery });
+      setResults(response);
+      localStorage.setItem(SEARCH_RESULTS_CACHE_KEY, JSON.stringify(response));
       localStorage.setItem(SEARCH_TIMESTAMP_KEY, Date.now().toString());
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(error);
     } finally {
       setIsSearching(false);
@@ -514,7 +399,7 @@ export default function Search() {
 
   const handleAdd = async (movie: MovieResult) => {
     try {
-      await api.post("/movies/watchlist", {
+      await moviesApi.addToWatchlist({
         tmdbId: movie.id,
         title: movie.title,
         posterUrl: movie.posterUrl,
@@ -525,8 +410,9 @@ export default function Search() {
       setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
       localStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
       showToast(t("search_added_toast"));
-    } catch (error: any) {
-      if (error.response?.status === 400) {
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status === 400) {
         setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
       } else {
         showToast(t("search_add_error"));
@@ -536,7 +422,7 @@ export default function Search() {
 
   const handleRemove = async (movie: MovieResult) => {
     try {
-      await api.delete(`/movies/watchlist/${movie.id}`);
+      await moviesApi.removeFromWatchlist(movie.id);
       setAddedIds((prev) => prev.filter((id) => id !== movie.id));
       setFavoriteIds((prev) => prev.filter((id) => id !== movie.id));
       localStorage.setItem(
@@ -556,7 +442,7 @@ export default function Search() {
     }
     const isFav = favoriteIds.includes(movie.id);
     try {
-      await api.patch(`/movies/watchlist/${movie.id}/favorite`);
+      await moviesApi.toggleFavorite(movie.id);
       const newIds = isFav
         ? favoriteIds.filter((id) => id !== movie.id)
         : [...favoriteIds, movie.id];
@@ -565,16 +451,17 @@ export default function Search() {
       if (!isFav)
         setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
       showToast(t("search_fav_updated"));
-    } catch (error: any) {
-      if (error.response?.status === 404 && !isFav) {
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status === 404 && !isFav) {
         try {
-          await api.post("/movies/watchlist", {
+          await moviesApi.addToWatchlist({
             tmdbId: movie.id,
             title: movie.title,
             posterUrl: movie.posterUrl,
             mediaType: movie.mediaType,
           });
-          await api.patch(`/movies/watchlist/${movie.id}/favorite`);
+          await moviesApi.toggleFavorite(movie.id);
           const newIds = [...favoriteIds, movie.id];
           setFavoriteIds(newIds);
           setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
@@ -822,6 +709,13 @@ export default function Search() {
                 badgeClass="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30"
                 movies={upcoming.slice(0, 10)}
                 isLoading={isLoadingHome && upcoming.length === 0}
+                fallback={
+                  <div className="flex justify-center items-center h-24">
+                    <p className="text-[#f0e6cc]/50 animate-pulse text-xs sm:text-sm font-semibold uppercase tracking-widest">
+                      {t("search_failed_trends")}
+                    </p>
+                  </div>
+                }
                 favoriteIds={favoriteIds}
                 addedIds={addedIds}
                 watchedIds={watchedIds}

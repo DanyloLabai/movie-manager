@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
   PieChart,
@@ -11,48 +11,15 @@ import {
   XAxis,
 } from "recharts";
 import LogoImg from "../assets/logo.png";
-import { api } from "../api";
+import * as moviesApi from "../api/movies.api";
+import * as usersApi from "../api/users.api";
 import { useLang } from "../context/LanguageContext";
+import type { TranslationKey } from "../context/LanguageContext";
 import AchievementTooltip from "../components/AchievementTooltip";
-
-interface WatchlistItem {
-  id: string;
-  tmdbId: number;
-  title: string;
-  addedAt: string;
-  updatedAt?: string;
-  posterUrl?: string | null;
-  isWatched: boolean;
-  isFavorite: boolean;
-  rating?: number | null;
-  mediaType: string;
-  releaseDate?: string | null;
-  releaseYear?: string | null;
-}
-
-interface ProfileData {
-  id?: number;
-  favorites: WatchlistItem[];
-  recent: WatchlistItem[];
-  watchedCount?: number;
-  totalCount?: number;
-  avatarUrl?: string | null;
-  username?: string;
-  stats?: {
-    totalMinutes: number;
-    topGenre: string;
-    genreDistribution: { name: string; value: number }[];
-    topRated: WatchlistItem[];
-    averageRating: string | number;
-    moviesCount: number;
-    tvCount: number;
-    favoriteDecade: string;
-    ratingDistribution: { name: string; value: number }[];
-    completionRate: number;
-    longestMovie: { title: string; runtime: number };
-    topActor: { name: string; count: number; profileUrl: string | null } | null;
-  };
-}
+import type {
+  WatchlistItem as WatchlistItemType,
+  ProfileData as ProfileDataType,
+} from "../types/movie.types";
 
 const getUserIdFromToken = (): string => {
   const token = localStorage.getItem("token");
@@ -71,7 +38,7 @@ const ENABLE_CACHE = import.meta.env.VITE_ENABLE_PROFILE_CACHE;
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
 
-const isReleased = (item: WatchlistItem): boolean => {
+const isReleased = (item: WatchlistItemType): boolean => {
   if (item.releaseDate) {
     const today = new Date();
     const release = new Date(item.releaseDate);
@@ -82,7 +49,16 @@ const isReleased = (item: WatchlistItem): boolean => {
   return true;
 };
 
-const CustomTooltip = ({ active, payload }: any) => {
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    payload?: Record<string, unknown>;
+  }>;
+}
+
+const CustomTooltip = ({ active, payload }: ChartTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1714] border border-[#c8963c]/50 p-2 rounded-xl shadow-xl">
@@ -96,7 +72,13 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const RatingTooltip = ({ active, payload, t }: any) => {
+interface RatingTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: { name: string }; value: number }>;
+  t: (key: TranslationKey) => string;
+}
+
+const RatingTooltip = ({ active, payload, t }: RatingTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1714] border border-[#c8963c]/50 px-2 py-1.5 rounded-xl shadow-xl flex items-center gap-1.5">
@@ -125,10 +107,9 @@ export default function Watchlist() {
   const { t, lang } = useLang();
   const dateLocale = lang === "uk" ? "uk-UA" : "en-US";
   const getUsernameKey = () => `custom_username_${getUserIdFromToken()}`;
-  const getAvatarKey = () => `custom_avatarUrl_${getUserIdFromToken()}`;
-  const [movies, setMovies] = useState<WatchlistItem[]>([]);
+  const [movies, setMovies] = useState<WatchlistItemType[]>([]);
 
-  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [profileData, setProfileData] = useState<ProfileDataType | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialTab =
@@ -160,39 +141,32 @@ export default function Watchlist() {
     title: string;
   }>({ isOpen: false, tmdbId: null, title: "" });
 
-  useEffect(() => {
-    if (activeTab === "watchlist" || activeTab === "watched") {
-      fetchMovies();
-    } else if (activeTab === "profile") {
-      fetchProfile();
-    }
-  }, [activeTab]);
-
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const fetchMovies = async () => {
+  const fetchMovies = useCallback(async () => {
     setIsLoading(true);
     try {
-      const endpoint =
-        activeTab === "watchlist" ? "/movies/watchlist" : "/movies/watched";
-      const response = await api.get(`${endpoint}?_t=${Date.now()}`);
-      setMovies(response.data);
-    } catch (error: any) {
-      if (error.response?.status === 401) handleLogout();
+      const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
+      const response = await moviesApi.getWatchlist(endpointName);
+      setMovies(response || []);
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeTab, navigate]);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await api.get(`/movies/profile?_t=${Date.now()}`);
-      const data = response.data;
-
+      const data = await moviesApi.getProfile();
       setProfileData(data);
 
       if (data.username) {
@@ -201,12 +175,24 @@ export default function Watchlist() {
       if (data.avatarUrl !== undefined) {
         setAvatarUrl(data.avatarUrl ?? null);
       }
-    } catch (error: any) {
-      if (error.response?.status === 401) handleLogout();
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (activeTab === "watchlist" || activeTab === "watched") {
+      fetchMovies();
+    } else if (activeTab === "profile") {
+      fetchProfile();
+    }
+  }, [activeTab, fetchMovies, fetchProfile]);
 
   const handleToggleFavorite = async (tmdbId: number) => {
     const itemToCheck =
@@ -246,7 +232,7 @@ export default function Watchlist() {
       );
     }
     try {
-      await api.patch(`/movies/watchlist/${tmdbId}/favorite`);
+      await moviesApi.toggleFavorite(tmdbId);
       showToast(t("search_fav_updated"));
       if (activeTab === "profile") fetchProfile();
     } catch {
@@ -267,7 +253,7 @@ export default function Watchlist() {
       };
     });
     try {
-      await api.delete(`/movies/watchlist/${tmdbId}`);
+      await moviesApi.removeFromWatchlist(tmdbId);
       showToast(t("movie_removed"));
     } catch {
       showToast(t("search_remove_error"));
@@ -288,9 +274,8 @@ export default function Watchlist() {
   const confirmMarkWatched = async (tmdbId: number, rating: number | null) => {
     setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
     try {
-      await api.post(`/movies/watchlist/${tmdbId}/watched`);
-      if (rating !== null)
-        await api.patch(`/movies/watchlist/${tmdbId}/rate`, { rating });
+      await moviesApi.markWatched(tmdbId);
+      if (rating !== null) await moviesApi.rateMovie(tmdbId, rating);
       showToast(t("watchlist_moved"));
       fetchProfile();
     } catch {
@@ -329,9 +314,7 @@ export default function Watchlist() {
       return { ...prev, recent: newRecent };
     });
     try {
-      await api.patch(`/movies/watchlist/${tmdbId}/rate`, {
-        rating: newRating,
-      });
+      await moviesApi.rateMovie(tmdbId, newRating);
       showToast(
         newRating === 0
           ? t("watchlist_rating_cleared")
@@ -612,23 +595,22 @@ export default function Watchlist() {
             </div>
 
             {/* Longest Marathon */}
-            {profileData?.stats?.longestMovie &&
-              profileData.stats.longestMovie.runtime > 0 && (
-                <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 rounded-xl mb-2 flex items-center gap-3">
-                  <span className="text-2xl">🏃‍♂️</span>
-                  <div className="min-w-0">
-                    <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
-                      {t("stats_marathon")}
-                    </p>
-                    <p className="text-xs font-bold text-[#c8963c] truncate">
-                      {profileData.stats.longestMovie.title}
-                    </p>
-                    <p className="text-[10px] text-[#f0e6cc]/70 font-black">
-                      {profileData.stats.longestMovie.runtime} {t("stats_min")}
-                    </p>
-                  </div>
+            {(profileData?.stats?.longestMovie?.runtime ?? 0) > 0 && (
+              <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 rounded-xl mb-2 flex items-center gap-3">
+                <span className="text-2xl">🏃‍♂️</span>
+                <div className="min-w-0">
+                  <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
+                    {t("stats_marathon")}
+                  </p>
+                  <p className="text-xs font-bold text-[#c8963c] truncate">
+                    {profileData?.stats?.longestMovie?.title}
+                  </p>
+                  <p className="text-[10px] text-[#f0e6cc]/70 font-black">
+                    {profileData?.stats?.longestMovie?.runtime} {t("stats_min")}
+                  </p>
                 </div>
-              )}
+              </div>
+            )}
 
             {/* Top Actor */}
             {profileData?.stats?.topActor && (
@@ -686,7 +668,10 @@ export default function Watchlist() {
                         stroke="none"
                       >
                         {(profileData?.stats?.genreDistribution || []).map(
-                          (_, index) => (
+                          (
+                            _: { name: string; value: number },
+                            index: number,
+                          ) => (
                             <Cell
                               key={`cell-${index}`}
                               fill={CHART_COLORS[index % CHART_COLORS.length]}
@@ -887,10 +872,12 @@ export default function Watchlist() {
           ) : (
             <div className="flex flex-col gap-1.5">
               {profileData.recent.map((act) => {
-                const addedStr = new Date(act.addedAt).toLocaleDateString(
-                  dateLocale,
-                  { month: "short", day: "numeric" },
-                );
+                const addedStr = act.addedAt
+                  ? new Date(act.addedAt).toLocaleDateString(dateLocale, {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "";
                 return (
                   <Link
                     to={`/movie/${act.tmdbId}?type=${act.mediaType || "movie"}&fromTab=profile`}
@@ -1289,8 +1276,8 @@ function FriendsModal({ onClose }: FriendsModalProps) {
   useEffect(() => {
     const fetchFriends = async () => {
       try {
-        const response = await api.get("/users/friends");
-        setFriends(response.data);
+        const data = await usersApi.getFriends();
+        setFriends(data || []);
       } catch (error) {
         console.error(error);
       } finally {
@@ -1303,7 +1290,7 @@ function FriendsModal({ onClose }: FriendsModalProps) {
   const handleRemoveFriend = async (friendId: number) => {
     setRemovingId(friendId);
     try {
-      await api.delete(`/users/friends/${friendId}`);
+      await usersApi.removeFriend(friendId);
       setFriends((prev) => prev.filter((f) => f.id !== friendId));
     } catch (error) {
       console.error(error);
@@ -1443,11 +1430,12 @@ function EditProfileModal({
       return;
     }
     try {
-      const response = await api.patch("/users/profile", formData);
-      onUpdate(response.data.username, response.data.avatarUrl);
+      const response = await usersApi.updateProfile(formData);
+      onUpdate(response.username, response.avatarUrl);
       onClose();
-    } catch (err: any) {
-      if (err.response?.status === 409) {
+    } catch (err: unknown) {
+      const apiError = err as { response?: { status?: number } };
+      if (apiError.response?.status === 409) {
         setError(t("edit_username_taken"));
       } else {
         setError(t("edit_error"));

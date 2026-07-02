@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "../api";
+import * as authApi from "../api/auth.api";
 import { useLang } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import { STORAGE_KEYS } from "../constants/storage";
@@ -25,9 +25,8 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await api.post("/auth/signin", { email, password });
+      const response = await authApi.login({ email, password });
 
-      // Clear old caches
       Object.values(STORAGE_KEYS).forEach((key) => {
         if (typeof key === "string") {
           const keysToRemove = Object.keys(localStorage).filter(
@@ -40,11 +39,13 @@ export default function Login() {
       localStorage.removeItem("custom_avatarUrl");
       localStorage.removeItem("movie_tracker_chat_history");
 
-      // Use AuthContext to login
       login(response.data.access_token, response.data.user);
       navigate("/watchlist");
-    } catch (err: any) {
-      const serverMessage = err.response?.data?.message;
+    } catch (err: unknown) {
+      const apiError = err as {
+        response?: { data?: { message?: string | string[] } };
+      };
+      const serverMessage = apiError.response?.data?.message;
 
       if (typeof serverMessage === "string") {
         setError(serverMessage);
@@ -65,7 +66,7 @@ export default function Login() {
     setIsResending(true);
     setResendStatus("");
     try {
-      await api.post("/auth/resend-verification", { email });
+      await authApi.resendVerification(email);
       setResendStatus(t("login_resend"));
     } catch {
       setResendStatus(t("login_resend_error"));

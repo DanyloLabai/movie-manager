@@ -1,19 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { api } from "../api";
+import * as aiApi from "../api/ai.api";
+import type { AIMessage } from "../api/ai.api";
+import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 
-interface MovieResult {
-  id: number;
-  title: string;
-  description: string;
-  releaseYear: string;
-  releaseDate?: string;
-  rating: number;
-  posterUrl: string | null;
-  mediaType: "movie" | "tv";
-}
+type ProfileResponse = {
+  favorites?: Array<{ tmdbId: number }>;
+  watchedIds?: number[];
+  inPlansIds?: number[];
+};
+
+import type { MovieResult } from "../types/movie.types";
 
 interface Message {
   role: "user" | "ai";
@@ -31,15 +30,6 @@ const COOLDOWN_SECONDS = 3;
 export default function AiChat() {
   const { t } = useLang();
   const [input, setInput] = useState("");
-
-  const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
-    try {
-      const c = localStorage.getItem(FAVORITES_CACHE_KEY);
-      return c ? JSON.parse(c) : [];
-    } catch {
-      return [];
-    }
-  });
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,9 +110,29 @@ export default function AiChat() {
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        const response = await api.get("/ai/history");
-        if (Array.isArray(response.data) && response.data.length > 1) {
-          setMessages(response.data);
+        const responseRaw = (await aiApi.getHistory()) as unknown;
+        if (Array.isArray(responseRaw) && responseRaw.length > 0) {
+          const first = responseRaw[0] as Record<string, unknown>;
+          if (
+            "role" in first &&
+            typeof first.role === "string" &&
+            "text" in first &&
+            typeof first.text === "string"
+          ) {
+            setMessages(responseRaw as Message[]);
+          } else if ("messages" in first && Array.isArray(first.messages)) {
+            const entries = responseRaw as Array<{ messages: AIMessage[] }>;
+            const msgs: Message[] = entries.flatMap((entry) =>
+              (entry.messages || []).map((m) => ({
+                role: m.role === "assistant" ? "ai" : "user",
+                text: m.content,
+              })),
+            );
+            if (msgs.length > 0) setMessages(msgs);
+            else setMessages([getWelcomeMessage()]);
+          } else {
+            setMessages([getWelcomeMessage()]);
+          }
         } else {
           setMessages([getWelcomeMessage()]);
         }
@@ -133,13 +143,18 @@ export default function AiChat() {
       }
     };
     loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (messages.length <= 1) return;
     const timer = setTimeout(async () => {
       try {
-        await api.post("/ai/history", { messages });
+        const aiMsgs: AIMessage[] = messages.map((m) => ({
+          role: m.role === "ai" ? "assistant" : "user",
+          content: m.text,
+        }));
+        await aiApi.postHistory(aiMsgs);
         localStorage.setItem(
           CHAT_STORAGE_KEY,
           JSON.stringify({ messages, timestamp: Date.now() }),
@@ -157,17 +172,18 @@ export default function AiChat() {
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        const response = await api.get("/movies/profile");
-        if (response.data) {
-          const favIds =
-            response.data.favorites?.map((f: any) => f.tmdbId) || [];
-          setFavoriteIds(favIds);
+        const response = await moviesApi.getProfile();
+        if (response) {
+          const profileData = response as ProfileResponse;
+          const favIds = profileData.favorites?.map((f) => f.tmdbId) || [];
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(favIds));
-          const watchedIds = response.data.watchedIds || [];
-          const inPlansIds = response.data.inPlansIds || [];
+          const watchedIds = profileData.watchedIds || [];
+          const inPlansIds = profileData.inPlansIds || [];
           setAddedIds(Array.from(new Set([...watchedIds, ...inPlansIds])));
         }
-      } catch {}
+      } catch (err) {
+        console.error("Failed to fetch profile in AiChat:", err);
+      }
     };
     fetchProfileData();
   }, []);
@@ -187,7 +203,7 @@ export default function AiChat() {
   const handleClearChat = () => {
     setMessages([{ role: "ai", text: t("chat_cleared") }]);
     localStorage.removeItem(CHAT_STORAGE_KEY);
-    api.post("/ai/history", { messages: [] }).catch(() => {});
+    aiApi.postHistory([] as AIMessage[]).catch(() => void 0);
     showToast(t("chat_history_cleared"));
   };
 
@@ -205,12 +221,11 @@ export default function AiChat() {
     try {
       const trimmedMessages = newMessages.slice(-MAX_HISTORY);
 
-      // Збираємо всі вже показані id фільмів
       const shownMovieIds = trimmedMessages
         .filter((m) => m.movies && m.movies.length > 0)
         .flatMap((m) => m.movies!.map((movie) => movie.id));
 
-      const chatHistory = trimmedMessages.map((msg) => {
+      const chatHistory: AIMessage[] = trimmedMessages.map((msg) => {
         let content = msg.text;
         if (msg.role === "ai" && msg.movies && msg.movies.length > 0) {
           const shownMovies = msg.movies.map((m) => m.title).join(", ");
@@ -222,17 +237,17 @@ export default function AiChat() {
         };
       });
 
-      const response = await api.post("/ai/search", {
+      const response = await aiApi.aiSearch({
         messages: chatHistory,
-        shownMovieIds, // ← передаємо на бекенд
+        shownMovieIds,
       });
 
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          text: response.data.message || "Here is what I found:",
-          movies: response.data.movies,
+          text: response.message || "Here is what I found:",
+          movies: response.movies,
         },
       ]);
     } catch {
@@ -253,7 +268,7 @@ export default function AiChat() {
 
   const handleAddFromChat = async (movie: MovieResult) => {
     try {
-      await api.post("/movies/watchlist", {
+      await moviesApi.addToWatchlist({
         tmdbId: movie.id,
         title: movie.title,
         posterUrl: movie.posterUrl,
@@ -262,30 +277,12 @@ export default function AiChat() {
       });
       setAddedIds((prev) => [...prev, movie.id]);
       showToast(t("chat_added"));
-    } catch (error: any) {
-      if (error.response?.status === 400) {
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status === 400) {
         setAddedIds((prev) => [...prev, movie.id]);
         showToast(t("chat_added"));
       } else showToast(t("chat_add_error"));
-    }
-  };
-
-  const handleToggleFavorite = async (movie: MovieResult) => {
-    if (!isReleased(movie)) {
-      showToast(t("chat_fav_unreleased"));
-      return;
-    }
-    const isFav = favoriteIds.includes(movie.id);
-    try {
-      await api.patch(`/movies/watchlist/${movie.id}/favorite`);
-      const newIds = isFav
-        ? favoriteIds.filter((id) => id !== movie.id)
-        : [...favoriteIds, movie.id];
-      setFavoriteIds(newIds);
-      localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
-      showToast(t("chat_fav_updated"));
-    } catch {
-      showToast(t("chat_server_error"));
     }
   };
 

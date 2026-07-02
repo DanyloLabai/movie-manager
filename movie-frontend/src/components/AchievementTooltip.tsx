@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLang } from "../context/LanguageContext";
+import type { TranslationKey } from "../context/LanguageContext";
 
 interface Achievement {
   id: string;
@@ -54,7 +55,6 @@ export default function AchievementTooltip({
 
       const anchor = containerRef.current.getBoundingClientRect();
       const anchorCenterX = anchor.left + anchor.width / 2;
-      const anchorCenterY = anchor.top + anchor.height / 2;
 
       const spaceAbove = anchor.top;
       const above = spaceAbove >= TOOLTIP_HEIGHT + 8;
@@ -142,7 +142,8 @@ export default function AchievementTooltip({
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-[9px] text-[#f0e6cc]/50">
-                    {t("watchlist_progress") || "Progress"}
+                    {t("watchlist_progress" as unknown as TranslationKey) ||
+                      "Progress"}
                   </span>
                   <span className="text-[9px] font-bold text-[#c8963c]">
                     {achievement.current}/{achievement.needed}

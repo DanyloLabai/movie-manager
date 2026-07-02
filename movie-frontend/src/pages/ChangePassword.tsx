@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api";
+import * as authApi from "../api/auth.api";
 import { useLang } from "../context/LanguageContext";
 
 export default function ChangePassword() {
@@ -31,11 +31,7 @@ export default function ChangePassword() {
 
     setIsLoading(true);
     try {
-      await api.patch("/auth/change-password", {
-        email,
-        oldPassword,
-        newPassword,
-      });
+      await authApi.changePassword({ email, oldPassword, newPassword });
 
       setSuccessMsg(t("password_success"));
       localStorage.removeItem("token");
@@ -43,8 +39,9 @@ export default function ChangePassword() {
       setTimeout(() => {
         navigate("/login");
       }, 2500);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Error changing password.");
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: string } } };
+      setError(apiError.response?.data?.message || "Error changing password.");
     } finally {
       setIsLoading(false);
     }

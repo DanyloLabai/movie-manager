@@ -1,30 +1,27 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { api } from "../api";
+import * as authApi from "../api/auth.api";
 import { useLang } from "../context/LanguageContext";
 
 export default function VerifyEmail() {
   const { t } = useLang();
   const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState<"loading" | "success" | "error">(
-    "loading",
-  );
   const token = searchParams.get("token");
+  const [status, setStatus] = useState<"loading" | "success" | "error">(
+    token ? "loading" : "error",
+  );
   const navigate = useNavigate();
 
   const hasAttempted = useRef(false);
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      return;
-    }
+    if (!token) return;
 
     if (hasAttempted.current) return;
     hasAttempted.current = true;
 
-    api
-      .get(`/auth/verify-email?token=${token}`)
+    authApi
+      .verifyEmailGet(token)
       .then(() => setStatus("success"))
       .catch(() => setStatus("error"));
   }, [token]);

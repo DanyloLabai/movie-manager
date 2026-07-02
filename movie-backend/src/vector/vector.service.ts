@@ -4,6 +4,12 @@ import { Pool } from 'pg';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { embed } from 'ai';
 
+interface MovieEmbeddingMetadata {
+  tmdbId: number;
+  title: string;
+  [key: string]: unknown;
+}
+
 @Injectable()
 export class VectorService implements OnModuleInit {
   private pool: Pool;
@@ -96,7 +102,7 @@ export class VectorService implements OnModuleInit {
   async searchSimilarMovies(
     query: string,
     k = 5,
-  ): Promise<Array<{ pageContent: string; metadata: any }>> {
+  ): Promise<Array<{ pageContent: string; metadata: MovieEmbeddingMetadata }>> {
     const embedding = await this.embed(query);
 
     const result = await this.pool.query(
@@ -111,8 +117,8 @@ export class VectorService implements OnModuleInit {
       pageContent: row.text,
       metadata:
         typeof row.metadata === 'string'
-          ? JSON.parse(row.metadata)
-          : row.metadata,
+          ? (JSON.parse(row.metadata) as MovieEmbeddingMetadata)
+          : (row.metadata as MovieEmbeddingMetadata),
     }));
   }
 

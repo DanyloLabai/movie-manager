@@ -1,0 +1,119 @@
+import { api } from "./index";
+import type {
+  MovieResult,
+  MovieDetails,
+  RecommendedMovie,
+  UserMovieStatus,
+  WatchlistItem,
+  ProfileData,
+} from "../types/movie.types";
+
+export async function searchMovies(
+  params: Record<string, unknown>,
+): Promise<MovieResult[]> {
+  const res = await api.get("/movies/search", { params });
+  return res.data as MovieResult[];
+}
+
+export async function getTrending(): Promise<MovieResult[]> {
+  const res = await api.get("/movies/trending");
+  return res.data as MovieResult[];
+}
+
+export async function getUpcoming(): Promise<MovieResult[]> {
+  const res = await api.get("/movies/upcoming");
+  return res.data as MovieResult[];
+}
+
+export async function getRecommendations(): Promise<MovieResult[]> {
+  const res = await api.get("/movies/recommendations");
+  return res.data as MovieResult[];
+}
+
+export async function addToWatchlist(body: {
+  tmdbId: number;
+  title: string;
+  posterUrl?: string | null;
+  mediaType?: string;
+  releaseDate?: string | null;
+}): Promise<WatchlistItem> {
+  const res = await api.post("/movies/watchlist", body);
+  return res.data as WatchlistItem;
+}
+
+export async function removeFromWatchlist(id: number): Promise<void> {
+  await api.delete(`/movies/watchlist/${id}`);
+}
+
+export async function toggleFavorite(id: number): Promise<void> {
+  await api.patch(`/movies/watchlist/${id}/favorite`);
+}
+
+export async function getWatchlist(
+  endpoint: "watchlist" | "watched",
+): Promise<WatchlistItem[]> {
+  const res = await api.get(`/movies/${endpoint}`);
+  return res.data as WatchlistItem[];
+}
+
+export async function getProfile(): Promise<ProfileData> {
+  const res = await api.get(`/movies/profile`);
+  return res.data as ProfileData;
+}
+
+export async function getTop100(type: string): Promise<MovieResult[]> {
+  const res = await api.get(`/movies/top100/${type}`);
+  return res.data as MovieResult[];
+}
+
+export async function getMovieDetails(
+  tmdbId: number,
+  type: string,
+): Promise<MovieDetails> {
+  const res = await api.get(`/movies/${tmdbId}/details?type=${type}`);
+  return res.data as MovieDetails;
+}
+
+export async function getSimilar(
+  tmdbId: number,
+  type: string,
+): Promise<RecommendedMovie[]> {
+  const res = await api.get(`/movies/${tmdbId}/similar?type=${type}`);
+  return res.data as RecommendedMovie[];
+}
+
+export async function getActor(personId: number): Promise<unknown> {
+  const res = await api.get(`/movies/actor/${personId}`);
+  return res.data as unknown;
+}
+
+export async function rateMovie(id: number, rating: number): Promise<void> {
+  await api.patch(`/movies/watchlist/${id}/rate`, { rating });
+}
+
+export async function markWatched(id: number): Promise<void> {
+  await api.post(`/movies/watchlist/${id}/watched`);
+}
+
+export async function getStatus(id: number): Promise<UserMovieStatus | null> {
+  const res = await api.get(`/movies/${id}/status`);
+  return res.data as UserMovieStatus | null;
+}
+export default {
+  searchMovies,
+  getTrending,
+  getUpcoming,
+  getRecommendations,
+  addToWatchlist,
+  removeFromWatchlist,
+  toggleFavorite,
+  getWatchlist,
+  getProfile,
+  getTop100,
+  getMovieDetails,
+  getSimilar,
+  getActor,
+  rateMovie,
+  markWatched,
+  getStatus,
+};

@@ -10,10 +10,62 @@ import {
   Bar,
   XAxis,
 } from "recharts";
-import { api } from "../api";
+import * as usersApi from "../api/users.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import AchievementTooltip from "../components/AchievementTooltip";
+
+type PublicProfileData = {
+  id: number;
+  username: string;
+  avatarUrl?: string | null;
+  watchedCount?: number;
+  totalCount?: number;
+  favorites?: Array<{
+    id: number;
+    tmdbId: number;
+    title: string;
+    posterUrl?: string | null;
+    mediaType: string;
+    isWatched?: boolean;
+    rating?: number | null;
+  }>;
+  recent?: Array<{
+    id: number;
+    tmdbId: number;
+    title: string;
+    posterUrl?: string | null;
+    mediaType: string;
+    isWatched?: boolean;
+    rating?: number | null;
+  }>;
+  isFriend?: boolean;
+  stats?: {
+    genreDistribution?: Array<{ name: string; value: number }>;
+    ratingDistribution?: Array<{ name: string; value: number }>;
+    totalMinutes?: number;
+    topGenre?: string;
+    topRated?: Array<{
+      id: number;
+      tmdbId: number;
+      title: string;
+      posterUrl?: string | null;
+      mediaType: string;
+      rating?: number;
+    }>;
+    averageRating?: string | number;
+    moviesCount?: number;
+    tvCount?: number;
+    favoriteDecade?: string;
+    completionRate?: number;
+    longestMovie?: { title: string; runtime: number };
+    topActor?: {
+      name: string;
+      count: number;
+      profileUrl: string | null;
+    } | null;
+  };
+};
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
 
@@ -25,7 +77,16 @@ const getUserRank = (watchedCount: number) => {
   return "Cinema Guest";
 };
 
-const CustomTooltip = ({ active, payload }: any) => {
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    payload?: Record<string, unknown>;
+  }>;
+}
+
+const CustomTooltip = ({ active, payload }: ChartTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1714] border border-[#c8963c]/50 p-2 rounded-xl shadow-xl z-50">
@@ -39,7 +100,15 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const RatingTooltip = ({ active, payload, t }: any) => {
+type LangT = ReturnType<typeof useLang>["t"];
+
+interface RatingTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: { name: string }; value: number }>;
+  t: LangT;
+}
+
+const RatingTooltip = ({ active, payload, t }: RatingTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1714] border border-[#c8963c]/50 px-2 py-1.5 rounded-xl shadow-xl z-50 flex items-center gap-1.5">
@@ -59,7 +128,9 @@ const RatingTooltip = ({ active, payload, t }: any) => {
 export default function PublicProfile() {
   const { t } = useLang();
   const { id } = useParams<{ id: string }>();
-  const [profileData, setProfileData] = useState<any>(null);
+  const [profileData, setProfileData] = useState<PublicProfileData | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -75,8 +146,10 @@ export default function PublicProfile() {
   useEffect(() => {
     const fetchPublicProfile = async () => {
       try {
-        const response = await api.get(`/users/public/${id}?_t=${Date.now()}`);
-        setProfileData(response.data);
+        const data = await (
+          await import("../api/users.api")
+        ).getPublicProfile(id as string);
+        setProfileData(data);
       } catch {
         setError(true);
       } finally {
@@ -88,11 +161,12 @@ export default function PublicProfile() {
 
   const handleAddFriend = async () => {
     try {
-      await api.post(`/users/friends/${id}`);
-      setProfileData((prev: any) => ({ ...prev, isFriend: true }));
+      await usersApi.addFriend(id as string);
+      setProfileData((prev) => (prev ? { ...prev, isFriend: true } : prev));
       showToast("Added to friends!");
-    } catch (err: any) {
-      showToast(err.response?.data?.message || t("common_error"));
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: string } } };
+      showToast(apiError.response?.data?.message || t("common_error"));
     }
   };
 
@@ -124,10 +198,10 @@ export default function PublicProfile() {
   const watchedCount = profileData.watchedCount || 0;
   const favoritesCount = profileData.favorites?.length || 0;
   const totalCount = profileData.totalCount || 0;
-  const userRank = getUserRank(watchedCount); // Ранг поки залишаємо англійською або теж можна перенести в словник
+  const userRank = getUserRank(watchedCount);
 
   const hasStats = Boolean(
-    profileData.stats &&
+    profileData?.stats &&
     profileData.stats.genreDistribution &&
     profileData.stats.genreDistribution.length > 0,
   );
@@ -193,8 +267,8 @@ export default function PublicProfile() {
 
   const displayedMovies =
     activeTab === "favorites"
-      ? profileData.favorites
-      : profileData.recent?.filter((m: any) => m.isWatched) || [];
+      ? profileData?.favorites || []
+      : profileData?.recent?.filter((m) => m.isWatched) || [];
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] selection:bg-[#c8963c] selection:text-[#12100e]">
@@ -316,13 +390,13 @@ export default function PublicProfile() {
                 {t("profile_completion")}
               </span>
               <span className="text-[#c8963c] font-black text-xs">
-                {profileData.stats.completionRate}%
+                {profileData?.stats?.completionRate || 0}%
               </span>
             </div>
             <div className="w-full h-2 bg-[#12100e] rounded-full overflow-hidden border border-[#c8963c]/10">
               <div
                 className="h-full bg-gradient-to-r from-[#9a732a] to-[#c8963c] transition-all duration-1000 ease-out"
-                style={{ width: `${profileData.stats.completionRate}%` }}
+                style={{ width: `${profileData?.stats?.completionRate || 0}%` }}
               />
             </div>
           </div>
@@ -342,8 +416,8 @@ export default function PublicProfile() {
                   {t("stats_time_spent")}
                 </p>
                 <p className="text-base font-black text-[#f0e6cc]">
-                  {Math.floor((profileData.stats?.totalMinutes || 0) / 60)}h{" "}
-                  {(profileData.stats?.totalMinutes || 0) % 60}m
+                  {Math.floor((profileData?.stats?.totalMinutes || 0) / 60)}h{" "}
+                  {(profileData?.stats?.totalMinutes || 0) % 60}m
                 </p>
               </div>
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
@@ -351,7 +425,7 @@ export default function PublicProfile() {
                   {t("stats_top_genre")}
                 </p>
                 <p className="text-base font-black text-[#c8963c] truncate">
-                  {profileData.stats?.topGenre || t("common_na")}
+                  {profileData?.stats?.topGenre || t("common_na")}
                 </p>
               </div>
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
@@ -359,7 +433,7 @@ export default function PublicProfile() {
                   {t("stats_avg")}
                 </p>
                 <p className="text-base font-black text-[#f0e6cc]">
-                  {profileData.stats?.averageRating || "0.0"}
+                  {profileData?.stats?.averageRating || "0.0"}
                 </p>
               </div>
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
@@ -367,13 +441,13 @@ export default function PublicProfile() {
                   {t("stats_fav_decade")}
                 </p>
                 <p className="text-base font-black text-[#f0e6cc]">
-                  {profileData.stats?.favoriteDecade || t("common_na")}
+                  {profileData?.stats?.favoriteDecade || t("common_na")}
                 </p>
               </div>
             </div>
 
             {/* Longest Marathon */}
-            {profileData.stats?.longestMovie?.runtime > 0 && (
+            {(profileData?.stats?.longestMovie?.runtime ?? 0) > 0 && (
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl mb-2 flex items-center gap-3">
                 <span className="text-xl">🏃‍♂️</span>
                 <div className="min-w-0">
@@ -381,10 +455,10 @@ export default function PublicProfile() {
                     {t("stats_marathon")}
                   </p>
                   <p className="text-xs font-bold text-[#c8963c] truncate">
-                    {profileData.stats.longestMovie.title}
+                    {profileData?.stats?.longestMovie?.title}
                   </p>
                   <p className="text-[9px] text-[#f0e6cc]/60">
-                    {profileData.stats.longestMovie.runtime} {t("stats_min")}
+                    {profileData?.stats?.longestMovie?.runtime} {t("stats_min")}
                   </p>
                 </div>
               </div>
@@ -394,9 +468,9 @@ export default function PublicProfile() {
             {profileData.stats?.topActor && (
               <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl mb-4 flex items-center gap-3">
                 <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-[#c8963c]/30">
-                  {profileData.stats.topActor.profileUrl ? (
+                  {profileData?.stats?.topActor?.profileUrl ? (
                     <img
-                      src={profileData.stats.topActor.profileUrl}
+                      src={profileData?.stats?.topActor?.profileUrl}
                       alt="Actor"
                       className="w-full h-full object-cover"
                     />
@@ -411,12 +485,12 @@ export default function PublicProfile() {
                     {t("stats_actor")}
                   </p>
                   <p className="text-xs font-bold text-[#c8963c] truncate">
-                    {profileData.stats.topActor.name}
+                    {profileData?.stats?.topActor?.name}
                   </p>
                   <p className="text-[9px] text-[#f0e6cc]/60">
                     {t("stats_actor_count").replace(
                       "[X]",
-                      profileData.stats.topActor.count,
+                      (profileData?.stats?.topActor?.count ?? 0).toString(),
                     )}
                   </p>
                 </div>
@@ -473,13 +547,13 @@ export default function PublicProfile() {
                       {t("stats_rating")}
                     </p>
                     <p className="text-[10px] font-black text-[#c8963c]">
-                      {t("stats_avg")} {profileData.stats.averageRating}
+                      {t("stats_avg")} {profileData?.stats?.averageRating}
                     </p>
                   </div>
                   <div className="flex-grow w-full -ml-3">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart
-                        data={profileData.stats.ratingDistribution}
+                        data={profileData?.stats?.ratingDistribution}
                         margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
                       >
                         <XAxis
@@ -489,7 +563,7 @@ export default function PublicProfile() {
                           tick={{ fill: "#f0e6cc", opacity: 0.3, fontSize: 9 }}
                         />
                         <Tooltip
-                          content={<RatingTooltip t={t} />} // 🔥 Передаємо t всередину тултіпа
+                          content={<RatingTooltip t={t} />}
                           cursor={{ fill: "#c8963c", opacity: 0.05 }}
                           wrapperStyle={{ zIndex: 9999 }}
                         />
@@ -507,44 +581,42 @@ export default function PublicProfile() {
             </div>
 
             {/* Top 3 */}
-            {profileData.stats?.topRated?.length > 0 && (
+            {(profileData?.stats?.topRated?.length ?? 0) > 0 && (
               <div className="mt-5 pt-4 border-t border-[#c8963c]/10">
                 <h4 className="text-[9px] text-[#c8963c] font-black uppercase tracking-[0.3em] mb-3 text-center">
                   {t("stats_top3")}
                 </h4>
                 <div className="flex flex-col gap-2">
-                  {profileData.stats.topRated.map(
-                    (item: any, index: number) => (
-                      <Link
-                        to={`/movie/${item.tmdbId}?type=${item.mediaType}`}
-                        key={item.id}
-                        className="relative group bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-2.5 flex items-center gap-3 hover:border-[#c8963c]/40 transition"
-                      >
-                        <div className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-[#c8963c] text-[#12100e] rounded-full flex items-center justify-center font-black text-[8px] z-10">
-                          #{index + 1}
-                        </div>
-                        <div className="w-8 h-11 shrink-0 rounded-md overflow-hidden border border-[#c8963c]/10 bg-[#1a1714]">
-                          {item.posterUrl ? (
-                            <img
-                              src={item.posterUrl}
-                              alt=""
-                              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-[#1a1714]" />
-                          )}
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <h5 className="text-[#f0e6cc] font-bold text-[11px] truncate group-hover:text-[#c8963c] transition-colors">
-                            {item.title}
-                          </h5>
-                          <p className="text-[#c8963c] text-[10px] font-black mt-0.5">
-                            ★ {item.rating}.0
-                          </p>
-                        </div>
-                      </Link>
-                    ),
-                  )}
+                  {profileData?.stats?.topRated?.map((item, index: number) => (
+                    <Link
+                      to={`/movie/${item.tmdbId}?type=${item.mediaType}`}
+                      key={item.id}
+                      className="relative group bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-2.5 flex items-center gap-3 hover:border-[#c8963c]/40 transition"
+                    >
+                      <div className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-[#c8963c] text-[#12100e] rounded-full flex items-center justify-center font-black text-[8px] z-10">
+                        #{index + 1}
+                      </div>
+                      <div className="w-8 h-11 shrink-0 rounded-md overflow-hidden border border-[#c8963c]/10 bg-[#1a1714]">
+                        {item.posterUrl ? (
+                          <img
+                            src={item.posterUrl}
+                            alt=""
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-[#1a1714]" />
+                        )}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <h5 className="text-[#f0e6cc] font-bold text-[11px] truncate group-hover:text-[#c8963c] transition-colors">
+                          {item.title}
+                        </h5>
+                        <p className="text-[#c8963c] text-[10px] font-black mt-0.5">
+                          ★ {item.rating}.0
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
             )}
@@ -580,7 +652,7 @@ export default function PublicProfile() {
         {/* Movie grid */}
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 pb-8">
           {displayedMovies?.length > 0 ? (
-            displayedMovies.map((movie: any) => (
+            displayedMovies.map((movie) => (
               <Link
                 to={`/movie/${movie.tmdbId}?type=${movie.mediaType || "movie"}`}
                 key={movie.id}
@@ -598,7 +670,7 @@ export default function PublicProfile() {
                       {t("common_na")}
                     </div>
                   )}
-                  {movie.rating > 0 && (
+                  {(movie.rating ?? 0) > 0 && (
                     <div className="absolute top-1 right-1 bg-[#12100e]/90 backdrop-blur-md px-1.5 py-0.5 rounded-md border border-[#c8963c]/30 text-[#c8963c] text-[8px] font-black">
                       ★ {movie.rating}
                     </div>
