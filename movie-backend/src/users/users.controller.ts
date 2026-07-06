@@ -4,7 +4,6 @@ import {
   Body,
   UseInterceptors,
   UploadedFile,
-  UseGuards,
   Req,
   Get,
   Param,
@@ -22,7 +21,6 @@ import {
   ApiConsumes,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
-import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Users')
 @Controller('api/users')
@@ -30,7 +28,6 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Patch('profile')
-  @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(FileInterceptor('avatar'))
   @ApiBearerAuth()
   @ApiConsumes('multipart/form-data')
@@ -50,7 +47,6 @@ export class UsersController {
   }
 
   @Get('public/:id')
-  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get public profile',
@@ -69,7 +65,6 @@ export class UsersController {
   }
 
   @Get('friends')
-  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get friends list',
@@ -83,7 +78,6 @@ export class UsersController {
   }
 
   @Post('friends/:id')
-  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Add friend',
@@ -99,7 +93,6 @@ export class UsersController {
   }
 
   @Delete('friends/:id')
-  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Remove friend',

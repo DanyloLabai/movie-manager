@@ -271,6 +271,7 @@ describe('AuthService', () => {
         ...mockUser,
         isVerified: false,
         verificationToken: 'valid-token-abc',
+        verificationTokenExpiresAt: new Date(Date.now() + 60000),
       };
       mockUsersRepository.findOne.mockResolvedValue(unverified);
       mockUsersRepository.save.mockResolvedValue({
@@ -327,7 +328,11 @@ describe('AuthService', () => {
     it('should reset password for valid token', async () => {
       const bcrypt = require('bcryptjs');
       bcrypt.hash.mockResolvedValue('hashedNewPass');
-      const userWithToken = { ...mockUser, resetToken: 'valid-reset-token' };
+      const userWithToken = {
+        ...mockUser,
+        resetToken: 'valid-reset-token',
+        resetTokenExpiresAt: new Date(Date.now() + 60000),
+      };
       mockUsersRepository.findOne.mockResolvedValue(userWithToken);
       mockUsersRepository.save.mockResolvedValue({});
 

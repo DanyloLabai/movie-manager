@@ -1,4 +1,5 @@
-import { Body, Controller, Post, Get, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Get, Req } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -7,7 +8,6 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AiChatService } from './ai-chat.service';
-import { AuthGuard } from '@nestjs/passport';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -26,7 +26,7 @@ export class AiChatController {
   constructor(private readonly aiChatService: AiChatService) {}
 
   @Post('search')
-  @UseGuards(AuthGuard('jwt'))
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Search movies with AI',
@@ -47,7 +47,6 @@ export class AiChatController {
   }
 
   @Get('history')
-  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get chat history',
@@ -61,7 +60,6 @@ export class AiChatController {
   }
 
   @Post('history')
-  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Save chat history',

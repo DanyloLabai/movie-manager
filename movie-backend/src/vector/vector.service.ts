@@ -38,7 +38,7 @@ export class VectorService implements OnModuleInit {
 
     await this.pool.query('SELECT 1');
     this.logger.log(
-      'VectorService initialized with text-embedding-004 via @ai-sdk/google.',
+      'VectorService initialized with gemini-embedding-2 via the Gemini REST API.',
     );
   }
 
@@ -64,7 +64,7 @@ export class VectorService implements OnModuleInit {
     title: string;
     description: string;
     genres: string[];
-  }) {
+  }): Promise<boolean> {
     try {
       const text = `Title: ${movie.title}. Description: ${movie.description}. Genres: ${movie.genres.join(', ')}.`;
       const embedding = await this.embed(text);
@@ -76,15 +76,32 @@ export class VectorService implements OnModuleInit {
          ON CONFLICT DO NOTHING`,
         [text, JSON.stringify(embedding), JSON.stringify(metadata)],
       );
+      return true;
     } catch (error) {
       this.logger.error(`Failed to index movie: ${(error as Error).message}`);
+      return false;
     }
   }
 
   async saveUserFact(userId: number, fact: string) {
+    const SIMILAR_FACT_DISTANCE_THRESHOLD = 0.15;
+
     try {
       const embedding = await this.embed(fact);
       const metadata = { userId, type: 'preference' };
+
+      // Replace near-duplicate/contradicting facts instead of accumulating
+      // both, e.g. "hates horror" followed later by "loves horror".
+      await this.pool.query(
+        `DELETE FROM user_memory_embeddings
+         WHERE metadata->>'userId' = $1
+           AND embedding <=> $2::vector < $3`,
+        [
+          String(userId),
+          JSON.stringify(embedding),
+          SIMILAR_FACT_DISTANCE_THRESHOLD,
+        ],
+      );
 
       await this.pool.query(
         `INSERT INTO user_memory_embeddings (text, embedding, metadata)
