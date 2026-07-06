@@ -45,6 +45,7 @@ const mockUsersRepository = {
   create: jest.fn(),
   save: jest.fn(),
   delete: jest.fn(),
+  update: jest.fn(),
 };
 
 const mockJwtService = {
@@ -242,6 +243,10 @@ describe('AuthService', () => {
 
       expect(result.message).toBe('Password updated successfully');
       expect(mockUsersRepository.save).toHaveBeenCalledTimes(1);
+      expect(mockUsersRepository.update).toHaveBeenCalledWith(
+        { id: mockUser.id },
+        { hashedRefreshToken: null },
+      );
     });
 
     it('should throw UnauthorizedException if user not found', async () => {
@@ -344,6 +349,10 @@ describe('AuthService', () => {
       expect(result.message).toBe('Password successfully reset!');
       expect(mockUsersRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ resetToken: null }),
+      );
+      expect(mockUsersRepository.update).toHaveBeenCalledWith(
+        { id: mockUser.id },
+        { hashedRefreshToken: null },
       );
     });
 

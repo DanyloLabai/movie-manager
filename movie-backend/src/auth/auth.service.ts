@@ -126,6 +126,7 @@ export class AuthService {
 
     user.password = hashedPath;
     await this.usersRepository.save(user);
+    await this.invalidateRefreshToken(userId);
 
     return { message: 'Password updated successfully' };
   }
@@ -244,11 +245,15 @@ export class AuthService {
   }
 
   async logout(userId: number): Promise<{ message: string }> {
+    await this.invalidateRefreshToken(userId);
+    return { message: 'Logged out successfully' };
+  }
+
+  private async invalidateRefreshToken(userId: number): Promise<void> {
     await this.usersRepository.update(
       { id: userId },
       { hashedRefreshToken: null },
     );
-    return { message: 'Logged out successfully' };
   }
 
   private async verifyCaptcha(token: string): Promise<boolean> {
@@ -403,6 +408,7 @@ export class AuthService {
     user.resetToken = null;
     user.resetTokenExpiresAt = null;
     await this.usersRepository.save(user);
+    await this.invalidateRefreshToken(user.id);
 
     return { message: 'Password successfully reset!' };
   }
