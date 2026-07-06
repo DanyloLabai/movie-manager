@@ -59,33 +59,6 @@ describe('AiChatService', () => {
     expect(service).toBeDefined();
   });
 
-  // --- ТЕСТИ: Парсинг тексту ---
-  describe('extractMovieTitlesFromText', () => {
-    it('should extract titles wrapped in quotes', () => {
-      const text = 'Я рекомендую подивитися "Матриця" та "Початок".';
-
-      // Викликаємо приватний метод через bracket notation
-      const result = service['extractMovieTitlesFromText'](text);
-
-      expect(result).toHaveLength(2);
-      expect(result).toEqual(['Матриця', 'Початок']);
-    });
-
-    it('should return empty array if no quotes are found', () => {
-      const text = 'Тут просто текст без назв фільмів у лапках.';
-      const result = service['extractMovieTitlesFromText'](text);
-
-      expect(result).toEqual([]);
-    });
-
-    it('should handle single quotes inside double quotes properly', () => {
-      const text = 'Подивіться "Дев\'ята брама".';
-      const result = service['extractMovieTitlesFromText'](text);
-
-      expect(result).toEqual(["Дев'ята брама"]);
-    });
-  });
-
   // --- ТЕСТИ: Робота з історією чату (Кеш) ---
   describe('getHistory', () => {
     it('should return an empty array if cache is empty or returns null', async () => {

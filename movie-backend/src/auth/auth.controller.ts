@@ -21,6 +21,7 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { Public } from './decorators/public.decorator';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { UpdatePasswordDto } from './dto/update-password.dto';
@@ -57,6 +58,7 @@ const refreshCookieOptions = {
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('signup')
   @ApiOperation({
     summary: 'User registration',
@@ -75,6 +77,7 @@ export class AuthController {
     return this.authService.signUp(signUpDto);
   }
 
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Post('signin')
   @ApiOperation({
@@ -101,6 +104,7 @@ export class AuthController {
     return result;
   }
 
+  @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AuthGuard('jwt-refresh'))
@@ -138,7 +142,6 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Logout',
@@ -159,7 +162,6 @@ export class AuthController {
   }
 
   @Patch('change-password')
-  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Change password',
@@ -178,6 +180,7 @@ export class AuthController {
     return this.authService.changePassword(req.user.userId, updatePasswordDto);
   }
 
+  @Public()
   @Get('verify-email')
   @ApiOperation({
     summary: 'Verify email',
@@ -200,6 +203,7 @@ export class AuthController {
     return this.authService.verifyEmail(token);
   }
 
+  @Public()
   @Post('resend-verification')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -218,6 +222,7 @@ export class AuthController {
     return this.authService.resendVerificationEmail(email);
   }
 
+  @Public()
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -236,6 +241,7 @@ export class AuthController {
     return this.authService.forgotPassword(email);
   }
 
+  @Public()
   @Patch('reset-password')
   @ApiOperation({
     summary: 'Reset password',

@@ -19,6 +19,9 @@ import { firstValueFrom } from 'rxjs';
 import { UpdatePasswordDto } from './dto/update-password.dto';
 import { Resend } from 'resend';
 
+const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+
 @Injectable()
 export class AuthService {
   private resend: Resend;
@@ -59,6 +62,9 @@ export class AuthService {
       email,
       password: hashedPassword,
       verificationToken,
+      verificationTokenExpiresAt: new Date(
+        Date.now() + VERIFICATION_TOKEN_TTL_MS,
+      ),
       isVerified: false,
     });
 
@@ -265,12 +271,17 @@ export class AuthService {
       where: { verificationToken: token },
     });
 
-    if (!user) {
+    if (
+      !user ||
+      !user.verificationTokenExpiresAt ||
+      user.verificationTokenExpiresAt.getTime() < Date.now()
+    ) {
       throw new BadRequestException('Invalid or expired verification token');
     }
 
     user.isVerified = true;
     user.verificationToken = null;
+    user.verificationTokenExpiresAt = null;
     await this.usersRepository.save(user);
 
     return { message: 'Email verified successfully!', verified: true };
@@ -291,6 +302,9 @@ export class AuthService {
 
     const verificationToken = crypto.randomBytes(32).toString('hex');
     user.verificationToken = verificationToken;
+    user.verificationTokenExpiresAt = new Date(
+      Date.now() + VERIFICATION_TOKEN_TTL_MS,
+    );
     await this.usersRepository.save(user);
 
     const frontendUrl =
@@ -337,6 +351,7 @@ export class AuthService {
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     user.resetToken = resetToken;
+    user.resetTokenExpiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
     await this.usersRepository.save(user);
 
     const frontendUrl =
@@ -373,7 +388,11 @@ export class AuthService {
       where: { resetToken: token },
     });
 
-    if (!user) {
+    if (
+      !user ||
+      !user.resetTokenExpiresAt ||
+      user.resetTokenExpiresAt.getTime() < Date.now()
+    ) {
       throw new BadRequestException('Invalid or expired reset token');
     }
 
@@ -382,6 +401,7 @@ export class AuthService {
 
     user.password = hashedPath;
     user.resetToken = null;
+    user.resetTokenExpiresAt = null;
     await this.usersRepository.save(user);
 
     return { message: 'Password successfully reset!' };

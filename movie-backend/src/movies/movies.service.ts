@@ -1155,21 +1155,34 @@ export class MoviesService {
     const total = movies.length;
     let syncedCount = 0;
 
+    let failedCount = 0;
+
     for (const movie of movies) {
-      await this.vectorService.addMovieToVectorStore({
+      const success = await this.vectorService.addMovieToVectorStore({
         id: movie.id,
         title: movie.title,
         description: movie.description || '',
         genres: [],
       });
 
-      syncedCount += 1;
-      this.logger.log(`Synced movie ${syncedCount}/${total}: ${movie.title}`);
+      if (success) {
+        syncedCount += 1;
+        this.logger.log(
+          `Synced movie ${syncedCount}/${total}: ${movie.title}`,
+        );
+      } else {
+        failedCount += 1;
+        this.logger.warn(`Failed to sync movie: ${movie.title}`);
+      }
     }
 
     return {
       syncedMovies: syncedCount,
-      message: `Successfully synced ${syncedCount} movie(s) to the vector database.`,
+      failedMovies: failedCount,
+      message:
+        failedCount === 0
+          ? `Successfully synced ${syncedCount} movie(s) to the vector database.`
+          : `Synced ${syncedCount} movie(s), ${failedCount} failed. Check server logs for details.`,
     };
   }
 }
