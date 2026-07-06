@@ -5,7 +5,6 @@ import { useLang } from "../context/LanguageContext";
 
 export default function ChangePassword() {
   const { t } = useLang();
-  const [email, setEmail] = useState("");
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -31,7 +30,7 @@ export default function ChangePassword() {
 
     setIsLoading(true);
     try {
-      await authApi.changePassword({ email, oldPassword, newPassword });
+      await authApi.changePassword({ oldPassword, newPassword });
 
       setSuccessMsg(t("password_success"));
       localStorage.removeItem("token");
@@ -129,20 +128,6 @@ export default function ChangePassword() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              {t("login_email")}
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3.5 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
-              placeholder="name@example.com"
-              required
-            />
-          </div>
-
           <div>
             <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
               {t("password_current")}

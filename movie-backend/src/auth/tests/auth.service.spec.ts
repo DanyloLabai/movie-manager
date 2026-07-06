@@ -227,7 +227,6 @@ describe('AuthService', () => {
 
   describe('changePassword', () => {
     const dto = {
-      email: 'test@example.com',
       oldPassword: 'OldPass1!',
       newPassword: 'NewPass2!',
     };
@@ -239,7 +238,7 @@ describe('AuthService', () => {
       mockUsersRepository.findOne.mockResolvedValue({ ...mockUser });
       mockUsersRepository.save.mockResolvedValue({});
 
-      const result = await service.changePassword(dto);
+      const result = await service.changePassword(mockUser.id!, dto);
 
       expect(result.message).toBe('Password updated successfully');
       expect(mockUsersRepository.save).toHaveBeenCalledTimes(1);
@@ -248,9 +247,9 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException if user not found', async () => {
       mockUsersRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.changePassword(dto)).rejects.toThrow(
-        UnauthorizedException,
-      );
+      await expect(
+        service.changePassword(mockUser.id!, dto),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should throw BadRequestException if old password is incorrect', async () => {
@@ -258,9 +257,9 @@ describe('AuthService', () => {
       bcrypt.compare.mockResolvedValue(false);
       mockUsersRepository.findOne.mockResolvedValue({ ...mockUser });
 
-      await expect(service.changePassword(dto)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.changePassword(mockUser.id!, dto),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 

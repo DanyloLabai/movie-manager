@@ -41,11 +41,10 @@ export async function resetPassword(body: {
 }
 
 export async function changePassword(body: {
-  email: string;
   oldPassword: string;
   newPassword: string;
 }) {
-  const res = await api.post(`/auth/change-password`, body);
+  const res = await api.patch(`/auth/change-password`, body);
   return res.data;
 }
 

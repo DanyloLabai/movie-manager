@@ -159,6 +159,7 @@ export class AuthController {
   }
 
   @Patch('change-password')
+  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Change password',
@@ -171,9 +172,10 @@ export class AuthController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async changePassword(
+    @Req() req: AuthenticatedRequest,
     @Body() updatePasswordDto: UpdatePasswordDto,
   ): Promise<PasswordChangeResponseDto> {
-    return this.authService.changePassword(updatePasswordDto);
+    return this.authService.changePassword(req.user.userId, updatePasswordDto);
   }
 
   @Get('verify-email')
