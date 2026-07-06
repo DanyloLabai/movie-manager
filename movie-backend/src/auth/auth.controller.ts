@@ -176,8 +176,14 @@ export class AuthController {
   async changePassword(
     @Req() req: AuthenticatedRequest,
     @Body() updatePasswordDto: UpdatePasswordDto,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<PasswordChangeResponseDto> {
-    return this.authService.changePassword(req.user.userId, updatePasswordDto);
+    const result = await this.authService.changePassword(
+      req.user.userId,
+      updatePasswordDto,
+    );
+    res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
+    return result;
   }
 
   @Public()
@@ -256,7 +262,10 @@ export class AuthController {
   async resetPassword(
     @Body('token') token: string,
     @Body('newPassword') newPassword: string,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<ResetPasswordResponseDto> {
-    return this.authService.resetPassword(token, newPassword);
+    const result = await this.authService.resetPassword(token, newPassword);
+    res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
+    return result;
   }
 }
