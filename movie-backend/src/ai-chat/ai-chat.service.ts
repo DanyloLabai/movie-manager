@@ -442,6 +442,7 @@ character, or universe by name (e.g. "find Se7en", "other parts of Shrek", "movi
 → Example: message: "Ось інші частини цієї чудової франшизи:", titles: ["Shrek 2", "Shrek the Third", "Shrek Forever After"], concepts: [], force: true, excludeOwned: false.
 → Example for a broad character/franchise ask like "batman movies" or "give me more batman movies": list up to 8 distinct real titles across the franchise (different eras/actors count as distinct), e.g. titles: ["Batman Begins", "The Dark Knight", "The Dark Knight Rises", "Batman (1989)", "Batman Returns", "Batman Forever", "Batman & Robin", "The Batman"], concepts: [], force: true, excludeOwned: false.
 → If the user adds a qualifier like "які я ще не бачив" / "не додав у список" — same as above but set excludeOwned: true, so already watched/watchlisted titles from that list get filtered out.
+→ CRITICAL: If the user names a SPECIFIC title (in any language, or a plot/actor description of a specific movie), and you are NOT fully certain it exists or don't personally recognize it (e.g. it's a very recent or upcoming release) — DO NOT refuse or say you can't find it. Still put your best-guess real title in "titles" (translate to its original/English title if you can — that's what the search index uses) and let the backend verify it. Only say you couldn't find something AFTER attempting a real title guess, never instead of one.
 
 RULE 2 — WATCHLIST PICK:
 If the user asks "what should I watch from my list", "pick from my watchlist", or similar:
