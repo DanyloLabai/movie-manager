@@ -66,14 +66,21 @@ export class VectorService implements OnModuleInit {
     genres: string[];
   }): Promise<boolean> {
     try {
+      const existing = await this.pool.query(
+        `SELECT 1 FROM movie_embeddings WHERE metadata->>'tmdbId' = $1 LIMIT 1`,
+        [String(movie.id)],
+      );
+      if ((existing.rowCount ?? 0) > 0) {
+        return true;
+      }
+
       const text = `Title: ${movie.title}. Description: ${movie.description}. Genres: ${movie.genres.join(', ')}.`;
       const embedding = await this.embed(text);
       const metadata = { tmdbId: movie.id, title: movie.title };
 
       await this.pool.query(
         `INSERT INTO movie_embeddings (text, embedding, metadata)
-         VALUES ($1, $2::vector, $3)
-         ON CONFLICT DO NOTHING`,
+         VALUES ($1, $2::vector, $3)`,
         [text, JSON.stringify(embedding), JSON.stringify(metadata)],
       );
       return true;

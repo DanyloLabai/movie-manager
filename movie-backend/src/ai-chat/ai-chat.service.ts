@@ -33,6 +33,11 @@ const aiResponseSchema = z.object({
     .describe(
       'True when queries are exact titles/franchise/actor names that must be searched directly. False for open, vibe-based conceptual recommendations.',
     ),
+  excludeOwned: z
+    .boolean()
+    .describe(
+      'True ONLY when the user explicitly asks for titles they have not watched yet and/or have not added to their watchlist yet (e.g. "які я ще не додав", "яких я ще не бачив", "not in my watchlist yet", "haven\'t seen"). False otherwise, including for RULE 2 watchlist picks.',
+    ),
 });
 
 export interface UserContextData {
@@ -104,7 +109,7 @@ export class AiChatService {
     try {
       this.logger.log('Calling Groq with generateText...');
       const response = await this.generateAiResponse(
-        this.groqClient('llama-3.3-70b-versatile'),
+        this.groqClient('openai/gpt-oss-120b'),
         systemPrompt,
         formattedMessages,
         userContextData,
@@ -118,7 +123,7 @@ export class AiChatService {
       this.logger.warn('Falling back to Gemini...');
       try {
         const response = await this.generateAiResponse(
-          this.geminiClient('gemini-1.5-flash-latest'),
+          this.geminiClient('gemini-flash-latest'),
           systemPrompt,
           formattedMessages,
           userContextData,
@@ -158,6 +163,7 @@ export class AiChatService {
       const searchResult = await this.executeSearchMovies(
         object.queries,
         object.force,
+        object.excludeOwned,
         userContextData,
         alreadyShownIds,
       );
@@ -208,6 +214,7 @@ export class AiChatService {
   private async executeSearchMovies(
     queries: string[],
     force: boolean,
+    excludeOwned: boolean,
     userContextData: UserContextData,
     alreadyShownIds: Set<number>,
   ): Promise<{ foundMovies: MovieResultDto[]; rejected: string[] }> {
@@ -219,14 +226,16 @@ export class AiChatService {
     );
     const foundMoviesMap = new Map<number, MovieResultDto>();
     const rejected: string[] = [];
+    const MAX_RESULTS = 8;
 
-    for (const query of queries.slice(0, 3)) {
+    for (const query of queries.slice(0, MAX_RESULTS)) {
       if (force) {
         const mediaData = await this.moviesService.findMovieByTitle(query);
         if (mediaData) {
           this.processFoundMovie(
             mediaData,
             force,
+            excludeOwned,
             watchedTmdbIds,
             watchlistTmdbIds,
             foundMoviesMap,
@@ -250,6 +259,7 @@ export class AiChatService {
               this.processFoundMovie(
                 mediaData,
                 force,
+                excludeOwned,
                 watchedTmdbIds,
                 watchlistTmdbIds,
                 foundMoviesMap,
@@ -258,7 +268,7 @@ export class AiChatService {
                 alreadyShownIds,
               );
             }
-            if (foundMoviesMap.size >= 3) break;
+            if (foundMoviesMap.size >= MAX_RESULTS) break;
           }
         } catch (err) {
           this.logger.error(
@@ -277,6 +287,7 @@ export class AiChatService {
               this.processFoundMovie(
                 movie,
                 force,
+                excludeOwned,
                 watchedTmdbIds,
                 watchlistTmdbIds,
                 foundMoviesMap,
@@ -284,7 +295,7 @@ export class AiChatService {
                 query,
                 alreadyShownIds,
               );
-              if (foundMoviesMap.size >= 3) break;
+              if (foundMoviesMap.size >= MAX_RESULTS) break;
             }
           } catch (err) {
             this.logger.error(
@@ -301,6 +312,7 @@ export class AiChatService {
   private processFoundMovie(
     mediaData: MovieResultDto,
     force: boolean,
+    excludeOwned: boolean,
     watchedTmdbIds: Set<number>,
     watchlistTmdbIds: Set<number>,
     foundMoviesMap: Map<number, MovieResultDto>,
@@ -309,6 +321,7 @@ export class AiChatService {
     alreadyShownIds: Set<number>,
   ) {
     const tmdbIdNum = Number(mediaData.id);
+    const shouldExcludeOwned = excludeOwned || !force;
 
     if (!force && alreadyShownIds.has(tmdbIdNum)) {
       this.logger.warn(`Skipping already shown movie: ${mediaData.title}`);
@@ -316,16 +329,16 @@ export class AiChatService {
     }
 
     if (
-      !force &&
+      shouldExcludeOwned &&
       (watchedTmdbIds.has(tmdbIdNum) || watchlistTmdbIds.has(tmdbIdNum))
     ) {
-      this.logger.warn(`Filtered duplicate (open rec): ${mediaData.title}`);
+      this.logger.warn(`Filtered duplicate: ${mediaData.title}`);
       rejected.push(originalQuery);
       return;
     }
 
     if (
-      force &&
+      !shouldExcludeOwned &&
       (watchedTmdbIds.has(tmdbIdNum) || watchlistTmdbIds.has(tmdbIdNum))
     ) {
       this.logger.log(
@@ -351,7 +364,7 @@ export class AiChatService {
         .join(', ') || 'None';
     const allWatchedTitles =
       userContextData.watchedMovies
-        .slice(0, 500)
+        .slice(0, 150)
         .map((w) => `"${w.title}"`)
         .join(', ') || 'None';
     const upcomingTitles =
@@ -392,8 +405,11 @@ politely refuse with one short sentence, invite them to ask about movies instead
 ---
 
 RESPONSE STRUCTURE:
-Your reply has three fields: "message" (what the user sees), "queries" (search terms, if any), and "force" (true/false).
+Your reply has four fields: "message" (what the user sees), "queries" (search terms, if any), "force" (true/false), and "excludeOwned" (true/false).
 Always fill "message" with a short, friendly, natural conversational reply (1-2 sentences). Never leave it empty.
+Set "excludeOwned": true ONLY when the user explicitly asks for titles they have NOT watched and/or NOT added to their watchlist yet
+(e.g. "які я ще не додав", "яких я ще не бачив", "not in my watchlist yet", "haven't seen") — this applies even for franchise/direct
+searches (force: true). Otherwise set "excludeOwned": false, including for RULE 2 watchlist picks (which must include watchlisted items).
 
 ---
 
@@ -403,12 +419,14 @@ RULE 1 — DIRECT SEARCH & FRANCHISES (force: true):
 If the user asks to find or show a SPECIFIC movie, actor filmography, franchise, sequels, director,
 character, or universe by name (e.g. "find Se7en", "other parts of Shrek", "movies with Keanu Reeves"):
 → Set "force": true.
-→ IMPORTANT: If they ask for sequels or franchises, list the EXACT specific titles in "queries".
-→ Example: message: "Ось інші частини цієї чудової франшизи:", queries: ["Shrek 2", "Shrek the Third", "Shrek Forever After"], force: true.
+→ IMPORTANT: Each entry in "queries" maps to exactly ONE result, so list as many real, distinct titles as you know (up to 8) — never just one or two when more genuinely exist.
+→ Example: message: "Ось інші частини цієї чудової франшизи:", queries: ["Shrek 2", "Shrek the Third", "Shrek Forever After"], force: true, excludeOwned: false.
+→ Example for a broad character/franchise ask like "batman movies" or "give me more batman movies": list up to 8 distinct real titles across the franchise (different eras/actors count as distinct), e.g. queries: ["Batman Begins", "The Dark Knight", "The Dark Knight Rises", "Batman (1989)", "Batman Returns", "Batman Forever", "Batman & Robin", "The Batman"], force: true, excludeOwned: false.
+→ If the user adds a qualifier like "які я ще не бачив" / "не додав у список" — same as above but set excludeOwned: true, so already watched/watchlisted titles from that list get filtered out.
 
 RULE 2 — WATCHLIST PICK:
 If the user asks "what should I watch from my list", "pick from my watchlist", or similar:
-→ Set "force": true, suggesting only items from their Watchlist.
+→ Set "force": true, "excludeOwned": false, suggesting only items from their Watchlist.
 
 RULE 3 — UPCOMING / NEW RELEASES:
 Only use upcoming movies if the user EXPLICITLY asks for "new movies", "upcoming movies", or movies from ${userContextData.currentYear}.

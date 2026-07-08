@@ -6,6 +6,7 @@ import type {
   UserMovieStatus,
   WatchlistItem,
   ProfileData,
+  FriendWatched,
 } from "../types/movie.types";
 
 export async function searchMovies(
@@ -99,6 +100,15 @@ export async function getStatus(id: number): Promise<UserMovieStatus | null> {
   const res = await api.get(`/movies/${id}/status`);
   return res.data as UserMovieStatus | null;
 }
+
+export async function getFriendsWatched(
+  tmdbId: number,
+  type: string,
+): Promise<FriendWatched[]> {
+  const res = await api.get(`/movies/${tmdbId}/friends-watched?type=${type}`);
+  return res.data as FriendWatched[];
+}
+
 export default {
   searchMovies,
   getTrending,
@@ -116,4 +126,5 @@ export default {
   rateMovie,
   markWatched,
   getStatus,
+  getFriendsWatched,
 };

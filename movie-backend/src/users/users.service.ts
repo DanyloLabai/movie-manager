@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Not, Repository } from 'typeorm';
 import { User } from './users.entity';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
@@ -16,6 +16,7 @@ import { CloudinaryUploadResponseDto } from './dto/cloudinary-upload-response.dt
 import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { FriendDto } from './dto/friend.dto';
 import { DatabaseErrorDto } from './dto/database-error.dto';
+import { ActivityService } from 'src/activity/activity.service';
 
 @Injectable()
 export class UsersService {
@@ -24,6 +25,7 @@ export class UsersService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private moviesService: MoviesService,
+    private activityService: ActivityService,
   ) {
     cloudinary.config({
       cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
@@ -187,6 +189,27 @@ export class UsersService {
     return { message: 'Friend added successfully' };
   }
 
+  async searchUsers(currentUserId: number, query: string) {
+    const trimmed = (query || '').trim();
+    if (trimmed.length < 2) return [];
+
+    const users = await this.usersRepository.find({
+      where: {
+        username: ILike(`%${trimmed}%`),
+        id: Not(currentUserId),
+      },
+      relations: ['friends'],
+      take: 20,
+    });
+
+    return users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      avatarUrl: u.avatarUrl,
+      isFriend: u.friends?.some((f) => f.id === currentUserId) || false,
+    }));
+  }
+
   async getFriends(userId: number) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
@@ -204,5 +227,9 @@ export class UsersService {
       username: friend.username,
       avatarUrl: friend.avatarUrl,
     }));
+  }
+
+  async getFriendsFeed(userId: number, before?: Date) {
+    return this.activityService.getFriendsFeed(userId, before);
   }
 }

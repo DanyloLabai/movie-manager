@@ -62,8 +62,8 @@ export default function EditProfile({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-md p-8 bg-gray-800 border border-gray-700 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="w-full max-w-md p-8 bg-gray-800 border border-gray-700 rounded-3xl shadow-2xl relative animate-modal-in">
         <button
           onClick={onClose}
           className="absolute top-4 right-5 text-gray-400 hover:text-white transition p-1"

@@ -10,6 +10,7 @@ import {
   Post,
   ParseIntPipe,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -18,6 +19,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
   ApiConsumes,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
@@ -64,6 +66,20 @@ export class UsersController {
     return this.usersService.getPublicProfile(targetUserId, currentUserId);
   }
 
+  @Get('search')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Search users by username',
+    description: 'Search other users by username (requires authentication)',
+  })
+  @ApiQuery({ name: 'query', required: true, description: 'Username query' })
+  @ApiResponse({ status: 200, description: 'Matching users' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async searchUsers(@Req() req, @Query('query') query: string) {
+    const currentUserId = req.user.userId;
+    return this.usersService.searchUsers(currentUserId, query);
+  }
+
   @Get('friends')
   @ApiBearerAuth()
   @ApiOperation({
@@ -75,6 +91,28 @@ export class UsersController {
   async getFriends(@Req() req) {
     const userId = req.user.userId;
     return this.usersService.getFriends(userId);
+  }
+
+  @Get('friends/feed')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get friends activity feed',
+    description:
+      'Get a chronological feed of friends watchlist activity (requires authentication)',
+  })
+  @ApiQuery({
+    name: 'before',
+    required: false,
+    description: 'ISO timestamp cursor to fetch older entries',
+  })
+  @ApiResponse({ status: 200, description: 'Friends activity feed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getFriendsFeed(@Req() req, @Query('before') before?: string) {
+    const userId = req.user.userId;
+    return this.usersService.getFriendsFeed(
+      userId,
+      before ? new Date(before) : undefined,
+    );
   }
 
   @Post('friends/:id')

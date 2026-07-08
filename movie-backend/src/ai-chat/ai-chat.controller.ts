@@ -8,10 +8,12 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AiChatService } from './ai-chat.service';
+import { MovieResultDto } from '../movies/dto/movie-result.dto';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  movies?: MovieResultDto[];
 }
 
 export interface AuthenticatedRequest extends Request {

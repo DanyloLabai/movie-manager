@@ -4,24 +4,19 @@ import type { MovieResult } from "../types/movie.types";
 export type AIMessage = {
   role: "user" | "assistant" | "system";
   content: string;
+  movies?: MovieResult[];
 };
 
-export type AIHistoryEntry = {
-  id: number;
-  messages: AIMessage[];
-  createdAt?: string;
-};
-
-export async function getHistory(): Promise<AIHistoryEntry[]> {
+export async function getHistory(): Promise<AIMessage[]> {
   const res = await api.get("/ai/history");
-  return res.data as AIHistoryEntry[];
+  return res.data as AIMessage[];
 }
 
 export async function postHistory(
   messages: AIMessage[],
-): Promise<AIHistoryEntry> {
+): Promise<{ success: boolean }> {
   const res = await api.post("/ai/history", { messages });
-  return res.data as AIHistoryEntry;
+  return res.data as { success: boolean };
 }
 
 export async function aiSearch(payload: {

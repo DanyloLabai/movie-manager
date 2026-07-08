@@ -11,7 +11,6 @@ import {
   Req,
   Logger,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -227,6 +226,20 @@ export class MoviesController {
     return this.moviesService.getMovieUserStatus(userId, tmdbId);
   }
 
+  @Get(':tmdbId/friends-watched')
+  async getFriendsWhoWatched(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+    @Query('type') type?: string,
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.getFriendsWhoWatched(
+      userId,
+      tmdbId,
+      type || 'movie',
+    );
+  }
+
   @Get('recommendations')
   async getRecommendations(@Req() req: RequestWithUser) {
     const userId = Number(req.user.userId);
@@ -243,11 +256,4 @@ export class MoviesController {
     return this.moviesService.getActorDetails(id);
   }
 
-  @Post('sync')
-  @Throttle({ default: { limit: 3, ttl: 3600000 } })
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Sync movies to the vector database' })
-  async syncMoviesToVectorDB() {
-    return this.moviesService.syncMoviesToVectorDB();
-  }
 }

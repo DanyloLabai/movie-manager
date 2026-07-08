@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users.service';
 import { User } from '../users.entity';
 import { MoviesService } from '../../movies/movies.service';
+import { ActivityService } from '../../activity/activity.service';
 
 // Mock cloudinary
 jest.mock('cloudinary', () => ({
@@ -53,6 +54,10 @@ const mockMoviesService = {
   getProfileData: jest.fn(),
 };
 
+const mockActivityService = {
+  getFriendsFeed: jest.fn(),
+};
+
 const mockConfigService = {
   get: jest.fn((key: string) => {
     const config: Record<string, string> = {
@@ -73,6 +78,7 @@ describe('UsersService', () => {
         UsersService,
         { provide: getRepositoryToken(User), useValue: mockUsersRepository },
         { provide: MoviesService, useValue: mockMoviesService },
+        { provide: ActivityService, useValue: mockActivityService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();

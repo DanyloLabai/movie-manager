@@ -15,6 +15,7 @@ import type {
   WatchProvider as WatchProviderType,
   WatchProvidersData as WatchProvidersDataType,
   CastMember as CastMemberType,
+  FriendWatched as FriendWatchedType,
 } from "../types/movie.types";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p";
@@ -48,6 +49,9 @@ export default function MovieDetails() {
   const [recommendations, setRecommendations] = useState<
     RecommendedMovieType[]
   >([]);
+  const [friendsWatched, setFriendsWatched] = useState<FriendWatchedType[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -95,6 +99,7 @@ export default function MovieDetails() {
     window.scrollTo({ top: 0, behavior: "smooth" });
     setMovie(null);
     setRecommendations([]);
+    setFriendsWatched([]);
     setStatus(null);
     setIsLoading(true);
     setHoveredStar(0);
@@ -104,7 +109,7 @@ export default function MovieDetails() {
 
     (async () => {
       try {
-        const [details, statusRes, recs] = await Promise.all([
+        const [details, statusRes, recs, friendsRes] = await Promise.all([
           (await import("../api/movies.api")).getMovieDetails(
             tmdbId,
             mediaType,
@@ -115,11 +120,15 @@ export default function MovieDetails() {
           (await import("../api/movies.api"))
             .getSimilar(tmdbId, mediaType)
             .catch(() => []),
+          (await import("../api/movies.api"))
+            .getFriendsWatched(tmdbId, mediaType)
+            .catch(() => []),
         ]);
         if (details) {
           setMovie(details);
           setStatus(statusRes ?? null);
           setRecommendations(recs ?? []);
+          setFriendsWatched(friendsRes ?? []);
         }
       } catch {
         setMovie(null);
@@ -639,6 +648,13 @@ export default function MovieDetails() {
         </div>
       </div>
 
+      {/* Friends who watched this */}
+      {friendsWatched.length > 0 && (
+        <div className="mt-10 sm:mt-16 max-w-7xl mx-auto px-4 sm:px-6">
+          <FriendsWatchedBlock friends={friendsWatched} />
+        </div>
+      )}
+
       {/* Recommendations */}
       {recommendations.length > 0 && (
         <div className="mt-10 sm:mt-20 max-w-7xl mx-auto">
@@ -740,9 +756,9 @@ export default function MovieDetails() {
 
       {/* Rating modal */}
       {isRatingModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div
-            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative"
+            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
@@ -801,7 +817,7 @@ export default function MovieDetails() {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 sm:w-auto bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 z-[60] backdrop-blur-md">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 sm:w-auto bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 z-[60] backdrop-blur-md animate-fade-in">
           <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-pulse flex-shrink-0" />
           <span className="font-bold text-[10px] uppercase tracking-[0.2em]">
             {toastMessage}
@@ -1035,6 +1051,46 @@ function WatchProvidersBlock({
           </a>
         </div>
       )}
+    </div>
+  );
+}
+
+function FriendsWatchedBlock({ friends }: { friends: FriendWatchedType[] }) {
+  const { t } = useLang();
+  return (
+    <div className="bg-[#1a1714] border border-[#c8963c]/20 p-4 sm:p-5 rounded-[2rem] shadow-xl backdrop-blur-md">
+      <h3 className="text-xs sm:text-sm font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
+        {t("movie_friends_watched")}
+      </h3>
+      <div className="flex flex-wrap gap-3">
+        {friends.map((friend) => (
+          <Link
+            key={friend.id}
+            to={`/user/${friend.id}`}
+            className="flex items-center gap-2.5 bg-[#12100e] border border-[#c8963c]/20 rounded-2xl pl-2 pr-3 py-2 hover:border-[#c8963c]/60 transition"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-xs font-black text-[#12100e] overflow-hidden shrink-0">
+              {friend.avatarUrl ? (
+                <img
+                  src={friend.avatarUrl}
+                  alt={friend.username}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                friend.username[0].toUpperCase()
+              )}
+            </div>
+            <span className="text-xs font-bold text-[#f0e6cc] truncate max-w-[120px]">
+              {friend.username}
+            </span>
+            {friend.rating ? (
+              <span className="text-[10px] font-black text-[#c8963c] shrink-0">
+                ★ {friend.rating}
+              </span>
+            ) : null}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

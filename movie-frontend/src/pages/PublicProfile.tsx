@@ -694,7 +694,7 @@ export default function PublicProfile() {
       </div>
 
       {toastMessage && (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] z-50 shadow-2xl text-center">
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] z-50 shadow-2xl text-center animate-fade-in">
           {toastMessage}
         </div>
       )}

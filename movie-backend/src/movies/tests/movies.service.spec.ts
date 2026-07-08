@@ -8,6 +8,8 @@ import { of } from 'rxjs';
 import { MoviesService } from '../movies.service';
 import { WatchlistItem } from '../watchlist-entity';
 import { User } from '../../users/users.entity';
+import { VectorService } from '../../vector/vector.service';
+import { ActivityService } from '../../activity/activity.service';
 
 jest.mock('groq-sdk', () => {
   const Groq = jest.fn().mockImplementation(() => ({}));
@@ -97,6 +99,14 @@ const buildModule = async (): Promise<TestingModule> =>
       { provide: HttpService, useValue: mockHttpService },
       { provide: ConfigService, useValue: mockConfigService },
       { provide: CACHE_MANAGER, useValue: mockCacheManager },
+      {
+        provide: VectorService,
+        useValue: { addMovieToVectorStore: jest.fn().mockResolvedValue(true) },
+      },
+      {
+        provide: ActivityService,
+        useValue: { logActivity: jest.fn().mockResolvedValue(undefined) },
+      },
     ],
   }).compile();
 
