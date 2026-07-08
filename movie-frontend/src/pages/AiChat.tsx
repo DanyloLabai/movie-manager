@@ -198,11 +198,9 @@ export default function AiChat() {
     if (isLoading || cooldownTime > 0) return;
     inputRef.current?.blur();
 
-    const newMessages: Message[] = [
-      ...messages,
-      { role: "user", text: userText },
-    ];
-    setMessages(newMessages);
+    const userMsg: Message = { role: "user", text: userText };
+    const newMessages: Message[] = [...messages, userMsg];
+    setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
 
     try {
