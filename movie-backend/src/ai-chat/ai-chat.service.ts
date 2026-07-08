@@ -23,10 +23,15 @@ const aiResponseSchema = z.object({
     .describe(
       'A short, friendly, natural conversational reply to the user (1-2 sentences), in the same language the user wrote in. Never empty.',
     ),
-  queries: z
+  titles: z
     .array(z.string())
     .describe(
-      'Movie/show titles or conceptual search queries to run. Empty array if no search is needed for this reply.',
+      'Concrete, real movie/show titles to look up directly (e.g. "Rush", "The Dark Knight"). Use this for BOTH exact franchise asks AND vibe/conceptual recommendations — always name real titles you know fit, rather than only a vague concept. Empty array if no search is needed for this reply.',
+    ),
+  concepts: z
+    .array(z.string())
+    .describe(
+      'Optional conceptual/vibe search phrases (e.g. "epic space adventure sci-fi") to additionally search a semantic movie index, for extra variety beyond the named titles. Usually empty or 1 item; only relevant for open/vibe recommendations, never for exact franchise asks.',
     ),
   force: z
     .boolean()
@@ -159,9 +164,10 @@ export class AiChatService {
     });
 
     let foundMovies: MovieResultDto[] = [];
-    if (object.queries.length > 0) {
+    if (object.titles.length > 0 || object.concepts.length > 0) {
       const searchResult = await this.executeSearchMovies(
-        object.queries,
+        object.titles,
+        object.concepts,
         object.force,
         object.excludeOwned,
         userContextData,
@@ -212,7 +218,8 @@ export class AiChatService {
   }
 
   private async executeSearchMovies(
-    queries: string[],
+    titles: string[],
+    concepts: string[],
     force: boolean,
     excludeOwned: boolean,
     userContextData: UserContextData,
@@ -228,80 +235,88 @@ export class AiChatService {
     const rejected: string[] = [];
     const MAX_RESULTS = 8;
 
-    for (const query of queries.slice(0, MAX_RESULTS)) {
-      if (force) {
-        const mediaData = await this.moviesService.findMovieByTitle(query);
-        if (mediaData) {
-          this.processFoundMovie(
-            mediaData,
-            force,
-            excludeOwned,
-            watchedTmdbIds,
-            watchlistTmdbIds,
-            foundMoviesMap,
-            rejected,
-            query,
-            alreadyShownIds,
+    // Direct title lookups — the primary, reliable path. Used for both
+    // exact franchise asks (force) and vibe recommendations, since TMDB's
+    // search matches real titles far better than a vague concept phrase.
+    for (const title of titles.slice(0, MAX_RESULTS)) {
+      if (foundMoviesMap.size >= MAX_RESULTS) break;
+      const mediaData = await this.moviesService.findMovieByTitle(title);
+      if (mediaData) {
+        this.processFoundMovie(
+          mediaData,
+          force,
+          excludeOwned,
+          watchedTmdbIds,
+          watchlistTmdbIds,
+          foundMoviesMap,
+          rejected,
+          title,
+          alreadyShownIds,
+        );
+      }
+    }
+
+    // Conceptual/semantic search — supplementary, mainly for vibe mode
+    // diversity beyond the titles the model already named.
+    for (const concept of concepts.slice(0, 3)) {
+      if (foundMoviesMap.size >= MAX_RESULTS) break;
+      this.logger.log(`Performing Vector Search for concept: "${concept}"`);
+      try {
+        const similarDocs = await this.vectorService.searchSimilarMovies(
+          concept,
+          10,
+        );
+        for (const doc of similarDocs) {
+          if (foundMoviesMap.size >= MAX_RESULTS) break;
+          const mediaData = await this.moviesService.findMovieByTitle(
+            doc.metadata.title,
           );
-        }
-      } else {
-        this.logger.log(`Performing Vector Search for concept: "${query}"`);
-        try {
-          const similarDocs = await this.vectorService.searchSimilarMovies(
-            query,
-            10,
-          );
-          for (const doc of similarDocs) {
-            const mediaData = await this.moviesService.findMovieByTitle(
-              doc.metadata.title,
+          if (mediaData) {
+            this.processFoundMovie(
+              mediaData,
+              force,
+              excludeOwned,
+              watchedTmdbIds,
+              watchlistTmdbIds,
+              foundMoviesMap,
+              rejected,
+              concept,
+              alreadyShownIds,
             );
-            if (mediaData) {
-              this.processFoundMovie(
-                mediaData,
-                force,
-                excludeOwned,
-                watchedTmdbIds,
-                watchlistTmdbIds,
-                foundMoviesMap,
-                rejected,
-                query,
-                alreadyShownIds,
-              );
-            }
+          }
+        }
+      } catch (err) {
+        this.logger.error(
+          `Vector search failed for concept "${concept}": ${(err as Error).message}`,
+        );
+      }
+    }
+
+    // Last-resort fallback: if the direct title lookups and vector search
+    // both came up empty, try a plain TMDB keyword search so the user still
+    // gets something instead of an empty reply.
+    if (foundMoviesMap.size === 0) {
+      const fallbackQuery = titles[0] || concepts[0];
+      if (fallbackQuery) {
+        this.logger.log(`Falling back to plain TMDB search for "${fallbackQuery}"`);
+        try {
+          const tmdbResults = await this.moviesService.searchMovies(fallbackQuery);
+          for (const movie of tmdbResults.slice(0, 10)) {
             if (foundMoviesMap.size >= MAX_RESULTS) break;
+            this.processFoundMovie(
+              movie,
+              force,
+              excludeOwned,
+              watchedTmdbIds,
+              watchlistTmdbIds,
+              foundMoviesMap,
+              rejected,
+              fallbackQuery,
+              alreadyShownIds,
+            );
           }
         } catch (err) {
-          this.logger.error(
-            `Vector search failed for query "${query}": ${(err as Error).message}`,
-          );
-        }
-
-        // Fallback на TMDB якщо вектор не дав нових результатів
-        if (foundMoviesMap.size === 0) {
-          this.logger.log(
-            `Vector returned no new results, falling back to TMDB for "${query}"`,
-          );
-          try {
-            const tmdbResults = await this.moviesService.searchMovies(query);
-            for (const movie of tmdbResults.slice(0, 10)) {
-              this.processFoundMovie(
-                movie,
-                force,
-                excludeOwned,
-                watchedTmdbIds,
-                watchlistTmdbIds,
-                foundMoviesMap,
-                rejected,
-                query,
-                alreadyShownIds,
-              );
-              if (foundMoviesMap.size >= MAX_RESULTS) break;
-            }
-          } catch (err) {
-            this.logger.error(
-              `TMDB fallback failed: ${(err as Error).message}`,
-            );
-          }
+          this.logger.error(`TMDB fallback failed: ${(err as Error).message}`);
         }
       }
     }
@@ -405,8 +420,12 @@ politely refuse with one short sentence, invite them to ask about movies instead
 ---
 
 RESPONSE STRUCTURE:
-Your reply has four fields: "message" (what the user sees), "queries" (search terms, if any), "force" (true/false), and "excludeOwned" (true/false).
+Your reply has five fields: "message" (what the user sees), "titles" (real movie/show titles to look up), "concepts"
+(optional conceptual search phrases), "force" (true/false), and "excludeOwned" (true/false).
 Always fill "message" with a short, friendly, natural conversational reply (1-2 sentences). Never leave it empty.
+IMPORTANT: Always prefer naming real, concrete titles in "titles" — even for vague/vibe requests (e.g. "movies about
+Formula 1 racing", "щось страшне на вечір") — because title lookups are far more reliable than concept search. Only
+use "concepts" as a small supplement for extra variety; never as the only thing you provide.
 Set "excludeOwned": true ONLY when the user explicitly asks for titles they have NOT watched and/or NOT added to their watchlist yet
 (e.g. "які я ще не додав", "яких я ще не бачив", "not in my watchlist yet", "haven't seen") — this applies even for franchise/direct
 searches (force: true). Otherwise set "excludeOwned": false, including for RULE 2 watchlist picks (which must include watchlisted items).
@@ -419,9 +438,9 @@ RULE 1 — DIRECT SEARCH & FRANCHISES (force: true):
 If the user asks to find or show a SPECIFIC movie, actor filmography, franchise, sequels, director,
 character, or universe by name (e.g. "find Se7en", "other parts of Shrek", "movies with Keanu Reeves"):
 → Set "force": true.
-→ IMPORTANT: Each entry in "queries" maps to exactly ONE result, so list as many real, distinct titles as you know (up to 8) — never just one or two when more genuinely exist.
-→ Example: message: "Ось інші частини цієї чудової франшизи:", queries: ["Shrek 2", "Shrek the Third", "Shrek Forever After"], force: true, excludeOwned: false.
-→ Example for a broad character/franchise ask like "batman movies" or "give me more batman movies": list up to 8 distinct real titles across the franchise (different eras/actors count as distinct), e.g. queries: ["Batman Begins", "The Dark Knight", "The Dark Knight Rises", "Batman (1989)", "Batman Returns", "Batman Forever", "Batman & Robin", "The Batman"], force: true, excludeOwned: false.
+→ IMPORTANT: Each entry in "titles" maps to exactly ONE result, so list as many real, distinct titles as you know (up to 8) — never just one or two when more genuinely exist. Leave "concepts" empty.
+→ Example: message: "Ось інші частини цієї чудової франшизи:", titles: ["Shrek 2", "Shrek the Third", "Shrek Forever After"], concepts: [], force: true, excludeOwned: false.
+→ Example for a broad character/franchise ask like "batman movies" or "give me more batman movies": list up to 8 distinct real titles across the franchise (different eras/actors count as distinct), e.g. titles: ["Batman Begins", "The Dark Knight", "The Dark Knight Rises", "Batman (1989)", "Batman Returns", "Batman Forever", "Batman & Robin", "The Batman"], concepts: [], force: true, excludeOwned: false.
 → If the user adds a qualifier like "які я ще не бачив" / "не додав у список" — same as above but set excludeOwned: true, so already watched/watchlisted titles from that list get filtered out.
 
 RULE 2 — WATCHLIST PICK:
@@ -432,11 +451,15 @@ RULE 3 — UPCOMING / NEW RELEASES:
 Only use upcoming movies if the user EXPLICITLY asks for "new movies", "upcoming movies", or movies from ${userContextData.currentYear}.
 
 RULE 4 — OPEN RECOMMENDATIONS / VIBE SEARCH (force: false):
-For general recommendations ("recommend something scary", "what should I watch tonight", "movies about space"):
-→ Set "force": false and put a VARIED conceptual query in "queries".
-→ If the user asks for MORE or DIFFERENT movies on the same topic — use a DIFFERENT query angle.
-→ Example first request: queries: ["epic space adventure sci-fi"], force: false.
-→ Example follow-up "show me more": queries: ["space exploration drama philosophical"], force: false.
+For general or niche recommendations ("recommend something scary", "what should I watch tonight", "movies about space",
+"фільми про Формулу-1"), even ones with no obvious single franchise:
+→ Set "force": false.
+→ IMPORTANT: List up to 8 REAL, concrete titles you know fit the request directly in "titles" — do NOT rely only on a
+vague concept, since concept-only search misses niche topics. Draw on your own knowledge of real movies/shows.
+→ Optionally add ONE broader conceptual phrase to "concepts" (e.g. "epic space adventure sci-fi") to supplement with
+extra semantic-search variety — this is optional, "titles" is the priority.
+→ If the user asks for MORE or DIFFERENT movies on the same topic — list a FRESH batch of titles not yet shown, and/or a different concept angle.
+→ Example: user asks "фільми про перегони Формула-1" → titles: ["Rush", "Ford v Ferrari", "Senna", "Gran Turismo", "Le Mans '66"], concepts: ["Formula 1 racing drama"], force: false, excludeOwned: false.
 → The backend will automatically filter out already shown movies — you do NOT need to worry about repeats.
 
 RULE 5 — NO INVENTED TITLES:
@@ -446,7 +469,7 @@ RULE 6 — NO RUSSIAN / SOVIET CONTENT:
 Never recommend, discuss, or mention any Russian or Soviet films, TV shows, or series.
 
 RULE 7 — NO SEARCH NEEDED:
-If the user is just chatting, asking something that doesn't require finding movies, or their message is off-domain — leave "queries" empty and "force": false.
+If the user is just chatting, asking something that doesn't require finding movies, or their message is off-domain — leave "titles" and "concepts" empty and "force": false.
 
 ---
 
