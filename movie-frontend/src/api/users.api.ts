@@ -42,6 +42,27 @@ export async function getTasteCompatibility(userId: string | number) {
   return res.data;
 }
 
+export type FriendRequest = {
+  id: number;
+  createdAt: string;
+  fromUser: { id: number; username: string; avatarUrl: string | null };
+};
+
+export async function getFriendRequests(): Promise<FriendRequest[]> {
+  const res = await api.get(`/users/friend-requests`);
+  return res.data;
+}
+
+export async function acceptFriendRequest(requestId: number) {
+  const res = await api.post(`/users/friend-requests/${requestId}/accept`);
+  return res.data;
+}
+
+export async function declineFriendRequest(requestId: number) {
+  const res = await api.post(`/users/friend-requests/${requestId}/decline`);
+  return res.data;
+}
+
 export default {
   getPublicProfile,
   updateProfile,
@@ -51,4 +72,7 @@ export default {
   searchUsers,
   getFriendsFeed,
   getTasteCompatibility,
+  getFriendRequests,
+  acceptFriendRequest,
+  declineFriendRequest,
 };

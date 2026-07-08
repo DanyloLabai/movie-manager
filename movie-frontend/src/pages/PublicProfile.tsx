@@ -160,6 +160,7 @@ export default function PublicProfile() {
   } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [addedIds, setAddedIds] = useState<number[]>([]);
+  const [requestSent, setRequestSent] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -225,9 +226,14 @@ export default function PublicProfile() {
 
   const handleAddFriend = async () => {
     try {
-      await usersApi.addFriend(id as string);
-      setProfileData((prev) => (prev ? { ...prev, isFriend: true } : prev));
-      showToast("Added to friends!");
+      const result = await usersApi.addFriend(id as string);
+      if (result?.status === "accepted") {
+        setProfileData((prev) => (prev ? { ...prev, isFriend: true } : prev));
+        showToast(t("profile_friend_added"));
+      } else {
+        setRequestSent(true);
+        showToast(t("profile_request_sent"));
+      }
     } catch (err: unknown) {
       const apiError = err as { response?: { data?: { message?: string } } };
       showToast(apiError.response?.data?.message || t("common_error"));
@@ -407,6 +413,10 @@ export default function PublicProfile() {
               {profileData.isFriend ? (
                 <div className="px-3 py-1.5 bg-[#c8963c]/10 text-[#c8963c] rounded-full font-black uppercase text-[9px] flex items-center gap-1 border border-[#c8963c]/30">
                   <span>✓</span> {t("profile_friends")}
+                </div>
+              ) : requestSent ? (
+                <div className="px-3 py-1.5 bg-[#f0e6cc]/5 text-[#f0e6cc]/40 rounded-full font-black uppercase text-[9px] border border-[#f0e6cc]/10">
+                  {t("profile_request_sent")}
                 </div>
               ) : (
                 <button

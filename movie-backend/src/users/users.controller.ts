@@ -148,6 +148,55 @@ export class UsersController {
     return this.usersService.addFriend(currentUserId, friendId);
   }
 
+  @Get('friend-requests')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get incoming friend requests',
+    description: 'Get pending friend requests sent to the current user (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'List of pending friend requests' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getFriendRequests(@Req() req) {
+    const userId = req.user.userId;
+    return this.usersService.getFriendRequests(userId);
+  }
+
+  @Post('friend-requests/:id/accept')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Accept a friend request',
+    description: 'Accept a pending incoming friend request (requires authentication)',
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'Friend request ID' })
+  @ApiResponse({ status: 201, description: 'Friend request accepted' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Friend request not found' })
+  async acceptFriendRequest(
+    @Req() req,
+    @Param('id', ParseIntPipe) requestId: number,
+  ) {
+    const userId = req.user.userId;
+    return this.usersService.acceptFriendRequest(userId, requestId);
+  }
+
+  @Post('friend-requests/:id/decline')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Decline a friend request',
+    description: 'Decline a pending incoming friend request (requires authentication)',
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'Friend request ID' })
+  @ApiResponse({ status: 201, description: 'Friend request declined' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Friend request not found' })
+  async declineFriendRequest(
+    @Req() req,
+    @Param('id', ParseIntPipe) requestId: number,
+  ) {
+    const userId = req.user.userId;
+    return this.usersService.declineFriendRequest(userId, requestId);
+  }
+
   @Delete('friends/:id')
   @ApiBearerAuth()
   @ApiOperation({

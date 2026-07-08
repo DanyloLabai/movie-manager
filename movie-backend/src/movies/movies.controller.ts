@@ -53,6 +53,48 @@ export class MoviesController {
     return this.moviesService.getUpcomingMovies();
   }
 
+  @Get('notifications')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get notifications',
+    description:
+      'Get recent in-app notifications (movie releases, etc.) for the current user (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'List of notifications' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getNotifications(@Req() req: RequestWithUser) {
+    return this.moviesService.getNotifications(req.user.userId);
+  }
+
+  @Patch('notifications/:id/read')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Mark notification as read',
+    description: 'Mark a single notification as read (requires authentication)',
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'Notification ID' })
+  @ApiResponse({ status: 200, description: 'Notification marked as read' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Notification not found' })
+  async markNotificationRead(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    return this.moviesService.markNotificationRead(req.user.userId, id);
+  }
+
+  @Patch('notifications/read-all')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Mark all notifications as read',
+    description: 'Mark all of the current user\'s notifications as read (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'All notifications marked as read' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async markAllNotificationsRead(@Req() req: RequestWithUser) {
+    return this.moviesService.markAllNotificationsRead(req.user.userId);
+  }
+
   @Public()
   @Get('top100/:type')
   @ApiOperation({

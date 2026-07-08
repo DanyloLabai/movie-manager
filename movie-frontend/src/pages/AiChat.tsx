@@ -5,6 +5,7 @@ import type { AIMessage } from "../api/ai.api";
 import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
+import NotificationBell from "../components/NotificationBell";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
@@ -319,6 +320,7 @@ export default function AiChat() {
             >
               {t("nav_profile")}
             </Link>
+            <NotificationBell />
             <button
               onClick={handleLogout}
               className="text-[9px] sm:text-xs px-2 py-1.5 sm:px-3 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap"

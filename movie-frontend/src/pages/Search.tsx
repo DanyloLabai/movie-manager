@@ -6,6 +6,7 @@ import LogoImg from "../assets/logo.png";
 
 import { useLang } from "../context/LanguageContext";
 import { MovieCard } from "../components/movie/MovieCard";
+import NotificationBell from "../components/NotificationBell";
 import type { MovieResult } from "../types/movie.types";
 
 type ProfileResponse = {
@@ -561,6 +562,8 @@ export default function Search() {
             >
               {t("nav_profile")}
             </Link>
+
+            <NotificationBell />
 
             <button
               onClick={handleLogout}

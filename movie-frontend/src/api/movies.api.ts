@@ -109,6 +109,29 @@ export async function getFriendsWatched(
   return res.data as FriendWatched[];
 }
 
+export type AppNotification = {
+  id: number;
+  tmdbId: number;
+  title: string;
+  posterUrl: string | null;
+  mediaType: string;
+  isRead: boolean;
+  createdAt: string;
+};
+
+export async function getNotifications(): Promise<AppNotification[]> {
+  const res = await api.get(`/movies/notifications`);
+  return res.data as AppNotification[];
+}
+
+export async function markNotificationRead(id: number): Promise<void> {
+  await api.patch(`/movies/notifications/${id}/read`);
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await api.patch(`/movies/notifications/read-all`);
+}
+
 export default {
   searchMovies,
   getTrending,
@@ -127,4 +150,7 @@ export default {
   markWatched,
   getStatus,
   getFriendsWatched,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
 };

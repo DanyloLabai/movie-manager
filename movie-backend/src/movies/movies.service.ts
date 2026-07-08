@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
+import { Notification } from './notification.entity';
 import { In, MoreThanOrEqual, Repository } from 'typeorm';
 import {
   TmdbMultiSearchResponseDto,
@@ -72,6 +73,8 @@ export class MoviesService {
     private usersRepo: Repository<User>,
     @InjectRepository(WatchlistItem)
     private watchlistRepo: Repository<WatchlistItem>,
+    @InjectRepository(Notification)
+    private notificationRepo: Repository<Notification>,
     private readonly vectorService: VectorService,
     private readonly activityService: ActivityService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
@@ -1102,7 +1105,29 @@ export class MoviesService {
       }
 
       for (const item of releasedToday) {
-        if (!item.user?.email) continue;
+        if (!item.user) continue;
+
+        try {
+          await this.notificationRepo.save(
+            this.notificationRepo.create({
+              user: item.user,
+              tmdbId: item.tmdbId,
+              title: item.title,
+              posterUrl: item.posterUrl,
+              mediaType: item.mediaType,
+            }),
+          );
+          item.notified = true;
+          await this.watchlistRepo.save(item);
+        } catch (notifError: unknown) {
+          this.logger.error(
+            `Failed to create in-app notification for "${item.title}": ${
+              notifError instanceof Error ? notifError.message : String(notifError)
+            }`,
+          );
+        }
+
+        if (!item.user.email) continue;
 
         try {
           await firstValueFrom(
@@ -1152,6 +1177,34 @@ export class MoviesService {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Failed to process daily movie releases: ${errorMsg}`);
     }
+  }
+
+  async getNotifications(userId: number) {
+    return this.notificationRepo.find({
+      where: { user: { id: userId } },
+      order: { createdAt: 'DESC' },
+      take: 30,
+    });
+  }
+
+  async markNotificationRead(userId: number, notificationId: number) {
+    const notification = await this.notificationRepo.findOne({
+      where: { id: notificationId, user: { id: userId } },
+    });
+    if (!notification) {
+      throw new NotFoundException('Notification not found');
+    }
+    notification.isRead = true;
+    await this.notificationRepo.save(notification);
+    return { message: 'Notification marked as read' };
+  }
+
+  async markAllNotificationsRead(userId: number) {
+    await this.notificationRepo.update(
+      { user: { id: userId }, isRead: false },
+      { isRead: true },
+    );
+    return { message: 'All notifications marked as read' };
   }
 
   private mapMediaToDto(

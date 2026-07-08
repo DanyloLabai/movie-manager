@@ -150,6 +150,7 @@ export class VectorService implements OnModuleInit {
     tmdbIdsA: number[],
     tmdbIdsB: number[],
   ): Promise<number | null> {
+    const MIN_SAMPLE_SIZE = 3;
     if (tmdbIdsA.length === 0 || tmdbIdsB.length === 0) return null;
 
     try {
@@ -174,7 +175,10 @@ export class VectorService implements OnModuleInit {
       );
 
       const row = result.rows[0];
-      if (!row || row.countA === '0' || row.countB === '0') return null;
+      if (!row) return null;
+      if (Number(row.countA) < MIN_SAMPLE_SIZE || Number(row.countB) < MIN_SAMPLE_SIZE) {
+        return null;
+      }
       return row.similarity === null ? null : Number(row.similarity);
     } catch (error) {
       this.logger.error(
