@@ -110,31 +110,17 @@ export default function AiChat() {
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        const responseRaw = (await aiApi.getHistory()) as unknown;
-        if (Array.isArray(responseRaw) && responseRaw.length > 0) {
-          const first = responseRaw[0] as Record<string, unknown>;
-          if (
-            "role" in first &&
-            typeof first.role === "string" &&
-            "text" in first &&
-            typeof first.text === "string"
-          ) {
-            setMessages(responseRaw as Message[]);
-          } else if ("messages" in first && Array.isArray(first.messages)) {
-            const entries = responseRaw as Array<{ messages: AIMessage[] }>;
-            const msgs: Message[] = entries.flatMap((entry) =>
-              (entry.messages || []).map((m) => ({
-                role: m.role === "assistant" ? "ai" : "user",
-                text: m.content,
-              })),
-            );
-            if (msgs.length > 0) setMessages(msgs);
-            else setMessages([getWelcomeMessage()]);
-          } else {
-            setMessages([getWelcomeMessage()]);
-          }
+        const history = await aiApi.getHistory();
+        if (Array.isArray(history) && history.length > 0) {
+          setMessages(
+            history.map((m) => ({
+              role: m.role === "assistant" ? "ai" : "user",
+              text: m.content,
+              movies: m.movies,
+            })),
+          );
         } else {
-          setMessages([getWelcomeMessage()]);
+          setMessages(loadSavedMessages());
         }
       } catch {
         setMessages(loadSavedMessages());
@@ -153,6 +139,7 @@ export default function AiChat() {
         const aiMsgs: AIMessage[] = messages.map((m) => ({
           role: m.role === "ai" ? "assistant" : "user",
           content: m.text,
+          ...(m.movies && m.movies.length > 0 && { movies: m.movies }),
         }));
         await aiApi.postHistory(aiMsgs);
         localStorage.setItem(
@@ -514,7 +501,7 @@ export default function AiChat() {
       </div>
 
       {toastMessage && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap">
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap animate-fade-in">
           {toastMessage}
         </div>
       )}

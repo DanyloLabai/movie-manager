@@ -25,10 +25,24 @@ export async function removeFriend(friendId: number) {
   return res.data;
 }
 
+export async function searchUsers(query: string) {
+  const res = await api.get(`/users/search`, { params: { query } });
+  return res.data;
+}
+
+export async function getFriendsFeed(before?: string) {
+  const res = await api.get(`/users/friends/feed`, {
+    params: before ? { before } : undefined,
+  });
+  return res.data;
+}
+
 export default {
   getPublicProfile,
   updateProfile,
   getFriends,
   addFriend,
   removeFriend,
+  searchUsers,
+  getFriendsFeed,
 };

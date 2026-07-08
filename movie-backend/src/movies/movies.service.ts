@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   TmdbMultiSearchResponseDto,
   TmdbMultiSearchResultDto,
@@ -36,6 +36,7 @@ import {
 } from './dto/person.dto';
 import { WatchProviderDto } from './dto/watch-provider.dto';
 import { VectorService } from 'src/vector/vector.service';
+import { ActivityService } from 'src/activity/activity.service';
 
 @Injectable()
 export class MoviesService {
@@ -72,6 +73,7 @@ export class MoviesService {
     @InjectRepository(WatchlistItem)
     private watchlistRepo: Repository<WatchlistItem>,
     private readonly vectorService: VectorService,
+    private readonly activityService: ActivityService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.tmdbToken = this.configService.get<string>('TMDB_API_TOKEN') as string;
@@ -762,6 +764,17 @@ export class MoviesService {
 
     const savedItem = await this.watchlistRepo.save(newItem);
 
+    this.activityService
+      .logActivity(userId, 'added_watchlist', {
+        tmdbId,
+        title,
+        posterUrl,
+        mediaType,
+      })
+      .catch((err) =>
+        this.logger.error(`Failed to log activity: ${err.message}`),
+      );
+
     this.getMovieDetails(tmdbId, mediaType)
       .then((details) => {
         this.vectorService.addMovieToVectorStore({
@@ -808,6 +821,17 @@ export class MoviesService {
       .del(`recommendations:user:${userId}`)
       .catch(() => {});
 
+    this.activityService
+      .logActivity(userId, 'watched', {
+        tmdbId: item.tmdbId,
+        title: item.title,
+        posterUrl: item.posterUrl,
+        mediaType: item.mediaType,
+      })
+      .catch((err) =>
+        this.logger.error(`Failed to log activity: ${err.message}`),
+      );
+
     return this.watchlistRepo.save(item);
   }
 
@@ -826,6 +850,18 @@ export class MoviesService {
       .del(`recommendations:user:${userId}`)
       .catch(() => {});
 
+    this.activityService
+      .logActivity(userId, 'rated', {
+        tmdbId: item.tmdbId,
+        title: item.title,
+        posterUrl: item.posterUrl,
+        mediaType: item.mediaType,
+        rating,
+      })
+      .catch((err) =>
+        this.logger.error(`Failed to log activity: ${err.message}`),
+      );
+
     return this.watchlistRepo.save(item);
   }
 
@@ -843,6 +879,19 @@ export class MoviesService {
       .del(`recommendations:user:${userId}`)
       .catch(() => {});
 
+    if (item.isFavorite) {
+      this.activityService
+        .logActivity(userId, 'favorited', {
+          tmdbId: item.tmdbId,
+          title: item.title,
+          posterUrl: item.posterUrl,
+          mediaType: item.mediaType,
+        })
+        .catch((err) =>
+          this.logger.error(`Failed to log activity: ${err.message}`),
+        );
+    }
+
     return this.watchlistRepo.save(item);
   }
 
@@ -852,6 +901,37 @@ export class MoviesService {
         where: { user: { id: userId }, tmdbId },
       })) || null
     );
+  }
+
+  async getFriendsWhoWatched(
+    userId: number,
+    tmdbId: number,
+    mediaType: string = 'movie',
+  ) {
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      relations: ['friends'],
+    });
+
+    const friendIds = (user?.friends || []).map((f) => f.id);
+    if (friendIds.length === 0) return [];
+
+    const items = await this.watchlistRepo.find({
+      where: {
+        tmdbId,
+        mediaType,
+        isWatched: true,
+        user: { id: In(friendIds) },
+      },
+      relations: ['user'],
+    });
+
+    return items.map((item) => ({
+      id: item.user.id,
+      username: item.user.username,
+      avatarUrl: item.user.avatarUrl,
+      rating: item.rating,
+    }));
   }
 
   async removeFromWatchlist(userId: number, tmdbId: number) {
@@ -1149,6 +1229,7 @@ export class MoviesService {
     }
   }
 
+  @Cron('0 3 * * 0')
   async syncMoviesToVectorDB() {
     this.logger.log('Starting manual sync to Vector DB...');
     const movies = await this.getTop100('movie');
@@ -1158,11 +1239,21 @@ export class MoviesService {
     let failedCount = 0;
 
     for (const movie of movies) {
+      let genres: string[] = [];
+      try {
+        const details = await this.getMovieDetails(movie.id, 'movie');
+        genres = details.genres?.map((g) => g.name) || [];
+      } catch (err) {
+        this.logger.warn(
+          `Failed to fetch genres for movie ${movie.id}: ${(err as Error).message}`,
+        );
+      }
+
       const success = await this.vectorService.addMovieToVectorStore({
         id: movie.id,
         title: movie.title,
         description: movie.description || '',
-        genres: [],
+        genres,
       });
 
       if (success) {

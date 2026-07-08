@@ -7,6 +7,7 @@ import { WatchlistItem } from './watchlist-entity';
 import { AuthModule } from 'src/auth/auth.module';
 import { User } from 'src/users/users.entity';
 import { VectorModule } from 'src/vector/vector.module';
+import { ActivityModule } from 'src/activity/activity.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { VectorModule } from 'src/vector/vector.module';
     TypeOrmModule.forFeature([WatchlistItem, User]),
     AuthModule,
     VectorModule,
+    ActivityModule,
   ],
   providers: [MoviesService],
   controllers: [MoviesController],

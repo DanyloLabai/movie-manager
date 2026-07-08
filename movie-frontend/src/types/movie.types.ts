@@ -107,6 +107,13 @@ export interface UserMovieStatus {
   rating?: number | null;
 }
 
+export interface FriendWatched {
+  id: number;
+  username: string;
+  avatarUrl: string | null;
+  rating: number | null;
+}
+
 export interface MovieCardProps {
   movie: MovieResult;
   favoriteIds: number[];

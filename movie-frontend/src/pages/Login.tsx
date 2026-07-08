@@ -39,7 +39,7 @@ export default function Login() {
       localStorage.removeItem("custom_avatarUrl");
       localStorage.removeItem("movie_tracker_chat_history");
 
-      login(response.data.access_token, response.data.user);
+      login(response.access_token, response.user);
       navigate("/watchlist");
     } catch (err: unknown) {
       const apiError = err as {
