@@ -5,9 +5,15 @@ import { User } from './users.entity';
 import { UsersController } from './users.controller';
 import { MoviesModule } from 'src/movies/movies.module';
 import { ActivityModule } from 'src/activity/activity.module';
+import { VectorModule } from 'src/vector/vector.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), MoviesModule, ActivityModule],
+  imports: [
+    TypeOrmModule.forFeature([User]),
+    MoviesModule,
+    ActivityModule,
+    VectorModule,
+  ],
   providers: [UsersService],
   exports: [UsersService, TypeOrmModule],
   controllers: [UsersController],

@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
-import { In, Repository } from 'typeorm';
+import { In, MoreThanOrEqual, Repository } from 'typeorm';
 import {
   TmdbMultiSearchResponseDto,
   TmdbMultiSearchResultDto,
@@ -932,6 +932,24 @@ export class MoviesService {
       avatarUrl: item.user.avatarUrl,
       rating: item.rating,
     }));
+  }
+
+  async getTasteSourceTmdbIds(userId: number): Promise<number[]> {
+    const items = await this.watchlistRepo.find({
+      where: [
+        { user: { id: userId }, isFavorite: true },
+        { user: { id: userId }, rating: MoreThanOrEqual(4) },
+      ],
+    });
+    return Array.from(new Set(items.map((item) => item.tmdbId)));
+  }
+
+  async getWatchedAndPlannedTmdbIds(userId: number): Promise<number[]> {
+    const items = await this.watchlistRepo.find({
+      where: { user: { id: userId } },
+      select: ['tmdbId'],
+    });
+    return items.map((item) => item.tmdbId);
   }
 
   async removeFromWatchlist(userId: number, tmdbId: number) {
