@@ -19,6 +19,7 @@ import ResetPassword from "./pages/ResetPassword";
 import PublicProfile from "./pages/PublicProfile";
 import ActorDetails from "./pages/ActorDetails";
 import Top100 from "./pages/Top100";
+import Notifications from "./pages/Notifications";
 import { ApiNotification } from "./components/ApiNotification";
 import type { JSX } from "react";
 
@@ -114,6 +115,15 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <ActorDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
             </ProtectedRoute>
           }
         />
