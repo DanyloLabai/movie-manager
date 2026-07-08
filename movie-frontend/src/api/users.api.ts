@@ -37,6 +37,11 @@ export async function getFriendsFeed(before?: string) {
   return res.data;
 }
 
+export async function getTasteCompatibility(userId: string | number) {
+  const res = await api.get(`/users/public/${userId}/compatibility`);
+  return res.data;
+}
+
 export default {
   getPublicProfile,
   updateProfile,
@@ -45,4 +50,5 @@ export default {
   removeFriend,
   searchUsers,
   getFriendsFeed,
+  getTasteCompatibility,
 };

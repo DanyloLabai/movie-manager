@@ -10,6 +10,7 @@ import { UsersService } from '../users.service';
 import { User } from '../users.entity';
 import { MoviesService } from '../../movies/movies.service';
 import { ActivityService } from '../../activity/activity.service';
+import { VectorService } from '../../vector/vector.service';
 
 // Mock cloudinary
 jest.mock('cloudinary', () => ({
@@ -58,6 +59,10 @@ const mockActivityService = {
   getFriendsFeed: jest.fn(),
 };
 
+const mockVectorService = {
+  computeTasteCompatibility: jest.fn(),
+};
+
 const mockConfigService = {
   get: jest.fn((key: string) => {
     const config: Record<string, string> = {
@@ -79,6 +84,7 @@ describe('UsersService', () => {
         { provide: getRepositoryToken(User), useValue: mockUsersRepository },
         { provide: MoviesService, useValue: mockMoviesService },
         { provide: ActivityService, useValue: mockActivityService },
+        { provide: VectorService, useValue: mockVectorService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();

@@ -11,9 +11,12 @@ import {
   XAxis,
 } from "recharts";
 import * as usersApi from "../api/users.api";
+import * as aiApi from "../api/ai.api";
+import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import AchievementTooltip from "../components/AchievementTooltip";
+import type { MovieResult } from "../types/movie.types";
 
 type PublicProfileData = {
   id: number;
@@ -65,6 +68,17 @@ type PublicProfileData = {
       profileUrl: string | null;
     } | null;
   };
+};
+
+type TasteCompatibility = {
+  score: number | null;
+  commonWatchedCount: number;
+  commonWatched: Array<{
+    tmdbId: number;
+    title: string;
+    posterUrl?: string | null;
+    mediaType: string;
+  }>;
 };
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
@@ -138,6 +152,15 @@ export default function PublicProfile() {
     "favorites",
   );
 
+  const [compat, setCompat] = useState<TasteCompatibility | null>(null);
+  const [isCompatModalOpen, setIsCompatModalOpen] = useState(false);
+  const [watchTogetherResult, setWatchTogetherResult] = useState<{
+    message?: string;
+    movies?: MovieResult[];
+  } | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [addedIds, setAddedIds] = useState<number[]>([]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -158,6 +181,47 @@ export default function PublicProfile() {
     };
     if (id) fetchPublicProfile();
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !profileData?.isFriend) return;
+    usersApi
+      .getTasteCompatibility(id)
+      .then(setCompat)
+      .catch(() => setCompat(null));
+  }, [id, profileData?.isFriend]);
+
+  const handleGenerateWatchTogether = async () => {
+    if (!id) return;
+    setIsGenerating(true);
+    try {
+      const result = await aiApi.watchTogether(Number(id));
+      setWatchTogetherResult(result);
+    } catch {
+      showToast(t("common_error"));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleAddFromCompat = async (movie: MovieResult) => {
+    try {
+      await moviesApi.addToWatchlist({
+        tmdbId: movie.id,
+        title: movie.title,
+        posterUrl: movie.posterUrl,
+        mediaType: movie.mediaType,
+        releaseDate: movie.releaseDate,
+      });
+      setAddedIds((prev) => [...prev, movie.id]);
+      showToast(t("chat_added"));
+    } catch (err: unknown) {
+      const apiError = err as { response?: { status?: number } };
+      if (apiError.response?.status === 400) {
+        setAddedIds((prev) => [...prev, movie.id]);
+        showToast(t("chat_added"));
+      } else showToast(t("chat_add_error"));
+    }
+  };
 
   const handleAddFriend = async () => {
     try {
@@ -360,6 +424,23 @@ export default function PublicProfile() {
               <AchievementTooltip key={ach.id} achievement={ach} />
             ))}
           </div>
+
+          {profileData.isFriend && compat && compat.score !== null && (
+            <button
+              onClick={() => setIsCompatModalOpen(true)}
+              className="w-full flex items-center justify-between gap-3 p-3 mb-4 bg-[#12100e] border border-[#c8963c]/30 rounded-xl hover:border-[#c8963c]/60 transition"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🎯</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#f0e6cc]/70">
+                  {t("compat_title")}
+                </span>
+              </div>
+              <span className="text-lg font-black text-[#c8963c]">
+                {Math.round(Math.max(0, Math.min(1, compat.score)) * 100)}%
+              </span>
+            </button>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-2 gap-2 border-t border-[#c8963c]/10 pt-3">
@@ -692,6 +773,141 @@ export default function PublicProfile() {
           )}
         </div>
       </div>
+
+      {isCompatModalOpen && compat && (
+        <div
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setIsCompatModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-md max-h-[85vh] overflow-y-auto p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative animate-modal-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setIsCompatModalOpen(false)}
+              className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+
+            <h2 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest text-center mb-1">
+              {t("compat_title")}
+            </h2>
+            <p className="text-center text-4xl font-black text-[#c8963c] mb-4">
+              {compat.score !== null
+                ? `${Math.round(Math.max(0, Math.min(1, compat.score)) * 100)}%`
+                : "—"}
+            </p>
+
+            <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 mb-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-[#f0e6cc]/50 mb-2">
+                {t("compat_common_watched").replace(
+                  "{count}",
+                  String(compat.commonWatchedCount),
+                )}
+              </p>
+              {compat.commonWatched.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {compat.commonWatched.map((m) => (
+                    <div
+                      key={m.tmdbId}
+                      className="w-12 aspect-[2/3] rounded-lg overflow-hidden shrink-0 border border-[#c8963c]/20 bg-[#1a1714]"
+                      title={m.title}
+                    >
+                      {m.posterUrl ? (
+                        <img
+                          src={m.posterUrl}
+                          alt={m.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/30 p-1 text-center">
+                          {m.title}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {!watchTogetherResult ? (
+              <button
+                onClick={handleGenerateWatchTogether}
+                disabled={isGenerating}
+                className="w-full py-3 bg-[#c8963c] text-[#12100e] font-black uppercase tracking-widest rounded-xl hover:bg-[#e8c070] transition active:scale-95 disabled:opacity-50 text-xs"
+              >
+                {isGenerating ? t("compat_generating") : t("compat_generate")}
+              </button>
+            ) : (
+              <div>
+                {watchTogetherResult.message && (
+                  <p className="text-sm text-[#f0e6cc] mb-3">
+                    {watchTogetherResult.message}
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {(watchTogetherResult.movies || []).map((movie) => (
+                    <div
+                      key={movie.id}
+                      className="flex items-center gap-2.5 bg-[#12100e] p-2 rounded-xl border border-[#c8963c]/20"
+                    >
+                      <Link
+                        to={`/movie/${movie.id}?type=${movie.mediaType}`}
+                        className="flex items-center gap-2.5 flex-1 min-w-0"
+                      >
+                        <div className="w-9 h-12 bg-[#1a1714] rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20">
+                          {movie.posterUrl ? (
+                            <img
+                              src={movie.posterUrl}
+                              alt={movie.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : null}
+                        </div>
+                        <span className="font-bold text-[#f0e6cc] text-xs truncate">
+                          {movie.title}
+                        </span>
+                      </Link>
+                      {addedIds.includes(movie.id) ? (
+                        <span className="shrink-0 text-[9px] text-[#c8963c] px-2 font-bold">
+                          ✓
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleAddFromCompat(movie)}
+                          className="shrink-0 text-[9px] border border-[#c8963c]/50 text-[#c8963c] px-2.5 py-1 rounded-lg font-bold hover:bg-[#c8963c] hover:text-[#12100e] transition active:scale-95"
+                        >
+                          {t("chat_add_btn")}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={handleGenerateWatchTogether}
+                  disabled={isGenerating}
+                  className="w-full mt-3 py-2.5 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] font-black uppercase tracking-widest rounded-xl hover:border-[#c8963c]/60 transition active:scale-95 disabled:opacity-50 text-[10px]"
+                >
+                  {isGenerating ? t("compat_generating") : t("compat_regenerate")}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {toastMessage && (
         <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] z-50 shadow-2xl text-center animate-fade-in">

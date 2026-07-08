@@ -146,6 +146,44 @@ export class VectorService implements OnModuleInit {
     }));
   }
 
+  async computeTasteCompatibility(
+    tmdbIdsA: number[],
+    tmdbIdsB: number[],
+  ): Promise<number | null> {
+    if (tmdbIdsA.length === 0 || tmdbIdsB.length === 0) return null;
+
+    try {
+      const result = await this.pool.query(
+        `WITH vec_a AS (
+           SELECT AVG(embedding) AS v, COUNT(*) AS n
+           FROM movie_embeddings
+           WHERE (metadata->>'tmdbId')::int = ANY($1::int[])
+         ),
+         vec_b AS (
+           SELECT AVG(embedding) AS v, COUNT(*) AS n
+           FROM movie_embeddings
+           WHERE (metadata->>'tmdbId')::int = ANY($2::int[])
+         )
+         SELECT
+           vec_a.n AS "countA",
+           vec_b.n AS "countB",
+           CASE WHEN vec_a.n = 0 OR vec_b.n = 0 THEN NULL
+                ELSE 1 - (vec_a.v <=> vec_b.v) END AS similarity
+         FROM vec_a, vec_b`,
+        [tmdbIdsA, tmdbIdsB],
+      );
+
+      const row = result.rows[0];
+      if (!row || row.countA === '0' || row.countB === '0') return null;
+      return row.similarity === null ? null : Number(row.similarity);
+    } catch (error) {
+      this.logger.error(
+        `Taste compatibility calc failed: ${(error as Error).message}`,
+      );
+      return null;
+    }
+  }
+
   async getRelevantUserFacts(
     userId: number,
     query: string,

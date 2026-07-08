@@ -17,6 +17,7 @@ import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
 import { FriendDto } from './dto/friend.dto';
 import { DatabaseErrorDto } from './dto/database-error.dto';
 import { ActivityService } from 'src/activity/activity.service';
+import { VectorService } from 'src/vector/vector.service';
 
 @Injectable()
 export class UsersService {
@@ -26,6 +27,7 @@ export class UsersService {
     private usersRepository: Repository<User>,
     private moviesService: MoviesService,
     private activityService: ActivityService,
+    private vectorService: VectorService,
   ) {
     cloudinary.config({
       cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
@@ -231,5 +233,35 @@ export class UsersService {
 
   async getFriendsFeed(userId: number, before?: Date) {
     return this.activityService.getFriendsFeed(userId, before);
+  }
+
+  async getTasteCompatibility(currentUserId: number, targetUserId: number) {
+    const [tasteIdsA, tasteIdsB, watchedA, watchedB] = await Promise.all([
+      this.moviesService.getTasteSourceTmdbIds(currentUserId),
+      this.moviesService.getTasteSourceTmdbIds(targetUserId),
+      this.moviesService.getWatchedMovies(currentUserId),
+      this.moviesService.getWatchedMovies(targetUserId),
+    ]);
+
+    const score = await this.vectorService.computeTasteCompatibility(
+      tasteIdsA,
+      tasteIdsB,
+    );
+
+    const watchedIdsB = new Set(watchedB.map((item) => item.tmdbId));
+    const commonWatched = watchedA
+      .filter((item) => watchedIdsB.has(item.tmdbId))
+      .map((item) => ({
+        tmdbId: item.tmdbId,
+        title: item.title,
+        posterUrl: item.posterUrl,
+        mediaType: item.mediaType,
+      }));
+
+    return {
+      score,
+      commonWatchedCount: commonWatched.length,
+      commonWatched: commonWatched.slice(0, 10),
+    };
   }
 }

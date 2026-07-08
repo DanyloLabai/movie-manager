@@ -1,10 +1,19 @@
-import { Body, Controller, Post, Get, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Get,
+  Req,
+  Param,
+  ParseIntPipe,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiParam,
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AiChatService } from './ai-chat.service';
@@ -46,6 +55,25 @@ export class AiChatController {
       userId,
       body.shownMovieIds || [],
     );
+  }
+
+  @Post('watch-together/:friendId')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get AI movie picks for watching with a friend',
+    description:
+      'Suggests movies both the current user and the given friend would enjoy, excluding anything either has already watched or added to their watchlist (requires authentication)',
+  })
+  @ApiParam({ name: 'friendId', type: 'number', description: 'Friend user ID' })
+  @ApiResponse({ status: 200, description: 'Shared AI movie picks' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async watchTogether(
+    @Req() req: AuthenticatedRequest,
+    @Param('friendId', ParseIntPipe) friendId: number,
+  ) {
+    const userId = req.user.userId;
+    return this.aiChatService.recommendForTwo(userId, friendId);
   }
 
   @Get('history')

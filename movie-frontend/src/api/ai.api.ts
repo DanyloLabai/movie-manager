@@ -27,4 +27,11 @@ export async function aiSearch(payload: {
   return res.data as { message?: string; movies?: MovieResult[] };
 }
 
-export default { getHistory, postHistory, aiSearch };
+export async function watchTogether(
+  friendId: number,
+): Promise<{ message?: string; movies?: MovieResult[] }> {
+  const res = await api.post(`/ai/watch-together/${friendId}`);
+  return res.data as { message?: string; movies?: MovieResult[] };
+}
+
+export default { getHistory, postHistory, aiSearch, watchTogether };

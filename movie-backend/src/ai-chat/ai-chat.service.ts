@@ -45,6 +45,19 @@ const aiResponseSchema = z.object({
     ),
 });
 
+const watchTogetherSchema = z.object({
+  message: z
+    .string()
+    .describe(
+      'A short, friendly reply (1-2 sentences) explaining the pick for both friends, in Ukrainian.',
+    ),
+  titles: z
+    .array(z.string())
+    .describe(
+      'Up to 8 real movie/show titles both friends would genuinely enjoy together. Add year in parens ("Title (YYYY)") when it helps disambiguate. Never invent titles.',
+    ),
+});
+
 export interface UserContextData {
   favorites: WatchlistItem[];
   watchlistItems: WatchlistItem[];
@@ -408,7 +421,10 @@ export class AiChatService {
         : 'None';
 
     return `You are an elite movie, TV series, anime, and pop-culture expert assistant.
-You understand all languages perfectly, including Ukrainian, and always reply in the SAME LANGUAGE the user writes in.
+You understand all languages perfectly, including Ukrainian, and always reply in the SAME LANGUAGE as the user's
+MOST RECENT message — not the language of earlier messages in this conversation. If the user switches language
+mid-conversation (e.g. previous messages were in Ukrainian but the latest one is in English), switch with them
+immediately and reply in English. Never keep replying in the old language just because earlier turns used it.
 
 ---
 
@@ -502,8 +518,101 @@ If the user is just chatting, asking something that doesn't require finding movi
 RESPONSE TONE:
 - Keep messages 1-2 sentences maximum. Be concise and direct.
 - No filler phrases: never start with "Great question!", "Of course!", "Certainly!".
-- Always respond in the user's language.
+- Always respond in the language of the user's LATEST message specifically, even if it differs from earlier messages.
 `;
+  }
+
+  async recommendForTwo(
+    userIdA: number,
+    userIdB: number,
+  ): Promise<{ message: string; movies?: MovieResultDto[] }> {
+    const [ctxA, ctxB, excludeIdsA, excludeIdsB] = await Promise.all([
+      this.getUserContextData(userIdA),
+      this.getUserContextData(userIdB),
+      this.moviesService.getWatchedAndPlannedTmdbIds(userIdA),
+      this.moviesService.getWatchedAndPlannedTmdbIds(userIdB),
+    ]);
+
+    const excludeIds = new Set<number>([...excludeIdsA, ...excludeIdsB]);
+    const systemPrompt = this.buildWatchTogetherPrompt(ctxA, ctxB);
+
+    const runWith = async (
+      model: ReturnType<typeof this.groqClient>,
+    ): Promise<{ message: string; movies?: MovieResultDto[] }> => {
+      const { object } = await generateObject({
+        model,
+        system: systemPrompt,
+        messages: [
+          { role: 'user', content: 'Suggest movies for us to watch together.' },
+        ],
+        schema: watchTogetherSchema,
+        temperature: 0.6,
+      });
+
+      const movies: MovieResultDto[] = [];
+      for (const rawTitle of object.titles.slice(0, 8)) {
+        if (movies.length >= 8) break;
+        const { title, year } = this.parseTitleYear(rawTitle);
+        const media = await this.moviesService.findMovieByTitle(title, year);
+        if (media && !excludeIds.has(Number(media.id))) {
+          movies.push(media);
+        }
+      }
+
+      return {
+        message: object.message,
+        ...(movies.length > 0 && { movies }),
+      };
+    };
+
+    try {
+      return await runWith(this.groqClient('openai/gpt-oss-120b'));
+    } catch (groqError: unknown) {
+      this.logger.error(
+        `Watch-together Groq failed: ${groqError instanceof Error ? groqError.message : String(groqError)}`,
+      );
+      try {
+        return await runWith(this.geminiClient('gemini-flash-latest'));
+      } catch (geminiError: unknown) {
+        const geminiMessage =
+          geminiError instanceof Error
+            ? geminiError.message
+            : String(geminiError);
+        throw new InternalServerErrorException(
+          'All AI services are currently unavailable',
+          geminiMessage,
+        );
+      }
+    }
+  }
+
+  private buildWatchTogetherPrompt(
+    ctxA: Omit<UserContextData, 'longTermMemory'>,
+    ctxB: Omit<UserContextData, 'longTermMemory'>,
+  ): string {
+    const favA = ctxA.favorites.map((f) => f.title).join(', ') || 'None';
+    const favB = ctxB.favorites.map((f) => f.title).join(', ') || 'None';
+    const recentA =
+      ctxA.watchedMovies
+        .slice(0, 10)
+        .map((w) => w.title)
+        .join(', ') || 'None';
+    const recentB =
+      ctxB.watchedMovies
+        .slice(0, 10)
+        .map((w) => w.title)
+        .join(', ') || 'None';
+
+    return `You are a movie recommendation engine picking something for TWO friends to watch TOGETHER.
+
+Friend A's favorites: ${favA}. Recently watched: ${recentA}.
+Friend B's favorites: ${favB}. Recently watched: ${recentB}.
+
+Find real common ground between their tastes (shared genres, moods, themes, actors/directors) — do not just
+alternate between their individual preferences. Suggest up to 8 real, existing movies/shows both would genuinely
+enjoy together. Never recommend Russian or Soviet films/shows. Never invent titles.
+
+Respond in Ukrainian. Keep "message" to 1-2 friendly sentences.`;
   }
 
   private async extractAndSaveUserFact(userId: number, text: string) {

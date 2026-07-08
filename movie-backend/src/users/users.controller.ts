@@ -66,6 +66,24 @@ export class UsersController {
     return this.usersService.getPublicProfile(targetUserId, currentUserId);
   }
 
+  @Get('public/:id/compatibility')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get taste compatibility with another user',
+    description:
+      'Compute movie-taste compatibility score based on shared favorite/highly-rated movies (requires authentication)',
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Taste compatibility data' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getTasteCompatibility(
+    @Req() req,
+    @Param('id', ParseIntPipe) targetUserId: number,
+  ) {
+    const currentUserId = req.user.userId;
+    return this.usersService.getTasteCompatibility(currentUserId, targetUserId);
+  }
+
   @Get('search')
   @ApiBearerAuth()
   @ApiOperation({
