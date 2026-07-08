@@ -16,6 +16,7 @@ import * as usersApi from "../api/users.api";
 import { useLang } from "../context/LanguageContext";
 import type { TranslationKey } from "../context/LanguageContext";
 import AchievementTooltip from "../components/AchievementTooltip";
+import NotificationBell from "../components/NotificationBell";
 import type {
   WatchlistItem as WatchlistItemType,
   ProfileData as ProfileDataType,
@@ -944,6 +945,8 @@ export default function Watchlist() {
               {t("nav_profile")}
             </Link>
 
+            <NotificationBell />
+
             <button
               onClick={handleLogout}
               className="text-[9px] sm:text-xs px-2 py-1.5 sm:px-3 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
@@ -1259,6 +1262,7 @@ interface SearchUser {
   username: string;
   avatarUrl: string | null;
   isFriend: boolean;
+  requestPending?: boolean;
 }
 
 interface FeedItem {
@@ -1368,11 +1372,20 @@ function FriendsModal({ onClose }: FriendsModalProps) {
   const handleAddFriend = async (userId: number) => {
     setAddingId(userId);
     try {
-      await usersApi.addFriend(userId);
+      const result = await usersApi.addFriend(userId);
+      const accepted = result?.status === "accepted";
       setSearchResults((prev) =>
-        prev.map((u) => (u.id === userId ? { ...u, isFriend: true } : u)),
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                isFriend: accepted ? true : u.isFriend,
+                requestPending: !accepted,
+              }
+            : u,
+        ),
       );
-      fetchFriends();
+      if (accepted) fetchFriends();
     } catch (error) {
       console.error(error);
     } finally {
@@ -1563,6 +1576,10 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                     {u.isFriend ? (
                       <span className="shrink-0 text-[9px] font-black text-[#c8963c] uppercase tracking-wide px-1">
                         ✓ {t("profile_friends")}
+                      </span>
+                    ) : u.requestPending ? (
+                      <span className="shrink-0 text-[9px] font-black text-[#f0e6cc]/40 uppercase tracking-wide px-1">
+                        {t("profile_request_sent")}
                       </span>
                     ) : (
                       <button

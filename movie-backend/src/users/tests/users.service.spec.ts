@@ -8,6 +8,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../users.service';
 import { User } from '../users.entity';
+import { FriendRequest } from '../friend-request.entity';
 import { MoviesService } from '../../movies/movies.service';
 import { ActivityService } from '../../activity/activity.service';
 import { VectorService } from '../../vector/vector.service';
@@ -63,6 +64,14 @@ const mockVectorService = {
   computeTasteCompatibility: jest.fn(),
 };
 
+const mockFriendRequestRepository = {
+  findOne: jest.fn(),
+  find: jest.fn(),
+  create: jest.fn((data) => data),
+  save: jest.fn(),
+  remove: jest.fn(),
+};
+
 const mockConfigService = {
   get: jest.fn((key: string) => {
     const config: Record<string, string> = {
@@ -82,6 +91,10 @@ describe('UsersService', () => {
       providers: [
         UsersService,
         { provide: getRepositoryToken(User), useValue: mockUsersRepository },
+        {
+          provide: getRepositoryToken(FriendRequest),
+          useValue: mockFriendRequestRepository,
+        },
         { provide: MoviesService, useValue: mockMoviesService },
         { provide: ActivityService, useValue: mockActivityService },
         { provide: VectorService, useValue: mockVectorService },
@@ -201,19 +214,45 @@ describe('UsersService', () => {
   // ─── addFriend ────────────────────────────────────────────────────────────
 
   describe('addFriend', () => {
-    it('should add friend to both users', async () => {
+    it('should create a pending friend request when neither side has requested yet', async () => {
       const user1 = buildUser({ id: 1, friends: [] });
       const user2 = buildUser({ id: 2, friends: [] });
 
       mockUsersRepository.findOne
         .mockResolvedValueOnce(user1)
         .mockResolvedValueOnce(user2);
+      mockFriendRequestRepository.findOne
+        .mockResolvedValueOnce(null) // no incoming request from user2
+        .mockResolvedValueOnce(null); // no request already sent
 
+      const result = await service.addFriend(1, 2);
+
+      expect(result.message).toBe('Friend request sent');
+      expect(result.status).toBe('pending');
+      expect(mockFriendRequestRepository.save).toHaveBeenCalled();
+      expect(mockUsersRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('should auto-accept and become friends when the other user already sent a request', async () => {
+      const user1 = buildUser({ id: 1, friends: [] });
+      const user2 = buildUser({ id: 2, friends: [] });
+
+      mockUsersRepository.findOne
+        .mockResolvedValueOnce(user1)
+        .mockResolvedValueOnce(user2);
+      const incomingRequest = { id: 5, fromUser: user2, toUser: user1 };
+      mockFriendRequestRepository.findOne.mockResolvedValueOnce(
+        incomingRequest,
+      );
       mockUsersRepository.save.mockResolvedValue([]);
 
       const result = await service.addFriend(1, 2);
 
       expect(result.message).toBe('Friend added successfully');
+      expect(result.status).toBe('accepted');
+      expect(mockFriendRequestRepository.remove).toHaveBeenCalledWith(
+        incomingRequest,
+      );
       expect(mockUsersRepository.save).toHaveBeenCalledWith([
         expect.objectContaining({
           id: 1,
@@ -249,6 +288,22 @@ describe('UsersService', () => {
       mockUsersRepository.findOne
         .mockResolvedValueOnce(user1)
         .mockResolvedValueOnce(user2);
+
+      await expect(service.addFriend(1, 2)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should throw BadRequestException when a request was already sent', async () => {
+      const user1 = buildUser({ id: 1, friends: [] });
+      const user2 = buildUser({ id: 2, friends: [] });
+
+      mockUsersRepository.findOne
+        .mockResolvedValueOnce(user1)
+        .mockResolvedValueOnce(user2);
+      mockFriendRequestRepository.findOne
+        .mockResolvedValueOnce(null) // no incoming request
+        .mockResolvedValueOnce({ id: 7 }); // already sent
 
       await expect(service.addFriend(1, 2)).rejects.toThrow(
         BadRequestException,

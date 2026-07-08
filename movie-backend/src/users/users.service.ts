@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Not, Repository } from 'typeorm';
 import { User } from './users.entity';
+import { FriendRequest } from './friend-request.entity';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import * as streamifier from 'streamifier';
@@ -25,6 +26,8 @@ export class UsersService {
     private configService: ConfigService,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(FriendRequest)
+    private friendRequestRepository: Repository<FriendRequest>,
     private moviesService: MoviesService,
     private activityService: ActivityService,
     private vectorService: VectorService,
@@ -156,6 +159,18 @@ export class UsersService {
     };
   }
 
+  private async makeFriends(userA: User, userB: User): Promise<void> {
+    if (!userA.friends) userA.friends = [];
+    if (!userB.friends) userB.friends = [];
+    if (!userA.friends.some((f) => f.id === userB.id)) {
+      userA.friends.push(userB);
+    }
+    if (!userB.friends.some((f) => f.id === userA.id)) {
+      userB.friends.push(userA);
+    }
+    await this.usersRepository.save([userA, userB]);
+  }
+
   async addFriend(currentUserId: number, friendId: number) {
     if (currentUserId === friendId) {
       throw new BadRequestException('You cannot add yourself as a friend');
@@ -175,20 +190,84 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    if (!currentUser.friends) currentUser.friends = [];
-    if (!friendToAdd.friends) friendToAdd.friends = [];
-
-    const alreadyFriends = currentUser.friends.some((f) => f.id === friendId);
+    const alreadyFriends = (currentUser.friends || []).some(
+      (f) => f.id === friendId,
+    );
     if (alreadyFriends) {
       throw new BadRequestException('You are already friends');
     }
 
-    currentUser.friends.push(friendToAdd);
-    friendToAdd.friends.push(currentUser);
+    // If the other person already sent us a request, accept it instead of
+    // creating a duplicate — this is a mutual match.
+    const incoming = await this.friendRequestRepository.findOne({
+      where: { fromUser: { id: friendId }, toUser: { id: currentUserId } },
+    });
+    if (incoming) {
+      await this.makeFriends(currentUser, friendToAdd);
+      await this.friendRequestRepository.remove(incoming);
+      return { message: 'Friend added successfully', status: 'accepted' };
+    }
 
-    await this.usersRepository.save([currentUser, friendToAdd]);
+    const alreadySent = await this.friendRequestRepository.findOne({
+      where: { fromUser: { id: currentUserId }, toUser: { id: friendId } },
+    });
+    if (alreadySent) {
+      throw new BadRequestException('Friend request already sent');
+    }
 
-    return { message: 'Friend added successfully' };
+    const request = this.friendRequestRepository.create({
+      fromUser: currentUser,
+      toUser: friendToAdd,
+    });
+    await this.friendRequestRepository.save(request);
+
+    return { message: 'Friend request sent', status: 'pending' };
+  }
+
+  async getFriendRequests(userId: number) {
+    const requests = await this.friendRequestRepository.find({
+      where: { toUser: { id: userId } },
+      relations: ['fromUser'],
+      order: { createdAt: 'DESC' },
+    });
+
+    return requests.map((req) => ({
+      id: req.id,
+      createdAt: req.createdAt,
+      fromUser: {
+        id: req.fromUser.id,
+        username: req.fromUser.username,
+        avatarUrl: req.fromUser.avatarUrl,
+      },
+    }));
+  }
+
+  async acceptFriendRequest(userId: number, requestId: number) {
+    const request = await this.friendRequestRepository.findOne({
+      where: { id: requestId, toUser: { id: userId } },
+      relations: ['fromUser', 'toUser'],
+    });
+    if (!request) {
+      throw new NotFoundException('Friend request not found');
+    }
+
+    await this.makeFriends(request.toUser, request.fromUser);
+    await this.friendRequestRepository.remove(request);
+
+    return { message: 'Friend request accepted' };
+  }
+
+  async declineFriendRequest(userId: number, requestId: number) {
+    const request = await this.friendRequestRepository.findOne({
+      where: { id: requestId, toUser: { id: userId } },
+    });
+    if (!request) {
+      throw new NotFoundException('Friend request not found');
+    }
+
+    await this.friendRequestRepository.remove(request);
+
+    return { message: 'Friend request declined' };
   }
 
   async searchUsers(currentUserId: number, query: string) {
@@ -204,11 +283,18 @@ export class UsersService {
       take: 20,
     });
 
+    const sentRequests = await this.friendRequestRepository.find({
+      where: { fromUser: { id: currentUserId } },
+      relations: ['toUser'],
+    });
+    const pendingIds = new Set(sentRequests.map((r) => r.toUser.id));
+
     return users.map((u) => ({
       id: u.id,
       username: u.username,
       avatarUrl: u.avatarUrl,
       isFriend: u.friends?.some((f) => f.id === currentUserId) || false,
+      requestPending: pendingIds.has(u.id),
     }));
   }
 

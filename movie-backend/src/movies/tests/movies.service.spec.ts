@@ -7,6 +7,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { of } from 'rxjs';
 import { MoviesService } from '../movies.service';
 import { WatchlistItem } from '../watchlist-entity';
+import { Notification } from '../notification.entity';
 import { User } from '../../users/users.entity';
 import { VectorService } from '../../vector/vector.service';
 import { ActivityService } from '../../activity/activity.service';
@@ -96,6 +97,16 @@ const buildModule = async (): Promise<TestingModule> =>
         useValue: mockWatchlistRepo,
       },
       { provide: getRepositoryToken(User), useValue: mockUsersRepo },
+      {
+        provide: getRepositoryToken(Notification),
+        useValue: {
+          find: jest.fn(),
+          findOne: jest.fn(),
+          create: jest.fn((data) => data),
+          save: jest.fn(),
+          update: jest.fn(),
+        },
+      },
       { provide: HttpService, useValue: mockHttpService },
       { provide: ConfigService, useValue: mockConfigService },
       { provide: CACHE_MANAGER, useValue: mockCacheManager },
