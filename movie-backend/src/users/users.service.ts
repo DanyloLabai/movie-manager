@@ -5,13 +5,18 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Not, Repository } from 'typeorm';
 import { User } from './users.entity';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import * as streamifier from 'streamifier';
 import 'multer';
 import { MoviesService } from 'src/movies/movies.service';
+import { CloudinaryUploadResponseDto } from './dto/cloudinary-upload-response.dto';
+import { UpdateUserProfileDto } from './dto/update-user-profile.dto';
+import { FriendDto } from './dto/friend.dto';
+import { DatabaseErrorDto } from './dto/database-error.dto';
+import { ActivityService } from 'src/activity/activity.service';
 
 @Injectable()
 export class UsersService {
@@ -20,6 +25,7 @@ export class UsersService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private moviesService: MoviesService,
+    private activityService: ActivityService,
   ) {
     cloudinary.config({
       cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
@@ -32,7 +38,7 @@ export class UsersService {
     userId: number,
     newUsername: string,
     file?: Express.Multer.File,
-  ) {
+  ): Promise<UpdateUserProfileDto> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -62,8 +68,9 @@ export class UsersService {
 
     try {
       await this.usersRepository.save(user);
-    } catch (error: any) {
-      if (error.code === '23505') {
+    } catch (error: unknown) {
+      const dbError = error as DatabaseErrorDto;
+      if (dbError.code === '23505') {
         throw new ConflictException(
           'That username is already taken by another user!',
         );
@@ -79,7 +86,7 @@ export class UsersService {
     };
   }
 
-  uploadImage(file: Express.Multer.File): Promise<any> {
+  uploadImage(file: Express.Multer.File): Promise<CloudinaryUploadResponseDto> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -90,7 +97,8 @@ export class UsersService {
         },
         (error, result) => {
           if (error) return reject(error);
-          resolve(result);
+          if (!result) return reject(new Error('Cloudinary upload failed'));
+          resolve(result as unknown as CloudinaryUploadResponseDto);
         },
       );
 
@@ -181,6 +189,27 @@ export class UsersService {
     return { message: 'Friend added successfully' };
   }
 
+  async searchUsers(currentUserId: number, query: string) {
+    const trimmed = (query || '').trim();
+    if (trimmed.length < 2) return [];
+
+    const users = await this.usersRepository.find({
+      where: {
+        username: ILike(`%${trimmed}%`),
+        id: Not(currentUserId),
+      },
+      relations: ['friends'],
+      take: 20,
+    });
+
+    return users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      avatarUrl: u.avatarUrl,
+      isFriend: u.friends?.some((f) => f.id === currentUserId) || false,
+    }));
+  }
+
   async getFriends(userId: number) {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
@@ -198,5 +227,9 @@ export class UsersService {
       username: friend.username,
       avatarUrl: friend.avatarUrl,
     }));
+  }
+
+  async getFriendsFeed(userId: number, before?: Date) {
+    return this.activityService.getFriendsFeed(userId, before);
   }
 }

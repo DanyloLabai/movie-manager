@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
   PieChart,
@@ -11,48 +11,15 @@ import {
   XAxis,
 } from "recharts";
 import LogoImg from "../assets/logo.png";
-import { api } from "../api";
+import * as moviesApi from "../api/movies.api";
+import * as usersApi from "../api/users.api";
 import { useLang } from "../context/LanguageContext";
+import type { TranslationKey } from "../context/LanguageContext";
 import AchievementTooltip from "../components/AchievementTooltip";
-
-interface WatchlistItem {
-  id: string;
-  tmdbId: number;
-  title: string;
-  addedAt: string;
-  updatedAt?: string;
-  posterUrl?: string | null;
-  isWatched: boolean;
-  isFavorite: boolean;
-  rating?: number | null;
-  mediaType: string;
-  releaseDate?: string | null;
-  releaseYear?: string | null;
-}
-
-interface ProfileData {
-  id?: number;
-  favorites: WatchlistItem[];
-  recent: WatchlistItem[];
-  watchedCount?: number;
-  totalCount?: number;
-  avatarUrl?: string | null;
-  username?: string;
-  stats?: {
-    totalMinutes: number;
-    topGenre: string;
-    genreDistribution: { name: string; value: number }[];
-    topRated: WatchlistItem[];
-    averageRating: string | number;
-    moviesCount: number;
-    tvCount: number;
-    favoriteDecade: string;
-    ratingDistribution: { name: string; value: number }[];
-    completionRate: number;
-    longestMovie: { title: string; runtime: number };
-    topActor: { name: string; count: number; profileUrl: string | null } | null;
-  };
-}
+import type {
+  WatchlistItem as WatchlistItemType,
+  ProfileData as ProfileDataType,
+} from "../types/movie.types";
 
 const getUserIdFromToken = (): string => {
   const token = localStorage.getItem("token");
@@ -71,7 +38,7 @@ const ENABLE_CACHE = import.meta.env.VITE_ENABLE_PROFILE_CACHE;
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
 
-const isReleased = (item: WatchlistItem): boolean => {
+const isReleased = (item: WatchlistItemType): boolean => {
   if (item.releaseDate) {
     const today = new Date();
     const release = new Date(item.releaseDate);
@@ -82,7 +49,16 @@ const isReleased = (item: WatchlistItem): boolean => {
   return true;
 };
 
-const CustomTooltip = ({ active, payload }: any) => {
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    payload?: Record<string, unknown>;
+  }>;
+}
+
+const CustomTooltip = ({ active, payload }: ChartTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1714] border border-[#c8963c]/50 p-2 rounded-xl shadow-xl">
@@ -96,7 +72,13 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-const RatingTooltip = ({ active, payload, t }: any) => {
+interface RatingTooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: { name: string }; value: number }>;
+  t: (key: TranslationKey) => string;
+}
+
+const RatingTooltip = ({ active, payload, t }: RatingTooltipProps) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-[#1a1714] border border-[#c8963c]/50 px-2 py-1.5 rounded-xl shadow-xl flex items-center gap-1.5">
@@ -125,10 +107,9 @@ export default function Watchlist() {
   const { t, lang } = useLang();
   const dateLocale = lang === "uk" ? "uk-UA" : "en-US";
   const getUsernameKey = () => `custom_username_${getUserIdFromToken()}`;
-  const getAvatarKey = () => `custom_avatarUrl_${getUserIdFromToken()}`;
-  const [movies, setMovies] = useState<WatchlistItem[]>([]);
+  const [movies, setMovies] = useState<WatchlistItemType[]>([]);
 
-  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [profileData, setProfileData] = useState<ProfileDataType | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialTab =
@@ -160,39 +141,32 @@ export default function Watchlist() {
     title: string;
   }>({ isOpen: false, tmdbId: null, title: "" });
 
-  useEffect(() => {
-    if (activeTab === "watchlist" || activeTab === "watched") {
-      fetchMovies();
-    } else if (activeTab === "profile") {
-      fetchProfile();
-    }
-  }, [activeTab]);
-
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const fetchMovies = async () => {
+  const fetchMovies = useCallback(async () => {
     setIsLoading(true);
     try {
-      const endpoint =
-        activeTab === "watchlist" ? "/movies/watchlist" : "/movies/watched";
-      const response = await api.get(`${endpoint}?_t=${Date.now()}`);
-      setMovies(response.data);
-    } catch (error: any) {
-      if (error.response?.status === 401) handleLogout();
+      const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
+      const response = await moviesApi.getWatchlist(endpointName);
+      setMovies(response || []);
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeTab, navigate]);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await api.get(`/movies/profile?_t=${Date.now()}`);
-      const data = response.data;
-
+      const data = await moviesApi.getProfile();
       setProfileData(data);
 
       if (data.username) {
@@ -201,12 +175,24 @@ export default function Watchlist() {
       if (data.avatarUrl !== undefined) {
         setAvatarUrl(data.avatarUrl ?? null);
       }
-    } catch (error: any) {
-      if (error.response?.status === 401) handleLogout();
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+      }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (activeTab === "watchlist" || activeTab === "watched") {
+      fetchMovies();
+    } else if (activeTab === "profile") {
+      fetchProfile();
+    }
+  }, [activeTab, fetchMovies, fetchProfile]);
 
   const handleToggleFavorite = async (tmdbId: number) => {
     const itemToCheck =
@@ -246,7 +232,7 @@ export default function Watchlist() {
       );
     }
     try {
-      await api.patch(`/movies/watchlist/${tmdbId}/favorite`);
+      await moviesApi.toggleFavorite(tmdbId);
       showToast(t("search_fav_updated"));
       if (activeTab === "profile") fetchProfile();
     } catch {
@@ -267,7 +253,7 @@ export default function Watchlist() {
       };
     });
     try {
-      await api.delete(`/movies/watchlist/${tmdbId}`);
+      await moviesApi.removeFromWatchlist(tmdbId);
       showToast(t("movie_removed"));
     } catch {
       showToast(t("search_remove_error"));
@@ -288,9 +274,8 @@ export default function Watchlist() {
   const confirmMarkWatched = async (tmdbId: number, rating: number | null) => {
     setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
     try {
-      await api.post(`/movies/watchlist/${tmdbId}/watched`);
-      if (rating !== null)
-        await api.patch(`/movies/watchlist/${tmdbId}/rate`, { rating });
+      await moviesApi.markWatched(tmdbId);
+      if (rating !== null) await moviesApi.rateMovie(tmdbId, rating);
       showToast(t("watchlist_moved"));
       fetchProfile();
     } catch {
@@ -329,9 +314,7 @@ export default function Watchlist() {
       return { ...prev, recent: newRecent };
     });
     try {
-      await api.patch(`/movies/watchlist/${tmdbId}/rate`, {
-        rating: newRating,
-      });
+      await moviesApi.rateMovie(tmdbId, newRating);
       showToast(
         newRating === 0
           ? t("watchlist_rating_cleared")
@@ -475,19 +458,6 @@ export default function Watchlist() {
                 <span className="text-xs">✏️</span>
               </button>
               <button
-                onClick={() => {
-                  const currentId = profileData?.id || getUserIdFromToken();
-                  navigator.clipboard.writeText(
-                    `${window.location.origin}/user/${currentId}`,
-                  );
-                  showToast(t("watchlist_invite_copied"));
-                }}
-                className="w-8 h-8 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full flex items-center justify-center border border-[#c8963c]/30 text-[#c8963c] transition"
-                title={t("profile_share_title")}
-              >
-                <span className="text-xs">🔗</span>
-              </button>
-              <button
                 onClick={() => setIsFriendsModalOpen(true)}
                 className="w-8 h-8 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full flex items-center justify-center border border-[#c8963c]/30 text-[#c8963c] transition"
                 title={t("profile_friends")}
@@ -612,23 +582,22 @@ export default function Watchlist() {
             </div>
 
             {/* Longest Marathon */}
-            {profileData?.stats?.longestMovie &&
-              profileData.stats.longestMovie.runtime > 0 && (
-                <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 rounded-xl mb-2 flex items-center gap-3">
-                  <span className="text-2xl">🏃‍♂️</span>
-                  <div className="min-w-0">
-                    <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
-                      {t("stats_marathon")}
-                    </p>
-                    <p className="text-xs font-bold text-[#c8963c] truncate">
-                      {profileData.stats.longestMovie.title}
-                    </p>
-                    <p className="text-[10px] text-[#f0e6cc]/70 font-black">
-                      {profileData.stats.longestMovie.runtime} {t("stats_min")}
-                    </p>
-                  </div>
+            {(profileData?.stats?.longestMovie?.runtime ?? 0) > 0 && (
+              <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 rounded-xl mb-2 flex items-center gap-3">
+                <span className="text-2xl">🏃‍♂️</span>
+                <div className="min-w-0">
+                  <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
+                    {t("stats_marathon")}
+                  </p>
+                  <p className="text-xs font-bold text-[#c8963c] truncate">
+                    {profileData?.stats?.longestMovie?.title}
+                  </p>
+                  <p className="text-[10px] text-[#f0e6cc]/70 font-black">
+                    {profileData?.stats?.longestMovie?.runtime} {t("stats_min")}
+                  </p>
                 </div>
-              )}
+              </div>
+            )}
 
             {/* Top Actor */}
             {profileData?.stats?.topActor && (
@@ -686,7 +655,10 @@ export default function Watchlist() {
                         stroke="none"
                       >
                         {(profileData?.stats?.genreDistribution || []).map(
-                          (_, index) => (
+                          (
+                            _: { name: string; value: number },
+                            index: number,
+                          ) => (
                             <Cell
                               key={`cell-${index}`}
                               fill={CHART_COLORS[index % CHART_COLORS.length]}
@@ -887,10 +859,12 @@ export default function Watchlist() {
           ) : (
             <div className="flex flex-col gap-1.5">
               {profileData.recent.map((act) => {
-                const addedStr = new Date(act.addedAt).toLocaleDateString(
-                  dateLocale,
-                  { month: "short", day: "numeric" },
-                );
+                const addedStr = act.addedAt
+                  ? new Date(act.addedAt).toLocaleDateString(dateLocale, {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "";
                 return (
                   <Link
                     to={`/movie/${act.tmdbId}?type=${act.mediaType || "movie"}&fromTab=profile`}
@@ -1181,9 +1155,9 @@ export default function Watchlist() {
       </div>
 
       {ratingModalData.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div
-            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative"
+            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
@@ -1262,7 +1236,7 @@ export default function Watchlist() {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl flex items-center justify-center gap-2 z-50 uppercase tracking-widest font-bold">
+        <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl flex items-center justify-center gap-2 z-50 uppercase tracking-widest font-bold animate-fade-in">
           <span className="text-[10px] text-center">{toastMessage}</span>
         </div>
       )}
@@ -1280,30 +1254,109 @@ interface FriendsModalProps {
   onClose: () => void;
 }
 
+interface SearchUser {
+  id: number;
+  username: string;
+  avatarUrl: string | null;
+  isFriend: boolean;
+}
+
+interface FeedItem {
+  id: number;
+  type: "watched" | "rated" | "added_watchlist" | "favorited";
+  tmdbId: number;
+  title: string;
+  posterUrl: string | null;
+  mediaType: string;
+  rating: number | null;
+  createdAt: string;
+  user: { id: number; username: string; avatarUrl: string | null };
+}
+
+function formatTimeAgo(
+  iso: string,
+  t: (key: TranslationKey) => string,
+): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return t("time_just_now");
+  if (minutes < 60) return `${minutes}${t("time_minutes_short")}`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}${t("time_hours_short")}`;
+  const days = Math.floor(hours / 24);
+  return `${days}${t("time_days_short")}`;
+}
+
 function FriendsModal({ onClose }: FriendsModalProps) {
   const { t } = useLang();
+  const [mode, setMode] = useState<"list" | "search" | "feed">("list");
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [addingId, setAddingId] = useState<number | null>(null);
+
+  const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [feedLoaded, setFeedLoaded] = useState(false);
+
+  const fetchFriends = async () => {
+    try {
+      const data = await usersApi.getFriends();
+      setFriends(data || []);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchFriends = async () => {
+    fetchFriends();
+  }, []);
+
+  useEffect(() => {
+    if (mode !== "feed" || feedLoaded) return;
+    setFeedLoading(true);
+    usersApi
+      .getFriendsFeed()
+      .then((data) => setFeedItems(data || []))
+      .catch((error) => console.error(error))
+      .finally(() => {
+        setFeedLoading(false);
+        setFeedLoaded(true);
+      });
+  }, [mode, feedLoaded]);
+
+  useEffect(() => {
+    if (mode !== "search") return;
+    const trimmed = searchQuery.trim();
+    if (trimmed.length < 2) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
+    setSearchLoading(true);
+    const timeout = setTimeout(async () => {
       try {
-        const response = await api.get("/users/friends");
-        setFriends(response.data);
+        const data = await usersApi.searchUsers(trimmed);
+        setSearchResults(data || []);
       } catch (error) {
         console.error(error);
       } finally {
-        setIsLoading(false);
+        setSearchLoading(false);
       }
-    };
-    fetchFriends();
-  }, []);
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [searchQuery, mode]);
 
   const handleRemoveFriend = async (friendId: number) => {
     setRemovingId(friendId);
     try {
-      await api.delete(`/users/friends/${friendId}`);
+      await usersApi.removeFriend(friendId);
       setFriends((prev) => prev.filter((f) => f.id !== friendId));
     } catch (error) {
       console.error(error);
@@ -1312,13 +1365,28 @@ function FriendsModal({ onClose }: FriendsModalProps) {
     }
   };
 
+  const handleAddFriend = async (userId: number) => {
+    setAddingId(userId);
+    try {
+      await usersApi.addFriend(userId);
+      setSearchResults((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, isFriend: true } : u)),
+      );
+      fetchFriends();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setAddingId(null);
+    }
+  };
+
   return (
     <div
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative"
+        className="w-full max-w-md p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative animate-modal-in"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -1339,11 +1407,178 @@ function FriendsModal({ onClose }: FriendsModalProps) {
             />
           </svg>
         </button>
-        <h2 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest text-center mb-4">
-          {t("profile_friends_list")}
-        </h2>
 
-        {isLoading ? (
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <h2 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest text-center">
+            {mode === "list"
+              ? t("profile_friends_list")
+              : mode === "feed"
+                ? t("profile_feed")
+                : t("profile_search_friends")}
+          </h2>
+        </div>
+
+        <div className="flex bg-[#12100e] rounded-full p-1 border border-[#c8963c]/20 mb-4">
+          <button
+            onClick={() => setMode("list")}
+            className={`flex-1 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition ${
+              mode === "list"
+                ? "bg-[#c8963c] text-[#12100e] shadow"
+                : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
+            }`}
+          >
+            {t("profile_friends_list")}
+          </button>
+          <button
+            onClick={() => setMode("feed")}
+            className={`flex-1 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition ${
+              mode === "feed"
+                ? "bg-[#c8963c] text-[#12100e] shadow"
+                : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
+            }`}
+          >
+            {t("profile_feed")}
+          </button>
+          <button
+            onClick={() => setMode("search")}
+            className={`flex-1 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition ${
+              mode === "search"
+                ? "bg-[#c8963c] text-[#12100e] shadow"
+                : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
+            }`}
+          >
+            🔍
+          </button>
+        </div>
+
+        {mode === "feed" ? (
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+            {feedLoading ? (
+              <div className="text-center text-[#c8963c] animate-pulse font-bold uppercase tracking-widest py-6 text-sm">
+                {t("profile_loading")}
+              </div>
+            ) : feedItems.length === 0 ? (
+              <div className="text-center text-[#f0e6cc]/50 text-sm py-6 italic border border-[#c8963c]/20 rounded-xl border-dashed">
+                {t("profile_feed_empty")}
+              </div>
+            ) : (
+              feedItems.map((item) => (
+                <Link
+                  key={item.id}
+                  to={`/movie/${item.tmdbId}?type=${item.mediaType}`}
+                  onClick={onClose}
+                  className="flex items-center gap-3 bg-[#12100e] p-2.5 rounded-xl border border-[#c8963c]/20 hover:border-[#c8963c]/50 transition"
+                >
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-sm font-black text-[#12100e] overflow-hidden shrink-0">
+                    {item.user.avatarUrl ? (
+                      <img
+                        src={item.user.avatarUrl}
+                        className="w-full h-full object-cover"
+                        alt={item.user.username}
+                      />
+                    ) : (
+                      item.user.username[0].toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-[#f0e6cc] truncate">
+                      <span className="font-black">{item.user.username}</span>{" "}
+                      <span className="text-[#f0e6cc]/50">
+                        {t(`feed_${item.type}`)}
+                      </span>{" "}
+                      <span className="font-bold text-[#c8963c]">
+                        {item.title}
+                      </span>
+                      {item.type === "rated" && item.rating != null && (
+                        <span className="text-[#f0e6cc]/50"> ({item.rating}/10)</span>
+                      )}
+                    </p>
+                    <p className="text-[9px] text-[#f0e6cc]/40 uppercase tracking-wide mt-0.5">
+                      {formatTimeAgo(item.createdAt, t)}
+                    </p>
+                  </div>
+                  {item.posterUrl && (
+                    <div className="w-9 h-12 rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20">
+                      <img
+                        src={item.posterUrl}
+                        alt={item.title}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                </Link>
+              ))
+            )}
+          </div>
+        ) : mode === "search" ? (
+          <div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t("profile_search_placeholder")}
+              autoFocus
+              className="w-full px-4 py-2.5 mb-3 text-sm text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] placeholder-[#f0e6cc]/30"
+            />
+
+            {searchLoading ? (
+              <div className="text-center text-[#c8963c] animate-pulse font-bold uppercase tracking-widest py-6 text-sm">
+                {t("profile_loading")}
+              </div>
+            ) : searchQuery.trim().length < 2 ? (
+              <div className="text-center text-[#f0e6cc]/50 text-sm py-6 italic border border-[#c8963c]/20 rounded-xl border-dashed">
+                {t("profile_search_hint")}
+              </div>
+            ) : searchResults.length === 0 ? (
+              <div className="text-center text-[#f0e6cc]/50 text-sm py-6 italic border border-[#c8963c]/20 rounded-xl border-dashed">
+                {t("profile_search_no_results")}
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[45vh] overflow-y-auto pr-1">
+                {searchResults.map((u) => (
+                  <div
+                    key={u.id}
+                    className="flex items-center gap-3 bg-[#12100e] p-2.5 rounded-xl border border-[#c8963c]/20"
+                  >
+                    <Link
+                      to={`/user/${u.id}`}
+                      onClick={onClose}
+                      className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-base font-black text-[#12100e] overflow-hidden shrink-0">
+                        {u.avatarUrl ? (
+                          <img
+                            src={u.avatarUrl}
+                            className="w-full h-full object-cover"
+                            alt={u.username}
+                          />
+                        ) : (
+                          u.username[0].toUpperCase()
+                        )}
+                      </div>
+                      <span className="font-black text-[#f0e6cc] text-sm truncate">
+                        {u.username}
+                      </span>
+                    </Link>
+                    {u.isFriend ? (
+                      <span className="shrink-0 text-[9px] font-black text-[#c8963c] uppercase tracking-wide px-1">
+                        ✓ {t("profile_friends")}
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleAddFriend(u.id)}
+                        disabled={addingId === u.id}
+                        className="shrink-0 text-[9px] font-black text-[#12100e] bg-[#c8963c] hover:bg-[#e8c070] uppercase tracking-wide transition disabled:opacity-40 px-2.5 py-1.5 rounded-lg"
+                      >
+                        {addingId === u.id ? "..." : t("profile_add_friend")}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : isLoading ? (
           <div className="text-center text-[#c8963c] animate-pulse font-bold uppercase tracking-widest py-6 text-sm">
             {t("profile_loading")}
           </div>
@@ -1443,11 +1678,12 @@ function EditProfileModal({
       return;
     }
     try {
-      const response = await api.patch("/users/profile", formData);
-      onUpdate(response.data.username, response.data.avatarUrl);
+      const response = await usersApi.updateProfile(formData);
+      onUpdate(response.username, response.avatarUrl);
       onClose();
-    } catch (err: any) {
-      if (err.response?.status === 409) {
+    } catch (err: unknown) {
+      const apiError = err as { response?: { status?: number } };
+      if (apiError.response?.status === 409) {
         setError(t("edit_username_taken"));
       } else {
         setError(t("edit_error"));
@@ -1458,8 +1694,8 @@ function EditProfileModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="w-full max-w-md p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative animate-modal-in">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"

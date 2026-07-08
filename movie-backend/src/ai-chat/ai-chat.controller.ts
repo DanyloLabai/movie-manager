@@ -1,16 +1,25 @@
-import { Body, Controller, Post, Get, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Get, Req } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
 } from '@nestjs/swagger';
+import { Request } from 'express';
 import { AiChatService } from './ai-chat.service';
-import { AuthGuard } from '@nestjs/passport';
+import { MovieResultDto } from '../movies/dto/movie-result.dto';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  movies?: MovieResultDto[];
+}
+
+export interface AuthenticatedRequest extends Request {
+  user: {
+    userId: number;
+  };
 }
 
 @ApiTags('AI Chat')
@@ -19,7 +28,7 @@ export class AiChatController {
   constructor(private readonly aiChatService: AiChatService) {}
 
   @Post('search')
-  @UseGuards(AuthGuard('jwt'))
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Search movies with AI',
@@ -27,13 +36,19 @@ export class AiChatController {
   })
   @ApiResponse({ status: 200, description: 'AI search results' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async search(@Req() req, @Body('messages') messages: ChatMessage[]) {
+  async search(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: { messages: ChatMessage[]; shownMovieIds?: number[] },
+  ) {
     const userId = req.user.userId;
-    return this.aiChatService.searchMovieByDescription(messages, userId);
+    return this.aiChatService.searchMovieByDescription(
+      body.messages,
+      userId,
+      body.shownMovieIds || [],
+    );
   }
 
   @Get('history')
-  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get chat history',
@@ -41,13 +56,12 @@ export class AiChatController {
   })
   @ApiResponse({ status: 200, description: 'User chat history' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getHistory(@Req() req) {
+  async getHistory(@Req() req: AuthenticatedRequest) {
     const userId = req.user.userId;
     return this.aiChatService.getHistory(userId);
   }
 
   @Post('history')
-  @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Save chat history',
@@ -55,7 +69,10 @@ export class AiChatController {
   })
   @ApiResponse({ status: 200, description: 'Chat history saved successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async saveHistory(@Req() req, @Body() body: { messages: any[] }) {
+  async saveHistory(
+    @Req() req: AuthenticatedRequest,
+    @Body() body: { messages: ChatMessage[] },
+  ) {
     const userId = req.user.userId;
     await this.aiChatService.saveHistory(userId, body.messages);
     return { success: true };

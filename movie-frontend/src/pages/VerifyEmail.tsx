@@ -1,30 +1,27 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { api } from "../api";
+import * as authApi from "../api/auth.api";
 import { useLang } from "../context/LanguageContext";
 
 export default function VerifyEmail() {
   const { t } = useLang();
   const [searchParams] = useSearchParams();
-  const [status, setStatus] = useState<"loading" | "success" | "error">(
-    "loading",
-  );
   const token = searchParams.get("token");
+  const [status, setStatus] = useState<"loading" | "success" | "error">(
+    token ? "loading" : "error",
+  );
   const navigate = useNavigate();
 
   const hasAttempted = useRef(false);
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      return;
-    }
+    if (!token) return;
 
     if (hasAttempted.current) return;
     hasAttempted.current = true;
 
-    api
-      .get(`/auth/verify-email?token=${token}`)
+    authApi
+      .verifyEmailGet(token)
       .then(() => setStatus("success"))
       .catch(() => setStatus("error"));
   }, [token]);
@@ -36,7 +33,7 @@ export default function VerifyEmail() {
       )}
 
       {status === "success" && (
-        <div className="bg-[#1a1714] border border-[#c8963c]/30 p-8 sm:p-10 rounded-3xl max-w-md w-full text-center shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="bg-[#1a1714] border border-[#c8963c]/30 p-8 sm:p-10 rounded-3xl max-w-md w-full text-center shadow-2xl relative overflow-hidden animate-modal-in">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
           <div className="w-20 h-20 bg-[#12100e] border border-[#c8963c]/30 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
             <svg
@@ -69,7 +66,7 @@ export default function VerifyEmail() {
       )}
 
       {status === "error" && (
-        <div className="bg-[#1a1714] border border-red-900/50 p-8 sm:p-10 rounded-3xl max-w-md w-full text-center shadow-2xl relative overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="bg-[#1a1714] border border-red-900/50 p-8 sm:p-10 rounded-3xl max-w-md w-full text-center shadow-2xl relative overflow-hidden animate-modal-in">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-red-900" />
           <div className="w-20 h-20 bg-[#12100e] border border-red-900/50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
             <svg

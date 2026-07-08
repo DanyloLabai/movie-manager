@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { api } from "../api";
+import * as usersApi from "../api/users.api";
 import { useLang } from "../context/LanguageContext";
 
 interface EditProfileProps {
@@ -45,12 +45,13 @@ export default function EditProfile({
     }
 
     try {
-      const response = await api.patch("/users/profile", formData);
+      const response = await usersApi.updateProfile(formData);
 
-      onUpdate(response.data.username, response.data.avatarUrl);
+      onUpdate(response.username, response.avatarUrl);
       onClose();
-    } catch (err: any) {
-      if (err.response?.status === 409) {
+    } catch (err: unknown) {
+      const apiError = err as { response?: { status?: number } };
+      if (apiError.response?.status === 409) {
         setError(t("edit_username_taken"));
       } else {
         setError(t("edit_error"));
@@ -61,8 +62,8 @@ export default function EditProfile({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="w-full max-w-md p-8 bg-gray-800 border border-gray-700 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="w-full max-w-md p-8 bg-gray-800 border border-gray-700 rounded-3xl shadow-2xl relative animate-modal-in">
         <button
           onClick={onClose}
           className="absolute top-4 right-5 text-gray-400 hover:text-white transition p-1"

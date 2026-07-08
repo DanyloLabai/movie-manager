@@ -2,7 +2,7 @@ import axios from "axios";
 import { STORAGE_KEYS } from "./constants/storage";
 
 const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
+const RETRY_DELAY = 1000;
 const RETRY_STATUS_CODES = [429, 503, 504]; // Rate limit, Service unavailable, Gateway timeout
 
 export const api = axios.create({

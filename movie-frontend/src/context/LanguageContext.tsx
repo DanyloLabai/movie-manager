@@ -1,4 +1,5 @@
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext } from "react";
+import type { ReactNode } from "react";
 
 type Lang = "en" | "uk";
 
@@ -83,7 +84,6 @@ const translations = {
     watchlist_wrapped: "Your Movie Wrapped",
     watchlist_top_fav: "Top Favorites",
     watchlist_no_fav: "You haven't liked any movies yet.",
-    watchlist_invite_copied: "Invite link copied! 🔗",
     watchlist_moved: "Moved to Watched",
     watchlist_rating_cleared: "Rating cleared",
     watchlist_rating_updated: "Rating updated",
@@ -258,7 +258,21 @@ const translations = {
     profile_remove_friend: "Remove friend",
     profile_friend_added: "Added to friends!",
     profile_friend_error: "Error adding friend.",
-    profile_share_title: "Share",
+    profile_search_friends: "Search Friends",
+    profile_search_placeholder: "Search by username...",
+    profile_search_hint: "Type at least 2 characters to search.",
+    profile_search_no_results: "No users found.",
+    profile_feed: "Feed",
+    profile_feed_empty: "No activity yet. Add some friends and start watching!",
+    feed_watched: "watched",
+    feed_rated: "rated",
+    feed_added_watchlist: "added to watchlist",
+    feed_favorited: "favorited",
+    time_just_now: "just now",
+    time_minutes_short: "m ago",
+    time_hours_short: "h ago",
+    time_days_short: "d ago",
+    movie_friends_watched: "Friends who watched this",
 
     // Common UI
     common_na: "N/A",
@@ -349,7 +363,6 @@ const translations = {
     watchlist_wrapped: "Твоя кінотека",
     watchlist_top_fav: "Топ улюблених",
     watchlist_no_fav: "Ти ще не обрав улюблені фільми.",
-    watchlist_invite_copied: "Посилання скопійовано! 🔗",
     watchlist_moved: "Переміщено в переглянуто",
     watchlist_rating_cleared: "Оцінка видалена",
     watchlist_rating_updated: "Оцінка оновлена",
@@ -522,9 +535,23 @@ const translations = {
     profile_loading: "Завантаження...",
     profile_no_friends: "Ти ще не додав жодного друга.",
     profile_remove_friend: "Видалити друга",
+    profile_search_friends: "Пошук друзів",
+    profile_search_placeholder: "Пошук за нік-неймом...",
+    profile_search_hint: "Введи мінімум 2 символи для пошуку.",
+    profile_search_no_results: "Користувачів не знайдено.",
+    profile_feed: "Стрічка",
+    profile_feed_empty: "Поки що немає активності. Додай друзів і почни дивитись!",
+    feed_watched: "подивився(-лась)",
+    feed_rated: "оцінив(-ла)",
+    feed_added_watchlist: "додав(-ла) у список",
+    feed_favorited: "додав(-ла) в улюблене",
+    time_just_now: "щойно",
+    time_minutes_short: "хв тому",
+    time_hours_short: "год тому",
+    time_days_short: "дн тому",
+    movie_friends_watched: "Твої друзі дивились це",
     profile_friend_added: "Додано до друзів!",
     profile_friend_error: "Помилка при додаванні друга.",
-    profile_share_title: "Поділитися",
 
     // Common UI
     common_na: "N/A",

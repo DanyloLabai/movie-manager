@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api";
+import * as authApi from "../api/auth.api";
 import { useLang } from "../context/LanguageContext";
 
 export default function ForgotPassword() {
@@ -15,9 +15,12 @@ export default function ForgotPassword() {
     setStatus({ type: "", message: "" });
 
     try {
-      const response = await api.post("/auth/forgot-password", { email });
-      setStatus({ type: "success", message: response.data.message });
-    } catch (err: any) {
+      const response = await authApi.forgotPassword(email);
+      setStatus({
+        type: "success",
+        message: response.message || response.data?.message || "",
+      });
+    } catch {
       setStatus({ type: "error", message: t("password_reset_error") });
     } finally {
       setIsLoading(false);

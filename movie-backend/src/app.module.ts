@@ -10,6 +10,8 @@ import { MoviesModule } from './movies/movies.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { VectorModule } from './vector/vector.module';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -52,7 +54,10 @@ import { ScheduleModule } from '@nestjs/schedule';
 
           autoLoadEntities: true,
           synchronize: true,
-          ssl: databaseUrl ? { rejectUnauthorized: false } : false,
+          ssl:
+            process.env.NODE_ENV === 'production'
+              ? { rejectUnauthorized: false }
+              : false,
         };
       },
     }),
@@ -68,11 +73,16 @@ import { ScheduleModule } from '@nestjs/schedule';
     MoviesModule,
     AuthModule,
     UsersModule,
+    VectorModule,
   ],
   providers: [
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
     },
   ],
 })

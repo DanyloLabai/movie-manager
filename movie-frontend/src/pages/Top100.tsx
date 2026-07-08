@@ -1,15 +1,23 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { api } from "../api";
-import { MovieCard } from "./Search";
+import * as moviesApi from "../api/movies.api";
+import { MovieCard } from "../components/movie/MovieCard";
+import type { MovieResult } from "../types/movie.types";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
+
+type ProfileResponse = {
+  favorites?: Array<{ tmdbId: number }>;
+  recent?: Array<{ tmdbId: number }>;
+  watchedIds?: number[];
+  inPlansIds?: number[];
+};
 
 export default function Top100() {
   const { t, lang } = useLang();
   const { type } = useParams<{ type: "movie" | "tv" }>();
   const navigate = useNavigate();
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<MovieResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState<number[]>([]);
   const [addedIds, setAddedIds] = useState<number[]>([]);
@@ -23,20 +31,19 @@ export default function Top100() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [topRes, profileRes] = await Promise.all([
-          api.get(`/movies/top100/${type}`),
-          api.get("/movies/profile").catch(() => ({ data: null })),
+        const [topData, profileData] = await Promise.all([
+          moviesApi.getTop100(type || "movie"),
+          moviesApi.getProfile().catch(() => null),
         ]);
 
-        setItems(topRes.data);
+        setItems(topData);
 
-        if (profileRes.data) {
-          const favs =
-            profileRes.data.favorites?.map((f: any) => f.tmdbId) || [];
-          const recent =
-            profileRes.data.recent?.map((r: any) => r.tmdbId) || [];
-          const watched = profileRes.data.watchedIds || [];
-          const inPlans = profileRes.data.inPlansIds || [];
+        if (profileData) {
+          const profile = profileData as ProfileResponse;
+          const favs = profile.favorites?.map((f) => f.tmdbId) || [];
+          const recent = profile.recent?.map((r) => r.tmdbId) || [];
+          const watched = profile.watchedIds || [];
+          const inPlans = profile.inPlansIds || [];
 
           setFavoriteIds(favs);
           setAddedIds(
@@ -58,14 +65,14 @@ export default function Top100() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleAdd = async (item: any) => {
+  const handleAdd = async (item: MovieResult) => {
     const token = localStorage.getItem("token");
     if (!token) {
       navigate("/login");
       return;
     }
     try {
-      await api.post("/movies/watchlist", {
+      await moviesApi.addToWatchlist({
         tmdbId: item.id,
         title: item.title,
         posterUrl: item.posterUrl,
@@ -79,9 +86,9 @@ export default function Top100() {
     }
   };
 
-  const handleRemove = async (item: any) => {
+  const handleRemove = async (item: MovieResult) => {
     try {
-      await api.delete(`/movies/watchlist/${item.id}`);
+      await moviesApi.removeFromWatchlist(item.id);
       setAddedIds((prev) => prev.filter((id) => id !== item.id));
       setFavoriteIds((prev) => prev.filter((id) => id !== item.id));
       showToast(t("top100_removed"));
@@ -90,7 +97,7 @@ export default function Top100() {
     }
   };
 
-  const handleToggleFavorite = async (item: any) => {
+  const handleToggleFavorite = async (item: MovieResult) => {
     const token = localStorage.getItem("token");
     if (!token) {
       navigate("/login");
@@ -98,23 +105,24 @@ export default function Top100() {
     }
     const isFav = favoriteIds.includes(item.id);
     try {
-      await api.patch(`/movies/watchlist/${item.id}/favorite`);
+      await moviesApi.toggleFavorite(item.id);
       setFavoriteIds((prev) =>
         isFav ? prev.filter((id) => id !== item.id) : [...prev, item.id],
       );
       if (!isFav)
         setAddedIds((prev) => Array.from(new Set([...prev, item.id])));
       showToast(t("search_fav_updated"));
-    } catch (error: any) {
-      if (error.response?.status === 404 && !isFav) {
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status === 404 && !isFav) {
         try {
-          await api.post("/movies/watchlist", {
+          await moviesApi.addToWatchlist({
             tmdbId: item.id,
             title: item.title,
             posterUrl: item.posterUrl,
             mediaType: item.mediaType,
           });
-          await api.patch(`/movies/watchlist/${item.id}/favorite`);
+          await moviesApi.toggleFavorite(item.id);
           setFavoriteIds((prev) => [...prev, item.id]);
           setAddedIds((prev) => Array.from(new Set([...prev, item.id])));
           showToast(t("search_fav_added"));
@@ -192,7 +200,7 @@ export default function Top100() {
       </main>
 
       {toastMessage && (
-        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] uppercase tracking-widest px-6 py-4 rounded-xl shadow-2xl flex items-center justify-center z-50">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] uppercase tracking-widest px-6 py-4 rounded-xl shadow-2xl flex items-center justify-center z-50 animate-fade-in">
           <span className="font-bold text-[10px] sm:text-xs text-center">
             {toastMessage}
           </span>
