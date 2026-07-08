@@ -1,11 +1,6 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useReducer,
-  ReactNode,
-} from "react";
-import { api } from "../api";
+import { createContext, useContext, useEffect, useReducer } from "react";
+import type { ReactNode } from "react";
+import { api } from "../api/index";
 
 export interface AuthUser {
   id: number;
@@ -121,6 +116,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    // Best-effort: revoke the refresh token cookie server-side.
+    api.post("/auth/logout").catch(() => {
+      // Ignore errors - we clear local state regardless.
+    });
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     delete api.defaults.headers.common["Authorization"];
@@ -150,6 +149,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

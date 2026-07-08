@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { apiEventBus } from "../api";
+import { apiEventBus } from "../api/index";
 
 export const ApiNotification = () => {
   const [notification, setNotification] = useState<{
@@ -12,7 +12,7 @@ export const ApiNotification = () => {
     visible: false,
   });
 
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     const handleRetry = (event: Event) => {
@@ -25,13 +25,11 @@ export const ApiNotification = () => {
         visible: true,
       });
 
-      // Clear previous timeout
-      if (timeoutRef.current) {
+      if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);
       }
 
-      // Auto-hide after delay
-      timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = window.setTimeout(() => {
         setNotification((prev) => ({ ...prev, visible: false }));
       }, delay + 500);
     };
@@ -46,13 +44,11 @@ export const ApiNotification = () => {
         visible: true,
       });
 
-      // Clear previous timeout
-      if (timeoutRef.current) {
+      if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);
       }
 
-      // Auto-hide after 5 seconds
-      timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = window.setTimeout(() => {
         setNotification((prev) => ({ ...prev, visible: false }));
       }, 5000);
     };
@@ -69,7 +65,7 @@ export const ApiNotification = () => {
         "api:maxRetriesExceeded",
         handleMaxRetriesExceeded,
       );
-      if (timeoutRef.current) {
+      if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);
       }
     };

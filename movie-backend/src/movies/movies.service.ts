@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import {
   TmdbMultiSearchResponseDto,
   TmdbMultiSearchResultDto,
@@ -19,11 +19,24 @@ import { MovieResultDto } from './dto/movie-result.dto';
 import { MovieDetailsResponse } from './dto/movies-details-response.dto';
 import { isAxiosError } from 'axios';
 import { TmdbTvDetailsResponse } from './dto/tv-details-response.dto';
+import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
+import { ActorDetailsDto } from './dto/actor-details.dto';
+import { CastMemberDto } from './dto/cast-member.dto';
+import { GenreDto } from './dto/genre.dto';
 import Groq from 'groq-sdk';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { Cron } from '@nestjs/schedule';
 import { User } from 'src/users/users.entity';
+import { TmdbVideoDto } from './dto/video.dto';
+import { TmdbAppendedFieldsDto } from './dto/credits.dto';
+import {
+  TmdbCombinedCreditsCastDto,
+  TmdbPersonRecordDto,
+} from './dto/person.dto';
+import { WatchProviderDto } from './dto/watch-provider.dto';
+import { VectorService } from 'src/vector/vector.service';
+import { ActivityService } from 'src/activity/activity.service';
 
 @Injectable()
 export class MoviesService {
@@ -59,6 +72,8 @@ export class MoviesService {
     private usersRepo: Repository<User>,
     @InjectRepository(WatchlistItem)
     private watchlistRepo: Repository<WatchlistItem>,
+    private readonly vectorService: VectorService,
+    private readonly activityService: ActivityService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.tmdbToken = this.configService.get<string>('TMDB_API_TOKEN') as string;
@@ -116,8 +131,12 @@ export class MoviesService {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         return await request();
-      } catch (error: any) {
-        if (error.response?.status === 429 && attempt < maxRetries - 1) {
+      } catch (error: unknown) {
+        if (
+          isAxiosError(error) &&
+          error.response?.status === 429 &&
+          attempt < maxRetries - 1
+        ) {
           const delay = initialDelay * Math.pow(2, attempt);
           this.logger.warn(
             `Rate limited (429). Retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`,
@@ -184,8 +203,9 @@ export class MoviesService {
 
       await this.cacheManager.set(cacheKey, results, this.TTL_24H);
       return results;
-    } catch (error: any) {
-      this.logger.error(`Search error: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Search error: ${errorMsg}`);
       return [];
     }
   }
@@ -241,8 +261,9 @@ export class MoviesService {
 
       await this.cacheManager.set(cacheKey, result, this.TTL_24H);
       return result;
-    } catch (error: any) {
-      this.logger.error(`Error finding media in TMDB: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error finding media in TMDB: ${errorMsg}`);
       return null;
     }
   }
@@ -277,8 +298,9 @@ export class MoviesService {
 
       await this.cacheManager.set(cacheKey, results, this.TTL_24H);
       return results;
-    } catch (error: any) {
-      this.logger.error(`Error fetching trending: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error fetching trending: ${errorMsg}`);
       return [];
     }
   }
@@ -295,26 +317,32 @@ export class MoviesService {
       const futureDate = nextYear.toISOString().split('T')[0];
 
       const { data } = await firstValueFrom(
-        this.httpService.get<any>(`${this.baseUrl}/discover/movie`, {
-          params: {
-            language: 'en-US',
-            page: 1,
-            sort_by: 'popularity.desc',
-            'primary_release_date.gte': today,
-            'primary_release_date.lte': futureDate,
-            with_release_type: '2|3',
+        this.httpService.get<TmdbMultiSearchResponseDto>(
+          `${this.baseUrl}/discover/movie`,
+          {
+            params: {
+              language: 'en-US',
+              page: 1,
+              sort_by: 'popularity.desc',
+              'primary_release_date.gte': today,
+              'primary_release_date.lte': futureDate,
+              with_release_type: '2|3',
+            },
+            headers: { Authorization: `Bearer ${this.tmdbToken}` },
           },
-          headers: { Authorization: `Bearer ${this.tmdbToken}` },
-        }),
+        ),
       );
 
       const results = data.results
-        .filter((media: any) => media.poster_path && media.overview)
+        .filter(
+          (media: TmdbMultiSearchResultDto) =>
+            media.poster_path && media.overview && media.title,
+        )
         .slice(0, this.UPCOMING_LIMIT)
-        .map((media: any) => ({
+        .map((media: TmdbMultiSearchResultDto) => ({
           id: media.id,
-          title: media.title,
-          originalTitle: media.original_title || media.title,
+          title: media.title || 'Unknown',
+          originalTitle: media.original_title || media.title || 'Unknown',
           description: media.overview,
           releaseYear: media.release_date
             ? media.release_date.split('-')[0]
@@ -329,22 +357,29 @@ export class MoviesService {
 
       await this.cacheManager.set(cacheKey, results, this.TTL_24H);
       return results;
-    } catch (error: any) {
-      this.logger.error(`Error fetching upcoming: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error fetching upcoming: ${errorMsg}`);
       return [];
     }
   }
 
-  async getMovieDetails(tmdbId: number, type: string = 'movie'): Promise<any> {
+  async getMovieDetails(
+    tmdbId: number,
+    type: string = 'movie',
+  ): Promise<MovieDetailsExtendedDto> {
     const cacheKey = `details_v2:${type}:${tmdbId}`;
-    const cached = await this.cacheManager.get<any>(cacheKey);
+    const cached =
+      await this.cacheManager.get<MovieDetailsExtendedDto>(cacheKey);
     if (cached) return cached;
 
     try {
       const endpoint = type === 'tv' ? 'tv' : 'movie';
 
       const { data } = await firstValueFrom(
-        this.httpService.get<any>(`${this.baseUrl}/${endpoint}/${tmdbId}`, {
+        this.httpService.get<
+          (MovieDetailsResponse | TmdbTvDetailsResponse) & TmdbAppendedFieldsDto
+        >(`${this.baseUrl}/${endpoint}/${tmdbId}`, {
           params: {
             language: 'en-US',
             append_to_response: 'videos,watch/providers,credits',
@@ -353,8 +388,7 @@ export class MoviesService {
         }),
       );
 
-      type TmdbVideo = { site: string; type: string; key: string };
-      const videos: TmdbVideo[] = data.videos?.results || [];
+      const videos: TmdbVideoDto[] = data.videos?.results ?? [];
       const trailer = videos.find(
         (v) => v.site === 'YouTube' && v.type === 'Trailer',
       );
@@ -362,29 +396,35 @@ export class MoviesService {
         ? `https://www.youtube.com/embed/${trailer.key}`
         : null;
 
-      const watchProviders = data['watch/providers']?.results?.US || null;
-      const productionCountries =
-        data.production_countries?.map((c: any) => c.name) || [];
-      const cast =
-        data.credits?.cast?.slice(0, this.CAST_LIMIT).map((actor: any) => ({
-          id: actor.id,
-          name: actor.name,
-          character: actor.character,
-          profile_path: actor.profile_path,
-        })) || [];
+      const usProviders = data['watch/providers']?.results?.US ?? null;
+      const watchProviders: WatchProviderDto[] | null =
+        usProviders?.flatrate ?? usProviders?.rent ?? usProviders?.buy ?? null;
 
-      let result: any;
+      const productionCountries: string[] =
+        data.production_countries?.map((c) => c.name) ?? [];
+
+      const cast: CastMemberDto[] =
+        data.credits?.cast
+          ?.slice(0, this.CAST_LIMIT)
+          .map((actor: CastMemberDto) => ({
+            id: actor.id,
+            name: actor.name,
+            character: actor.character,
+            profile_path: actor.profile_path,
+          })) ?? [];
+
+      let result: MovieDetailsExtendedDto;
 
       if (endpoint === 'tv') {
-        const tvData = data as TmdbTvDetailsResponse;
+        const tvData = data as TmdbTvDetailsResponse & TmdbAppendedFieldsDto;
         result = {
           id: tvData.id,
           title: tvData.name,
           overview: tvData.overview,
-          release_date: tvData.first_air_date,
-          vote_average: tvData.vote_average,
-          poster_path: tvData.poster_path,
-          backdrop_path: tvData.backdrop_path,
+          releaseDate: tvData.first_air_date,
+          voteAverage: tvData.vote_average,
+          posterPath: tvData.poster_path,
+          backdropPath: tvData.backdrop_path,
           runtime: tvData.episode_run_time?.[0] || 0,
           genres: tvData.genres,
           mediaType: 'tv',
@@ -394,9 +434,18 @@ export class MoviesService {
           cast,
         };
       } else {
+        const movieData = data as MovieDetailsResponse & TmdbAppendedFieldsDto;
         result = {
-          ...(data as MovieDetailsResponse),
-          mediaType: 'movie',
+          id: movieData.id,
+          title: movieData.title,
+          overview: movieData.overview,
+          releaseDate: movieData.release_date,
+          voteAverage: movieData.vote_average,
+          posterPath: movieData.poster_path,
+          backdropPath: movieData.backdrop_path,
+          runtime: movieData.runtime,
+          genres: movieData.genres,
+          mediaType: 'movie' as const,
           trailerUrl,
           watchProviders,
           productionCountries,
@@ -447,50 +496,56 @@ export class MoviesService {
 
       await this.cacheManager.set(cacheKey, results, this.TTL_24H);
       return results;
-    } catch (error: any) {
-      this.logger.error(`Error fetching similar movies: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error fetching similar movies: ${errorMsg}`);
       return [];
     }
   }
 
-  async getActorDetails(personId: number): Promise<any> {
+  async getActorDetails(personId: number): Promise<ActorDetailsDto> {
     const cacheKey = `actor_v2:${personId}`;
-    const cached = await this.cacheManager.get<any>(cacheKey);
+    const cached = await this.cacheManager.get<ActorDetailsDto>(cacheKey);
     if (cached) return cached;
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.get<any>(`${this.baseUrl}/person/${personId}`, {
-          params: {
-            language: 'en-US',
-            append_to_response: 'combined_credits',
+        this.httpService.get<TmdbPersonRecordDto>(
+          `${this.baseUrl}/person/${personId}`,
+          {
+            params: {
+              language: 'en-US',
+              append_to_response: 'combined_credits',
+            },
+            headers: { Authorization: `Bearer ${this.tmdbToken}` },
           },
-          headers: { Authorization: `Bearer ${this.tmdbToken}` },
-        }),
+        ),
       );
 
-      const credits = data.combined_credits?.cast || [];
+      const credits: TmdbCombinedCreditsCastDto[] =
+        data.combined_credits?.cast ?? [];
 
       const knownFor = credits
-        .sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0))
+        .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
         .slice(0, this.ACTOR_KNOWN_FOR_LIMIT)
-        .map((media: any) => ({
-          id: media.id,
-          title: media.title || media.name || 'Unknown',
-          posterUrl: media.poster_path
-            ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
-            : null,
-          mediaType: media.media_type,
-          releaseYear:
-            (media.release_date || media.first_air_date || '').split('-')[0] ||
-            'N/A',
-          character: media.character || '',
-        }));
+        .map((media: TmdbCombinedCreditsCastDto) => {
+          const releaseDate = media.release_date || media.first_air_date || '';
+          return {
+            id: media.id,
+            title: media.title || media.name || 'Unknown',
+            posterUrl: media.poster_path
+              ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
+              : null,
+            mediaType: media.media_type || 'movie',
+            releaseYear: releaseDate.split('-')[0] || 'N/A',
+            character: media.character || '',
+          };
+        });
 
-      const result = {
+      const result: ActorDetailsDto = {
         id: data.id,
         name: data.name,
-        biography: data.biography,
+        biography: data.biography || null,
         profileUrl: data.profile_path
           ? `https://image.tmdb.org/t/p/h632${data.profile_path}`
           : null,
@@ -566,7 +621,7 @@ export class MoviesService {
       if (!detail) return;
 
       totalMinutes += detail.runtime || 0;
-      detail.genres?.forEach((g: any) => {
+      detail.genres?.forEach((g: GenreDto) => {
         genreCounts[g.name] = (genreCounts[g.name] || 0) + 1;
       });
 
@@ -575,7 +630,7 @@ export class MoviesService {
       }
 
       if (detail.cast && Array.isArray(detail.cast)) {
-        detail.cast.slice(0, 5).forEach((actor: any) => {
+        detail.cast.slice(0, 5).forEach((actor: CastMemberDto) => {
           if (!actorCounts[actor.id]) {
             actorCounts[actor.id] = {
               count: 0,
@@ -707,7 +762,35 @@ export class MoviesService {
       .del(`recommendations:user:${userId}`)
       .catch(() => {});
 
-    return this.watchlistRepo.save(newItem);
+    const savedItem = await this.watchlistRepo.save(newItem);
+
+    this.activityService
+      .logActivity(userId, 'added_watchlist', {
+        tmdbId,
+        title,
+        posterUrl,
+        mediaType,
+      })
+      .catch((err) =>
+        this.logger.error(`Failed to log activity: ${err.message}`),
+      );
+
+    this.getMovieDetails(tmdbId, mediaType)
+      .then((details) => {
+        this.vectorService.addMovieToVectorStore({
+          id: tmdbId,
+          title: title,
+          description: details.overview || '',
+          genres: details.genres?.map((g) => g.name) || [],
+        });
+      })
+      .catch((err) =>
+        this.logger.error(
+          `Failed to auto-index movie ${tmdbId} into vector store: ${err.message}`,
+        ),
+      );
+
+    return savedItem;
   }
 
   async getWatchlist(userId: number) {
@@ -738,6 +821,17 @@ export class MoviesService {
       .del(`recommendations:user:${userId}`)
       .catch(() => {});
 
+    this.activityService
+      .logActivity(userId, 'watched', {
+        tmdbId: item.tmdbId,
+        title: item.title,
+        posterUrl: item.posterUrl,
+        mediaType: item.mediaType,
+      })
+      .catch((err) =>
+        this.logger.error(`Failed to log activity: ${err.message}`),
+      );
+
     return this.watchlistRepo.save(item);
   }
 
@@ -756,6 +850,18 @@ export class MoviesService {
       .del(`recommendations:user:${userId}`)
       .catch(() => {});
 
+    this.activityService
+      .logActivity(userId, 'rated', {
+        tmdbId: item.tmdbId,
+        title: item.title,
+        posterUrl: item.posterUrl,
+        mediaType: item.mediaType,
+        rating,
+      })
+      .catch((err) =>
+        this.logger.error(`Failed to log activity: ${err.message}`),
+      );
+
     return this.watchlistRepo.save(item);
   }
 
@@ -773,6 +879,19 @@ export class MoviesService {
       .del(`recommendations:user:${userId}`)
       .catch(() => {});
 
+    if (item.isFavorite) {
+      this.activityService
+        .logActivity(userId, 'favorited', {
+          tmdbId: item.tmdbId,
+          title: item.title,
+          posterUrl: item.posterUrl,
+          mediaType: item.mediaType,
+        })
+        .catch((err) =>
+          this.logger.error(`Failed to log activity: ${err.message}`),
+        );
+    }
+
     return this.watchlistRepo.save(item);
   }
 
@@ -782,6 +901,37 @@ export class MoviesService {
         where: { user: { id: userId }, tmdbId },
       })) || null
     );
+  }
+
+  async getFriendsWhoWatched(
+    userId: number,
+    tmdbId: number,
+    mediaType: string = 'movie',
+  ) {
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      relations: ['friends'],
+    });
+
+    const friendIds = (user?.friends || []).map((f) => f.id);
+    if (friendIds.length === 0) return [];
+
+    const items = await this.watchlistRepo.find({
+      where: {
+        tmdbId,
+        mediaType,
+        isWatched: true,
+        user: { id: In(friendIds) },
+      },
+      relations: ['user'],
+    });
+
+    return items.map((item) => ({
+      id: item.user.id,
+      username: item.user.username,
+      avatarUrl: item.user.avatarUrl,
+      rating: item.rating,
+    }));
   }
 
   async removeFromWatchlist(userId: number, tmdbId: number) {
@@ -848,8 +998,6 @@ export class MoviesService {
 
       const referenceTitles = userItems.map((item) => item.title).join(', ');
 
-      // Get TOP-RATED movies from user's watchlist to exclude from recommendations
-      // Limit to last 100 items with highest ratings to represent user preferences better
       const topRatedWatchlistItems = await this.watchlistRepo.find({
         where: { user: { id: userId } },
         order: { rating: 'DESC', updatedAt: 'DESC' },
@@ -859,7 +1007,6 @@ export class MoviesService {
         .map((item) => item.title)
         .join(', ');
 
-      // Get ALL watchlist IDs for backend filtering (double-check)
       const allWatchlistIds = new Set(
         (
           await this.watchlistRepo.find({
@@ -900,8 +1047,6 @@ export class MoviesService {
         recommendedTitles.map((title) => this.findMovieByTitle(title)),
       );
 
-      // Double-check: filter out any movies already in user's watchlist
-      // This ensures AI mistakes are caught at the backend level
       const results = tmdbResults
         .filter(
           (movie): movie is MovieResultDto =>
@@ -911,10 +1056,9 @@ export class MoviesService {
 
       await this.cacheManager.set(cacheKey, results, this.TTL_1H);
       return results;
-    } catch (error: any) {
-      this.logger.error(
-        `Error generating AI recommendations: ${error.message}`,
-      );
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error generating AI recommendations: ${errorMsg}`);
       return [];
     }
   }
@@ -976,16 +1120,19 @@ export class MoviesService {
           this.logger.log(
             `Sent release email to ${item.user.email} for "${item.title}"`,
           );
-        } catch (emailError: any) {
+        } catch (emailError: unknown) {
+          const errorMsg =
+            emailError instanceof Error
+              ? emailError.message
+              : String(emailError);
           this.logger.error(
-            `Failed to send email for "${item.title}": ${emailError.message}`,
+            `Failed to send email for "${item.title}": ${errorMsg}`,
           );
         }
       }
-    } catch (error: any) {
-      this.logger.error(
-        `Failed to process daily movie releases: ${error.message}`,
-      );
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to process daily movie releases: ${errorMsg}`);
     }
   }
 
@@ -1026,17 +1173,20 @@ export class MoviesService {
 
       const requests = Array.from({ length: 5 }, (_, i) =>
         firstValueFrom(
-          this.httpService.get<any>(`${this.baseUrl}/${endpoint}`, {
-            params: {
-              language: 'en-US',
-              page: i + 1,
-              sort_by: 'vote_average.desc',
-              'vote_count.gte': minVotes,
-              without_original_language: 'ru',
-              ...(type === 'tv' ? { without_genres: '10763,10767' } : {}),
+          this.httpService.get<TmdbMultiSearchResponseDto>(
+            `${this.baseUrl}/${endpoint}`,
+            {
+              params: {
+                language: 'en-US',
+                page: i + 1,
+                sort_by: 'vote_average.desc',
+                'vote_count.gte': minVotes,
+                without_original_language: 'ru',
+                ...(type === 'tv' ? { without_genres: '10763,10767' } : {}),
+              },
+              headers: { Authorization: `Bearer ${this.tmdbToken}` },
             },
-            headers: { Authorization: `Bearer ${this.tmdbToken}` },
-          }),
+          ),
         ),
       );
 
@@ -1044,12 +1194,16 @@ export class MoviesService {
       let results: MovieResultDto[] = [];
 
       responses.forEach((response) => {
-        const mapped = response.data.results
-          .filter((media: any) => media.poster_path)
-          .map((media: any) => ({
+        const resultArray: TmdbMultiSearchResultDto[] =
+          response.data?.results ?? [];
+        const mapped = resultArray
+          .filter((media: TmdbMultiSearchResultDto) => media.poster_path)
+          .map((media: TmdbMultiSearchResultDto) => ({
             id: media.id,
-            title: media.title || media.name,
-            originalTitle: media.original_title || media.original_name,
+            title: (media.title || media.name || 'Unknown Title') as string,
+            originalTitle: (media.original_title ||
+              media.original_name ||
+              'Unknown Original Title') as string,
             description: media.overview || '',
             releaseYear:
               (media.release_date || media.first_air_date || '').split(
@@ -1057,7 +1211,9 @@ export class MoviesService {
               )[0] || 'N/A',
             releaseDate: media.release_date || media.first_air_date || null,
             rating: media.vote_average || 0,
-            posterUrl: `https://image.tmdb.org/t/p/w500${media.poster_path}`,
+            posterUrl: media.poster_path
+              ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
+              : 'https://via.placeholder.com/500x750?text=No+Poster',
             mediaType: type,
           }));
         results = [...results, ...mapped];
@@ -1066,9 +1222,58 @@ export class MoviesService {
       const final100 = results.slice(0, 100);
       await this.cacheManager.set(cacheKey, final100, this.TTL_7D);
       return final100;
-    } catch (error: any) {
-      this.logger.error(`Error fetching Top 100 ${type}: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error fetching Top 100 ${type}: ${errorMsg}`);
       return [];
     }
+  }
+
+  @Cron('0 3 * * 0')
+  async syncMoviesToVectorDB() {
+    this.logger.log('Starting manual sync to Vector DB...');
+    const movies = await this.getTop100('movie');
+    const total = movies.length;
+    let syncedCount = 0;
+
+    let failedCount = 0;
+
+    for (const movie of movies) {
+      let genres: string[] = [];
+      try {
+        const details = await this.getMovieDetails(movie.id, 'movie');
+        genres = details.genres?.map((g) => g.name) || [];
+      } catch (err) {
+        this.logger.warn(
+          `Failed to fetch genres for movie ${movie.id}: ${(err as Error).message}`,
+        );
+      }
+
+      const success = await this.vectorService.addMovieToVectorStore({
+        id: movie.id,
+        title: movie.title,
+        description: movie.description || '',
+        genres,
+      });
+
+      if (success) {
+        syncedCount += 1;
+        this.logger.log(
+          `Synced movie ${syncedCount}/${total}: ${movie.title}`,
+        );
+      } else {
+        failedCount += 1;
+        this.logger.warn(`Failed to sync movie: ${movie.title}`);
+      }
+    }
+
+    return {
+      syncedMovies: syncedCount,
+      failedMovies: failedCount,
+      message:
+        failedCount === 0
+          ? `Successfully synced ${syncedCount} movie(s) to the vector database.`
+          : `Synced ${syncedCount} movie(s), ${failedCount} failed. Check server logs for details.`,
+    };
   }
 }

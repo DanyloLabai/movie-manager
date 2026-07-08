@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { HttpErrorResponseDto } from '../dto/http-error-response.dto';
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -19,17 +20,21 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const exceptionResponse = exception.getResponse();
 
     let message: string | string[] = 'Internal server error';
-    let errors: any = null;
+    let errors: string | null = null;
 
     if (typeof exceptionResponse === 'object') {
-      const responseObj = exceptionResponse as any;
-      message = responseObj.message || message;
-      errors = responseObj.error;
+      const responseObj = exceptionResponse as Record<string, unknown>;
+      if (responseObj && 'message' in responseObj) {
+        const msg = responseObj.message;
+        message = Array.isArray(msg) ? msg : (msg as any) || message;
+      }
+      if (responseObj && 'error' in responseObj) {
+        errors = (responseObj.error as string) || null;
+      }
     } else {
       message = exceptionResponse;
     }
 
-    // Handle 429 Too Many Requests
     if (status === HttpStatus.TOO_MANY_REQUESTS) {
       message = 'Too many requests. Please wait a moment and try again.';
     }
@@ -41,7 +46,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
     };
 
-    // Log error for debugging
     if (status >= 500 || status === HttpStatus.TOO_MANY_REQUESTS) {
       this.logger.error(
         `[${status}] ${message} - ${host.switchToHttp().getRequest().url}`,

@@ -1,15 +1,6 @@
-import {
-  IsString,
-  MinLength,
-  MaxLength,
-  IsEmail,
-  Matches,
-} from 'class-validator';
+import { IsString, MinLength, MaxLength, Matches } from 'class-validator';
 
 export class UpdatePasswordDto {
-  @IsEmail()
-  email: string;
-
   @IsString()
   @Matches(/^[a-zA-Z0-9!@#$%^&*()_+-.]+$/, {
     message:

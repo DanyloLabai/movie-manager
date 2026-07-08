@@ -1,4 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -34,87 +40,97 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   return children;
 };
 
+function AppRoutes() {
+  const location = useLocation();
+
+  return (
+    <div key={location.pathname} className="animate-page-in">
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
+        <Route path="/user/:id" element={<PublicProfile />} />
+
+        <Route
+          path="/top100/:type"
+          element={
+            <ProtectedRoute>
+              <Top100 />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/change-password"
+          element={
+            <ProtectedRoute>
+              <ChangePassword />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/search"
+          element={
+            <ProtectedRoute>
+              <Search />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/watchlist"
+          element={
+            <ProtectedRoute>
+              <Watchlist />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/ai-chat"
+          element={
+            <ProtectedRoute>
+              <AiChat />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/movie/:id"
+          element={
+            <ProtectedRoute>
+              <MovieDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/actor/:id"
+          element={
+            <ProtectedRoute>
+              <ActorDetails />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route path="/" element={<Navigate to="/search" replace />} />
+        <Route path="*" element={<Navigate to="/search" replace />} />
+      </Routes>
+    </div>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
       <div className="min-h-[100dvh] bg-[#12100e] text-[#f0e6cc] font-sans overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
         <ApiNotification />
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-
-          <Route path="/user/:id" element={<PublicProfile />} />
-
-          <Route
-            path="/top100/:type"
-            element={
-              <ProtectedRoute>
-                <Top100 />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/change-password"
-            element={
-              <ProtectedRoute>
-                <ChangePassword />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/search"
-            element={
-              <ProtectedRoute>
-                <Search />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/watchlist"
-            element={
-              <ProtectedRoute>
-                <Watchlist />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/ai-chat"
-            element={
-              <ProtectedRoute>
-                <AiChat />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/movie/:id"
-            element={
-              <ProtectedRoute>
-                <MovieDetails />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/actor/:id"
-            element={
-              <ProtectedRoute>
-                <ActorDetails />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route path="/" element={<Navigate to="/search" replace />} />
-          <Route path="*" element={<Navigate to="/search" replace />} />
-        </Routes>
+        <AppRoutes />
       </div>
     </BrowserRouter>
   );

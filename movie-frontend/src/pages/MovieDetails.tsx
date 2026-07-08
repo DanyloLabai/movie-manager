@@ -5,62 +5,37 @@ import {
   Link,
   useSearchParams,
 } from "react-router-dom";
-import { api } from "../api";
+import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
+import type {
+  MovieDetails as MovieDetailsType,
+  RecommendedMovie as RecommendedMovieType,
+  UserMovieStatus as UserMovieStatusType,
+  WatchProvider as WatchProviderType,
+  WatchProvidersData as WatchProvidersDataType,
+  CastMember as CastMemberType,
+  FriendWatched as FriendWatchedType,
+} from "../types/movie.types";
 
-interface WatchProvider {
-  provider_id: number;
-  provider_name: string;
-  logo_path: string;
-}
+const TMDB_IMG = "https://image.tmdb.org/t/p";
 
-interface WatchProvidersData {
-  link?: string;
-  flatrate?: WatchProvider[];
-  rent?: WatchProvider[];
-  buy?: WatchProvider[];
-}
+const resolveImage = (
+  path: string | null | undefined,
+  size: string,
+): string | null => {
+  if (!path) return null;
+  if (path.startsWith("http")) return path;
+  return `${TMDB_IMG}/${size}${path}`;
+};
 
-interface CastMember {
-  id: number;
-  name: string;
-  character: string;
-  profile_path: string | null;
-}
-
-interface MovieDetailsData {
-  id: number;
-  title: string;
-  overview: string;
-  release_date: string;
-  vote_average: number;
-  poster_path: string | null;
-  backdrop_path: string | null;
-  runtime: number;
-  genres: { id: number; name: string }[];
-  mediaType?: "movie" | "tv";
-  trailerUrl?: string | null;
-  watchProviders?: WatchProvidersData;
-  productionCountries?: string[];
-  cast?: CastMember[];
-}
-
-interface RecommendedMovie {
-  id: number;
-  title: string;
-  releaseYear: string;
-  rating: number;
-  posterUrl: string | null;
-  mediaType: "movie" | "tv";
-}
-
-interface UserMovieStatus {
-  id: number;
-  isWatched: boolean;
-  isFavorite: boolean;
-  rating: number | null;
-}
+const normalizeProviders = (
+  raw: WatchProviderType[] | WatchProvidersDataType | null | undefined,
+): WatchProvidersDataType | null => {
+  if (!raw) return null;
+  if (Array.isArray(raw)) return { flatrate: raw };
+  return raw as WatchProvidersDataType;
+};
 
 export default function MovieDetails() {
   const { t } = useLang();
@@ -69,9 +44,12 @@ export default function MovieDetails() {
   const mediaType = searchParams.get("type") || "movie";
   const navigate = useNavigate();
 
-  const [movie, setMovie] = useState<MovieDetailsData | null>(null);
-  const [status, setStatus] = useState<UserMovieStatus | null>(null);
-  const [recommendations, setRecommendations] = useState<RecommendedMovie[]>(
+  const [movie, setMovie] = useState<MovieDetailsType | null>(null);
+  const [status, setStatus] = useState<UserMovieStatusType | null>(null);
+  const [recommendations, setRecommendations] = useState<
+    RecommendedMovieType[]
+  >([]);
+  const [friendsWatched, setFriendsWatched] = useState<FriendWatchedType[]>(
     [],
   );
   const [isLoading, setIsLoading] = useState(true);
@@ -116,20 +94,48 @@ export default function MovieDetails() {
   };
 
   useEffect(() => {
-    if (id) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      setMovie(null);
-      setRecommendations([]);
-      setStatus(null);
-      setIsLoading(true);
+    if (!id) return;
+    const tmdbId = Number(id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    setMovie(null);
+    setRecommendations([]);
+    setFriendsWatched([]);
+    setStatus(null);
+    setIsLoading(true);
+    setHoveredStar(0);
+    setModalHoveredStar(0);
+    setIsRatingModalOpen(false);
+    setPendingAction(null);
 
-      setHoveredStar(0);
-      setModalHoveredStar(0);
-      setIsRatingModalOpen(false);
-      setPendingAction(null);
-
-      fetchData(Number(id));
-    }
+    (async () => {
+      try {
+        const [details, statusRes, recs, friendsRes] = await Promise.all([
+          (await import("../api/movies.api")).getMovieDetails(
+            tmdbId,
+            mediaType,
+          ),
+          (await import("../api/movies.api"))
+            .getStatus(tmdbId)
+            .catch(() => null),
+          (await import("../api/movies.api"))
+            .getSimilar(tmdbId, mediaType)
+            .catch(() => []),
+          (await import("../api/movies.api"))
+            .getFriendsWatched(tmdbId, mediaType)
+            .catch(() => []),
+        ]);
+        if (details) {
+          setMovie(details);
+          setStatus(statusRes ?? null);
+          setRecommendations(recs ?? []);
+          setFriendsWatched(friendsRes ?? []);
+        }
+      } catch {
+        setMovie(null);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, [id, mediaType]);
 
   const showToast = (message: string) => {
@@ -139,17 +145,15 @@ export default function MovieDetails() {
 
   const fetchData = async (tmdbId: number) => {
     try {
-      const [detailsRes, statusRes, recsRes] = await Promise.all([
-        api.get(`/movies/${tmdbId}/details?type=${mediaType}`),
-        api.get(`/movies/${tmdbId}/status`).catch(() => ({ data: null })),
-        api
-          .get(`/movies/${tmdbId}/similar?type=${mediaType}`)
-          .catch(() => ({ data: [] })),
+      const [details, statusRes, recs] = await Promise.all([
+        moviesApi.getMovieDetails(tmdbId, mediaType),
+        moviesApi.getStatus(tmdbId).catch(() => null),
+        moviesApi.getSimilar(tmdbId, mediaType).catch(() => []),
       ]);
-      if (detailsRes.data) {
-        setMovie(detailsRes.data);
-        setStatus(statusRes.data);
-        setRecommendations(recsRes.data);
+      if (details) {
+        setMovie(details);
+        setStatus(statusRes ?? null);
+        setRecommendations(recs ?? []);
       }
     } catch {
       setMovie(null);
@@ -158,7 +162,7 @@ export default function MovieDetails() {
     }
   };
 
-  const updateStatusCache = (newStatus: UserMovieStatus | null) => {
+  const updateStatusCache = (newStatus: UserMovieStatusType | null) => {
     setStatus(newStatus);
     if (newStatus && movie) {
       localStorage.setItem(
@@ -176,23 +180,19 @@ export default function MovieDetails() {
   ) => {
     if (!movie) return;
     try {
-      const posterUrl = movie.poster_path
-        ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-        : null;
-      await api.post("/movies/watchlist", {
+      const posterUrl = resolveImage(movie.posterPath, "w500");
+      await moviesApi.addToWatchlist({
         tmdbId: movie.id,
         title: movie.title,
         posterUrl,
         mediaType,
-        releaseDate: movie.release_date,
+        releaseDate: movie.releaseDate,
       });
       if (initialRating) {
-        await api.patch(`/movies/watchlist/${movie.id}/rate`, {
-          rating: initialRating,
-        });
+        await moviesApi.rateMovie(movie.id, initialRating);
         showToast(t("movie_added_rated"));
       } else if (markWatched) {
-        await api.post(`/movies/watchlist/${movie.id}/watched`);
+        await moviesApi.markWatched(movie.id);
         showToast(t("movie_marked_watched"));
       } else {
         showToast(t("movie_added"));
@@ -206,7 +206,7 @@ export default function MovieDetails() {
   const handleMarkWatched = async () => {
     if (!movie) return;
     try {
-      await api.post(`/movies/watchlist/${movie.id}/watched`);
+      await moviesApi.markWatched(movie.id);
       showToast(t("movie_marked_watched"));
       fetchData(movie.id);
     } catch {
@@ -217,7 +217,7 @@ export default function MovieDetails() {
   const handleToggleFavorite = async () => {
     if (!movie || !status) return;
     try {
-      await api.patch(`/movies/watchlist/${movie.id}/favorite`);
+      await moviesApi.toggleFavorite(movie.id);
       updateStatusCache({ ...status, isFavorite: !status.isFavorite });
       showToast(t("movie_fav_updated"));
     } catch {
@@ -229,9 +229,7 @@ export default function MovieDetails() {
     if (!movie) return;
     const newRating = status?.rating === star ? 0 : star;
     try {
-      await api.patch(`/movies/watchlist/${movie.id}/rate`, {
-        rating: newRating,
-      });
+      await moviesApi.rateMovie(movie.id, newRating);
       showToast(
         newRating === 0 ? t("movie_rating_cleared") : t("movie_rating_saved"),
       );
@@ -245,7 +243,7 @@ export default function MovieDetails() {
   const handleRemove = async () => {
     if (!movie) return;
     try {
-      await api.delete(`/movies/watchlist/${movie.id}`);
+      await moviesApi.removeFromWatchlist(movie.id);
       showToast(t("movie_removed"));
       updateStatusCache(null);
     } catch {
@@ -269,7 +267,7 @@ export default function MovieDetails() {
     setPendingAction(null);
   };
 
-  const isReleased = (dateStr?: string) => {
+  const isReleased = (dateStr?: string | null) => {
     if (!dateStr) return true;
     return new Date(dateStr) <= new Date();
   };
@@ -277,7 +275,7 @@ export default function MovieDetails() {
   if (isLoading)
     return (
       <div className="min-h-screen bg-[#12100e] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-[#c8963c] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-[#c8963c] border-t-transparent rounded-full animate-spin" />
       </div>
     );
 
@@ -290,14 +288,21 @@ export default function MovieDetails() {
       </div>
     );
 
-  const released = isReleased(movie.release_date);
+  const released = isReleased(movie.releaseDate);
+  const posterUrl = resolveImage(movie.posterPath, "w500");
+  const backdropUrl = resolveImage(movie.backdropPath, "original");
+  const providers = normalizeProviders(movie.watchProviders);
+  const hasProviders =
+    providers && (providers.flatrate || providers.rent || providers.buy);
 
-  const posterUrl = movie.poster_path
-    ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
-    : null;
-  const backdropUrl = movie.backdrop_path
-    ? `https://image.tmdb.org/t/p/original${movie.backdrop_path}`
-    : null;
+  const releaseYear = movie.releaseDate?.split("-")[0] ?? t("common_na");
+  const releaseDateFormatted = movie.releaseDate
+    ? new Date(movie.releaseDate).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : t("common_na");
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative pb-24 overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
@@ -311,7 +316,6 @@ export default function MovieDetails() {
             alt="LUMEN™ Logo"
             className="h-10 sm:h-12 w-auto object-contain"
           />
-
           <div className="flex flex-col justify-center">
             <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
               LUMEN
@@ -324,11 +328,8 @@ export default function MovieDetails() {
         <button
           onClick={() => {
             const fromTab = searchParams.get("fromTab");
-            if (fromTab) {
-              navigate(`/watchlist?tab=${fromTab}`);
-            } else {
-              navigate(-1);
-            }
+            if (fromTab) navigate(`/watchlist?tab=${fromTab}`);
+            else navigate(-1);
           }}
           className="flex items-center gap-1.5 text-xs font-black uppercase text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"
         >
@@ -349,6 +350,7 @@ export default function MovieDetails() {
         </button>
       </header>
 
+      {/* Backdrop */}
       <div className="relative w-full h-[35vh] sm:h-[50vh] bg-[#1a1714]">
         {backdropUrl && (
           <>
@@ -363,6 +365,7 @@ export default function MovieDetails() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-28 sm:-mt-36 relative z-10">
+        {/* Mobile header */}
         <div className="flex gap-4 sm:gap-6 items-end mb-6 sm:mb-0 sm:hidden">
           <div className="flex-shrink-0 w-28">
             {posterUrl ? (
@@ -375,7 +378,6 @@ export default function MovieDetails() {
               <div className="w-full aspect-[2/3] rounded-2xl bg-[#1a1714] border border-[#c8963c]/20" />
             )}
           </div>
-
           <div className="flex-1 min-w-0 pb-1">
             <span className="inline-block mb-2 px-2 py-0.5 bg-[#1a1714] border border-[#c8963c]/30 rounded-md text-[9px] text-[#f0e6cc]/60 font-black uppercase tracking-widest">
               {mediaType === "tv" ? t("common_tv") : t("common_movie")}
@@ -384,16 +386,14 @@ export default function MovieDetails() {
               {movie.title}
             </h1>
             <div className="flex flex-wrap gap-2 text-[10px] text-[#f0e6cc]/60 font-bold items-center">
-              <span className="text-[#f0e6cc]">
-                {movie.release_date?.split("-")[0] || t("common_na")}
-              </span>
+              <span className="text-[#f0e6cc]">{releaseYear}</span>
               <span className="text-[#c8963c]/50">•</span>
               <span>
                 {movie.runtime || "0"} {t("stats_min")}
               </span>
               {released && (
                 <span className="text-[#c8963c] px-2 py-0.5 bg-[#c8963c]/10 rounded-md border border-[#c8963c]/20 font-black">
-                  ★ {movie.vote_average?.toFixed(1)}
+                  ★ {movie.voteAverage?.toFixed(1)}
                 </span>
               )}
             </div>
@@ -410,16 +410,22 @@ export default function MovieDetails() {
           </div>
         </div>
 
+        {/* Desktop layout */}
         <div className="hidden sm:grid grid-cols-12 gap-8 lg:gap-12">
           <div className="col-span-4 lg:col-span-3 flex flex-col gap-6">
             <div className="relative group">
               <div className="absolute -inset-1 bg-gradient-to-b from-[#c8963c]/20 to-[#9a732a]/20 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000" />
-              <img
-                src={posterUrl || ""}
-                alt={movie.title}
-                className="relative w-full rounded-[2rem] shadow-2xl border border-[#c8963c]/30 bg-[#1a1714] transition-transform duration-500 group-hover:scale-[1.02]"
-              />
+              {posterUrl ? (
+                <img
+                  src={posterUrl}
+                  alt={movie.title}
+                  className="relative w-full rounded-[2rem] shadow-2xl border border-[#c8963c]/30 bg-[#1a1714] transition-transform duration-500 group-hover:scale-[1.02]"
+                />
+              ) : (
+                <div className="w-full aspect-[2/3] rounded-[2rem] bg-[#1a1714] border border-[#c8963c]/20" />
+              )}
             </div>
+
             <ActionPanel
               status={status}
               hoveredStar={hoveredStar}
@@ -435,15 +441,12 @@ export default function MovieDetails() {
               onRemove={handleRemove}
             />
 
-            {movie.watchProviders &&
-              (movie.watchProviders.flatrate ||
-                movie.watchProviders.rent ||
-                movie.watchProviders.buy) && (
-                <WatchProvidersBlock
-                  providers={movie.watchProviders}
-                  movieTitle={movie.title}
-                />
-              )}
+            {hasProviders && (
+              <WatchProvidersBlock
+                providers={providers!}
+                movieTitle={movie.title}
+              />
+            )}
           </div>
 
           <div className="col-span-8 lg:col-span-9 flex flex-col pt-32 md:pt-40">
@@ -458,15 +461,7 @@ export default function MovieDetails() {
 
             <div className="flex flex-col gap-3 mb-8">
               <div className="flex flex-wrap gap-4 text-xs sm:text-sm text-[#f0e6cc]/60 items-center font-bold">
-                <span className="text-[#f0e6cc]">
-                  {movie.release_date
-                    ? new Date(movie.release_date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })
-                    : t("common_na")}
-                </span>
+                <span className="text-[#f0e6cc]">{releaseDateFormatted}</span>
                 <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
                 <span>
                   {movie.runtime || "0"} {t("stats_min")}
@@ -475,7 +470,7 @@ export default function MovieDetails() {
                   <>
                     <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
                     <span className="text-[#c8963c] px-2 py-1 bg-[#c8963c]/10 rounded-lg border border-[#c8963c]/20 tracking-tighter font-black">
-                      {t("movie_imdb")} {movie.vote_average?.toFixed(1)}
+                      {t("movie_imdb")} {movie.voteAverage?.toFixed(1)}
                     </span>
                   </>
                 )}
@@ -507,11 +502,11 @@ export default function MovieDetails() {
             {movie.cast && movie.cast.length > 0 && (
               <CastBlock cast={movie.cast} />
             )}
-
             {movie.trailerUrl && <TrailerBlock trailerUrl={movie.trailerUrl} />}
           </div>
         </div>
 
+        {/* Mobile content */}
         <div className="sm:hidden mt-4 flex flex-col gap-4">
           {movie.productionCountries &&
             movie.productionCountries.length > 0 && (
@@ -532,7 +527,7 @@ export default function MovieDetails() {
                   onClick={() => handleAddNewMovie(false)}
                   className={`py-3 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg ${released ? "flex-1" : "w-full"}`}
                 >
-                  {released ? `+ ${t("search_add")}` : `+ ${t("search_add")}`}
+                  + {t("search_add")}
                 </button>
                 {released && (
                   <button
@@ -625,15 +620,12 @@ export default function MovieDetails() {
             <CastBlock cast={movie.cast} />
           )}
 
-          {movie.watchProviders &&
-            (movie.watchProviders.flatrate ||
-              movie.watchProviders.rent ||
-              movie.watchProviders.buy) && (
-              <WatchProvidersBlock
-                providers={movie.watchProviders}
-                movieTitle={movie.title}
-              />
-            )}
+          {hasProviders && (
+            <WatchProvidersBlock
+              providers={providers!}
+              movieTitle={movie.title}
+            />
+          )}
 
           {movie.trailerUrl && (
             <div className="mt-2">
@@ -656,7 +648,14 @@ export default function MovieDetails() {
         </div>
       </div>
 
-      {/* Recommendations Slider */}
+      {/* Friends who watched this */}
+      {friendsWatched.length > 0 && (
+        <div className="mt-10 sm:mt-16 max-w-7xl mx-auto px-4 sm:px-6">
+          <FriendsWatchedBlock friends={friendsWatched} />
+        </div>
+      )}
+
+      {/* Recommendations */}
       {recommendations.length > 0 && (
         <div className="mt-10 sm:mt-20 max-w-7xl mx-auto">
           <div className="flex items-center justify-between px-4 sm:px-6 mb-4 sm:mb-8">
@@ -755,10 +754,11 @@ export default function MovieDetails() {
         </div>
       )}
 
+      {/* Rating modal */}
       {isRatingModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div
-            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative"
+            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
@@ -817,7 +817,7 @@ export default function MovieDetails() {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 sm:w-auto bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 z-[60] backdrop-blur-md">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 sm:w-auto bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 z-[60] backdrop-blur-md animate-fade-in">
           <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-pulse flex-shrink-0" />
           <span className="font-bold text-[10px] uppercase tracking-[0.2em]">
             {toastMessage}
@@ -839,7 +839,7 @@ function ActionPanel({
   onRate,
   onRemove,
 }: {
-  status: UserMovieStatus | null;
+  status: UserMovieStatusType | null;
   hoveredStar: number;
   setHoveredStar: (n: number) => void;
   released: boolean;
@@ -850,7 +850,6 @@ function ActionPanel({
   onRemove: () => void;
 }) {
   const { t } = useLang();
-
   return (
     <div className="bg-[#1a1714] border border-[#c8963c]/20 p-6 rounded-[2rem] shadow-2xl backdrop-blur-md">
       {!status ? (
@@ -861,7 +860,6 @@ function ActionPanel({
           >
             {t("search_add")}
           </button>
-
           {released && (
             <button
               onClick={onWatched}
@@ -885,7 +883,6 @@ function ActionPanel({
                 ? t("watchlist_watched")
                 : t("movie_planned").replace("⋯ ", "")}
             </span>
-
             {released ? (
               <button
                 onClick={onToggleFavorite}
@@ -977,16 +974,14 @@ function WatchProvidersBlock({
   providers,
   movieTitle,
 }: {
-  providers: WatchProvidersData;
+  providers: WatchProvidersDataType;
   movieTitle: string;
 }) {
   const { t } = useLang();
-  const defaultLink = providers.link;
 
   const getSmartLink = (providerName: string, title: string) => {
     const query = encodeURIComponent(title);
     const name = providerName.toLowerCase();
-
     if (name.includes("netflix"))
       return `https://www.netflix.com/search?q=${query}`;
     if (name.includes("amazon") || name.includes("prime"))
@@ -1004,11 +999,10 @@ function WatchProvidersBlock({
       return `https://tv.kyivstar.ua/ua/search?q=${query}`;
     if (name.includes("volia"))
       return `https://tv.volia.com/search?query=${query}`;
-
-    return defaultLink || "#";
+    return providers.link || "#";
   };
 
-  const renderProviderList = (title: string, list?: WatchProvider[]) => {
+  const renderProviderList = (title: string, list?: WatchProviderType[]) => {
     if (!list || list.length === 0) return null;
     return (
       <div className="mb-4 last:mb-0">
@@ -1042,11 +1036,9 @@ function WatchProvidersBlock({
       <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
         {t("movie_where_to_watch")}
       </h3>
-
       {renderProviderList(t("movie_stream"), providers.flatrate)}
       {renderProviderList(t("movie_rent"), providers.rent)}
       {renderProviderList(t("movie_buy"), providers.buy)}
-
       {providers.link && (
         <div className="mt-2 pt-3 border-t border-[#c8963c]/10 text-center">
           <a
@@ -1063,19 +1055,60 @@ function WatchProvidersBlock({
   );
 }
 
-function CastBlock({ cast }: { cast: CastMember[] }) {
+function FriendsWatchedBlock({ friends }: { friends: FriendWatchedType[] }) {
+  const { t } = useLang();
+  return (
+    <div className="bg-[#1a1714] border border-[#c8963c]/20 p-4 sm:p-5 rounded-[2rem] shadow-xl backdrop-blur-md">
+      <h3 className="text-xs sm:text-sm font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
+        {t("movie_friends_watched")}
+      </h3>
+      <div className="flex flex-wrap gap-3">
+        {friends.map((friend) => (
+          <Link
+            key={friend.id}
+            to={`/user/${friend.id}`}
+            className="flex items-center gap-2.5 bg-[#12100e] border border-[#c8963c]/20 rounded-2xl pl-2 pr-3 py-2 hover:border-[#c8963c]/60 transition"
+          >
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-xs font-black text-[#12100e] overflow-hidden shrink-0">
+              {friend.avatarUrl ? (
+                <img
+                  src={friend.avatarUrl}
+                  alt={friend.username}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                friend.username[0].toUpperCase()
+              )}
+            </div>
+            <span className="text-xs font-bold text-[#f0e6cc] truncate max-w-[120px]">
+              {friend.username}
+            </span>
+            {friend.rating ? (
+              <span className="text-[10px] font-black text-[#c8963c] shrink-0">
+                ★ {friend.rating}
+              </span>
+            ) : null}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CastBlock({ cast }: { cast: CastMemberType[] }) {
   const { t } = useLang();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: "left" | "right") => {
-    if (scrollRef.current) {
-      const { scrollLeft, clientWidth } = scrollRef.current;
-      const scrollTo =
+    if (!scrollRef.current) return;
+    const { scrollLeft, clientWidth } = scrollRef.current;
+    scrollRef.current.scrollTo({
+      left:
         direction === "left"
           ? scrollLeft - clientWidth / 2
-          : scrollLeft + clientWidth / 2;
-      scrollRef.current.scrollTo({ left: scrollTo, behavior: "smooth" });
-    }
+          : scrollLeft + clientWidth / 2,
+      behavior: "smooth",
+    });
   };
 
   return (
@@ -1087,7 +1120,6 @@ function CastBlock({ cast }: { cast: CastMember[] }) {
           </h3>
           <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent max-w-[200px]" />
         </div>
-
         <div className="flex gap-2">
           <button
             onClick={() => scroll("left")}

@@ -36,6 +36,10 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   verificationToken: string | null;
 
+  @Exclude()
+  @Column({ type: 'timestamptz', nullable: true })
+  verificationTokenExpiresAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -45,6 +49,14 @@ export class User {
   @Exclude()
   @Column({ type: 'varchar', nullable: true })
   resetToken: string | null;
+
+  @Exclude()
+  @Column({ type: 'timestamptz', nullable: true })
+  resetTokenExpiresAt: Date | null;
+
+  @Exclude()
+  @Column({ type: 'varchar', nullable: true })
+  hashedRefreshToken: string | null;
 
   @OneToMany(() => WatchlistItem, (watchlistItem) => watchlistItem.user)
   watchlist: WatchlistItem[];

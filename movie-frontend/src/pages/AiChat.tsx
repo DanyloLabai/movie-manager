@@ -1,19 +1,18 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { api } from "../api";
+import * as aiApi from "../api/ai.api";
+import type { AIMessage } from "../api/ai.api";
+import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 
-interface MovieResult {
-  id: number;
-  title: string;
-  description: string;
-  releaseYear: string;
-  releaseDate?: string;
-  rating: number;
-  posterUrl: string | null;
-  mediaType: "movie" | "tv";
-}
+type ProfileResponse = {
+  favorites?: Array<{ tmdbId: number }>;
+  watchedIds?: number[];
+  inPlansIds?: number[];
+};
+
+import type { MovieResult } from "../types/movie.types";
 
 interface Message {
   role: "user" | "ai";
@@ -29,17 +28,8 @@ const MAX_HISTORY = Number(import.meta.env.VITE_MAX_HISTORY) || 20;
 const COOLDOWN_SECONDS = 3;
 
 export default function AiChat() {
-  const { lang, t } = useLang();
+  const { t } = useLang();
   const [input, setInput] = useState("");
-
-  const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
-    try {
-      const c = localStorage.getItem(FAVORITES_CACHE_KEY);
-      return c ? JSON.parse(c) : [];
-    } catch {
-      return [];
-    }
-  });
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -82,16 +72,13 @@ export default function AiChat() {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-
     const update = () => {
       setViewportHeight(vv.height);
       setViewportTop(vv.offsetTop);
     };
-
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
     update();
-
     return () => {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
@@ -108,12 +95,10 @@ export default function AiChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
   useEffect(() => {
     setTimeout(() => scrollToBottom("smooth"), 60);
   }, [viewportHeight]);
 
-  // ── Cooldown timer ──────────────────────────────────────────────────────────
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;
     if (cooldownTime > 0) {
@@ -122,15 +107,20 @@ export default function AiChat() {
     return () => clearInterval(timer);
   }, [cooldownTime]);
 
-  // ── Load history from Redis ─────────────────────────────────────────────────
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        const response = await api.get("/ai/history");
-        if (Array.isArray(response.data) && response.data.length > 1) {
-          setMessages(response.data);
+        const history = await aiApi.getHistory();
+        if (Array.isArray(history) && history.length > 0) {
+          setMessages(
+            history.map((m) => ({
+              role: m.role === "assistant" ? "ai" : "user",
+              text: m.content,
+              movies: m.movies,
+            })),
+          );
         } else {
-          setMessages([getWelcomeMessage()]);
+          setMessages(loadSavedMessages());
         }
       } catch {
         setMessages(loadSavedMessages());
@@ -139,13 +129,19 @@ export default function AiChat() {
       }
     };
     loadHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (messages.length <= 1) return;
     const timer = setTimeout(async () => {
       try {
-        await api.post("/ai/history", { messages });
+        const aiMsgs: AIMessage[] = messages.map((m) => ({
+          role: m.role === "ai" ? "assistant" : "user",
+          content: m.text,
+          ...(m.movies && m.movies.length > 0 && { movies: m.movies }),
+        }));
+        await aiApi.postHistory(aiMsgs);
         localStorage.setItem(
           CHAT_STORAGE_KEY,
           JSON.stringify({ messages, timestamp: Date.now() }),
@@ -163,18 +159,18 @@ export default function AiChat() {
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
-        const response = await api.get("/movies/profile");
-        if (response.data) {
-          const favIds =
-            response.data.favorites?.map((f: any) => f.tmdbId) || [];
-          setFavoriteIds(favIds);
+        const response = await moviesApi.getProfile();
+        if (response) {
+          const profileData = response as ProfileResponse;
+          const favIds = profileData.favorites?.map((f) => f.tmdbId) || [];
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(favIds));
-
-          const watchedIds = response.data.watchedIds || [];
-          const inPlansIds = response.data.inPlansIds || [];
+          const watchedIds = profileData.watchedIds || [];
+          const inPlansIds = profileData.inPlansIds || [];
           setAddedIds(Array.from(new Set([...watchedIds, ...inPlansIds])));
         }
-      } catch {}
+      } catch (err) {
+        console.error("Failed to fetch profile in AiChat:", err);
+      }
     };
     fetchProfileData();
   }, []);
@@ -194,7 +190,7 @@ export default function AiChat() {
   const handleClearChat = () => {
     setMessages([{ role: "ai", text: t("chat_cleared") }]);
     localStorage.removeItem(CHAT_STORAGE_KEY);
-    api.post("/ai/history", { messages: [] }).catch(() => {});
+    aiApi.postHistory([] as AIMessage[]).catch(() => void 0);
     showToast(t("chat_history_cleared"));
   };
 
@@ -211,7 +207,12 @@ export default function AiChat() {
 
     try {
       const trimmedMessages = newMessages.slice(-MAX_HISTORY);
-      const chatHistory = trimmedMessages.map((msg) => {
+
+      const shownMovieIds = trimmedMessages
+        .filter((m) => m.movies && m.movies.length > 0)
+        .flatMap((m) => m.movies!.map((movie) => movie.id));
+
+      const chatHistory: AIMessage[] = trimmedMessages.map((msg) => {
         let content = msg.text;
         if (msg.role === "ai" && msg.movies && msg.movies.length > 0) {
           const shownMovies = msg.movies.map((m) => m.title).join(", ");
@@ -223,13 +224,17 @@ export default function AiChat() {
         };
       });
 
-      const response = await api.post("/ai/search", { messages: chatHistory });
+      const response = await aiApi.aiSearch({
+        messages: chatHistory,
+        shownMovieIds,
+      });
+
       setMessages((prev) => [
         ...prev,
         {
           role: "ai",
-          text: response.data.message || "Here is what I found:",
-          movies: response.data.movies,
+          text: response.message || "Here is what I found:",
+          movies: response.movies,
         },
       ]);
     } catch {
@@ -250,7 +255,7 @@ export default function AiChat() {
 
   const handleAddFromChat = async (movie: MovieResult) => {
     try {
-      await api.post("/movies/watchlist", {
+      await moviesApi.addToWatchlist({
         tmdbId: movie.id,
         title: movie.title,
         posterUrl: movie.posterUrl,
@@ -259,30 +264,12 @@ export default function AiChat() {
       });
       setAddedIds((prev) => [...prev, movie.id]);
       showToast(t("chat_added"));
-    } catch (error: any) {
-      if (error.response?.status === 400) {
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status === 400) {
         setAddedIds((prev) => [...prev, movie.id]);
         showToast(t("chat_added"));
       } else showToast(t("chat_add_error"));
-    }
-  };
-
-  const handleToggleFavorite = async (movie: MovieResult) => {
-    if (!isReleased(movie)) {
-      showToast(t("chat_fav_unreleased"));
-      return;
-    }
-    const isFav = favoriteIds.includes(movie.id);
-    try {
-      await api.patch(`/movies/watchlist/${movie.id}/favorite`);
-      const newIds = isFav
-        ? favoriteIds.filter((id) => id !== movie.id)
-        : [...favoriteIds, movie.id];
-      setFavoriteIds(newIds);
-      localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(newIds));
-      showToast(t("chat_fav_updated"));
-    } catch {
-      showToast(t("chat_server_error"));
     }
   };
 
@@ -300,7 +287,6 @@ export default function AiChat() {
         paddingTop: "env(safe-area-inset-top)",
       }}
     >
-      {/* ── Header ── */}
       <div className="shrink-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
         <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
@@ -345,7 +331,6 @@ export default function AiChat() {
         </header>
       </div>
 
-      {/* ── Messages ── */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e]"
@@ -372,7 +357,6 @@ export default function AiChat() {
                       : "bg-[#1a1714] border border-[#c8963c]/30 text-[#f0e6cc] rounded-tl-sm"
                   }`}
                 >
-                  {/* select-text allows copying, cursor-text shows text cursor on hover */}
                   <p className="whitespace-pre-wrap select-text cursor-text">
                     {msg.text}
                   </p>
@@ -465,7 +449,6 @@ export default function AiChat() {
         </div>
       </div>
 
-      {/* ── Input bar ── */}
       <div className="shrink-0 px-3 pt-2 pb-3 bg-[#12100e] border-t border-[#c8963c]/20 z-40">
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button
@@ -518,7 +501,7 @@ export default function AiChat() {
       </div>
 
       {toastMessage && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap">
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap animate-fade-in">
           {toastMessage}
         </div>
       )}

@@ -9,7 +9,7 @@ import {
   Post,
   Query,
   Req,
-  UseGuards,
+  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -21,8 +21,9 @@ import {
 } from '@nestjs/swagger';
 import { MoviesService } from './movies.service';
 import { MovieResultDto } from './dto/movie-result.dto';
-import { AuthGuard } from '@nestjs/passport';
-import { MovieDetailsResponse } from './dto/movies-details-response.dto';
+import { Public } from '../auth/decorators/public.decorator';
+import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
+import { VectorService } from '../vector/vector.service';
 
 interface RequestWithUser extends Request {
   user: {
@@ -34,8 +35,14 @@ interface RequestWithUser extends Request {
 @ApiTags('Movies')
 @Controller('api/movies')
 export class MoviesController {
-  constructor(private readonly moviesService: MoviesService) {}
+  private readonly logger = new Logger(MoviesController.name);
 
+  constructor(
+    private readonly moviesService: MoviesService,
+    private readonly vectorService: VectorService, // Додали VectorService
+  ) {}
+
+  @Public()
   @Get('upcoming')
   @ApiOperation({
     summary: 'Get upcoming movies',
@@ -46,6 +53,7 @@ export class MoviesController {
     return this.moviesService.getUpcomingMovies();
   }
 
+  @Public()
   @Get('top100/:type')
   @ApiOperation({
     summary: 'Get top 100 movies/TV shows',
@@ -61,7 +69,6 @@ export class MoviesController {
     return this.moviesService.getTop100(type);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('search')
   @ApiBearerAuth()
   @ApiOperation({
@@ -85,7 +92,6 @@ export class MoviesController {
     return this.moviesService.searchMovies(title);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('watchlist')
   @ApiBearerAuth()
   @ApiOperation({
@@ -116,7 +122,6 @@ export class MoviesController {
     );
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('watchlist')
   @ApiBearerAuth()
   @ApiOperation({
@@ -130,7 +135,6 @@ export class MoviesController {
     return this.moviesService.getWatchlist(userId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Delete('watchlist/:tmdbId')
   @ApiBearerAuth()
   @ApiOperation({
@@ -153,7 +157,6 @@ export class MoviesController {
     return this.moviesService.removeFromWatchlist(userId, tmdbId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('watched')
   @ApiBearerAuth()
   @ApiOperation({
@@ -167,7 +170,6 @@ export class MoviesController {
     return this.moviesService.getWatchedMovies(userId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('watchlist/:tmdbId/watched')
   async markAsWatched(
     @Req() req: RequestWithUser,
@@ -177,7 +179,6 @@ export class MoviesController {
     return this.moviesService.markAsWatched(userId, tmdbId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Patch('watchlist/:tmdbId/rate')
   async rateMovie(
     @Req() req: RequestWithUser,
@@ -188,7 +189,6 @@ export class MoviesController {
     return this.moviesService.rateMovie(userId, tmdbId, rating);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Patch('watchlist/:tmdbId/favorite')
   async toggleFavorite(
     @Req() req: RequestWithUser,
@@ -198,29 +198,25 @@ export class MoviesController {
     return this.moviesService.toggleFavorite(userId, tmdbId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('profile')
   async getProfileData(@Req() req: RequestWithUser) {
     const userId = req.user.userId;
     return this.moviesService.getProfileData(userId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('trending')
   async getTrendingMovies(): Promise<MovieResultDto[]> {
     return this.moviesService.getTrendingMovies();
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get(':tmdbId/details')
   async getMovieDetails(
     @Param('tmdbId', ParseIntPipe) tmdbId: number,
     @Query('type') type?: string,
-  ): Promise<MovieDetailsResponse> {
+  ): Promise<MovieDetailsExtendedDto> {
     return this.moviesService.getMovieDetails(tmdbId, type);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get(':tmdbId/status')
   async getMovieStatus(
     @Req() req: RequestWithUser,
@@ -230,22 +226,34 @@ export class MoviesController {
     return this.moviesService.getMovieUserStatus(userId, tmdbId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @Get(':tmdbId/friends-watched')
+  async getFriendsWhoWatched(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+    @Query('type') type?: string,
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.getFriendsWhoWatched(
+      userId,
+      tmdbId,
+      type || 'movie',
+    );
+  }
+
   @Get('recommendations')
   async getRecommendations(@Req() req: RequestWithUser) {
     const userId = Number(req.user.userId);
     return this.moviesService.getRecommendationsForUser(userId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get(':id/similar')
   async getSimilar(@Param('id') id: string, @Query('type') type: string) {
     return this.moviesService.getSimilarMovies(+id, type);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Get('actor/:id')
   async getActorDetails(@Param('id', ParseIntPipe) id: number) {
     return this.moviesService.getActorDetails(id);
   }
+
 }

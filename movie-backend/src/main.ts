@@ -1,6 +1,7 @@
 import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import { Reflector } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -10,6 +11,8 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   const frontendUrl = process.env.FRONTEND_URL;
+
+  app.use(cookieParser());
 
   app.enableCors({
     origin: frontendUrl,

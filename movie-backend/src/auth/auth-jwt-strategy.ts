@@ -1,33 +1,69 @@
 import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Strategy, ExtractJwt } from 'passport-jwt';
+import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 
 export interface JwtPayload {
-  sub: string;
+  sub: number;
   username: string;
-  email: string;
+  email?: string;
+  iat?: number;
+  exp?: number;
 }
 
+const extractRefreshTokenFromCookie = (req: Request): string | null => {
+  return (req?.cookies?.refresh_token as string | undefined) ?? null;
+};
+
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(private configService: ConfigService) {
-    const jwtSecret = configService.get<string>('JWT_SECRET');
-
-    if (!jwtSecret) {
-      throw new Error(
-        'JWT_SECRET environment variable is required but not defined. Please check your configuration.',
-      );
+    const secret = configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is required');
     }
-
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: jwtSecret,
+      secretOrKey: secret,
     });
   }
 
   validate(payload: JwtPayload) {
+    // Return a simplified user object attached to request
     return { userId: payload.sub, username: payload.username };
+  }
+}
+
+@Injectable()
+export class RefreshJwtStrategy extends PassportStrategy(
+  Strategy,
+  'jwt-refresh',
+) {
+  constructor(private configService: ConfigService) {
+    const jwtRefreshSecret = configService.get<string>('JWT_REFRESH_SECRET');
+
+    if (!jwtRefreshSecret) {
+      throw new Error(
+        'JWT_REFRESH_SECRET environment variable is required but not defined. Please check your configuration.',
+      );
+    }
+
+    super({
+      jwtFromRequest: extractRefreshTokenFromCookie,
+      ignoreExpiration: false,
+      secretOrKey: jwtRefreshSecret,
+      passReqToCallback: true,
+    });
+  }
+
+  validate(req: Request, payload: JwtPayload) {
+    const refreshToken = extractRefreshTokenFromCookie(req);
+    return {
+      userId: payload.sub,
+      username: payload.username,
+      refreshToken,
+    };
   }
 }

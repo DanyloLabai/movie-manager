@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
-import { api } from "../api";
+import * as authApi from "../api/auth.api";
 import { useLang } from "../context/LanguageContext";
 
 export default function Register() {
@@ -30,16 +30,12 @@ export default function Register() {
 
     setIsLoading(true);
     try {
-      await api.post("/auth/signup", {
-        username,
-        email,
-        password,
-        captchaToken,
-      });
+      await authApi.register({ username, email, password, captchaToken });
 
       setIsSuccess(true);
-    } catch (err: any) {
-      setError(err.response?.data?.message || t("register_error"));
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: string } } };
+      setError(apiError.response?.data?.message || t("register_error"));
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
     } finally {
