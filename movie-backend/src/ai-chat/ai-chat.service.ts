@@ -238,9 +238,13 @@ export class AiChatService {
     // Direct title lookups — the primary, reliable path. Used for both
     // exact franchise asks (force) and vibe recommendations, since TMDB's
     // search matches real titles far better than a vague concept phrase.
-    for (const title of titles.slice(0, MAX_RESULTS)) {
+    for (const rawTitle of titles.slice(0, MAX_RESULTS)) {
       if (foundMoviesMap.size >= MAX_RESULTS) break;
-      const mediaData = await this.moviesService.findMovieByTitle(title);
+      const { title, year } = this.parseTitleYear(rawTitle);
+      const mediaData = await this.moviesService.findMovieByTitle(
+        title,
+        year,
+      );
       if (mediaData) {
         this.processFoundMovie(
           mediaData,
@@ -322,6 +326,17 @@ export class AiChatService {
     }
 
     return { foundMovies: Array.from(foundMoviesMap.values()), rejected };
+  }
+
+  private parseTitleYear(rawTitle: string): {
+    title: string;
+    year: number | undefined;
+  } {
+    const match = rawTitle.match(/^(.*?)\s*\((\d{4})\)\s*$/);
+    if (match) {
+      return { title: match[1].trim(), year: Number(match[2]) };
+    }
+    return { title: rawTitle.trim(), year: undefined };
   }
 
   private processFoundMovie(
@@ -429,6 +444,16 @@ use "concepts" as a small supplement for extra variety; never as the only thing 
 Set "excludeOwned": true ONLY when the user explicitly asks for titles they have NOT watched and/or NOT added to their watchlist yet
 (e.g. "які я ще не додав", "яких я ще не бачив", "not in my watchlist yet", "haven't seen") — this applies even for franchise/direct
 searches (force: true). Otherwise set "excludeOwned": false, including for RULE 2 watchlist picks (which must include watchlisted items).
+
+TYPOS & SPELLING: Users often misspell or mistype titles/names, especially in Ukrainian ("проєк" instead of "проект",
+transliterated actor names, etc.). ALWAYS silently correct obvious typos and understand the intended title/name from
+context — never fail or refuse just because the user's spelling was off. Output the correctly-spelled real title.
+
+DISAMBIGUATION WITH YEAR: When a title could refer to multiple movies/shows (remakes, same name across decades, a
+movie vs. an unrelated older TV series with the same name), include the year in "titles" as "Title (YYYY)" to pick
+the right one — e.g. if the user mentions an actor or plot detail that identifies a specific version (e.g. "Batman
+with Robert Pattinson" = "The Batman (2022)", not the 2004 animated TV series), use that year. Only add a year when
+it actually helps disambiguate or when you're confident of it — don't guess randomly.
 
 ---
 
