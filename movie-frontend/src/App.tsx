@@ -22,6 +22,7 @@ import Top100 from "./pages/Top100";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import { ApiNotification } from "./components/ApiNotification";
+import BottomNav from "./components/BottomNav";
 import type { JSX } from "react";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -145,13 +146,22 @@ function AppRoutes() {
   );
 }
 
+function AppShell() {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <div className="min-h-[100dvh] bg-[#12100e] text-[#f0e6cc] font-sans overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
+      <ApiNotification />
+      <AppRoutes />
+      {isAuthenticated && <BottomNav />}
+    </div>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-[100dvh] bg-[#12100e] text-[#f0e6cc] font-sans overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-        <ApiNotification />
-        <AppRoutes />
-      </div>
+      <AppShell />
     </BrowserRouter>
   );
 }

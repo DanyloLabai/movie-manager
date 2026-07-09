@@ -5,7 +5,6 @@ import { useLang } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import * as usersApi from "../api/users.api";
 import * as moviesApi from "../api/movies.api";
-import BottomNav from "../components/BottomNav";
 
 export default function Settings() {
   const { t } = useLang();
@@ -327,8 +326,6 @@ export default function Settings() {
           {toastMessage}
         </div>
       )}
-
-      <BottomNav />
     </div>
   );
 }

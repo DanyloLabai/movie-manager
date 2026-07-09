@@ -5,6 +5,13 @@ import * as moviesApi from "../api/movies.api";
 import { useLang } from "../context/LanguageContext";
 
 const POLL_INTERVAL_MS = 60000;
+const VISIBLE_ROUTES = [
+  "/ai-chat",
+  "/search",
+  "/watchlist",
+  "/notifications",
+  "/settings",
+];
 
 const ICONS = {
   chat: (
@@ -61,6 +68,7 @@ export default function BottomNav() {
   const { t } = useLang();
   const location = useLocation();
   const [notifCount, setNotifCount] = useState(0);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   useEffect(() => {
     const fetchCount = async () => {
@@ -80,6 +88,20 @@ export default function BottomNav() {
     return () => clearInterval(interval);
   }, []);
 
+  // Hide while the on-screen keyboard is open (visual viewport shrinks
+  // noticeably), so the bar doesn't float above the keyboard and fight a
+  // page's own input for space.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      setIsKeyboardOpen(vv.height < window.innerHeight * 0.75);
+    };
+    vv.addEventListener("resize", update);
+    update();
+    return () => vv.removeEventListener("resize", update);
+  }, []);
+
   const tabs = [
     { key: "ai-chat", to: "/ai-chat", label: t("nav_ai_chat"), icon: ICONS.chat },
     { key: "search", to: "/search", label: t("nav_search"), icon: ICONS.search },
@@ -93,6 +115,10 @@ export default function BottomNav() {
     },
     { key: "settings", to: "/settings", label: t("nav_settings"), icon: ICONS.settings },
   ];
+
+  if (isKeyboardOpen || !VISIBLE_ROUTES.some((r) => location.pathname.startsWith(r))) {
+    return null;
+  }
 
   return (
     <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#12100e]/95 backdrop-blur-md border-t border-[#c8963c]/10 pb-[env(safe-area-inset-bottom)]">

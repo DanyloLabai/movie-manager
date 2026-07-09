@@ -6,7 +6,6 @@ import type { FriendRequest } from "../api/users.api";
 import type { AppNotification } from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
-import BottomNav from "../components/BottomNav";
 
 function formatTimeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -238,8 +237,6 @@ export default function Notifications() {
           </div>
         )}
       </main>
-
-      <BottomNav />
     </div>
   );
 }

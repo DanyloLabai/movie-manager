@@ -18,7 +18,6 @@ import type { TranslationKey } from "../context/LanguageContext";
 import AchievementTooltip from "../components/AchievementTooltip";
 import NotificationBell from "../components/NotificationBell";
 import SettingsMenu from "../components/SettingsMenu";
-import BottomNav from "../components/BottomNav";
 import type {
   WatchlistItem as WatchlistItemType,
   ProfileData as ProfileDataType,
@@ -964,8 +963,6 @@ export default function Watchlist() {
           </nav>
         </header>
       </div>
-
-      <BottomNav />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12">
         <div className="flex gap-2 sm:gap-3 mb-8 overflow-x-auto scrollbar-hide">
