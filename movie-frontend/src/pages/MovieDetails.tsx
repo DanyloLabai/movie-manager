@@ -321,7 +321,7 @@ export default function MovieDetails() {
               LUMEN
             </h1>
             <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-              Movie Tracker
+              {t("app_tagline")}
             </span>
           </div>
         </Link>

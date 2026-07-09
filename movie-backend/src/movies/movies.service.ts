@@ -796,17 +796,23 @@ export class MoviesService {
     return savedItem;
   }
 
-  async getWatchlist(userId: number) {
+  // `limit`/`offset` are optional so internal callers (AI chat context,
+  // taste compatibility, etc.) that need the full list can keep calling
+  // this without pagination args, while the HTTP endpoint always passes
+  // them to cap what's sent to the client.
+  async getWatchlist(userId: number, limit?: number, offset = 0) {
     return this.watchlistRepo.find({
       where: { user: { id: userId }, isWatched: false },
       order: { addedAt: 'DESC' },
+      ...(limit !== undefined ? { take: limit, skip: offset } : {}),
     });
   }
 
-  async getWatchedMovies(userId: number) {
+  async getWatchedMovies(userId: number, limit?: number, offset = 0) {
     return this.watchlistRepo.find({
       where: { user: { id: userId }, isWatched: true },
       order: { addedAt: 'DESC' },
+      ...(limit !== undefined ? { take: limit, skip: offset } : {}),
     });
   }
 
@@ -1179,11 +1185,12 @@ export class MoviesService {
     }
   }
 
-  async getNotifications(userId: number) {
+  async getNotifications(userId: number, limit = 30, offset = 0) {
     return this.notificationRepo.find({
       where: { user: { id: userId } },
       order: { createdAt: 'DESC' },
-      take: 30,
+      take: limit,
+      skip: offset,
     });
   }
 

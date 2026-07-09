@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
+import LangToggle from "../components/LangToggle";
 import * as usersApi from "../api/users.api";
 import * as moviesApi from "../api/movies.api";
 
@@ -124,7 +125,7 @@ export default function Settings() {
                 LUMEN
               </h1>
               <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-                Movie Tracker
+                {t("app_tagline")}
               </span>
             </div>
           </Link>
@@ -237,6 +238,13 @@ export default function Settings() {
             {isSaving ? t("edit_saving") : t("edit_save")}
           </button>
         </form>
+
+        <div className="flex items-center justify-between px-4 py-4 mb-4 bg-[#1a1714] border border-[#c8963c]/20 rounded-xl">
+          <span className="text-sm font-bold text-[#f0e6cc]">
+            {t("settings_language")}
+          </span>
+          <LangToggle />
+        </div>
 
         <div className="space-y-2 mb-6">
           <Link

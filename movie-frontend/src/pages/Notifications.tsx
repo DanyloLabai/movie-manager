@@ -6,15 +6,21 @@ import type { FriendRequest } from "../api/users.api";
 import type { AppNotification } from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
+import type { TranslationKey } from "../context/LanguageContext";
 
-function formatTimeAgo(iso: string): string {
+const NOTIFICATIONS_PAGE_SIZE = 30;
+
+function formatTimeAgo(
+  iso: string,
+  t: (key: TranslationKey) => string,
+): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diffMs / 60000);
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 1) return t("time_just_now");
+  if (minutes < 60) return `${minutes}${t("time_minutes_short")}`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  return `${Math.floor(hours / 24)}d`;
+  if (hours < 24) return `${hours}${t("time_hours_short")}`;
+  return `${Math.floor(hours / 24)}${t("time_days_short")}`;
 }
 
 export default function Notifications() {
@@ -24,15 +30,21 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<number | null>(null);
+  const [hasMoreNotifications, setHasMoreNotifications] = useState(false);
+  const [isLoadingMoreNotifications, setIsLoadingMoreNotifications] =
+    useState(false);
 
   const fetchAll = async () => {
     try {
       const [reqs, notifs] = await Promise.all([
         usersApi.getFriendRequests(),
-        moviesApi.getNotifications(),
+        moviesApi.getNotifications({ limit: NOTIFICATIONS_PAGE_SIZE }),
       ]);
       setRequests(reqs || []);
       setNotifications(notifs || []);
+      setHasMoreNotifications(
+        (notifs?.length || 0) === NOTIFICATIONS_PAGE_SIZE,
+      );
     } catch {
       // ignore — page just shows empty state
     } finally {
@@ -43,6 +55,25 @@ export default function Notifications() {
   useEffect(() => {
     fetchAll();
   }, []);
+
+  const loadMoreNotifications = async () => {
+    if (isLoadingMoreNotifications || !hasMoreNotifications) return;
+    setIsLoadingMoreNotifications(true);
+    try {
+      const notifs = await moviesApi.getNotifications({
+        limit: NOTIFICATIONS_PAGE_SIZE,
+        offset: notifications.length,
+      });
+      setNotifications((prev) => [...prev, ...(notifs || [])]);
+      setHasMoreNotifications(
+        (notifs?.length || 0) === NOTIFICATIONS_PAGE_SIZE,
+      );
+    } catch {
+      // ignore — user can retry
+    } finally {
+      setIsLoadingMoreNotifications(false);
+    }
+  };
 
   const unreadNotifCount = notifications.filter((n) => !n.isRead).length;
 
@@ -107,7 +138,7 @@ export default function Notifications() {
                 LUMEN
               </h1>
               <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-                Movie Tracker
+                {t("app_tagline")}
               </span>
             </div>
           </Link>
@@ -227,11 +258,24 @@ export default function Notifications() {
                         </p>
                       </div>
                       <span className="text-[9px] text-[#f0e6cc]/30 shrink-0">
-                        {formatTimeAgo(n.createdAt)}
+                        {formatTimeAgo(n.createdAt, t)}
                       </span>
                     </div>
                   ))}
                 </div>
+                {hasMoreNotifications && (
+                  <div className="flex justify-center mt-4">
+                    <button
+                      onClick={loadMoreNotifications}
+                      disabled={isLoadingMoreNotifications}
+                      className="px-5 py-2 bg-[#1a1714] border border-[#c8963c]/40 text-[#c8963c] font-black uppercase tracking-wider rounded-xl hover:bg-[#c8963c]/10 hover:border-[#c8963c] transition text-[10px] disabled:opacity-50"
+                    >
+                      {isLoadingMoreNotifications
+                        ? t("common_loading_more")
+                        : t("common_load_more")}
+                    </button>
+                  </div>
+                )}
               </section>
             )}
           </div>

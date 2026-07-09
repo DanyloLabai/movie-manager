@@ -275,7 +275,7 @@ export default function AiChat() {
         ...prev,
         {
           role: "ai",
-          text: response.message || "Here is what I found:",
+          text: response.message || t("chat_default_found"),
           movies: response.movies,
         },
       ]);
@@ -521,7 +521,10 @@ export default function AiChat() {
                 isLoading
                   ? t("chat_thinking")
                   : cooldownTime > 0
-                    ? `Wait ${cooldownTime}s...`
+                    ? t("chat_wait_cooldown").replace(
+                        "[X]",
+                        String(cooldownTime),
+                      )
                     : t("chat_placeholder")
               }
               className="w-full pl-4 pr-12 py-3 bg-[#1a1714] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition disabled:opacity-50 text-sm"
