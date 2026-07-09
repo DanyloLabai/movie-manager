@@ -14,6 +14,7 @@ import LogoImg from "../assets/logo.png";
 import * as moviesApi from "../api/movies.api";
 import * as usersApi from "../api/users.api";
 import { useLang } from "../context/LanguageContext";
+import { getUserRank, getAchievementsList } from "../utils/achievements";
 import type { TranslationKey } from "../context/LanguageContext";
 import AchievementTooltip from "../components/AchievementTooltip";
 import NotificationBell from "../components/NotificationBell";
@@ -24,6 +25,8 @@ import type {
 } from "../types/movie.types";
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
+const WATCHLIST_PAGE_SIZE = 30;
+const FRIENDS_FEED_PAGE_SIZE = 30;
 
 const isReleased = (item: WatchlistItemType): boolean => {
   if (item.releaseDate) {
@@ -82,14 +85,6 @@ const RatingTooltip = ({ active, payload, t }: RatingTooltipProps) => {
   return null;
 };
 
-const getUserRank = (watchedCount: number) => {
-  if (watchedCount >= 100) return "Film Legend";
-  if (watchedCount >= 50) return "Cinema Curator";
-  if (watchedCount >= 20) return "Cinephile";
-  if (watchedCount >= 5) return "Movie Enthusiast";
-  return "Cinema Guest";
-};
-
 export default function Watchlist() {
   const { t, lang } = useLang();
   const dateLocale = lang === "uk" ? "uk-UA" : "en-US";
@@ -105,6 +100,8 @@ export default function Watchlist() {
     "profile" | "watchlist" | "watched"
   >(initialTab);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreMovies, setHasMoreMovies] = useState(false);
 
   useEffect(() => {
     navigate(`?tab=${activeTab}`, { replace: true });
@@ -135,8 +132,12 @@ export default function Watchlist() {
     setIsLoading(true);
     try {
       const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
-      const response = await moviesApi.getWatchlist(endpointName);
+      const response = await moviesApi.getWatchlist(endpointName, {
+        limit: WATCHLIST_PAGE_SIZE,
+        offset: 0,
+      });
       setMovies(response || []);
+      setHasMoreMovies((response?.length || 0) === WATCHLIST_PAGE_SIZE);
     } catch (error: unknown) {
       const apiError = error as { response?: { status?: number } };
       if (apiError.response?.status === 401) {
@@ -147,6 +148,24 @@ export default function Watchlist() {
       setIsLoading(false);
     }
   }, [activeTab, navigate]);
+
+  const loadMoreMovies = useCallback(async () => {
+    if (isLoadingMore || !hasMoreMovies) return;
+    setIsLoadingMore(true);
+    try {
+      const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
+      const response = await moviesApi.getWatchlist(endpointName, {
+        limit: WATCHLIST_PAGE_SIZE,
+        offset: movies.length,
+      });
+      setMovies((prev) => [...prev, ...(response || [])]);
+      setHasMoreMovies((response?.length || 0) === WATCHLIST_PAGE_SIZE);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [activeTab, movies.length, isLoadingMore, hasMoreMovies]);
 
   const fetchProfile = useCallback(async () => {
     setIsLoading(true);
@@ -331,7 +350,7 @@ export default function Watchlist() {
     const totalCount = profileData?.totalCount || 0;
     const favoritesCount = profileData?.favorites?.length || 0;
     const watchedCount = profileData?.watchedCount || 0;
-    const userRank = getUserRank(watchedCount);
+    const userRank = getUserRank(watchedCount, t);
 
     const hasStats = Boolean(
       profileData?.stats &&
@@ -339,64 +358,10 @@ export default function Watchlist() {
       profileData.stats.genreDistribution.length > 0,
     );
 
-    const achievementsList = [
-      {
-        id: "first_blood",
-        isUnlocked: totalCount > 0,
-        text: "First Blood",
-        requirement: "Add 1 movie to watchlist or mark as watched",
-        current: totalCount,
-        needed: 1,
-      },
-      {
-        id: "critic",
-        isUnlocked: favoritesCount >= 5,
-        text: "Critic",
-        requirement: "Add 5 movies to favorites",
-        current: favoritesCount,
-        needed: 5,
-      },
-      {
-        id: "cinephile",
-        isUnlocked: watchedCount >= 10,
-        text: "Cinephile",
-        requirement: "Mark 10 movies as watched",
-        current: watchedCount,
-        needed: 10,
-      },
-      {
-        id: "collector",
-        isUnlocked: totalCount >= 20,
-        text: "Collector",
-        requirement: "Collect 20 movies total (watched + watchlist)",
-        current: totalCount,
-        needed: 20,
-      },
-      {
-        id: "tastemaker",
-        isUnlocked: favoritesCount >= 20,
-        text: "Tastemaker",
-        requirement: "Add 20 movies to favorites",
-        current: favoritesCount,
-        needed: 20,
-      },
-      {
-        id: "filmbuff",
-        isUnlocked: watchedCount >= 50,
-        text: "Film Buff",
-        requirement: "Mark 50 movies as watched",
-        current: watchedCount,
-        needed: 50,
-      },
-      {
-        id: "librarian",
-        isUnlocked: totalCount >= 100,
-        text: "Librarian",
-        requirement: "Collect 100 movies total (watched + watchlist)",
-        current: totalCount,
-        needed: 100,
-      },
-    ];
+    const achievementsList = getAchievementsList(
+      { favoritesCount, watchedCount, totalCount },
+      t,
+    );
 
     return (
       <div className="space-y-4 animate-fade-in">
@@ -433,7 +398,12 @@ export default function Watchlist() {
                 className="w-8 h-8 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full flex items-center justify-center border border-[#c8963c]/30 text-[#c8963c] transition"
                 title={t("profile_friends")}
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -934,7 +904,7 @@ export default function Watchlist() {
                 LUMEN
               </h1>
               <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-                Movie Tracker
+                {t("app_tagline")}
               </span>
             </div>
           </Link>
@@ -990,7 +960,7 @@ export default function Watchlist() {
             renderProfileTab()
           ) : isLoading ? (
             <p className="text-center text-[#f0e6cc]/50 animate-pulse text-sm mt-10 font-semibold uppercase tracking-widest">
-              Loading your list...
+              {t("watchlist_loading")}
             </p>
           ) : movies.length === 0 ? (
             <div className="text-center p-8 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-2xl mt-8 max-w-sm mx-auto">
@@ -1001,177 +971,192 @@ export default function Watchlist() {
                 to="/search"
                 className="inline-block px-6 py-3 bg-[#c8963c] text-[#12100e] font-black uppercase tracking-wider rounded-xl hover:bg-[#e8c070] transition shadow-lg text-sm"
               >
-                Discover Movies
+                {t("watchlist_discover")}
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
-              {movies.map((item) => {
-                const released = isReleased(item);
-                return (
-                  <div
-                    key={item.id}
-                    className="group overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 shadow rounded-xl flex flex-col hover:border-[#c8963c]/70 hover:-translate-y-0.5 transition relative"
-                  >
-                    <div className="relative w-full aspect-[2/3] bg-[#12100e] overflow-hidden">
-                      <Link
-                        to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}&fromTab=${activeTab}`}
-                        className="block w-full h-full"
-                      >
-                        {item.posterUrl ? (
-                          <img
-                            src={item.posterUrl}
-                            alt={item.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center w-full h-full text-[#f0e6cc]/30 text-[9px] italic">
-                            {t("common_na")}
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
+                {movies.map((item) => {
+                  const released = isReleased(item);
+                  return (
+                    <div
+                      key={item.id}
+                      className="group overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 shadow rounded-xl flex flex-col hover:border-[#c8963c]/70 hover:-translate-y-0.5 transition relative"
+                    >
+                      <div className="relative w-full aspect-[2/3] bg-[#12100e] overflow-hidden">
+                        <Link
+                          to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}&fromTab=${activeTab}`}
+                          className="block w-full h-full"
+                        >
+                          {item.posterUrl ? (
+                            <img
+                              src={item.posterUrl}
+                              alt={item.title}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center w-full h-full text-[#f0e6cc]/30 text-[9px] italic">
+                              {t("common_na")}
+                            </div>
+                          )}
+                        </Link>
+
+                        {activeTab === "watched" && (
+                          <div className="absolute top-1.5 left-1.5 bg-[#c8963c] text-[#12100e] text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                            {t("watched")}
                           </div>
                         )}
-                      </Link>
-
-                      {activeTab === "watched" && (
-                        <div className="absolute top-1.5 left-1.5 bg-[#c8963c] text-[#12100e] text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                          {t("watched")}
-                        </div>
-                      )}
-                      {activeTab === "watchlist" && !released && (
-                        <div className="absolute top-1.5 left-1.5 bg-blue-500/90 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">
-                          {t("umcoming")}
-                        </div>
-                      )}
-
-                      {released ? (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleToggleFavorite(item.tmdbId);
-                          }}
-                          className="absolute top-1.5 right-1.5 w-7 h-7 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 transition backdrop-blur-sm z-10"
-                        >
-                          <svg
-                            className={`w-3 h-3 ${item.isFavorite ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30"}`}
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            fill={item.isFavorite ? "currentColor" : "none"}
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2.5"
-                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                            />
-                          </svg>
-                        </button>
-                      ) : (
-                        <div className="absolute top-1.5 right-1.5 w-7 h-7 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] z-10">
-                          <svg
-                            className="w-3.5 h-3.5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="p-2.5 flex flex-col flex-grow bg-[#1a1714]">
-                      <Link
-                        to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                        className="text-[11px] font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition"
-                        title={item.title}
-                      >
-                        {item.title}
-                      </Link>
-
-                      {released || activeTab === "watched" ? (
-                        <div
-                          className="flex justify-center gap-0 mb-1.5 mt-auto pt-2"
-                          onMouseLeave={() => {
-                            setHoveredMovieId(null);
-                            setHoveredStar(0);
-                          }}
-                        >
-                          {[1, 2, 3, 4, 5].map((star) => {
-                            const isActive =
-                              (hoveredMovieId === item.tmdbId
-                                ? hoveredStar
-                                : item.rating || 0) >= star;
-                            return (
-                              <button
-                                key={star}
-                                onMouseEnter={() => {
-                                  setHoveredMovieId(item.tmdbId);
-                                  setHoveredStar(star);
-                                }}
-                                onClick={() =>
-                                  handleRateMovie(item.tmdbId, star)
-                                }
-                                className={`text-lg p-0.5 transition-all active:scale-150 ${
-                                  isActive
-                                    ? "text-[#c8963c]"
-                                    : "text-[#f0e6cc]/20"
-                                }`}
-                              >
-                                ★
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="flex justify-center mb-1.5 mt-auto pt-2">
-                          <span className="text-[8px] font-black text-[#f0e6cc]/20 uppercase tracking-wider py-1.5">
-                            {t("common_unreleased")}
-                          </span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between items-center gap-1 pt-2 border-t border-[#c8963c]/20">
-                        {activeTab === "watchlist" ? (
-                          released ? (
-                            <button
-                              onClick={() => handleMarkWatched(item.tmdbId)}
-                              className="text-[9px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-wide"
-                            >
-                              {t("watchlist_mark_watched").replace(
-                                "Mark as ",
-                                "",
-                              )}
-                            </button>
-                          ) : (
-                            <span className="text-[9px] font-black text-[#c8963c]/40 uppercase tracking-wide">
-                              {t("umcoming")}
-                            </span>
-                          )
-                        ) : (
-                          <Link
-                            to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                            className="text-[9px] font-bold text-[#c8963c] uppercase tracking-wide hover:text-[#e8c070] transition"
-                          >
-                            {t("details")}
-                          </Link>
+                        {activeTab === "watchlist" && !released && (
+                          <div className="absolute top-1.5 left-1.5 bg-blue-500/90 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">
+                            {t("umcoming")}
+                          </div>
                         )}
-                        <button
-                          onClick={() => handleDelete(item.tmdbId)}
-                          className="text-[9px] font-bold text-red-500/60 hover:text-red-500 transition uppercase"
+
+                        {released ? (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleToggleFavorite(item.tmdbId);
+                            }}
+                            className="absolute top-1.5 right-1.5 w-7 h-7 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 transition backdrop-blur-sm z-10"
+                          >
+                            <svg
+                              className={`w-3 h-3 ${item.isFavorite ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30"}`}
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              fill={item.isFavorite ? "currentColor" : "none"}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2.5"
+                                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                              />
+                            </svg>
+                          </button>
+                        ) : (
+                          <div className="absolute top-1.5 right-1.5 w-7 h-7 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] z-10">
+                            <svg
+                              className="w-3.5 h-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-2.5 flex flex-col flex-grow bg-[#1a1714]">
+                        <Link
+                          to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
+                          className="text-[11px] font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition"
+                          title={item.title}
                         >
-                          {t("deleted")}
-                        </button>
+                          {item.title}
+                        </Link>
+
+                        {released || activeTab === "watched" ? (
+                          <div
+                            className="flex justify-center gap-0 mb-1.5 mt-auto pt-2"
+                            onMouseLeave={() => {
+                              setHoveredMovieId(null);
+                              setHoveredStar(0);
+                            }}
+                          >
+                            {[1, 2, 3, 4, 5].map((star) => {
+                              const isActive =
+                                (hoveredMovieId === item.tmdbId
+                                  ? hoveredStar
+                                  : item.rating || 0) >= star;
+                              return (
+                                <button
+                                  key={star}
+                                  onMouseEnter={() => {
+                                    setHoveredMovieId(item.tmdbId);
+                                    setHoveredStar(star);
+                                  }}
+                                  onClick={() =>
+                                    handleRateMovie(item.tmdbId, star)
+                                  }
+                                  className={`text-lg p-0.5 transition-all active:scale-150 ${
+                                    isActive
+                                      ? "text-[#c8963c]"
+                                      : "text-[#f0e6cc]/20"
+                                  }`}
+                                >
+                                  ★
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="flex justify-center mb-1.5 mt-auto pt-2">
+                            <span className="text-[8px] font-black text-[#f0e6cc]/20 uppercase tracking-wider py-1.5">
+                              {t("common_unreleased")}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center gap-1 pt-2 border-t border-[#c8963c]/20">
+                          {activeTab === "watchlist" ? (
+                            released ? (
+                              <button
+                                onClick={() => handleMarkWatched(item.tmdbId)}
+                                className="text-[9px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-wide"
+                              >
+                                {t("watchlist_mark_watched").replace(
+                                  "Mark as ",
+                                  "",
+                                )}
+                              </button>
+                            ) : (
+                              <span className="text-[9px] font-black text-[#c8963c]/40 uppercase tracking-wide">
+                                {t("umcoming")}
+                              </span>
+                            )
+                          ) : (
+                            <Link
+                              to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
+                              className="text-[9px] font-bold text-[#c8963c] uppercase tracking-wide hover:text-[#e8c070] transition"
+                            >
+                              {t("details")}
+                            </Link>
+                          )}
+                          <button
+                            onClick={() => handleDelete(item.tmdbId)}
+                            className="text-[9px] font-bold text-red-500/60 hover:text-red-500 transition uppercase"
+                          >
+                            {t("deleted")}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+              {hasMoreMovies && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={loadMoreMovies}
+                    disabled={isLoadingMore}
+                    className="px-6 py-2.5 bg-[#1a1714] border border-[#c8963c]/40 text-[#c8963c] font-black uppercase tracking-wider rounded-xl hover:bg-[#c8963c]/10 hover:border-[#c8963c] transition text-xs disabled:opacity-50"
+                  >
+                    {isLoadingMore
+                      ? t("common_loading_more")
+                      : t("common_load_more")}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>
@@ -1307,6 +1292,8 @@ function FriendsModal({ onClose }: FriendsModalProps) {
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(true);
   const [feedLoaded, setFeedLoaded] = useState(false);
+  const [feedHasMore, setFeedHasMore] = useState(false);
+  const [feedLoadingMore, setFeedLoadingMore] = useState(false);
 
   const fetchFriends = async () => {
     try {
@@ -1328,13 +1315,31 @@ function FriendsModal({ onClose }: FriendsModalProps) {
     setFeedLoading(true);
     usersApi
       .getFriendsFeed()
-      .then((data) => setFeedItems(data || []))
+      .then((data) => {
+        setFeedItems(data || []);
+        setFeedHasMore((data?.length || 0) === FRIENDS_FEED_PAGE_SIZE);
+      })
       .catch((error) => console.error(error))
       .finally(() => {
         setFeedLoading(false);
         setFeedLoaded(true);
       });
   }, [mode, feedLoaded]);
+
+  const loadMoreFeed = async () => {
+    if (feedLoadingMore || !feedHasMore || feedItems.length === 0) return;
+    setFeedLoadingMore(true);
+    try {
+      const cursor = feedItems[feedItems.length - 1].createdAt;
+      const data = await usersApi.getFriendsFeed(cursor);
+      setFeedItems((prev) => [...prev, ...(data || [])]);
+      setFeedHasMore((data?.length || 0) === FRIENDS_FEED_PAGE_SIZE);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setFeedLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     if (mode !== "search") return;
@@ -1461,7 +1466,12 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                 : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
             }`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -1511,7 +1521,10 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                         {item.title}
                       </span>
                       {item.type === "rated" && item.rating != null && (
-                        <span className="text-[#f0e6cc]/50"> ({item.rating}/10)</span>
+                        <span className="text-[#f0e6cc]/50">
+                          {" "}
+                          ({item.rating}/10)
+                        </span>
                       )}
                     </p>
                     <p className="text-[9px] text-[#f0e6cc]/40 uppercase tracking-wide mt-0.5">
@@ -1529,6 +1542,19 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                   )}
                 </Link>
               ))
+            )}
+            {!feedLoading && feedItems.length > 0 && feedHasMore && (
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={loadMoreFeed}
+                  disabled={feedLoadingMore}
+                  className="px-5 py-2 bg-[#12100e] border border-[#c8963c]/40 text-[#c8963c] font-black uppercase tracking-wider rounded-xl hover:bg-[#c8963c]/10 hover:border-[#c8963c] transition text-[10px] disabled:opacity-50"
+                >
+                  {feedLoadingMore
+                    ? t("common_loading_more")
+                    : t("common_load_more")}
+                </button>
+              </div>
             )}
           </div>
         ) : mode === "search" ? (
