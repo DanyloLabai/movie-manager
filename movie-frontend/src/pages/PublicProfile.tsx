@@ -15,6 +15,7 @@ import * as aiApi from "../api/ai.api";
 import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
+import { getUserRank, getAchievementsList } from "../utils/achievements";
 import AchievementTooltip from "../components/AchievementTooltip";
 import type { MovieResult } from "../types/movie.types";
 
@@ -82,14 +83,6 @@ type TasteCompatibility = {
 };
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
-
-const getUserRank = (watchedCount: number) => {
-  if (watchedCount >= 100) return "Film Legend";
-  if (watchedCount >= 50) return "Cinema Curator";
-  if (watchedCount >= 20) return "Cinephile";
-  if (watchedCount >= 5) return "Movie Enthusiast";
-  return "Cinema Guest";
-};
 
 interface ChartTooltipProps {
   active?: boolean;
@@ -268,7 +261,7 @@ export default function PublicProfile() {
   const watchedCount = profileData.watchedCount || 0;
   const favoritesCount = profileData.favorites?.length || 0;
   const totalCount = profileData.totalCount || 0;
-  const userRank = getUserRank(watchedCount);
+  const userRank = getUserRank(watchedCount, t);
 
   const hasStats = Boolean(
     profileData?.stats &&
@@ -276,64 +269,10 @@ export default function PublicProfile() {
     profileData.stats.genreDistribution.length > 0,
   );
 
-  const achievementsList = [
-    {
-      id: "fb",
-      isUnlocked: totalCount > 0,
-      text: "First Blood",
-      requirement: "Add 1 movie to watchlist or mark as watched",
-      current: totalCount,
-      needed: 1,
-    },
-    {
-      id: "crit",
-      isUnlocked: favoritesCount >= 5,
-      text: "Critic",
-      requirement: "Add 5 movies to favorites",
-      current: favoritesCount,
-      needed: 5,
-    },
-    {
-      id: "cine",
-      isUnlocked: watchedCount >= 10,
-      text: "Cinephile",
-      requirement: "Mark 10 movies as watched",
-      current: watchedCount,
-      needed: 10,
-    },
-    {
-      id: "coll",
-      isUnlocked: totalCount >= 20,
-      text: "Collector",
-      requirement: "Collect 20 movies total (watched + watchlist)",
-      current: totalCount,
-      needed: 20,
-    },
-    {
-      id: "taste",
-      isUnlocked: favoritesCount >= 20,
-      text: "Tastemaker",
-      requirement: "Add 20 movies to favorites",
-      current: favoritesCount,
-      needed: 20,
-    },
-    {
-      id: "buff",
-      isUnlocked: watchedCount >= 50,
-      text: "Film Buff",
-      requirement: "Mark 50 movies as watched",
-      current: watchedCount,
-      needed: 50,
-    },
-    {
-      id: "lib",
-      isUnlocked: totalCount >= 100,
-      text: "Librarian",
-      requirement: "Collect 100 movies total (watched + watchlist)",
-      current: totalCount,
-      needed: 100,
-    },
-  ];
+  const achievementsList = getAchievementsList(
+    { favoritesCount, watchedCount, totalCount },
+    t,
+  );
 
   const displayedMovies =
     activeTab === "favorites"
@@ -359,7 +298,7 @@ export default function PublicProfile() {
                 LUMEN
               </h1>
               <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-                Movie Tracker
+                {t("app_tagline")}
               </span>
             </div>
           </Link>

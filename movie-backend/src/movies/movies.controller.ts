@@ -32,6 +32,8 @@ interface RequestWithUser extends Request {
   };
 }
 
+const DEFAULT_PAGE_SIZE = 30;
+
 @ApiTags('Movies')
 @Controller('api/movies')
 export class MoviesController {
@@ -60,10 +62,20 @@ export class MoviesController {
     description:
       'Get recent in-app notifications (movie releases, etc.) for the current user (requires authentication)',
   })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'List of notifications' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getNotifications(@Req() req: RequestWithUser) {
-    return this.moviesService.getNotifications(req.user.userId);
+  async getNotifications(
+    @Req() req: RequestWithUser,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.moviesService.getNotifications(
+      req.user.userId,
+      limit !== undefined ? Number(limit) : DEFAULT_PAGE_SIZE,
+      offset !== undefined ? Number(offset) : 0,
+    );
   }
 
   @Patch('notifications/:id/read')
@@ -170,11 +182,21 @@ export class MoviesController {
     summary: 'Get watchlist',
     description: 'Get user watchlist (requires authentication)',
   })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'User watchlist' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getWatchlist(@Req() req: RequestWithUser) {
+  async getWatchlist(
+    @Req() req: RequestWithUser,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
     const userId = req.user.userId;
-    return this.moviesService.getWatchlist(userId);
+    return this.moviesService.getWatchlist(
+      userId,
+      limit !== undefined ? Number(limit) : DEFAULT_PAGE_SIZE,
+      offset !== undefined ? Number(offset) : 0,
+    );
   }
 
   @Delete('watchlist/:tmdbId')
@@ -205,11 +227,21 @@ export class MoviesController {
     summary: 'Get watched movies',
     description: 'Get list of watched movies (requires authentication)',
   })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
   @ApiResponse({ status: 200, description: 'List of watched movies' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getWatchedMovies(@Req() req: RequestWithUser) {
+  async getWatchedMovies(
+    @Req() req: RequestWithUser,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
     const userId = req.user.userId;
-    return this.moviesService.getWatchedMovies(userId);
+    return this.moviesService.getWatchedMovies(
+      userId,
+      limit !== undefined ? Number(limit) : DEFAULT_PAGE_SIZE,
+      offset !== undefined ? Number(offset) : 0,
+    );
   }
 
   @Post('watchlist/:tmdbId/watched')

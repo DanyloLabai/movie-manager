@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useState } from "react";
 import type { ReactNode } from "react";
 
 type Lang = "en" | "uk";
@@ -12,6 +12,8 @@ const translations = {
     nav_notifications: "Alerts",
     nav_settings: "Settings",
     nav_logout: "Logout",
+    app_tagline: "Movie Tracker",
+    settings_language: "Language",
     settings_change_password: "Change password",
     settings_danger_zone: "Danger zone",
     settings_delete_hint:
@@ -32,6 +34,8 @@ const translations = {
     chat_cleared: "Chat cleared! Let's start fresh. What are you looking for?",
     chat_placeholder: "Ask about a movie...",
     chat_thinking: "Thinking...",
+    chat_wait_cooldown: "Wait [X]s...",
+    chat_default_found: "Here is what I found:",
     chat_clear_title: "Clear chat",
     chat_history_cleared: "Chat history cleared",
     chat_recommended: "Recommended for You",
@@ -87,12 +91,38 @@ const translations = {
     search_ai_empty:
       "Add movies to your Watchlist so AI can recommend similar titles!",
 
+    // Ranks
+    rank_film_legend: "Film Legend",
+    rank_cinema_curator: "Cinema Curator",
+    rank_cinephile: "Cinephile",
+    rank_movie_enthusiast: "Movie Enthusiast",
+    rank_cinema_guest: "Cinema Guest",
+
+    // Achievements
+    achievement_first_blood_text: "First Blood",
+    achievement_first_blood_req: "Add 1 movie to watchlist or mark as watched",
+    achievement_critic_text: "Critic",
+    achievement_critic_req: "Add 5 movies to favorites",
+    achievement_cinephile_text: "Cinephile",
+    achievement_cinephile_req: "Mark 10 movies as watched",
+    achievement_collector_text: "Collector",
+    achievement_collector_req: "Collect 20 movies total (watched + watchlist)",
+    achievement_tastemaker_text: "Tastemaker",
+    achievement_tastemaker_req: "Add 20 movies to favorites",
+    achievement_filmbuff_text: "Film Buff",
+    achievement_filmbuff_req: "Mark 50 movies as watched",
+    achievement_librarian_text: "Librarian",
+    achievement_librarian_req:
+      "Collect 100 movies total (watched + watchlist)",
+
     // Watchlist / Profile page
     watchlist_title: "My Profile",
     watchlist_favorites: "Favorites",
     watchlist_planned: "Watchlist",
     watchlist_watched: "Watched",
     watchlist_empty: "Nothing here yet.",
+    watchlist_loading: "Loading your list...",
+    watchlist_discover: "Discover Movies",
     watchlist_rate: "Rate",
     watchlist_remove: "Remove",
     watchlist_mark_watched: "Mark as watched",
@@ -308,6 +338,8 @@ const translations = {
     common_movie: "Movie",
     common_tv: "TV Show",
     common_error: "Error",
+    common_load_more: "Load more",
+    common_loading_more: "Loading...",
   },
   uk: {
     // Nav
@@ -317,6 +349,8 @@ const translations = {
     nav_notifications: "Сповіщення",
     nav_settings: "Налаштування",
     nav_logout: "Вийти",
+    app_tagline: "Трекер фільмів",
+    settings_language: "Мова",
     settings_change_password: "Змінити пароль",
     settings_danger_zone: "Небезпечна зона",
     settings_delete_hint:
@@ -337,6 +371,8 @@ const translations = {
     chat_cleared: "Чат очищено! Починаємо спочатку. Що шукаємо?",
     chat_placeholder: "Запитай про фільм...",
     chat_thinking: "Думаю...",
+    chat_wait_cooldown: "Зачекай [X]с...",
+    chat_default_found: "Ось що я знайшов:",
     chat_clear_title: "Очистити чат",
     chat_history_cleared: "Історію чату очищено",
     chat_recommended: "Рекомендуємо",
@@ -393,12 +429,40 @@ const translations = {
     search_ai_empty:
       "Додайте фільми до списку, щоб ШІ міг рекомендувати схожі!",
 
+    // Ranks
+    rank_film_legend: "Легенда кіно",
+    rank_cinema_curator: "Кінокуратор",
+    rank_cinephile: "Кінофіл",
+    rank_movie_enthusiast: "Кіноентузіаст",
+    rank_cinema_guest: "Гість кінозалу",
+
+    // Achievements
+    achievement_first_blood_text: "Перша кров",
+    achievement_first_blood_req:
+      "Додай 1 фільм до списку перегляду або познач переглянутим",
+    achievement_critic_text: "Критик",
+    achievement_critic_req: "Додай 5 фільмів до улюблених",
+    achievement_cinephile_text: "Кінофіл",
+    achievement_cinephile_req: "Познач 10 фільмів переглянутими",
+    achievement_collector_text: "Колекціонер",
+    achievement_collector_req:
+      "Збери 20 фільмів загалом (переглянуті + список перегляду)",
+    achievement_tastemaker_text: "Законодавець смаку",
+    achievement_tastemaker_req: "Додай 20 фільмів до улюблених",
+    achievement_filmbuff_text: "Кінознавець",
+    achievement_filmbuff_req: "Познач 50 фільмів переглянутими",
+    achievement_librarian_text: "Бібліотекар",
+    achievement_librarian_req:
+      "Збери 100 фільмів загалом (переглянуті + список перегляду)",
+
     // Watchlist / Profile page
     watchlist_title: "Мій профіль",
     watchlist_favorites: "Улюблені",
     watchlist_planned: "Список перегляду",
     watchlist_watched: "Переглянуто",
     watchlist_empty: "Тут ще нічого немає.",
+    watchlist_loading: "Завантажуємо твій список...",
+    watchlist_discover: "Знайти фільми",
     watchlist_rate: "Оцінити",
     watchlist_remove: "Видалити",
     watchlist_mark_watched: "Позначити як переглянуте",
@@ -614,6 +678,8 @@ const translations = {
     common_movie: "Фільм",
     common_tv: "Серіал",
     common_error: "Помилка",
+    common_load_more: "Завантажити ще",
+    common_loading_more: "Завантаження...",
   },
 } as const;
 
@@ -627,11 +693,17 @@ interface LangContextType {
 
 const LangContext = createContext<LangContextType | null>(null);
 
+const LANG_STORAGE_KEY = "app_lang";
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const lang: Lang = "en";
+  const [lang, setLang] = useState<Lang>(
+    () => (localStorage.getItem(LANG_STORAGE_KEY) as Lang) || "en",
+  );
 
   const toggleLang = () => {
-    // Language toggle disabled - always using English
+    const next: Lang = lang === "en" ? "uk" : "en";
+    setLang(next);
+    localStorage.setItem(LANG_STORAGE_KEY, next);
   };
 
   const t = (key: TranslationKey): string => translations[lang][key];

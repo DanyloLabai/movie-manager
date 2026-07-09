@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
+import { useLang } from "../context/LanguageContext";
 
 interface KnownFor {
   id: number;
@@ -23,6 +24,7 @@ interface ActorDetailsData {
 }
 
 export default function ActorDetails() {
+  const { t } = useLang();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [actor, setActor] = useState<ActorDetailsData | null>(null);
@@ -81,12 +83,12 @@ export default function ActorDetails() {
   if (!actor) {
     return (
       <div className="min-h-screen bg-[#12100e] text-[#f0e6cc] flex flex-col items-center justify-center gap-4">
-        <p className="text-base">Actor not found.</p>
+        <p className="text-base">{t("actor_not_found")}</p>
         <button
           onClick={() => navigate(-1)}
           className="text-[#c8963c] font-bold hover:underline text-sm"
         >
-          ← Go Back
+          {t("common_go_back")}
         </button>
       </div>
     );
@@ -114,7 +116,7 @@ export default function ActorDetails() {
               LUMEN
             </h1>
             <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-              Movie Tracker
+              {t("app_tagline")}
             </span>
           </div>
         </Link>
@@ -135,7 +137,7 @@ export default function ActorDetails() {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back
+          {t("common_back")}
         </button>
       </header>
 
@@ -170,7 +172,7 @@ export default function ActorDetails() {
                 {actor.birthday && (
                   <div>
                     <p className="text-[8px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-0.5">
-                      Born
+                      {t("actor_born")}
                     </p>
                     <p className="text-[10px] font-medium text-[#f0e6cc]">
                       {actor.birthday}
@@ -180,7 +182,7 @@ export default function ActorDetails() {
                 {actor.placeOfBirth && (
                   <div>
                     <p className="text-[8px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mb-0.5">
-                      From
+                      {t("actor_from")}
                     </p>
                     <p className="text-[10px] font-medium text-[#f0e6cc]">
                       {actor.placeOfBirth}
@@ -206,13 +208,13 @@ export default function ActorDetails() {
                     onClick={() => setIsBioExpanded(!isBioExpanded)}
                     className="text-[#c8963c] text-[10px] sm:text-xs font-black uppercase tracking-widest hover:underline mt-2 block"
                   >
-                    {isBioExpanded ? "Read Less" : "Read More..."}
+                    {isBioExpanded ? t("actor_read_less") : t("actor_read_more")}
                   </button>
                 )}
               </div>
             ) : (
               <p className="text-[#f0e6cc]/40 italic text-xs sm:text-sm">
-                No biography available.
+                {t("actor_no_bio")}
               </p>
             )}
           </div>
@@ -223,7 +225,7 @@ export default function ActorDetails() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3 flex-grow">
                 <h3 className="text-sm sm:text-base font-black text-[#f0e6cc] uppercase tracking-widest italic">
-                  Known For
+                  {t("actor_known_for")}
                 </h3>
                 <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent" />
               </div>
@@ -300,7 +302,7 @@ export default function ActorDetails() {
                         className="text-[9px] sm:text-[10px] text-[#c8963c]/70 truncate max-w-[70%]"
                         title={m.character}
                       >
-                        {m.character || "N/A"}
+                        {m.character || t("common_na")}
                       </p>
                       <p className="text-[8px] text-[#f0e6cc]/40 font-black uppercase tracking-widest">
                         {m.releaseYear}

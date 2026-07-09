@@ -52,8 +52,9 @@ export async function toggleFavorite(id: number): Promise<void> {
 
 export async function getWatchlist(
   endpoint: "watchlist" | "watched",
+  params?: { limit?: number; offset?: number },
 ): Promise<WatchlistItem[]> {
-  const res = await api.get(`/movies/${endpoint}`);
+  const res = await api.get(`/movies/${endpoint}`, { params });
   return res.data as WatchlistItem[];
 }
 
@@ -119,8 +120,11 @@ export type AppNotification = {
   createdAt: string;
 };
 
-export async function getNotifications(): Promise<AppNotification[]> {
-  const res = await api.get(`/movies/notifications`);
+export async function getNotifications(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<AppNotification[]> {
+  const res = await api.get(`/movies/notifications`, { params });
   return res.data as AppNotification[];
 }
 
