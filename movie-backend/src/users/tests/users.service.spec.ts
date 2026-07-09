@@ -239,6 +239,11 @@ describe('UsersService', () => {
 
       mockUsersRepository.findOne
         .mockResolvedValueOnce(user1)
+        .mockResolvedValueOnce(user2)
+        // makeFriends re-fetches both users (with `friends` loaded) before
+        // mutating, so it doesn't wipe out existing friendships when the
+        // caller didn't load that relation itself.
+        .mockResolvedValueOnce(user1)
         .mockResolvedValueOnce(user2);
       const incomingRequest = { id: 5, fromUser: user2, toUser: user1 };
       mockFriendRequestRepository.findOne.mockResolvedValueOnce(
