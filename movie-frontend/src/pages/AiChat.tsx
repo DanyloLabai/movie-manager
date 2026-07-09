@@ -23,13 +23,40 @@ interface Message {
 }
 
 const MOBILE_BREAKPOINT_PX = 640;
-const BOTTOM_NAV_RESERVE_PX = 60;
+// Height of the nav bar's own content (icon + label + vertical padding),
+// not counting the safe-area inset it adds on top of that via
+// `pb-[env(safe-area-inset-bottom)]`.
+const BOTTOM_NAV_CONTENT_PX = 60;
+
+// In an installed PWA (standalone display mode) the app draws edge-to-edge,
+// so env(safe-area-inset-bottom) resolves to the real home-indicator/gesture
+// inset. In a regular mobile browser tab that space is already occupied by
+// the browser's own chrome, so the inset is 0 there — which is why this bug
+// only showed up in the installed app. Measure it instead of assuming 0, so
+// the reserved space always matches what the nav bar actually renders at.
+let cachedSafeAreaInsetBottomPx: number | null = null;
+const getSafeAreaInsetBottomPx = () => {
+  if (cachedSafeAreaInsetBottomPx !== null) return cachedSafeAreaInsetBottomPx;
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;left:0;bottom:0;width:0;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;";
+  document.body.appendChild(probe);
+  cachedSafeAreaInsetBottomPx = probe.getBoundingClientRect().height;
+  document.body.removeChild(probe);
+  return cachedSafeAreaInsetBottomPx;
+};
+if (typeof window !== "undefined") {
+  window.addEventListener("orientationchange", () => {
+    cachedSafeAreaInsetBottomPx = null;
+  });
+}
+
 // No reserve while the input is focused: the bottom nav hides itself so the
 // keyboard doesn't fight it for space, and the chat should sit as close to
 // the keyboard as the visual viewport already allows.
 const getBottomReserve = (isInputFocused: boolean) =>
   window.innerWidth < MOBILE_BREAKPOINT_PX && !isInputFocused
-    ? BOTTOM_NAV_RESERVE_PX
+    ? BOTTOM_NAV_CONTENT_PX + getSafeAreaInsetBottomPx()
     : 0;
 
 const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
