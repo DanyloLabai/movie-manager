@@ -489,7 +489,20 @@ export default function MovieDetails() {
               {movie.productionCountries &&
                 movie.productionCountries.length > 0 && (
                   <div className="flex items-center gap-2 text-xs font-bold text-[#f0e6cc]/70">
-                    <span title={t("movie_production_countries")}>🌎</span>
+                    <svg
+                      className="w-4 h-4 shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      title={t("movie_production_countries")}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
                     <span>{movie.productionCountries.join(", ")}</span>
                   </div>
                 )}
@@ -511,7 +524,20 @@ export default function MovieDetails() {
           {movie.productionCountries &&
             movie.productionCountries.length > 0 && (
               <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#f0e6cc]/70 bg-[#1a1714] border border-[#c8963c]/20 px-3 py-1.5 rounded-lg w-fit">
-                <span title={t("movie_production_countries")}>🌎</span>
+                <svg
+                      className="w-4 h-4 shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      title={t("movie_production_countries")}
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
                 <span>{movie.productionCountries.join(", ")}</span>
               </div>
             )}
@@ -574,7 +600,19 @@ export default function MovieDetails() {
                       className="p-2.5 rounded-xl bg-[#12100e] text-[#c8963c] border border-[#c8963c]/20"
                       title={t("common_unreleased")}
                     >
-                      ⏳
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
                     </div>
                   )}
                 </div>
@@ -901,7 +939,19 @@ function ActionPanel({
                 className="p-2.5 rounded-xl bg-[#12100e] text-[#c8963c] border border-[#c8963c]/20"
                 title={t("common_unreleased")}
               >
-                ⏳
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
               </div>
             )}
           </div>

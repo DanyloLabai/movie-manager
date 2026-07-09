@@ -23,8 +23,16 @@ export default function AchievementTooltip({
   const containerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Tooltip position state (fixed px values)
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+  // Tooltip position state (fixed px values). Starts pinned out of the
+  // normal document flow and hidden so it never briefly renders inline
+  // (which would push surrounding layout) before it's measured and
+  // positioned on the next frame.
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({
+    position: "fixed",
+    top: -9999,
+    left: -9999,
+    visibility: "hidden",
+  });
   const [arrowLeft, setArrowLeft] = useState<string>("50%");
   const [showAbove, setShowAbove] = useState(true);
 

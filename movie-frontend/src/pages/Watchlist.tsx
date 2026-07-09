@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import {
   PieChart,
@@ -17,25 +17,12 @@ import { useLang } from "../context/LanguageContext";
 import type { TranslationKey } from "../context/LanguageContext";
 import AchievementTooltip from "../components/AchievementTooltip";
 import NotificationBell from "../components/NotificationBell";
+import SettingsMenu from "../components/SettingsMenu";
+import BottomNav from "../components/BottomNav";
 import type {
   WatchlistItem as WatchlistItemType,
   ProfileData as ProfileDataType,
 } from "../types/movie.types";
-
-const getUserIdFromToken = (): string => {
-  const token = localStorage.getItem("token");
-  if (!token) return "guest";
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return String(payload.sub || payload.id || payload.userId || "guest");
-  } catch {
-    return "guest";
-  }
-};
-
-const getProfileCacheKey = () =>
-  `movie_tracker_profile_cache_${getUserIdFromToken()}`;
-const ENABLE_CACHE = import.meta.env.VITE_ENABLE_PROFILE_CACHE;
 
 const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
 
@@ -107,7 +94,6 @@ const getUserRank = (watchedCount: number) => {
 export default function Watchlist() {
   const { t, lang } = useLang();
   const dateLocale = lang === "uk" ? "uk-UA" : "en-US";
-  const getUsernameKey = () => `custom_username_${getUserIdFromToken()}`;
   const [movies, setMovies] = useState<WatchlistItemType[]>([]);
 
   const [profileData, setProfileData] = useState<ProfileDataType | null>(null);
@@ -131,7 +117,6 @@ export default function Watchlist() {
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
   const [hoveredMovieId, setHoveredMovieId] = useState<number | null>(null);
   const [hoveredStar, setHoveredStar] = useState(0);
@@ -343,13 +328,6 @@ export default function Watchlist() {
     closeRatingModal();
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem(getUsernameKey());
-    if (ENABLE_CACHE) localStorage.removeItem(getProfileCacheKey());
-    navigate("/login");
-  };
-
   const renderProfileTab = () => {
     const totalCount = profileData?.totalCount || 0;
     const favoritesCount = profileData?.favorites?.length || 0;
@@ -366,7 +344,7 @@ export default function Watchlist() {
       {
         id: "first_blood",
         isUnlocked: totalCount > 0,
-        text: "🏆 First Blood",
+        text: "First Blood",
         requirement: "Add 1 movie to watchlist or mark as watched",
         current: totalCount,
         needed: 1,
@@ -374,7 +352,7 @@ export default function Watchlist() {
       {
         id: "critic",
         isUnlocked: favoritesCount >= 5,
-        text: "⭐ Critic",
+        text: "Critic",
         requirement: "Add 5 movies to favorites",
         current: favoritesCount,
         needed: 5,
@@ -382,7 +360,7 @@ export default function Watchlist() {
       {
         id: "cinephile",
         isUnlocked: watchedCount >= 10,
-        text: "🍿 Cinephile",
+        text: "Cinephile",
         requirement: "Mark 10 movies as watched",
         current: watchedCount,
         needed: 10,
@@ -390,7 +368,7 @@ export default function Watchlist() {
       {
         id: "collector",
         isUnlocked: totalCount >= 20,
-        text: "📚 Collector",
+        text: "Collector",
         requirement: "Collect 20 movies total (watched + watchlist)",
         current: totalCount,
         needed: 20,
@@ -398,7 +376,7 @@ export default function Watchlist() {
       {
         id: "tastemaker",
         isUnlocked: favoritesCount >= 20,
-        text: "💖 Tastemaker",
+        text: "Tastemaker",
         requirement: "Add 20 movies to favorites",
         current: favoritesCount,
         needed: 20,
@@ -406,7 +384,7 @@ export default function Watchlist() {
       {
         id: "filmbuff",
         isUnlocked: watchedCount >= 50,
-        text: "🎬 Film Buff",
+        text: "Film Buff",
         requirement: "Mark 50 movies as watched",
         current: watchedCount,
         needed: 50,
@@ -414,7 +392,7 @@ export default function Watchlist() {
       {
         id: "librarian",
         isUnlocked: totalCount >= 100,
-        text: "🏛️ Librarian",
+        text: "Librarian",
         requirement: "Collect 100 movies total (watched + watchlist)",
         current: totalCount,
         needed: 100,
@@ -452,18 +430,18 @@ export default function Watchlist() {
             {/* Action buttons */}
             <div className="flex items-center gap-2 shrink-0">
               <button
-                onClick={() => setIsEditModalOpen(true)}
-                className="w-8 h-8 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full flex items-center justify-center border border-[#c8963c]/30 text-[#c8963c] transition"
-                title={t("edit_profile")}
-              >
-                <span className="text-xs">✏️</span>
-              </button>
-              <button
                 onClick={() => setIsFriendsModalOpen(true)}
                 className="w-8 h-8 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full flex items-center justify-center border border-[#c8963c]/30 text-[#c8963c] transition"
                 title={t("profile_friends")}
               >
-                <span className="text-xs">👥</span>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5.13a4 4 0 11-8 0 4 4 0 018 0zm6 3a4 4 0 10-4-4"
+                  />
+                </svg>
               </button>
             </div>
           </div>
@@ -585,7 +563,19 @@ export default function Watchlist() {
             {/* Longest Marathon */}
             {(profileData?.stats?.longestMovie?.runtime ?? 0) > 0 && (
               <div className="bg-[#12100e] border border-[#c8963c]/20 p-3 rounded-xl mb-2 flex items-center gap-3">
-                <span className="text-2xl">🏃‍♂️</span>
+                <svg
+                  className="w-6 h-6 text-[#c8963c] shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
                 <div className="min-w-0">
                   <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
                     {t("stats_marathon")}
@@ -611,8 +601,20 @@ export default function Watchlist() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-[#1a1714] flex items-center justify-center text-base">
-                      🌟
+                    <div className="w-full h-full bg-[#1a1714] flex items-center justify-center text-[#c8963c]/60">
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
                     </div>
                   )}
                 </div>
@@ -828,8 +830,20 @@ export default function Watchlist() {
                           </svg>
                         </button>
                       ) : (
-                        <div className="absolute top-1 right-1 w-6 h-6 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] text-[9px] z-10">
-                          ⏳
+                        <div className="absolute top-1 right-1 w-6 h-6 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] z-10">
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
                         </div>
                       )}
                     </div>
@@ -925,7 +939,7 @@ export default function Watchlist() {
               </span>
             </div>
           </Link>
-          <nav className="flex items-center gap-2 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
+          <nav className="hidden sm:flex items-center gap-2 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
             <Link
               to="/ai-chat"
               className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
@@ -946,18 +960,14 @@ export default function Watchlist() {
             </Link>
 
             <NotificationBell />
-
-            <button
-              onClick={handleLogout}
-              className="text-[9px] sm:text-xs px-2 py-1.5 sm:px-3 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
-            >
-              {t("nav_logout")}
-            </button>
+            <SettingsMenu />
           </nav>
         </header>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
+      <BottomNav />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12">
         <div className="flex gap-2 sm:gap-3 mb-8 overflow-x-auto scrollbar-hide">
           {(["profile", "watchlist", "watched"] as const).map((tab) => (
             <button
@@ -1059,8 +1069,20 @@ export default function Watchlist() {
                           </svg>
                         </button>
                       ) : (
-                        <div className="absolute top-1.5 right-1.5 w-7 h-7 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] text-[10px] z-10">
-                          ⏳
+                        <div className="absolute top-1.5 right-1.5 w-7 h-7 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] z-10">
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
                         </div>
                       )}
                     </div>
@@ -1214,24 +1236,6 @@ export default function Watchlist() {
             </div>
           </div>
         </div>
-      )}
-
-      {isEditModalOpen && (
-        <EditProfileModal
-          currentUsername={username}
-          currentAvatarUrl={avatarUrl}
-          onClose={() => setIsEditModalOpen(false)}
-          onUpdate={(newUsername, newAvatarUrl) => {
-            setUsername(newUsername);
-            if (newAvatarUrl) {
-              setAvatarUrl(newAvatarUrl);
-            }
-            localStorage.setItem(getUsernameKey(), newUsername);
-            localStorage.removeItem(getProfileCacheKey());
-            fetchProfile();
-            showToast("Profile updated successfully!");
-          }}
-        />
       )}
 
       {isFriendsModalOpen && (
@@ -1454,13 +1458,20 @@ function FriendsModal({ onClose }: FriendsModalProps) {
           </button>
           <button
             onClick={() => setMode("search")}
-            className={`flex-1 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition ${
+            className={`flex-1 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition flex items-center justify-center ${
               mode === "search"
                 ? "bg-[#c8963c] text-[#12100e] shadow"
                 : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
             }`}
           >
-            🔍
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-4.35-4.35M19 11a8 8 0 11-16 0 8 8 0 0116 0z"
+              />
+            </svg>
           </button>
         </div>
 
@@ -1642,182 +1653,6 @@ function FriendsModal({ onClose }: FriendsModalProps) {
             ))}
           </div>
         )}
-      </div>
-    </div>
-  );
-}
-
-interface EditProfileProps {
-  currentUsername: string;
-  currentAvatarUrl: string | null;
-  onClose: () => void;
-  onUpdate: (newUsername: string, newAvatarUrl: string) => void;
-}
-
-function EditProfileModal({
-  currentUsername,
-  currentAvatarUrl,
-  onClose,
-  onUpdate,
-}: EditProfileProps) {
-  const { t } = useLang();
-  const [username, setUsername] = useState(currentUsername);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(currentAvatarUrl);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(file));
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    const trimmedUsername = username.trim();
-    if (!/^[a-zA-Z0-9_]+$/.test(trimmedUsername)) {
-      setError("Username can only contain letters, numbers, and underscores.");
-      return;
-    }
-    setIsLoading(true);
-    const formData = new FormData();
-    if (trimmedUsername !== currentUsername)
-      formData.append("username", trimmedUsername);
-    if (selectedFile) formData.append("avatar", selectedFile);
-    if (!selectedFile && trimmedUsername === currentUsername) {
-      setIsLoading(false);
-      onClose();
-      return;
-    }
-    try {
-      const response = await usersApi.updateProfile(formData);
-      onUpdate(response.username, response.avatarUrl);
-      onClose();
-    } catch (err: unknown) {
-      const apiError = err as { response?: { status?: number } };
-      if (apiError.response?.status === 409) {
-        setError(t("edit_username_taken"));
-      } else {
-        setError(t("edit_error"));
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="w-full max-w-md p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative animate-modal-in">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
-        <h2 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest text-center mb-4">
-          {t("edit_profile")}
-        </h2>
-
-        {error && (
-          <div className="mb-4 p-2.5 text-xs text-red-500 bg-red-900/10 border border-red-500/30 rounded-xl text-center font-semibold">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col items-center">
-            <div
-              className="relative group cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {previewUrl ? (
-                <img
-                  src={
-                    previewUrl.startsWith("blob:")
-                      ? previewUrl
-                      : `${previewUrl}${previewUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`
-                  }
-                  alt="Preview"
-                  className="w-20 h-20 rounded-full object-cover border-4 border-[#12100e] group-hover:border-[#c8963c] transition shadow-lg"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-2xl font-black text-[#12100e] border-4 border-[#12100e] group-hover:border-[#c8963c] transition shadow-lg">
-                  {username.charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className="absolute inset-0 bg-[#12100e]/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                <svg
-                  className="w-6 h-6 text-[#c8963c]"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-            <input
-              type="file"
-              accept="image/png, image/jpeg, image/webp"
-              className="hidden"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-            />
-            <p className="text-[9px] text-[#f0e6cc]/50 mt-2 font-semibold uppercase tracking-wider">
-              {t("edit_image")}
-            </p>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-1.5">
-              {t("register_username")}
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] transition text-sm"
-              minLength={3}
-              maxLength={20}
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={isLoading || !username.trim()}
-            className="w-full py-3.5 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow text-sm"
-          >
-            {isLoading ? t("edit_saving") : t("edit_save")}
-          </button>
-        </form>
       </div>
     </div>
   );

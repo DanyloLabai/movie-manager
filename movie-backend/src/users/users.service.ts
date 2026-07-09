@@ -350,4 +350,23 @@ export class UsersService {
       commonWatched: commonWatched.slice(0, 10),
     };
   }
+
+  async deleteAccount(userId: number): Promise<{ message: string }> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // The self-referential `friends` many-to-many join table doesn't cascade
+    // on delete (TypeORM's @JoinTable FKs default to no action), so it has
+    // to be cleared explicitly before removing the user row.
+    await this.usersRepository.manager.query(
+      `DELETE FROM user_friends WHERE "userId" = $1 OR "friendId" = $1`,
+      [userId],
+    );
+
+    await this.usersRepository.remove(user);
+
+    return { message: 'Account deleted successfully' };
+  }
 }

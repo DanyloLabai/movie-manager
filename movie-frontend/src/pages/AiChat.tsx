@@ -6,6 +6,8 @@ import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import NotificationBell from "../components/NotificationBell";
+import SettingsMenu from "../components/SettingsMenu";
+import BottomNav from "../components/BottomNav";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
@@ -20,6 +22,11 @@ interface Message {
   text: string;
   movies?: MovieResult[];
 }
+
+const MOBILE_BREAKPOINT_PX = 640;
+const BOTTOM_NAV_RESERVE_PX = 60;
+const getBottomReserve = () =>
+  window.innerWidth < MOBILE_BREAKPOINT_PX ? BOTTOM_NAV_RESERVE_PX : 0;
 
 const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
 const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
@@ -39,7 +46,9 @@ export default function AiChat() {
   const [cooldownTime, setCooldownTime] = useState(0);
 
   const [viewportHeight, setViewportHeight] = useState(
-    () => window.visualViewport?.height ?? window.innerHeight,
+    () =>
+      (window.visualViewport?.height ?? window.innerHeight) -
+      getBottomReserve(),
   );
   const [viewportTop, setViewportTop] = useState(
     () => window.visualViewport?.offsetTop ?? 0,
@@ -74,15 +83,17 @@ export default function AiChat() {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-      setViewportHeight(vv.height);
+      setViewportHeight(vv.height - getBottomReserve());
       setViewportTop(vv.offsetTop);
     };
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
+    window.addEventListener("resize", update);
     update();
     return () => {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
     };
   }, []);
 
@@ -272,11 +283,6 @@ export default function AiChat() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
-
   return (
     <div
       className="fixed left-0 right-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden"
@@ -301,7 +307,7 @@ export default function AiChat() {
               LUMEN AI
             </h1>
           </Link>
-          <nav className="flex items-center gap-2 sm:gap-6 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
+          <nav className="hidden sm:flex items-center gap-2 sm:gap-6 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
             <Link
               to="/ai-chat"
               className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap"
@@ -321,12 +327,7 @@ export default function AiChat() {
               {t("nav_profile")}
             </Link>
             <NotificationBell />
-            <button
-              onClick={handleLogout}
-              className="text-[9px] sm:text-xs px-2 py-1.5 sm:px-3 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap"
-            >
-              {t("nav_logout")}
-            </button>
+            <SettingsMenu />
           </nav>
         </header>
       </div>
@@ -505,6 +506,8 @@ export default function AiChat() {
           {toastMessage}
         </div>
       )}
+
+      <BottomNav />
     </div>
   );
 }

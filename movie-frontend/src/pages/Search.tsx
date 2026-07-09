@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 
 import { useLang } from "../context/LanguageContext";
 import { MovieCard } from "../components/movie/MovieCard";
 import NotificationBell from "../components/NotificationBell";
+import SettingsMenu from "../components/SettingsMenu";
+import BottomNav from "../components/BottomNav";
 import type { MovieResult } from "../types/movie.types";
 
 type ProfileResponse = {
@@ -259,7 +261,6 @@ export default function Search() {
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const { t } = useLang();
-  const navigate = useNavigate();
 
   const [visibleCount, setVisibleCount] = useState(20);
 
@@ -477,20 +478,6 @@ export default function Search() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    [
-      TRENDING_CACHE_KEY,
-      UPCOMING_CACHE_KEY,
-      FAVORITES_CACHE_KEY,
-      SEARCH_QUERY_CACHE_KEY,
-      SEARCH_RESULTS_CACHE_KEY,
-      SEARCH_TIMESTAMP_KEY,
-      RECOMMENDATIONS_CACHE_KEY,
-      ADDED_CACHE_KEY,
-    ].forEach((k) => localStorage.removeItem(k));
-    navigate("/login");
-  };
 
   const renderMovieGrid = (movies: MovieResult[]) => (
     <>
@@ -543,7 +530,7 @@ export default function Search() {
             </div>
           </Link>
 
-          <nav className="flex items-center gap-2 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
+          <nav className="hidden sm:flex items-center gap-2 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
             <Link
               to="/ai-chat"
               className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
@@ -564,18 +551,14 @@ export default function Search() {
             </Link>
 
             <NotificationBell />
-
-            <button
-              onClick={handleLogout}
-              className="text-[9px] sm:text-xs px-2 py-1.5 sm:px-3 border border-red-900/50 bg-red-900/10 text-red-500 rounded-lg hover:bg-red-600 hover:text-white transition uppercase font-bold whitespace-nowrap flex-shrink-0"
-            >
-              {t("nav_logout")}
-            </button>
+            <SettingsMenu />
           </nav>
         </header>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-12">
+      <BottomNav />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12">
         <form
           onSubmit={handleSearch}
           className="relative max-w-2xl mx-auto mb-10"

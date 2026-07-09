@@ -63,6 +63,11 @@ export async function declineFriendRequest(requestId: number) {
   return res.data;
 }
 
+export async function deleteAccount() {
+  const res = await api.delete(`/users/me`);
+  return res.data;
+}
+
 export default {
   getPublicProfile,
   updateProfile,
@@ -75,4 +80,5 @@ export default {
   getFriendRequests,
   acceptFriendRequest,
   declineFriendRequest,
+  deleteAccount,
 };

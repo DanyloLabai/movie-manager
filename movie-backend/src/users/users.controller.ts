@@ -48,6 +48,20 @@ export class UsersController {
     return this.usersService.updateUserProfile(userId, newUsername, file);
   }
 
+  @Delete('me')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Delete account',
+    description:
+      'Permanently delete the current user account and all associated data (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'Account deleted successfully' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async deleteAccount(@Req() req) {
+    const userId = req.user.userId;
+    return this.usersService.deleteAccount(userId);
+  }
+
   @Get('public/:id')
   @ApiBearerAuth()
   @ApiOperation({
