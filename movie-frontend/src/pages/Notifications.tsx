@@ -6,6 +6,7 @@ import type { FriendRequest } from "../api/users.api";
 import type { AppNotification } from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
+import BottomNav from "../components/BottomNav";
 
 function formatTimeAgo(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -121,7 +122,7 @@ export default function Notifications() {
         </header>
       </div>
 
-      <main className="max-w-2xl mx-auto px-4 sm:px-8 pb-12">
+      <main className="max-w-2xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12">
         <div className="text-center mb-6 pb-4 border-b border-[#c8963c]/20">
           <h2 className="text-xl sm:text-2xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
             {t("notif_bell_title")}
@@ -237,6 +238,8 @@ export default function Notifications() {
           </div>
         )}
       </main>
+
+      <BottomNav />
     </div>
   );
 }

@@ -9,7 +9,22 @@ const translations = {
     nav_ai_chat: "AI Chat",
     nav_search: "Search",
     nav_profile: "Profile",
+    nav_notifications: "Alerts",
+    nav_settings: "Settings",
     nav_logout: "Logout",
+    settings_change_password: "Change password",
+    settings_danger_zone: "Danger zone",
+    settings_delete_hint:
+      "Permanently delete your account and all your data. This cannot be undone.",
+    settings_delete_account: "Delete account",
+    settings_delete_confirm_title: "Are you sure?",
+    settings_delete_confirm_text:
+      "This will permanently delete your account and everything in it — watchlist, friends, ratings, chat history. This action cannot be undone.",
+    settings_delete_cancel: "Cancel",
+    settings_delete_confirm_button: "Yes, delete my account",
+    settings_delete_deleting: "Deleting...",
+    settings_delete_error: "Failed to delete account. Please try again.",
+    edit_profile_updated: "Profile updated successfully!",
 
     // AI Chat page
     chat_welcome:
@@ -35,7 +50,7 @@ const translations = {
     chat_movie: "Movie",
 
     // Quick prompts
-    quick_watchlist: "From my watchlist 🎬",
+    quick_watchlist: "From my watchlist",
     quick_inception: "Similar to Inception",
     quick_anime: "Anime for beginners",
     quick_new: "New movies 2024",
@@ -210,15 +225,15 @@ const translations = {
 
     // Watchlist stats
     stats_wrapped: "[username]'s Wrapped",
-    stats_time_spent: "⏱ Time Spent",
-    stats_top_genre: "🏆 Top Genre",
-    stats_fav_decade: "📼 Fav Decade",
-    stats_format: "🎬 Format",
+    stats_time_spent: "Time Spent",
+    stats_top_genre: "Top Genre",
+    stats_fav_decade: "Fav Decade",
+    stats_format: "Format",
     stats_movies: "Movies",
     stats_tv: "TV",
-    stats_marathon: "🏃‍♂️ Longest Marathon",
+    stats_marathon: "Longest Marathon",
     stats_min: "min",
-    stats_actor: "🌟 Most Watched Actor",
+    stats_actor: "Most Watched Actor",
     stats_actor_count: "In [X] movies",
     stats_genres: "Genre Breakdown",
     stats_rating: "Rating Distribution",
@@ -299,7 +314,22 @@ const translations = {
     nav_ai_chat: "AI Чат",
     nav_search: "Пошук",
     nav_profile: "Профіль",
+    nav_notifications: "Сповіщення",
+    nav_settings: "Налаштування",
     nav_logout: "Вийти",
+    settings_change_password: "Змінити пароль",
+    settings_danger_zone: "Небезпечна зона",
+    settings_delete_hint:
+      "Назавжди видалити акаунт і всі твої дані. Це неможливо скасувати.",
+    settings_delete_account: "Видалити акаунт",
+    settings_delete_confirm_title: "Ти впевнений?",
+    settings_delete_confirm_text:
+      "Це назавжди видалить твій акаунт і все, що в ньому — список перегляду, друзів, оцінки, історію чату. Цю дію неможливо скасувати.",
+    settings_delete_cancel: "Скасувати",
+    settings_delete_confirm_button: "Так, видалити акаунт",
+    settings_delete_deleting: "Видаляємо...",
+    settings_delete_error: "Не вдалося видалити акаунт. Спробуй ще раз.",
+    edit_profile_updated: "Профіль успішно оновлено!",
 
     // AI Chat page
     chat_welcome:
@@ -325,7 +355,7 @@ const translations = {
     chat_movie: "Фільм",
 
     // Quick prompts
-    quick_watchlist: "З мого списку 🎬",
+    quick_watchlist: "З мого списку",
     quick_inception: "Схоже на Inception",
     quick_anime: "Аніме для початківців",
     quick_new: "Нові фільми 2024",
@@ -501,15 +531,15 @@ const translations = {
 
     // Watchlist stats
     stats_wrapped: "Кінотека [username]",
-    stats_time_spent: "⏱ Часу витрачено",
-    stats_top_genre: "🏆 Топ жанр",
-    stats_fav_decade: "📼 Улюблене десятиліття",
-    stats_format: "🎬 Формат",
+    stats_time_spent: "Часу витрачено",
+    stats_top_genre: "Топ жанр",
+    stats_fav_decade: "Улюблене десятиліття",
+    stats_format: "Формат",
     stats_movies: "Фільми",
     stats_tv: "Серіали",
-    stats_marathon: "🏃‍♂️ Найдовший марафон",
+    stats_marathon: "Найдовший марафон",
     stats_min: "хв",
-    stats_actor: "🌟 Найпопулярніший актор",
+    stats_actor: "Найпопулярніший актор",
     stats_actor_count: "У [X] фільмах",
     stats_genres: "Розподіл за жанрами",
     stats_rating: "Розподіл оцінок",
