@@ -7,7 +7,6 @@ import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import NotificationBell from "../components/NotificationBell";
 import SettingsMenu from "../components/SettingsMenu";
-import BottomNav from "../components/BottomNav";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
@@ -25,8 +24,13 @@ interface Message {
 
 const MOBILE_BREAKPOINT_PX = 640;
 const BOTTOM_NAV_RESERVE_PX = 60;
-const getBottomReserve = () =>
-  window.innerWidth < MOBILE_BREAKPOINT_PX ? BOTTOM_NAV_RESERVE_PX : 0;
+// No reserve while the input is focused: the bottom nav hides itself so the
+// keyboard doesn't fight it for space, and the chat should sit as close to
+// the keyboard as the visual viewport already allows.
+const getBottomReserve = (isInputFocused: boolean) =>
+  window.innerWidth < MOBILE_BREAKPOINT_PX && !isInputFocused
+    ? BOTTOM_NAV_RESERVE_PX
+    : 0;
 
 const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
 const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
@@ -44,11 +48,12 @@ export default function AiChat() {
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [cooldownTime, setCooldownTime] = useState(0);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
   const [viewportHeight, setViewportHeight] = useState(
     () =>
       (window.visualViewport?.height ?? window.innerHeight) -
-      getBottomReserve(),
+      getBottomReserve(false),
   );
   const [viewportTop, setViewportTop] = useState(
     () => window.visualViewport?.offsetTop ?? 0,
@@ -83,7 +88,7 @@ export default function AiChat() {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-      setViewportHeight(vv.height - getBottomReserve());
+      setViewportHeight(vv.height - getBottomReserve(isInputFocused));
       setViewportTop(vv.offsetTop);
     };
     vv.addEventListener("resize", update);
@@ -95,7 +100,7 @@ export default function AiChat() {
       vv.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
-  }, []);
+  }, [isInputFocused]);
 
   const scrollToBottom = (behavior: ScrollBehavior = "smooth") => {
     chatContainerRef.current?.scrollTo({
@@ -480,7 +485,11 @@ export default function AiChat() {
               value={input}
               disabled={isLoading || cooldownTime > 0}
               onChange={(e) => setInput(e.target.value)}
-              onFocus={() => setTimeout(() => scrollToBottom("smooth"), 300)}
+              onFocus={() => {
+                setIsInputFocused(true);
+                setTimeout(() => scrollToBottom("smooth"), 300);
+              }}
+              onBlur={() => setIsInputFocused(false)}
               placeholder={
                 isLoading
                   ? t("chat_thinking")
@@ -506,8 +515,6 @@ export default function AiChat() {
           {toastMessage}
         </div>
       )}
-
-      <BottomNav />
     </div>
   );
 }

@@ -8,7 +8,6 @@ import { useLang } from "../context/LanguageContext";
 import { MovieCard } from "../components/movie/MovieCard";
 import NotificationBell from "../components/NotificationBell";
 import SettingsMenu from "../components/SettingsMenu";
-import BottomNav from "../components/BottomNav";
 import type { MovieResult } from "../types/movie.types";
 
 type ProfileResponse = {
@@ -555,8 +554,6 @@ export default function Search() {
           </nav>
         </header>
       </div>
-
-      <BottomNav />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12">
         <form
