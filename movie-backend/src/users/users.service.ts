@@ -160,15 +160,25 @@ export class UsersService {
   }
 
   private async makeFriends(userA: User, userB: User): Promise<void> {
-    if (!userA.friends) userA.friends = [];
-    if (!userB.friends) userB.friends = [];
-    if (!userA.friends.some((f) => f.id === userB.id)) {
-      userA.friends.push(userB);
+    const [freshA, freshB] = await Promise.all([
+      this.usersRepository.findOne({
+        where: { id: userA.id },
+        relations: ['friends'],
+      }),
+      this.usersRepository.findOne({
+        where: { id: userB.id },
+        relations: ['friends'],
+      }),
+    ]);
+    if (!freshA || !freshB) return;
+
+    if (!freshA.friends.some((f) => f.id === freshB.id)) {
+      freshA.friends.push(freshB);
     }
-    if (!userB.friends.some((f) => f.id === userA.id)) {
-      userB.friends.push(userA);
+    if (!freshB.friends.some((f) => f.id === freshA.id)) {
+      freshB.friends.push(freshA);
     }
-    await this.usersRepository.save([userA, userB]);
+    await this.usersRepository.save([freshA, freshB]);
   }
 
   async addFriend(currentUserId: number, friendId: number) {

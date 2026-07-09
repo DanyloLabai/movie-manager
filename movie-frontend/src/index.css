@@ -33,6 +33,47 @@ textarea {
   user-select: text;
 }
 
+/* Themed scrollbar everywhere (Firefox) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c8963c #1a1714;
+}
+
+/* Themed scrollbar everywhere (Chrome/Safari/Edge) */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #1a1714;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: #c8963c;
+  border-radius: 8px;
+  border: 2px solid #1a1714;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #e8c070;
+}
+
+*::-webkit-scrollbar-corner {
+  background: #1a1714;
+}
+
+/* Used by horizontal carousels (genres, cast, etc.) that want no visible
+   scrollbar at all rather than the themed one above. */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
