@@ -88,18 +88,42 @@ export default function BottomNav() {
     return () => clearInterval(interval);
   }, []);
 
-  // Hide while the on-screen keyboard is open (visual viewport shrinks
-  // noticeably), so the bar doesn't float above the keyboard and fight a
-  // page's own input for space.
+  // Hide while the on-screen keyboard is open, so the bar never sits on top
+  // of (or rides up together with) a page's own input. We can't rely on
+  // visualViewport resize alone: that event lags behind focus by however
+  // long the keyboard takes to animate in, which is exactly the window
+  // where the bar would otherwise cover the focused input. Hiding on
+  // focus/focusin is immediate; the visualViewport check is what keeps the
+  // bar hidden until the keyboard has actually finished closing again.
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
+    const isTextInput = (el: Element | null) =>
+      !!el &&
+      (el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        (el as HTMLElement).isContentEditable);
+
     const update = () => {
-      setIsKeyboardOpen(vv.height < window.innerHeight * 0.75);
+      const keyboardShrunkViewport = vv
+        ? vv.height < window.innerHeight * 0.75
+        : false;
+      setIsKeyboardOpen(
+        keyboardShrunkViewport || isTextInput(document.activeElement),
+      );
     };
-    vv.addEventListener("resize", update);
+    const updateOnFocusOut = () => setTimeout(update, 0);
+
+    vv?.addEventListener("resize", update);
+    vv?.addEventListener("scroll", update);
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", updateOnFocusOut);
     update();
-    return () => vv.removeEventListener("resize", update);
+    return () => {
+      vv?.removeEventListener("resize", update);
+      vv?.removeEventListener("scroll", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", updateOnFocusOut);
+    };
   }, []);
 
   const tabs = [
