@@ -103,13 +103,25 @@ export default function BottomNav() {
         el.tagName === "TEXTAREA" ||
         (el as HTMLElement).isContentEditable);
 
+    // Tracks whether a text input was actually focused. The viewport-ratio
+    // check below is only trusted once that's happened — otherwise a
+    // shrunken visualViewport right after navigation (browser chrome/URL
+    // bar not yet settled, common in PWA/standalone mode) is mistaken for
+    // an open keyboard and hides the bar until something recalculates it.
+    let wasFocused = false;
+
     const update = () => {
+      const textInputFocused = isTextInput(document.activeElement);
+      if (textInputFocused) wasFocused = true;
+
       const keyboardShrunkViewport = vv
         ? vv.height < window.innerHeight * 0.75
         : false;
-      setIsKeyboardOpen(
-        keyboardShrunkViewport || isTextInput(document.activeElement),
-      );
+      const keyboardOpen =
+        textInputFocused || (wasFocused && keyboardShrunkViewport);
+
+      if (!keyboardOpen) wasFocused = false;
+      setIsKeyboardOpen(keyboardOpen);
     };
     const updateOnFocusOut = () => setTimeout(update, 0);
 

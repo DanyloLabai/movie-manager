@@ -532,8 +532,8 @@ export default function MovieDetails() {
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
-                      title={t("movie_production_countries")}
                     >
+                      <title>{t("movie_production_countries")}</title>
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -567,8 +567,8 @@ export default function MovieDetails() {
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
-                      title={t("movie_production_countries")}
                     >
+                      <title>{t("movie_production_countries")}</title>
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -696,7 +696,7 @@ export default function MovieDetails() {
                             setProgressSeason(Number(e.target.value));
                             setProgressEpisode(1);
                           }}
-                          className="flex-1 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
+                          className="flex-1 min-w-0 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
                         >
                           {movie.seasons.map((s) => (
                             <option key={s.seasonNumber} value={s.seasonNumber}>
@@ -709,7 +709,7 @@ export default function MovieDetails() {
                           onChange={(e) =>
                             setProgressEpisode(Number(e.target.value))
                           }
-                          className="flex-1 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
+                          className="flex-1 min-w-0 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
                         >
                           {Array.from(
                             {
@@ -731,7 +731,7 @@ export default function MovieDetails() {
                             progressSeason === status.currentSeason &&
                             progressEpisode === status.currentEpisode
                           }
-                          className="shrink-0 px-3 py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
+                          className="shrink-0 px-4 py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[10px] uppercase tracking-wide hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
                         >
                           {t("movie_save")}
                         </button>
@@ -1139,7 +1139,7 @@ function ActionPanel({
                     progressSeason === status.currentSeason &&
                     progressEpisode === status.currentEpisode
                   }
-                  className="shrink-0 px-3 py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
+                  className="shrink-0 px-4 py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[10px] uppercase tracking-wide hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
                 >
                   {t("movie_save")}
                 </button>
