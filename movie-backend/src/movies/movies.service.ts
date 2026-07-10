@@ -38,6 +38,7 @@ import {
 import { WatchProviderDto } from './dto/watch-provider.dto';
 import { VectorService } from 'src/vector/vector.service';
 import { ActivityService } from 'src/activity/activity.service';
+import { PushService } from 'src/push/push.service';
 
 @Injectable()
 export class MoviesService {
@@ -77,6 +78,7 @@ export class MoviesService {
     private notificationRepo: Repository<Notification>,
     private readonly vectorService: VectorService,
     private readonly activityService: ActivityService,
+    private readonly pushService: PushService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.tmdbToken = this.configService.get<string>('TMDB_API_TOKEN') as string;
@@ -420,6 +422,14 @@ export class MoviesService {
 
       if (endpoint === 'tv') {
         const tvData = data as TmdbTvDetailsResponse & TmdbAppendedFieldsDto;
+        const seasons = (tvData.seasons ?? [])
+          .filter((s) => s.season_number > 0)
+          .sort((a, b) => a.season_number - b.season_number)
+          .map((s) => ({
+            seasonNumber: s.season_number,
+            name: s.name,
+            episodeCount: s.episode_count,
+          }));
         result = {
           id: tvData.id,
           title: tvData.name,
@@ -435,6 +445,7 @@ export class MoviesService {
           watchProviders,
           productionCountries,
           cast,
+          seasons,
         };
       } else {
         const movieData = data as MovieDetailsResponse & TmdbAppendedFieldsDto;
@@ -874,6 +885,29 @@ export class MoviesService {
     return this.watchlistRepo.save(item);
   }
 
+  async updateEpisodeProgress(
+    userId: number,
+    tmdbId: number,
+    season: number,
+    episode: number,
+  ) {
+    if (season < 1 || episode < 1) {
+      throw new BadRequestException('Season and episode must be at least 1');
+    }
+
+    const item = await this.watchlistRepo.findOne({
+      where: { user: { id: userId }, tmdbId },
+    });
+
+    if (!item) throw new NotFoundException('Media not found in your list');
+
+    item.currentSeason = season;
+    item.currentEpisode = episode;
+    item.updatedAt = new Date();
+
+    return this.watchlistRepo.save(item);
+  }
+
   async toggleFavorite(userId: number, tmdbId: number) {
     const item = await this.watchlistRepo.findOne({
       where: { user: { id: userId }, tmdbId },
@@ -1125,6 +1159,22 @@ export class MoviesService {
           );
           item.notified = true;
           await this.watchlistRepo.save(item);
+
+          await this.pushService
+            .sendToUser(item.user.id, {
+              title: '🍿 It\'s out today!',
+              body: `"${item.title}" is officially released today.`,
+              url: `/movie/${item.tmdbId}?type=${item.mediaType}`,
+            })
+            .catch((pushError: unknown) =>
+              this.logger.warn(
+                `Failed to send push for "${item.title}": ${
+                  pushError instanceof Error
+                    ? pushError.message
+                    : String(pushError)
+                }`,
+              ),
+            );
         } catch (notifError: unknown) {
           this.logger.error(
             `Failed to create in-app notification for "${item.title}": ${

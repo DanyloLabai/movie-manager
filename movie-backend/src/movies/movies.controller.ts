@@ -263,6 +263,30 @@ export class MoviesController {
     return this.moviesService.rateMovie(userId, tmdbId, rating);
   }
 
+  @Patch('watchlist/:tmdbId/progress')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update episode progress',
+    description:
+      'Set the current season/episode for a TV show in the watchlist (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'Progress updated' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Media not found in watchlist' })
+  async updateEpisodeProgress(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+    @Body() body: { season: number; episode: number },
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.updateEpisodeProgress(
+      userId,
+      tmdbId,
+      Number(body.season),
+      Number(body.episode),
+    );
+  }
+
   @Patch('watchlist/:tmdbId/favorite')
   async toggleFavorite(
     @Req() req: RequestWithUser,

@@ -7,6 +7,7 @@ import { UsersController } from './users.controller';
 import { MoviesModule } from 'src/movies/movies.module';
 import { ActivityModule } from 'src/activity/activity.module';
 import { VectorModule } from 'src/vector/vector.module';
+import { PushModule } from 'src/push/push.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { VectorModule } from 'src/vector/vector.module';
     MoviesModule,
     ActivityModule,
     VectorModule,
+    PushModule,
   ],
   providers: [UsersService],
   exports: [UsersService, TypeOrmModule],

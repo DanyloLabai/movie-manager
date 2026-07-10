@@ -6,6 +6,12 @@ import { useAuth } from "../context/AuthContext";
 import LangToggle from "../components/LangToggle";
 import * as usersApi from "../api/users.api";
 import * as moviesApi from "../api/movies.api";
+import {
+  isPushSupported,
+  isPushSubscribed,
+  enablePushNotifications,
+  disablePushNotifications,
+} from "../utils/push";
 
 export default function Settings() {
   const { t } = useLang();
@@ -24,6 +30,16 @@ export default function Settings() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  useEffect(() => {
+    if (!isPushSupported()) return;
+    setPushSupported(true);
+    isPushSubscribed().then(setPushEnabled);
+  }, []);
 
   useEffect(() => {
     moviesApi
@@ -44,6 +60,24 @@ export default function Settings() {
   const handleLogout = () => {
     logout();
     navigate("/login");
+  };
+
+  const handleTogglePush = async () => {
+    setPushBusy(true);
+    try {
+      if (pushEnabled) {
+        await disablePushNotifications();
+        setPushEnabled(false);
+      } else {
+        const success = await enablePushNotifications();
+        setPushEnabled(success);
+        if (!success) showToast(t("settings_push_denied"));
+      }
+    } catch {
+      showToast(t("settings_push_error"));
+    } finally {
+      setPushBusy(false);
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -245,6 +279,32 @@ export default function Settings() {
           </span>
           <LangToggle />
         </div>
+
+        {pushSupported && (
+          <div className="flex items-center justify-between px-4 py-4 mb-4 bg-[#1a1714] border border-[#c8963c]/20 rounded-xl">
+            <div>
+              <span className="text-sm font-bold text-[#f0e6cc] block">
+                {t("settings_push")}
+              </span>
+              <span className="text-[10px] text-[#f0e6cc]/40">
+                {t("settings_push_hint")}
+              </span>
+            </div>
+            <button
+              onClick={handleTogglePush}
+              disabled={pushBusy}
+              className={`relative w-11 h-6 rounded-full transition disabled:opacity-50 shrink-0 ${
+                pushEnabled ? "bg-[#c8963c]" : "bg-[#12100e] border border-[#c8963c]/30"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 w-5 h-5 rounded-full bg-[#f0e6cc] transition-transform ${
+                  pushEnabled ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        )}
 
         <div className="space-y-2 mb-6">
           <Link

@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { GenreDto } from './genre.dto';
 import { CastMemberDto } from './cast-member.dto';
 import { WatchProviderDto } from './watch-provider.dto';
+import { SeasonInfoDto } from './season-info.dto';
 
 export class MovieDetailsExtendedDto {
   @ApiProperty()
@@ -32,4 +33,6 @@ export class MovieDetailsExtendedDto {
   productionCountries!: string[];
   @ApiProperty({ type: () => [CastMemberDto] })
   cast!: CastMemberDto[];
+  @ApiProperty({ type: () => [SeasonInfoDto], required: false })
+  seasons?: SeasonInfoDto[];
 }

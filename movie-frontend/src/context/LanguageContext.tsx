@@ -14,6 +14,11 @@ const translations = {
     nav_logout: "Logout",
     app_tagline: "Movie Tracker",
     settings_language: "Language",
+    settings_push: "Push Notifications",
+    settings_push_hint: "Get notified about releases and friend requests",
+    settings_push_denied:
+      "Notifications permission was denied. Enable it in your browser settings.",
+    settings_push_error: "Couldn't enable push notifications.",
     settings_change_password: "Change password",
     settings_danger_zone: "Danger zone",
     settings_delete_hint:
@@ -234,6 +239,12 @@ const translations = {
     movie_rating_cleared: "Rating cleared!",
     movie_rating_saved: "Rating saved!",
     movie_removed: "Removed.",
+    movie_episode_progress: "Episode Progress",
+    movie_season: "Season",
+    movie_episode: "Episode",
+    movie_save: "Save",
+    movie_progress_saved: "Progress saved!",
+    movie_currently_watching: "Currently watching",
 
     // Actor details
     actor_not_found: "Actor not found.",
@@ -351,6 +362,11 @@ const translations = {
     nav_logout: "Вийти",
     app_tagline: "Трекер фільмів",
     settings_language: "Мова",
+    settings_push: "Push-сповіщення",
+    settings_push_hint: "Отримуй сповіщення про релізи та заявки в друзі",
+    settings_push_denied:
+      "Дозвіл на сповіщення відхилено. Увімкни його в налаштуваннях браузера.",
+    settings_push_error: "Не вдалося увімкнути push-сповіщення.",
     settings_change_password: "Змінити пароль",
     settings_danger_zone: "Небезпечна зона",
     settings_delete_hint:
@@ -574,6 +590,12 @@ const translations = {
     movie_rating_cleared: "Оцінка видалена!",
     movie_rating_saved: "Оцінка збережена!",
     movie_removed: "Видалено.",
+    movie_episode_progress: "Прогрес перегляду",
+    movie_season: "Сезон",
+    movie_episode: "Серія",
+    movie_save: "Зберегти",
+    movie_progress_saved: "Прогрес збережено!",
+    movie_currently_watching: "Зараз дивишся",
 
     // Actor details
     actor_not_found: "Актор не знайдено.",

@@ -97,6 +97,18 @@ export async function markWatched(id: number): Promise<void> {
   await api.post(`/movies/watchlist/${id}/watched`);
 }
 
+export async function updateEpisodeProgress(
+  id: number,
+  season: number,
+  episode: number,
+): Promise<WatchlistItem> {
+  const res = await api.patch(`/movies/watchlist/${id}/progress`, {
+    season,
+    episode,
+  });
+  return res.data as WatchlistItem;
+}
+
 export async function getStatus(id: number): Promise<UserMovieStatus | null> {
   const res = await api.get(`/movies/${id}/status`);
   return res.data as UserMovieStatus | null;
@@ -152,6 +164,7 @@ export default {
   getActor,
   rateMovie,
   markWatched,
+  updateEpisodeProgress,
   getStatus,
   getFriendsWatched,
   getNotifications,
