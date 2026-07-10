@@ -373,7 +373,7 @@ export class MoviesService {
     tmdbId: number,
     type: string = 'movie',
   ): Promise<MovieDetailsExtendedDto> {
-    const cacheKey = `details_v2:${type}:${tmdbId}`;
+    const cacheKey = `details_v3:${type}:${tmdbId}`;
     const cached =
       await this.cacheManager.get<MovieDetailsExtendedDto>(cacheKey);
     if (cached) return cached;
