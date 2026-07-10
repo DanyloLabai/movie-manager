@@ -1107,7 +1107,7 @@ function ActionPanel({
                 <select
                   value={progressSeason}
                   onChange={(e) => onProgressSeasonChange(Number(e.target.value))}
-                  className="flex-1 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
+                  className="flex-1 min-w-0 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
                 >
                   {seasons.map((s) => (
                     <option key={s.seasonNumber} value={s.seasonNumber}>
@@ -1118,7 +1118,7 @@ function ActionPanel({
                 <select
                   value={progressEpisode}
                   onChange={(e) => onProgressEpisodeChange(Number(e.target.value))}
-                  className="flex-1 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
+                  className="flex-1 min-w-0 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
                 >
                   {Array.from(
                     {
