@@ -1003,19 +1003,19 @@ export default function Watchlist() {
                         </Link>
 
                         {activeTab === "watched" && (
-                          <div className="absolute top-1.5 left-1.5 bg-[#c8963c] text-[#12100e] text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                          <div className="absolute top-1.5 left-1.5 bg-[#c8963c] text-[#12100e] text-[7px] lg:text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
                             {t("watched")}
                           </div>
                         )}
                         {activeTab === "watchlist" && !released && (
-                          <div className="absolute top-1.5 left-1.5 bg-blue-500/90 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">
+                          <div className="absolute top-1.5 left-1.5 bg-blue-500/90 text-white text-[7px] lg:text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase">
                             {t("umcoming")}
                           </div>
                         )}
                         {item.mediaType === "tv" &&
                           item.currentSeason &&
                           item.currentEpisode && (
-                            <div className="absolute top-10 right-1.5 bg-[#12100e]/90 text-[#c8963c] border border-[#c8963c]/40 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                            <div className="absolute top-10 right-1.5 bg-[#12100e]/90 text-[#c8963c] border border-[#c8963c]/40 text-[7px] lg:text-[9px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
                               S{item.currentSeason}E{item.currentEpisode}
                             </div>
                           )}
@@ -1065,7 +1065,7 @@ export default function Watchlist() {
                       <div className="p-2.5 flex flex-col flex-grow bg-[#1a1714]">
                         <Link
                           to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                          className="text-[11px] font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition"
+                          className="text-[11px] lg:text-[13px] font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition"
                           title={item.title}
                         >
                           {item.title}
@@ -1107,7 +1107,7 @@ export default function Watchlist() {
                           </div>
                         ) : (
                           <div className="flex justify-center mb-1.5 mt-auto pt-2">
-                            <span className="text-[8px] font-black text-[#f0e6cc]/20 uppercase tracking-wider py-1.5">
+                            <span className="text-[8px] lg:text-[10px] font-black text-[#f0e6cc]/20 uppercase tracking-wider py-1.5">
                               {t("common_unreleased")}
                             </span>
                           </div>
@@ -1118,7 +1118,7 @@ export default function Watchlist() {
                             released ? (
                               <button
                                 onClick={() => handleMarkWatched(item.tmdbId)}
-                                className="text-[9px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-wide"
+                                className="text-[9px] lg:text-[11px] font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-wide"
                               >
                                 {t("watchlist_mark_watched").replace(
                                   "Mark as ",
@@ -1126,21 +1126,21 @@ export default function Watchlist() {
                                 )}
                               </button>
                             ) : (
-                              <span className="text-[9px] font-black text-[#c8963c]/40 uppercase tracking-wide">
+                              <span className="text-[9px] lg:text-[11px] font-black text-[#c8963c]/40 uppercase tracking-wide">
                                 {t("umcoming")}
                               </span>
                             )
                           ) : (
                             <Link
                               to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
-                              className="text-[9px] font-bold text-[#c8963c] uppercase tracking-wide hover:text-[#e8c070] transition"
+                              className="text-[9px] lg:text-[11px] font-bold text-[#c8963c] uppercase tracking-wide hover:text-[#e8c070] transition"
                             >
                               {t("details")}
                             </Link>
                           )}
                           <button
                             onClick={() => handleDelete(item.tmdbId)}
-                            className="text-[9px] font-bold text-red-500/60 hover:text-red-500 transition uppercase"
+                            className="text-[9px] lg:text-[11px] font-bold text-red-500/60 hover:text-red-500 transition uppercase"
                           >
                             {t("deleted")}
                           </button>

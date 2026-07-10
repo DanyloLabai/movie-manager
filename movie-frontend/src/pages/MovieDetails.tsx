@@ -689,49 +689,51 @@ export default function MovieDetails() {
                       <p className="text-[9px] font-black text-[#f0e6cc]/50 mb-2 uppercase tracking-widest">
                         {t("movie_episode_progress")}
                       </p>
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={progressSeason}
-                          onChange={(e) => {
-                            setProgressSeason(Number(e.target.value));
-                            setProgressEpisode(1);
-                          }}
-                          className="flex-1 min-w-0 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
-                        >
-                          {movie.seasons.map((s) => (
-                            <option key={s.seasonNumber} value={s.seasonNumber}>
-                              {s.name || `${t("movie_season")} ${s.seasonNumber}`}
-                            </option>
-                          ))}
-                        </select>
-                        <select
-                          value={progressEpisode}
-                          onChange={(e) =>
-                            setProgressEpisode(Number(e.target.value))
-                          }
-                          className="flex-1 min-w-0 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
-                        >
-                          {Array.from(
-                            {
-                              length:
-                                movie.seasons.find(
-                                  (s) => s.seasonNumber === progressSeason,
-                                )?.episodeCount || 1,
-                            },
-                            (_, i) => i + 1,
-                          ).map((ep) => (
-                            <option key={ep} value={ep}>
-                              {t("movie_episode")} {ep}
-                            </option>
-                          ))}
-                        </select>
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <select
+                            value={progressSeason}
+                            onChange={(e) => {
+                              setProgressSeason(Number(e.target.value));
+                              setProgressEpisode(1);
+                            }}
+                            className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c] truncate"
+                          >
+                            {movie.seasons.map((s) => (
+                              <option key={s.seasonNumber} value={s.seasonNumber}>
+                                {s.name || `${t("movie_season")} ${s.seasonNumber}`}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={progressEpisode}
+                            onChange={(e) =>
+                              setProgressEpisode(Number(e.target.value))
+                            }
+                            className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c] truncate"
+                          >
+                            {Array.from(
+                              {
+                                length:
+                                  movie.seasons.find(
+                                    (s) => s.seasonNumber === progressSeason,
+                                  )?.episodeCount || 1,
+                              },
+                              (_, i) => i + 1,
+                            ).map((ep) => (
+                              <option key={ep} value={ep}>
+                                {t("movie_episode")} {ep}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                         <button
                           onClick={handleSaveProgress}
                           disabled={
                             progressSeason === status.currentSeason &&
                             progressEpisode === status.currentEpisode
                           }
-                          className="shrink-0 px-4 py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[10px] uppercase tracking-wide hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
+                          className="w-full py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[10px] uppercase tracking-wide hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
                         >
                           {t("movie_save")}
                         </button>
@@ -1009,14 +1011,14 @@ function ActionPanel({
         <div className="flex flex-col gap-3">
           <button
             onClick={onAddWatchlist}
-            className="w-full py-3.5 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg"
+            className="w-full py-3.5 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg"
           >
             {t("search_add")}
           </button>
           {released && (
             <button
               onClick={onWatched}
-              className="w-full py-3.5 bg-[#c8963c] text-[#12100e] rounded-2xl font-black text-[10px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 shadow-lg"
+              className="w-full py-3.5 bg-[#c8963c] text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 shadow-lg"
             >
               {t("watchlist_watched")}
             </button>
@@ -1026,7 +1028,7 @@ function ActionPanel({
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <span
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
+              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border ${
                 status.isWatched
                   ? "text-[#c8963c] bg-[#c8963c]/10 border-[#c8963c]/30"
                   : "text-[#f0e6cc]/60 bg-[#12100e] border-[#c8963c]/20"
@@ -1073,7 +1075,7 @@ function ActionPanel({
 
           {released && (
             <div className="pt-4 border-t border-[#c8963c]/20">
-              <p className="text-[10px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
+              <p className="text-[11px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
                 {t("movie_rate_this")}
               </p>
               <div
@@ -1100,52 +1102,54 @@ function ActionPanel({
 
           {mediaType === "tv" && seasons && seasons.length > 0 && (
             <div className="pt-4 border-t border-[#c8963c]/20">
-              <p className="text-[10px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
+              <p className="text-[11px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
                 {t("movie_episode_progress")}
               </p>
-              <div className="flex items-center gap-2">
-                <select
-                  value={progressSeason}
-                  onChange={(e) => onProgressSeasonChange(Number(e.target.value))}
-                  className="flex-1 min-w-0 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
-                >
-                  {seasons.map((s) => (
-                    <option key={s.seasonNumber} value={s.seasonNumber}>
-                      {s.name || `${t("movie_season")} ${s.seasonNumber}`}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={progressEpisode}
-                  onChange={(e) => onProgressEpisodeChange(Number(e.target.value))}
-                  className="flex-1 min-w-0 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
-                >
-                  {Array.from(
-                    {
-                      length:
-                        seasons.find((s) => s.seasonNumber === progressSeason)
-                          ?.episodeCount || 1,
-                    },
-                    (_, i) => i + 1,
-                  ).map((ep) => (
-                    <option key={ep} value={ep}>
-                      {t("movie_episode")} {ep}
-                    </option>
-                  ))}
-                </select>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={progressSeason}
+                    onChange={(e) => onProgressSeasonChange(Number(e.target.value))}
+                    className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-[13px] focus:outline-none focus:border-[#c8963c] truncate"
+                  >
+                    {seasons.map((s) => (
+                      <option key={s.seasonNumber} value={s.seasonNumber}>
+                        {s.name || `${t("movie_season")} ${s.seasonNumber}`}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={progressEpisode}
+                    onChange={(e) => onProgressEpisodeChange(Number(e.target.value))}
+                    className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-[13px] focus:outline-none focus:border-[#c8963c] truncate"
+                  >
+                    {Array.from(
+                      {
+                        length:
+                          seasons.find((s) => s.seasonNumber === progressSeason)
+                            ?.episodeCount || 1,
+                      },
+                      (_, i) => i + 1,
+                    ).map((ep) => (
+                      <option key={ep} value={ep}>
+                        {t("movie_episode")} {ep}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <button
                   onClick={onSaveProgress}
                   disabled={
                     progressSeason === status.currentSeason &&
                     progressEpisode === status.currentEpisode
                   }
-                  className="shrink-0 px-4 py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[10px] uppercase tracking-wide hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
+                  className="w-full py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[11px] uppercase tracking-wide hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
                 >
                   {t("movie_save")}
                 </button>
               </div>
               {status.currentSeason && status.currentEpisode && (
-                <p className="text-[9px] text-[#c8963c]/70 mt-1.5">
+                <p className="text-[10px] text-[#c8963c]/70 mt-1.5">
                   {t("movie_currently_watching")} S{status.currentSeason}E
                   {status.currentEpisode}
                 </p>
@@ -1155,7 +1159,7 @@ function ActionPanel({
 
           <button
             onClick={onRemove}
-            className="w-full py-2.5 bg-red-900/20 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/30 hover:bg-red-600 hover:text-[#f0e6cc] transition active:scale-95"
+            className="w-full py-2.5 bg-red-900/20 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-500/30 hover:bg-red-600 hover:text-[#f0e6cc] transition active:scale-95"
           >
             {t("watchlist_remove")}
           </button>

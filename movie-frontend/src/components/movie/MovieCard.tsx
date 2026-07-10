@@ -87,13 +87,13 @@ export const MovieCard = ({
       <div className="p-2.5 flex flex-col flex-grow bg-[#1a1714]">
         <Link to={`/movie/${movie.id}?type=${movie.mediaType}`}>
           <h4
-            className="text-[11px] font-bold mb-1 truncate text-[#f0e6cc] hover:text-[#c8963c] transition-colors"
+            className="text-[11px] lg:text-[13px] font-bold mb-1 truncate text-[#f0e6cc] hover:text-[#c8963c] transition-colors"
             title={movie.title}
           >
             {movie.title}
           </h4>
         </Link>
-        <p className="text-[8px] text-[#f0e6cc]/50 mb-2 uppercase tracking-wider flex items-center gap-1 flex-wrap font-semibold">
+        <p className="text-[8px] lg:text-[10px] text-[#f0e6cc]/50 mb-2 uppercase tracking-wider flex items-center gap-1 flex-wrap font-semibold">
           <span>
             {movie.releaseDate
               ? new Date(movie.releaseDate).toLocaleDateString("en-US", {
@@ -110,7 +110,7 @@ export const MovieCard = ({
               </span>
             </>
           )}
-          <span className="ml-auto px-1 py-0.5 bg-[#2a241f] rounded text-[7px] text-[#f0e6cc]/70 border border-[#c8963c]/20">
+          <span className="ml-auto px-1 py-0.5 bg-[#2a241f] rounded text-[7px] lg:text-[9px] text-[#f0e6cc]/70 border border-[#c8963c]/20">
             {movie.mediaType === "tv" ? t("common_tv") : t("common_movie")}
           </span>
         </p>
@@ -119,7 +119,7 @@ export const MovieCard = ({
           {isInPlans ? (
             <button
               onClick={() => onRemove(movie)}
-              className={`w-full py-1.5 font-bold rounded-lg uppercase text-[9px] tracking-wider border flex items-center justify-center gap-1 active:scale-95 transition ${
+              className={`w-full py-1.5 font-bold rounded-lg uppercase text-[9px] lg:text-[11px] tracking-wider border flex items-center justify-center gap-1 active:scale-95 transition ${
                 isWatched
                   ? "bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20"
                   : "bg-[#c8963c]/10 text-[#c8963c] border-[#c8963c]/30 hover:bg-[#c8963c]/20"
@@ -130,7 +130,7 @@ export const MovieCard = ({
           ) : (
             <button
               onClick={() => onAdd(movie)}
-              className="w-full py-1.5 bg-[#2a241f] hover:bg-[#c8963c] hover:text-[#12100e] text-[#c8963c] border border-[#c8963c]/30 font-bold rounded-lg transition-all active:scale-95 uppercase text-[9px] tracking-wider shadow-sm"
+              className="w-full py-1.5 bg-[#2a241f] hover:bg-[#c8963c] hover:text-[#12100e] text-[#c8963c] border border-[#c8963c]/30 font-bold rounded-lg transition-all active:scale-95 uppercase text-[9px] lg:text-[11px] tracking-wider shadow-sm"
             >
               + {t("search_add")}
             </button>
