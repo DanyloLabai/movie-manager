@@ -293,13 +293,14 @@ export default function Settings() {
             <button
               onClick={handleTogglePush}
               disabled={pushBusy}
-              className={`relative w-11 h-6 rounded-full transition disabled:opacity-50 shrink-0 ${
-                pushEnabled ? "bg-[#c8963c]" : "bg-[#12100e] border border-[#c8963c]/30"
+              type="button"
+              className={`relative w-11 h-6 rounded-full transition disabled:opacity-50 shrink-0 appearance-none p-0 border-0 overflow-hidden outline-none ${
+                pushEnabled ? "bg-[#c8963c]" : "bg-[#12100e] ring-1 ring-inset ring-[#c8963c]/30"
               }`}
             >
               <span
-                className={`absolute top-0.5 w-5 h-5 rounded-full bg-[#f0e6cc] transition-transform ${
-                  pushEnabled ? "translate-x-5" : "translate-x-0.5"
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-[#f0e6cc] transition-transform ${
+                  pushEnabled ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>

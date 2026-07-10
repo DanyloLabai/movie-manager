@@ -16,6 +16,7 @@ import type {
   WatchProvidersData as WatchProvidersDataType,
   CastMember as CastMemberType,
   FriendWatched as FriendWatchedType,
+  SeasonInfo as SeasonInfoType,
 } from "../types/movie.types";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p";
@@ -466,6 +467,16 @@ export default function MovieDetails() {
               onToggleFavorite={handleToggleFavorite}
               onRate={handleRate}
               onRemove={handleRemove}
+              mediaType={mediaType}
+              seasons={movie.seasons}
+              progressSeason={progressSeason}
+              progressEpisode={progressEpisode}
+              onProgressSeasonChange={(season) => {
+                setProgressSeason(season);
+                setProgressEpisode(1);
+              }}
+              onProgressEpisodeChange={setProgressEpisode}
+              onSaveProgress={handleSaveProgress}
             />
 
             {hasProviders && (
@@ -966,6 +977,13 @@ function ActionPanel({
   onToggleFavorite,
   onRate,
   onRemove,
+  mediaType,
+  seasons,
+  progressSeason,
+  progressEpisode,
+  onProgressSeasonChange,
+  onProgressEpisodeChange,
+  onSaveProgress,
 }: {
   status: UserMovieStatusType | null;
   hoveredStar: number;
@@ -976,6 +994,13 @@ function ActionPanel({
   onToggleFavorite: () => void;
   onRate: (s: number) => void;
   onRemove: () => void;
+  mediaType: string;
+  seasons?: SeasonInfoType[];
+  progressSeason: number;
+  progressEpisode: number;
+  onProgressSeasonChange: (season: number) => void;
+  onProgressEpisodeChange: (episode: number) => void;
+  onSaveProgress: () => void;
 }) {
   const { t } = useLang();
   return (
@@ -1070,6 +1095,61 @@ function ActionPanel({
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {mediaType === "tv" && seasons && seasons.length > 0 && (
+            <div className="pt-4 border-t border-[#c8963c]/20">
+              <p className="text-[10px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
+                {t("movie_episode_progress")}
+              </p>
+              <div className="flex items-center gap-2">
+                <select
+                  value={progressSeason}
+                  onChange={(e) => onProgressSeasonChange(Number(e.target.value))}
+                  className="flex-1 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
+                >
+                  {seasons.map((s) => (
+                    <option key={s.seasonNumber} value={s.seasonNumber}>
+                      {s.name || `${t("movie_season")} ${s.seasonNumber}`}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={progressEpisode}
+                  onChange={(e) => onProgressEpisodeChange(Number(e.target.value))}
+                  className="flex-1 px-2 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c]"
+                >
+                  {Array.from(
+                    {
+                      length:
+                        seasons.find((s) => s.seasonNumber === progressSeason)
+                          ?.episodeCount || 1,
+                    },
+                    (_, i) => i + 1,
+                  ).map((ep) => (
+                    <option key={ep} value={ep}>
+                      {t("movie_episode")} {ep}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={onSaveProgress}
+                  disabled={
+                    progressSeason === status.currentSeason &&
+                    progressEpisode === status.currentEpisode
+                  }
+                  className="shrink-0 px-3 py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
+                >
+                  {t("movie_save")}
+                </button>
+              </div>
+              {status.currentSeason && status.currentEpisode && (
+                <p className="text-[9px] text-[#c8963c]/70 mt-1.5">
+                  {t("movie_currently_watching")} S{status.currentSeason}E
+                  {status.currentEpisode}
+                </p>
+              )}
             </div>
           )}
 

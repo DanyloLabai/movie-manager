@@ -1,5 +1,6 @@
 import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
@@ -7,10 +8,17 @@ import { Reflector } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   const port = process.env.PORT || 3000;
   const frontendUrl = process.env.FRONTEND_URL;
+
+  // Express auto-generates ETags for every JSON response, which makes
+  // browsers send conditional requests and can silently keep serving a
+  // stale cached body via 304s — confusing on top of our own explicit
+  // Redis caching (which already has real TTLs). Disable it so API
+  // responses are always fetched fresh; app-level caching stays in Redis.
+  app.set('etag', false);
 
   app.use(cookieParser());
 
