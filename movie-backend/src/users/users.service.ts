@@ -19,6 +19,7 @@ import { FriendDto } from './dto/friend.dto';
 import { DatabaseErrorDto } from './dto/database-error.dto';
 import { ActivityService } from 'src/activity/activity.service';
 import { VectorService } from 'src/vector/vector.service';
+import { PushService } from 'src/push/push.service';
 
 @Injectable()
 export class UsersService {
@@ -31,6 +32,7 @@ export class UsersService {
     private moviesService: MoviesService,
     private activityService: ActivityService,
     private vectorService: VectorService,
+    private pushService: PushService,
   ) {
     cloudinary.config({
       cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
@@ -215,6 +217,15 @@ export class UsersService {
     if (incoming) {
       await this.makeFriends(currentUser, friendToAdd);
       await this.friendRequestRepository.remove(incoming);
+
+      this.pushService
+        .sendToUser(friendId, {
+          title: 'Friend request accepted',
+          body: `${currentUser.username} accepted your friend request`,
+          url: '/watchlist',
+        })
+        .catch(() => {});
+
       return { message: 'Friend added successfully', status: 'accepted' };
     }
 
@@ -230,6 +241,14 @@ export class UsersService {
       toUser: friendToAdd,
     });
     await this.friendRequestRepository.save(request);
+
+    this.pushService
+      .sendToUser(friendId, {
+        title: 'New friend request',
+        body: `${currentUser.username} wants to be your friend`,
+        url: '/notifications',
+      })
+      .catch(() => {});
 
     return { message: 'Friend request sent', status: 'pending' };
   }
@@ -263,6 +282,14 @@ export class UsersService {
 
     await this.makeFriends(request.toUser, request.fromUser);
     await this.friendRequestRepository.remove(request);
+
+    this.pushService
+      .sendToUser(request.fromUser.id, {
+        title: 'Friend request accepted',
+        body: `${request.toUser.username} accepted your friend request`,
+        url: '/watchlist',
+      })
+      .catch(() => {});
 
     return { message: 'Friend request accepted' };
   }

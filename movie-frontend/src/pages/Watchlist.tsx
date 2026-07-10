@@ -1012,6 +1012,13 @@ export default function Watchlist() {
                             {t("umcoming")}
                           </div>
                         )}
+                        {item.mediaType === "tv" &&
+                          item.currentSeason &&
+                          item.currentEpisode && (
+                            <div className="absolute top-1.5 right-1.5 bg-[#12100e]/90 text-[#c8963c] border border-[#c8963c]/40 text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                              S{item.currentSeason}E{item.currentEpisode}
+                            </div>
+                          )}
 
                         {released ? (
                           <button

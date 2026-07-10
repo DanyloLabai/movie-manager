@@ -12,6 +12,7 @@ import { FriendRequest } from '../friend-request.entity';
 import { MoviesService } from '../../movies/movies.service';
 import { ActivityService } from '../../activity/activity.service';
 import { VectorService } from '../../vector/vector.service';
+import { PushService } from '../../push/push.service';
 
 // Mock cloudinary
 jest.mock('cloudinary', () => ({
@@ -64,6 +65,10 @@ const mockVectorService = {
   computeTasteCompatibility: jest.fn(),
 };
 
+const mockPushService = {
+  sendToUser: jest.fn().mockResolvedValue(undefined),
+};
+
 const mockFriendRequestRepository = {
   findOne: jest.fn(),
   find: jest.fn(),
@@ -98,6 +103,7 @@ describe('UsersService', () => {
         { provide: MoviesService, useValue: mockMoviesService },
         { provide: ActivityService, useValue: mockActivityService },
         { provide: VectorService, useValue: mockVectorService },
+        { provide: PushService, useValue: mockPushService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();

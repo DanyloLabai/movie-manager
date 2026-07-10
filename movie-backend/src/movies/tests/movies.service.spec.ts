@@ -11,6 +11,7 @@ import { Notification } from '../notification.entity';
 import { User } from '../../users/users.entity';
 import { VectorService } from '../../vector/vector.service';
 import { ActivityService } from '../../activity/activity.service';
+import { PushService } from '../../push/push.service';
 
 jest.mock('groq-sdk', () => {
   const Groq = jest.fn().mockImplementation(() => ({}));
@@ -117,6 +118,10 @@ const buildModule = async (): Promise<TestingModule> =>
       {
         provide: ActivityService,
         useValue: { logActivity: jest.fn().mockResolvedValue(undefined) },
+      },
+      {
+        provide: PushService,
+        useValue: { sendToUser: jest.fn().mockResolvedValue(undefined) },
       },
     ],
   }).compile();

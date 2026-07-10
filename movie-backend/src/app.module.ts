@@ -12,6 +12,7 @@ import { UsersModule } from './users/users.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { VectorModule } from './vector/vector.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { PushModule } from './push/push.module';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
     AuthModule,
     UsersModule,
     VectorModule,
+    PushModule,
   ],
   providers: [
     {

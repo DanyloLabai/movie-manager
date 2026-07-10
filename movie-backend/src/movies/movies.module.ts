@@ -9,6 +9,7 @@ import { AuthModule } from 'src/auth/auth.module';
 import { User } from 'src/users/users.entity';
 import { VectorModule } from 'src/vector/vector.module';
 import { ActivityModule } from 'src/activity/activity.module';
+import { PushModule } from 'src/push/push.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ActivityModule } from 'src/activity/activity.module';
     AuthModule,
     VectorModule,
     ActivityModule,
+    PushModule,
   ],
   providers: [MoviesService],
   controllers: [MoviesController],

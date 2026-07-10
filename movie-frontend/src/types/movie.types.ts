@@ -22,6 +22,14 @@ export interface WatchlistItem {
   mediaType: "movie" | "tv" | string;
   releaseDate?: string | null;
   releaseYear?: string | null;
+  currentSeason?: number | null;
+  currentEpisode?: number | null;
+}
+
+export interface SeasonInfo {
+  seasonNumber: number;
+  name: string;
+  episodeCount: number;
 }
 
 export interface ProfileData {
@@ -89,6 +97,7 @@ export interface MovieDetails {
   watchProviders?: WatchProvidersData | WatchProvider[] | null;
   productionCountries?: string[];
   cast?: CastMember[];
+  seasons?: SeasonInfo[];
 }
 
 export interface RecommendedMovie {
@@ -105,6 +114,8 @@ export interface UserMovieStatus {
   isWatched: boolean;
   isFavorite: boolean;
   rating?: number | null;
+  currentSeason?: number | null;
+  currentEpisode?: number | null;
 }
 
 export interface FriendWatched {

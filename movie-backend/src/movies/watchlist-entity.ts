@@ -31,6 +31,12 @@ export class WatchlistItem {
   @Column({ default: false })
   isFavorite: boolean;
 
+  @Column({ type: 'int', nullable: true })
+  currentSeason: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  currentEpisode: number | null;
+
   @Column({ nullable: true })
   posterUrl: string;
 
