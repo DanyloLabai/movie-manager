@@ -16,6 +16,25 @@ export async function searchMovies(
   return res.data as MovieResult[];
 }
 
+export interface SmartSearchFilters {
+  genreId?: number;
+  yearFrom?: number;
+  yearTo?: number;
+  minRating?: number;
+  runtimeFrom?: number;
+  runtimeTo?: number;
+}
+
+export async function smartSearchMovies(
+  query: string,
+  filters: SmartSearchFilters,
+): Promise<MovieResult[]> {
+  const res = await api.get("/movies/search/smart", {
+    params: { query, ...filters },
+  });
+  return res.data as MovieResult[];
+}
+
 export async function getTrending(): Promise<MovieResult[]> {
   const res = await api.get("/movies/trending");
   return res.data as MovieResult[];
@@ -150,6 +169,7 @@ export async function markAllNotificationsRead(): Promise<void> {
 
 export default {
   searchMovies,
+  smartSearchMovies,
   getTrending,
   getUpcoming,
   getRecommendations,
