@@ -143,8 +143,8 @@ export default function Search() {
   const [isLoadingHome, setIsLoadingHome] = useState(trending.length === 0);
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [mode, setMode] = useState<"search" | "smart">("search");
   const [filters, setFilters] = useState<SmartSearchFilters>({});
+  const [showFilters, setShowFilters] = useState(false);
   const [similarToTitle, setSimilarToTitle] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const { t } = useLang();
@@ -168,8 +168,8 @@ export default function Search() {
     if (!state?.similarTo) return;
 
     const { tmdbId, title } = state.similarTo;
-    setMode("smart");
     setFilters({});
+    setShowFilters(false);
     setSearchQuery("");
     setSimilarToTitle(title);
     setIsSearching(true);
@@ -320,6 +320,10 @@ export default function Search() {
     fetchSearchHistory();
   }, []);
 
+  const hasActiveFilters = Object.values(filters).some(
+    (v) => v !== undefined && v !== false,
+  );
+
   const handleSearch = async (eOrQuery?: React.FormEvent | string) => {
     const queryOverride = typeof eOrQuery === "string" ? eOrQuery : undefined;
     if (eOrQuery && typeof eOrQuery !== "string") eOrQuery.preventDefault();
@@ -331,12 +335,11 @@ export default function Search() {
     setIsSearching(true);
     try {
       setSimilarToTitle(null);
-      const response =
-        mode === "smart"
-          ? await moviesApi.smartSearchMovies(query, filters)
-          : await moviesApi.searchMovies({ title: query });
+      const response = hasActiveFilters
+        ? await moviesApi.smartSearchMovies(query, filters)
+        : await moviesApi.searchMovies({ title: query });
       setResults(response);
-      if (mode === "search") {
+      if (!hasActiveFilters) {
         localStorage.setItem(
           SEARCH_RESULTS_CACHE_KEY,
           JSON.stringify(response),
@@ -355,6 +358,8 @@ export default function Search() {
     setSearchQuery("");
     setResults([]);
     setSimilarToTitle(null);
+    setFilters({});
+    setShowFilters(false);
     localStorage.removeItem(SEARCH_QUERY_CACHE_KEY);
     localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
     localStorage.removeItem(SEARCH_TIMESTAMP_KEY);
@@ -519,31 +524,6 @@ export default function Search() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12">
-        <div className="flex justify-center gap-2 mb-4">
-          <button
-            type="button"
-            onClick={() => setMode("search")}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition border ${
-              mode === "search"
-                ? "bg-[#c8963c] text-[#12100e] border-[#c8963c]"
-                : "bg-transparent text-[#f0e6cc]/60 border-[#c8963c]/30 hover:border-[#c8963c]"
-            }`}
-          >
-            {t("search_mode_basic")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("smart")}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition border ${
-              mode === "smart"
-                ? "bg-[#c8963c] text-[#12100e] border-[#c8963c]"
-                : "bg-transparent text-[#f0e6cc]/60 border-[#c8963c]/30 hover:border-[#c8963c]"
-            }`}
-          >
-            {t("search_mode_smart")}
-          </button>
-        </div>
-
         <form
           onSubmit={handleSearch}
           className="relative max-w-2xl mx-auto mb-6"
@@ -552,14 +532,36 @@ export default function Search() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={
-              mode === "smart"
-                ? t("search_smart_placeholder")
-                : t("search_placeholder")
-            }
-            className="w-full pl-6 pr-24 py-3.5 sm:py-4 bg-[#1a1714] border border-[#c8963c]/30 rounded-full text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition text-sm sm:text-base font-medium tracking-wide"
+            placeholder={t("search_placeholder")}
+            className="w-full pl-6 pr-32 py-3.5 sm:py-4 bg-[#1a1714] border border-[#c8963c]/30 rounded-full text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition text-sm sm:text-base font-medium tracking-wide"
           />
           <div className="absolute right-2 top-0 bottom-0 flex items-center gap-1">
+            {searchQuery.trim() !== "" && (
+              <button
+                type="button"
+                onClick={() => setShowFilters((prev) => !prev)}
+                title={t("search_filters_toggle")}
+                className={`w-8 h-8 flex items-center justify-center rounded-full transition ${
+                  showFilters || hasActiveFilters
+                    ? "text-[#c8963c] bg-[#c8963c]/10"
+                    : "text-[#f0e6cc]/50 hover:text-[#c8963c]"
+                }`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3.792 4.5h16.416a1 1 0 01.809 1.588l-6.383 8.628a1.5 1.5 0 00-.29.89v4.394a.75.75 0 01-1.08.68l-3.048-1.39a1.5 1.5 0 01-.82-1.28v-2.404a1.5 1.5 0 00-.29-.89L2.983 6.088A1 1 0 013.792 4.5z"
+                  />
+                </svg>
+              </button>
+            )}
             {searchQuery && (
               <button
                 type="button"
@@ -600,7 +602,7 @@ export default function Search() {
             </div>
           )}
 
-        {mode === "smart" && (
+        {showFilters && searchQuery.trim() !== "" && (
           <div className="max-w-3xl mx-auto">
             <SearchFilterBar filters={filters} onChange={setFilters} />
           </div>
