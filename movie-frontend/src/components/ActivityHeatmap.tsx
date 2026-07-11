@@ -173,9 +173,15 @@ export default function ActivityHeatmap({
                       title={day.inYear ? `${day.date}: ${day.count}` : undefined}
                       onMouseEnter={(e) => handleMouseEnter(e, day)}
                       onMouseLeave={() => setHovered(null)}
-                      onClick={() =>
-                        day.inYear && day.count > 0 && setSelectedDay(day)
-                      }
+                      onClick={() => {
+                        if (!day.inYear || day.count === 0) return;
+                        // Touch devices fire a synthetic mouseenter right
+                        // before click, and never get a mouseleave to clear
+                        // it — without this the hover tooltip stays stuck
+                        // on top of the modal.
+                        setHovered(null);
+                        setSelectedDay(day);
+                      }}
                       className={`rounded-sm transition-colors ${SQUARE_CLASS} ${
                         day.inYear
                           ? `${ACTIVITY_LEVEL_CLASSES[getActivityLevel(day.count)]} ${
