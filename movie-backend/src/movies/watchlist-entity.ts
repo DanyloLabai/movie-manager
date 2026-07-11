@@ -16,7 +16,7 @@ export class WatchlistItem {
   @Column()
   tmdbId: number;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'float', nullable: true })
   rating: number;
 
   @Column({ default: 'movie' })

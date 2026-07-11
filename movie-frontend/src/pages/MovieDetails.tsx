@@ -8,6 +8,7 @@ import {
 import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
+import StarRating from "../components/StarRating";
 import type {
   MovieDetails as MovieDetailsType,
   RecommendedMovie as RecommendedMovieType,
@@ -56,8 +57,6 @@ export default function MovieDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [hoveredStar, setHoveredStar] = useState(0);
-  const [modalHoveredStar, setModalHoveredStar] = useState(0);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<
     "new_watched" | "update_watched" | null
@@ -103,8 +102,6 @@ export default function MovieDetails() {
     setFriendsWatched([]);
     setStatus(null);
     setIsLoading(true);
-    setHoveredStar(0);
-    setModalHoveredStar(0);
     setIsRatingModalOpen(false);
     setPendingAction(null);
 
@@ -226,15 +223,13 @@ export default function MovieDetails() {
     }
   };
 
-  const handleRate = async (star: number) => {
+  const handleRate = async (rating: number) => {
     if (!movie) return;
-    const newRating = status?.rating === star ? 0 : star;
     try {
-      await moviesApi.rateMovie(movie.id, newRating);
+      await moviesApi.rateMovie(movie.id, rating);
       showToast(
-        newRating === 0 ? t("movie_rating_cleared") : t("movie_rating_saved"),
+        rating === 0 ? t("movie_rating_cleared") : t("movie_rating_saved"),
       );
-      setHoveredStar(0);
       fetchData(movie.id);
     } catch {
       showToast(t("movie_error"));
@@ -279,17 +274,16 @@ export default function MovieDetails() {
     }
   };
 
-  const handleModalRate = async (star: number) => {
+  const handleModalRate = async (rating: number) => {
     setIsRatingModalOpen(false);
-    setModalHoveredStar(0);
-    if (pendingAction === "new_watched") await handleAddNewMovie(true, star);
-    else if (pendingAction === "update_watched") await handleRate(star);
+    if (pendingAction === "new_watched")
+      await handleAddNewMovie(true, rating);
+    else if (pendingAction === "update_watched") await handleRate(rating);
     setPendingAction(null);
   };
 
   const handleModalSkip = async () => {
     setIsRatingModalOpen(false);
-    setModalHoveredStar(0);
     if (pendingAction === "new_watched") await handleAddNewMovie(true, null);
     else if (pendingAction === "update_watched") await handleMarkWatched();
     setPendingAction(null);
@@ -456,8 +450,6 @@ export default function MovieDetails() {
 
             <ActionPanel
               status={status}
-              hoveredStar={hoveredStar}
-              setHoveredStar={setHoveredStar}
               released={released}
               onAddWatchlist={() => handleAddNewMovie(false)}
               onWatched={() => {
@@ -660,25 +652,11 @@ export default function MovieDetails() {
                     <p className="text-[9px] font-black text-[#f0e6cc]/50 mb-2 uppercase tracking-widest">
                       {t("movie_your_rating")}
                     </p>
-                    <div
-                      className="flex justify-between"
-                      onMouseLeave={() => setHoveredStar(0)}
-                    >
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <button
-                          key={s}
-                          onMouseEnter={() => setHoveredStar(s)}
-                          onClick={() => handleRate(s)}
-                          className={`text-3xl transition-all duration-150 active:scale-90 ${
-                            (hoveredStar || status.rating || 0) >= s
-                              ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
-                              : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
-                          }`}
-                        >
-                          ★
-                        </button>
-                      ))}
-                    </div>
+                    <StarRating
+                      size="lg"
+                      value={status.rating || 0}
+                      onRate={handleRate}
+                    />
                   </div>
                 )}
 
@@ -904,10 +882,7 @@ export default function MovieDetails() {
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
             <button
-              onClick={() => {
-                setIsRatingModalOpen(false);
-                setModalHoveredStar(0);
-              }}
+              onClick={() => setIsRatingModalOpen(false)}
               className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
             >
               <svg
@@ -931,20 +906,8 @@ export default function MovieDetails() {
               <p className="text-sm text-[#f0e6cc]/60 mb-6">
                 {t("movie_rate_desc")} "{movie?.title}" {t("movie_or_skip")}.
               </p>
-              <div
-                className="flex justify-center gap-1 mb-6"
-                onMouseLeave={() => setModalHoveredStar(0)}
-              >
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onMouseEnter={() => setModalHoveredStar(star)}
-                    onClick={() => handleModalRate(star)}
-                    className={`text-4xl transition-all duration-150 transform active:scale-125 p-1 ${modalHoveredStar >= star ? "text-[#c8963c]" : "text-[#f0e6cc]/20"}`}
-                  >
-                    ★
-                  </button>
-                ))}
+              <div className="mb-6">
+                <StarRating size="lg" value={0} onRate={handleModalRate} />
               </div>
               <button
                 onClick={handleModalSkip}
@@ -971,8 +934,6 @@ export default function MovieDetails() {
 
 function ActionPanel({
   status,
-  hoveredStar,
-  setHoveredStar,
   released,
   onAddWatchlist,
   onWatched,
@@ -988,8 +949,6 @@ function ActionPanel({
   onSaveProgress,
 }: {
   status: UserMovieStatusType | null;
-  hoveredStar: number;
-  setHoveredStar: (n: number) => void;
   released: boolean;
   onAddWatchlist: () => void;
   onWatched: () => void;
@@ -1078,25 +1037,7 @@ function ActionPanel({
               <p className="text-[11px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
                 {t("movie_rate_this")}
               </p>
-              <div
-                className="flex justify-between"
-                onMouseLeave={() => setHoveredStar(0)}
-              >
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <button
-                    key={s}
-                    onMouseEnter={() => setHoveredStar(s)}
-                    onClick={() => onRate(s)}
-                    className={`text-2xl transition-all duration-200 transform hover:scale-125 ${
-                      (hoveredStar || status.rating || 0) >= s
-                        ? "text-[#c8963c] drop-shadow-[0_0_8px_rgba(200,150,60,0.5)]"
-                        : "text-[#f0e6cc]/20 hover:text-[#c8963c]/50"
-                    }`}
-                  >
-                    ★
-                  </button>
-                ))}
-              </div>
+              <StarRating size="lg" value={status.rating || 0} onRate={onRate} />
             </div>
           )}
 

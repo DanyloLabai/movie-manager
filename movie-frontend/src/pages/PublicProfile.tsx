@@ -678,7 +678,7 @@ export default function PublicProfile() {
                           {item.title}
                         </h5>
                         <p className="text-[#c8963c] text-[10px] font-black mt-0.5">
-                          ★ {item.rating}.0
+                          ★ {item.rating}/10
                         </p>
                       </div>
                     </Link>

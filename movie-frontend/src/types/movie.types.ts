@@ -18,6 +18,7 @@ export interface WatchlistItem {
   posterUrl?: string | null;
   isWatched: boolean;
   isFavorite: boolean;
+  /** User's rating, 0-10 in 0.5 increments. */
   rating?: number | null;
   mediaType: "movie" | "tv" | string;
   releaseDate?: string | null;
@@ -113,6 +114,7 @@ export interface UserMovieStatus {
   id: number;
   isWatched: boolean;
   isFavorite: boolean;
+  /** User's rating, 0-10 in 0.5 increments. */
   rating?: number | null;
   currentSeason?: number | null;
   currentEpisode?: number | null;
@@ -122,6 +124,7 @@ export interface FriendWatched {
   id: number;
   username: string;
   avatarUrl: string | null;
+  /** Friend's rating, 0-10 in 0.5 increments. */
   rating: number | null;
 }
 

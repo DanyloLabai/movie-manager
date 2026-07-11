@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseFloatPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -257,7 +258,7 @@ export class MoviesController {
   async rateMovie(
     @Req() req: RequestWithUser,
     @Param('tmdbId', ParseIntPipe) tmdbId: number,
-    @Body('rating', ParseIntPipe) rating: number,
+    @Body('rating', ParseFloatPipe) rating: number,
   ) {
     const userId = req.user.userId;
     return this.moviesService.rateMovie(userId, tmdbId, rating);

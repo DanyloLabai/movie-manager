@@ -29,7 +29,7 @@ export class Activity {
   @Column()
   mediaType: string;
 
-  @Column({ type: 'int', nullable: true })
+  @Column({ type: 'float', nullable: true })
   rating: number | null;
 
   @CreateDateColumn()
