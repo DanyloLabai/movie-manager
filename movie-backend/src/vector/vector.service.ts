@@ -6,7 +6,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { embed } from 'ai';
 import { GenreDto } from '../movies/dto/genre.dto';
 
-interface MovieEmbeddingMetadata {
+export interface MovieEmbeddingMetadata {
   tmdbId: number;
   title: string;
   mediaType?: 'movie' | 'tv';
@@ -342,6 +342,41 @@ export class VectorService implements OnModuleInit {
     }));
   }
 
+  async searchSimilarToMovie(
+    tmdbId: number,
+    filters: MovieSearchFilters,
+    userId?: number,
+    k = 20,
+  ): Promise<Array<{ pageContent: string; metadata: MovieEmbeddingMetadata }>> {
+    const tmdbIdStr = String(tmdbId);
+    const { clause, params } = this.buildFilterClause(filters, userId, 3);
+    const filterClause = clause
+      ? `${clause} AND metadata->>'tmdbId' != $1`
+      : `WHERE metadata->>'tmdbId' != $1`;
+
+    const result = await this.pool.query(
+      `WITH target AS (
+         SELECT embedding FROM movie_embeddings
+         WHERE metadata->>'tmdbId' = $1
+         LIMIT 1
+       )
+       SELECT movie_embeddings.text, movie_embeddings.metadata
+       FROM movie_embeddings, target
+       ${filterClause}
+       ORDER BY movie_embeddings.embedding <=> target.embedding
+       LIMIT $2`,
+      [tmdbIdStr, k, ...params],
+    );
+
+    return result.rows.map((row) => ({
+      pageContent: row.text,
+      metadata:
+        typeof row.metadata === 'string'
+          ? (JSON.parse(row.metadata) as MovieEmbeddingMetadata)
+          : (row.metadata as MovieEmbeddingMetadata),
+    }));
+  }
+
   async computeTasteCompatibility(
     tmdbIdsA: number[],
     tmdbIdsB: number[],
@@ -372,7 +407,10 @@ export class VectorService implements OnModuleInit {
 
       const row = result.rows[0];
       if (!row) return null;
-      if (Number(row.countA) < MIN_SAMPLE_SIZE || Number(row.countB) < MIN_SAMPLE_SIZE) {
+      if (
+        Number(row.countA) < MIN_SAMPLE_SIZE ||
+        Number(row.countB) < MIN_SAMPLE_SIZE
+      ) {
         return null;
       }
       return row.similarity === null ? null : Number(row.similarity);
@@ -384,10 +422,6 @@ export class VectorService implements OnModuleInit {
     }
   }
 
-  // Returns each preference's own text alongside its cosine similarity
-  // (1 - distance) to the query, so callers can both feed the AI's system
-  // prompt (preferenceText) and surface an explainability "reasoning" trail
-  // to the user (similarityScore) from a single embed + query round trip.
   async getRelevantUserFactsWithScores(
     userId: number,
     query: string,
@@ -414,5 +448,4 @@ export class VectorService implements OnModuleInit {
       return [];
     }
   }
-
 }

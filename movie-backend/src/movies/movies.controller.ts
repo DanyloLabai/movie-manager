@@ -25,6 +25,7 @@ import { MovieResultDto } from './dto/movie-result.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
 import { SmartSearchQueryDto } from './dto/smart-search-query.dto';
+import { MovieFilterQueryDto } from './dto/movie-filter-query.dto';
 import { VectorService } from '../vector/vector.service';
 
 interface RequestWithUser extends Request {
@@ -369,6 +370,27 @@ export class MoviesController {
   @Get(':id/similar')
   async getSimilar(@Param('id') id: string, @Query('type') type: string) {
     return this.moviesService.getSimilarMovies(+id, type);
+  }
+
+  @Get(':id/similar/semantic')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Semantically similar movies',
+    description:
+      'Vector-search movies similar to the given movie, reusing its stored embedding (requires authentication)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of matching movies',
+    type: [MovieResultDto],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getSimilarSemantic(
+    @Req() req: RequestWithUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Query() dto: MovieFilterQueryDto,
+  ): Promise<MovieResultDto[]> {
+    return this.moviesService.findSimilarBySemantic(id, dto, req.user.userId);
   }
 
   @Get('actor/:id')

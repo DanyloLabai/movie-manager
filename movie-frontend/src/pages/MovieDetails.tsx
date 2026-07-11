@@ -735,6 +735,23 @@ export default function MovieDetails() {
             )}
           </div>
 
+          <button
+            onClick={() =>
+              navigate("/search", {
+                state: {
+                  similarTo: {
+                    tmdbId: movie.id,
+                    mediaType,
+                    title: movie.title,
+                  },
+                },
+              })
+            }
+            className="w-full py-3 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg"
+          >
+            {t("movie_find_similar")}
+          </button>
+
           {movie.cast && movie.cast.length > 0 && (
             <CastBlock cast={movie.cast} />
           )}
