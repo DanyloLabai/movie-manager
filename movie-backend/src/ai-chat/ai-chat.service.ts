@@ -68,6 +68,11 @@ export interface UserContextData {
   longTermMemory: string[];
 }
 
+export interface RecommendationReason {
+  preferenceText: string;
+  similarityScore: number;
+}
+
 @Injectable()
 export class AiChatService {
   private groqClient: ReturnType<typeof createGroq>;
@@ -91,20 +96,28 @@ export class AiChatService {
     messages: ChatMessage[],
     userId: number,
     shownMovieIds: number[] = [],
-  ): Promise<{ message: string; movies?: MovieResultDto[] }> {
+  ): Promise<{
+    message: string;
+    movies?: MovieResultDto[];
+    reasoning?: RecommendationReason[];
+  }> {
     const latestUserMessage =
       [...messages].reverse().find((m) => m.role === 'user')?.content || '';
 
-    const [baseContextData, relevantMemories] = await Promise.all([
+    const [baseContextData, relevantPreferences] = await Promise.all([
       this.getUserContextData(userId),
       latestUserMessage
-        ? this.vectorService.getRelevantUserFacts(userId, latestUserMessage, 3)
+        ? this.vectorService.getRelevantUserFactsWithScores(
+            userId,
+            latestUserMessage,
+            3,
+          )
         : Promise.resolve([]),
     ]);
 
     const userContextData: UserContextData = {
       ...baseContextData,
-      longTermMemory: relevantMemories,
+      longTermMemory: relevantPreferences.map((p) => p.preferenceText),
     };
 
     if (latestUserMessage) {
@@ -135,6 +148,7 @@ export class AiChatService {
         formattedMessages,
         userContextData,
         alreadyShownIds,
+        relevantPreferences,
       );
       this.aiUsageLogService
         .logUsage({
@@ -162,6 +176,7 @@ export class AiChatService {
           formattedMessages,
           userContextData,
           alreadyShownIds,
+          relevantPreferences,
         );
         this.aiUsageLogService
           .logUsage({
@@ -195,9 +210,11 @@ export class AiChatService {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
     userContextData: UserContextData,
     alreadyShownIds: Set<number>,
+    relevantPreferences: RecommendationReason[],
   ): Promise<{
     message: string;
     movies?: MovieResultDto[];
+    reasoning?: RecommendationReason[];
     tokenCount?: number;
   }> {
     const { object, usage } = await generateObject({
@@ -224,6 +241,10 @@ export class AiChatService {
     return {
       message: object.message,
       ...(foundMovies && foundMovies.length > 0 && { movies: foundMovies }),
+      ...(foundMovies.length > 0 &&
+        relevantPreferences.length > 0 && {
+          reasoning: relevantPreferences,
+        }),
       ...(usage?.totalTokens !== undefined && {
         tokenCount: usage.totalTokens,
       }),

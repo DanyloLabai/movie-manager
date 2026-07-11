@@ -274,27 +274,90 @@ export class VectorService implements OnModuleInit {
     }
   }
 
-  async getRelevantUserFacts(
+  // Returns each preference's own text alongside its cosine similarity
+  // (1 - distance) to the query, so callers can both feed the AI's system
+  // prompt (preferenceText) and surface an explainability "reasoning" trail
+  // to the user (similarityScore) from a single embed + query round trip.
+  async getRelevantUserFactsWithScores(
     userId: number,
     query: string,
     k = 3,
-  ): Promise<string[]> {
+  ): Promise<Array<{ preferenceText: string; similarityScore: number }>> {
     try {
       const embedding = await this.embed(query);
 
       const result = await this.pool.query(
-        `SELECT text
+        `SELECT text, 1 - (embedding <=> $2::vector) AS similarity
          FROM user_memory_embeddings
-         WHERE metadata->>'userId' = $1
+         WHERE metadata->>'userId' = $1 AND metadata->>'type' = 'preference'
          ORDER BY embedding <=> $2::vector
          LIMIT $3`,
         [String(userId), JSON.stringify(embedding), k],
       );
 
-      return result.rows.map((row) => row.text);
+      return result.rows.map((row) => ({
+        preferenceText: row.text as string,
+        similarityScore: Number(row.similarity),
+      }));
     } catch (error) {
       this.logger.error(`Memory retrieval failed: ${(error as Error).message}`);
       return [];
     }
+  }
+
+  // Shared entry point for "search by mood": embeds free-form mood text,
+  // finds nearest movies the same way searchSimilarMovies does, then folds
+  // in the user's existing preference vectors the same way chat already
+  // personalizes results — as textual context appended before embedding,
+  // not a separate vector-blending mechanism — so there's one
+  // personalization path, not two.
+  async searchMoviesByMood(
+    userId: number,
+    moodDescription: string,
+    k = 10,
+  ): Promise<{
+    movies: Array<{ pageContent: string; metadata: MovieEmbeddingMetadata }>;
+    reasoning: Array<{ preferenceText: string; similarityScore: number }>;
+  }> {
+    const reasoning = await this.getRelevantUserFactsWithScores(
+      userId,
+      moodDescription,
+      3,
+    );
+    const preferenceContext = reasoning
+      .map((r) => r.preferenceText)
+      .join('. ');
+
+    // Framing the embedded text as an emotional-state description (rather
+    // than embedding the raw mood text as if it were a plot summary) pulls
+    // it closer, in embedding space, to movie_embeddings rows whose text
+    // ("Title: ... Description: ... Genres: ...") reads as narrative
+    // description — improving match quality for vague inputs like
+    // "something cozy" that share little vocabulary with plot synopses.
+    const framedQuery =
+      `User is describing a mood or emotional state they want a movie for, not a specific plot: ${moodDescription}` +
+      (preferenceContext
+        ? `. Known user preferences: ${preferenceContext}`
+        : '');
+
+    const embedding = await this.embed(framedQuery);
+
+    const result = await this.pool.query(
+      `SELECT text, metadata
+       FROM movie_embeddings
+       ORDER BY embedding <=> $1::vector
+       LIMIT $2`,
+      [JSON.stringify(embedding), k],
+    );
+
+    const movies = result.rows.map((row) => ({
+      pageContent: row.text,
+      metadata:
+        typeof row.metadata === 'string'
+          ? (JSON.parse(row.metadata) as MovieEmbeddingMetadata)
+          : (row.metadata as MovieEmbeddingMetadata),
+    }));
+
+    return { movies, reasoning };
   }
 }
