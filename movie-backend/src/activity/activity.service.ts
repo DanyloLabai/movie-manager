@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { Activity, ActivityType } from './activity.entity';
 import { User } from '../users/users.entity';
 
@@ -18,6 +18,21 @@ export interface ActivityFeedItemDto {
     username: string;
     avatarUrl: string | null;
   };
+}
+
+export interface DayActivityActionDto {
+  tmdbId: number;
+  title: string;
+  posterUrl: string | null;
+  mediaType: string;
+  actionType: ActivityType;
+  rating: number | null;
+}
+
+export interface DayActivityDto {
+  date: string;
+  count: number;
+  actions: DayActivityActionDto[];
 }
 
 const FEED_PAGE_SIZE = 30;
@@ -94,5 +109,39 @@ export class ActivityService {
         avatarUrl: entry.user.avatarUrl || null,
       },
     }));
+  }
+
+  async getUserActivityByDay(
+    userId: number,
+    year: number,
+  ): Promise<DayActivityDto[]> {
+    const start = new Date(Date.UTC(year, 0, 1));
+    const end = new Date(Date.UTC(year + 1, 0, 1));
+
+    const entries = await this.activityRepo.find({
+      where: { user: { id: userId }, createdAt: Between(start, end) },
+      order: { createdAt: 'ASC' },
+    });
+
+    const byDay = new Map<string, DayActivityDto>();
+    for (const entry of entries) {
+      const date = entry.createdAt.toISOString().slice(0, 10);
+      let bucket = byDay.get(date);
+      if (!bucket) {
+        bucket = { date, count: 0, actions: [] };
+        byDay.set(date, bucket);
+      }
+      bucket.count += 1;
+      bucket.actions.push({
+        tmdbId: entry.tmdbId,
+        title: entry.title,
+        posterUrl: entry.posterUrl || null,
+        mediaType: entry.mediaType,
+        actionType: entry.type,
+        rating: entry.rating,
+      });
+    }
+
+    return Array.from(byDay.values());
   }
 }

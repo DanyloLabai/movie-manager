@@ -68,6 +68,32 @@ export async function deleteAccount() {
   return res.data;
 }
 
+export type ActivityActionType =
+  | "watched"
+  | "rated"
+  | "added_watchlist"
+  | "favorited";
+
+export type ActivityDayAction = {
+  tmdbId: number;
+  title: string;
+  posterUrl: string | null;
+  mediaType: string;
+  actionType: ActivityActionType;
+  rating: number | null;
+};
+
+export type ActivityDay = {
+  date: string;
+  count: number;
+  actions: ActivityDayAction[];
+};
+
+export async function getActivityHeatmap(year: number): Promise<ActivityDay[]> {
+  const res = await api.get(`/users/me/activity`, { params: { year } });
+  return res.data;
+}
+
 export default {
   getPublicProfile,
   updateProfile,
@@ -81,4 +107,5 @@ export default {
   acceptFriendRequest,
   declineFriendRequest,
   deleteAccount,
+  getActivityHeatmap,
 };

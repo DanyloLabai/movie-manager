@@ -12,6 +12,8 @@ import NotificationBell from "../components/NotificationBell";
 import SettingsMenu from "../components/SettingsMenu";
 import StarRating from "../components/StarRating";
 import RatingDistributionChart from "../components/RatingDistributionChart";
+import ActivityHeatmap from "../components/ActivityHeatmap";
+import { useActivityHeatmap } from "../hooks/useActivityHeatmap";
 import type {
   WatchlistItem as WatchlistItemType,
   ProfileData as ProfileDataType,
@@ -56,8 +58,7 @@ const CustomTooltip = ({ active, payload }: ChartTooltipProps) => {
 };
 
 export default function Watchlist() {
-  const { t, lang } = useLang();
-  const dateLocale = lang === "uk" ? "uk-UA" : "en-US";
+  const { t } = useLang();
   const [movies, setMovies] = useState<WatchlistItemType[]>([]);
 
   const [profileData, setProfileData] = useState<ProfileDataType | null>(null);
@@ -164,6 +165,8 @@ export default function Watchlist() {
       fetchProfile();
     }
   }, [activeTab, fetchMovies, fetchProfile]);
+
+  const activityHeatmap = useActivityHeatmap(activeTab === "profile");
 
   const handleToggleFavorite = async (tmdbId: number) => {
     const itemToCheck =
@@ -756,57 +759,12 @@ export default function Watchlist() {
           )}
         </div>
 
-        {/* Recent Activity */}
-        <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl mt-4">
-          <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-3">
-            {t("recent_actions")}
-          </h3>
-          {!profileData?.recent || profileData.recent.length === 0 ? (
-            <div className="text-center py-6 bg-[#12100e] rounded-xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
-              {t("no_recent_actions")}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              {profileData.recent.map((act) => {
-                const addedStr = act.addedAt
-                  ? new Date(act.addedAt).toLocaleDateString(dateLocale, {
-                      month: "short",
-                      day: "numeric",
-                    })
-                  : "";
-                return (
-                  <Link
-                    to={`/movie/${act.tmdbId}?type=${act.mediaType || "movie"}&fromTab=profile`}
-                    key={act.id}
-                    className="flex items-center gap-2.5 bg-[#12100e] p-2 rounded-xl border border-[#c8963c]/10 hover:border-[#c8963c]/40 hover:bg-[#1a1714] transition group"
-                  >
-                    <div className="w-8 h-11 rounded-md bg-[#1a1714] overflow-hidden shrink-0 border border-[#c8963c]/20">
-                      {act.posterUrl ? (
-                        <img
-                          src={act.posterUrl}
-                          alt={act.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[6px] text-[#f0e6cc]/30">
-                          {t("common_na")}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-col overflow-hidden">
-                      <h4 className="font-bold text-[#f0e6cc] group-hover:text-[#c8963c] transition truncate text-xs">
-                        {act.title}
-                      </h4>
-                      <span className="text-[8px] text-[#f0e6cc]/50 uppercase font-semibold mt-0.5">
-                        {t("added")} {addedStr}
-                      </span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {/* Activity Heatmap */}
+        <ActivityHeatmap
+          days={activityHeatmap.days}
+          year={activityHeatmap.year}
+          isLoading={activityHeatmap.isLoading}
+        />
       </div>
     );
   };

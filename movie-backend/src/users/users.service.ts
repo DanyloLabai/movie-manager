@@ -358,6 +358,10 @@ export class UsersService {
     return this.activityService.getFriendsFeed(userId, before);
   }
 
+  async getActivityHeatmap(userId: number, year: number) {
+    return this.activityService.getUserActivityByDay(userId, year);
+  }
+
   async getTasteCompatibility(currentUserId: number, targetUserId: number) {
     const [tasteIdsA, tasteIdsB, watchedA, watchedB] = await Promise.all([
       this.moviesService.getTasteSourceTmdbIds(currentUserId),
