@@ -24,7 +24,6 @@ import { MoviesService } from './movies.service';
 import { MovieResultDto } from './dto/movie-result.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
-import { SearchByMoodDto } from './dto/search-by-mood.dto';
 import { VectorService } from '../vector/vector.service';
 
 interface RequestWithUser extends Request {
@@ -146,29 +145,6 @@ export class MoviesController {
     @Query('title') title: string,
   ): Promise<MovieResultDto[] | null> {
     return this.moviesService.searchMovies(title);
-  }
-
-  @Post('search/mood')
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Search movies by mood',
-    description:
-      'Search for movies matching a free-form mood/emotional description, personalized with stored user preferences (requires authentication)',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'List of matching movies',
-    type: [MovieResultDto],
-  })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async searchByMood(
-    @Req() req: RequestWithUser,
-    @Body() body: SearchByMoodDto,
-  ): Promise<MovieResultDto[]> {
-    return this.moviesService.searchMoviesByMood(
-      req.user.userId,
-      body.moodDescription,
-    );
   }
 
   @Post('watchlist')
