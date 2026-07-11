@@ -1,37 +1,22 @@
 import { useState, useEffect, useRef } from "react";
-import type { ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 
 import { useLang } from "../context/LanguageContext";
+import { MovieCarousel } from "../components/movie/MovieCarousel";
+import { BecauseYouWatchedCarousel } from "../components/movie/BecauseYouWatchedCarousel";
 import { MovieCard } from "../components/movie/MovieCard";
 import NotificationBell from "../components/NotificationBell";
 import SettingsMenu from "../components/SettingsMenu";
 import { SearchFilterBar } from "../components/search/SearchFilterBar";
 import type { MovieResult } from "../types/movie.types";
-import type { SmartSearchFilters } from "../api/movies.api";
+import type { SmartSearchFilters, BecauseYouWatchedResponse } from "../api/movies.api";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
   watchedIds?: number[];
   inPlansIds?: number[];
-};
-
-type MovieCarouselProps = {
-  title: string;
-  badge?: string;
-  badgeClass?: string;
-  movies: MovieResult[];
-  isLoading: boolean;
-  fallback: ReactNode;
-  emptyElement?: ReactNode;
-  favoriteIds: number[];
-  addedIds: number[];
-  watchedIds: number[];
-  onToggleFavorite: (item: MovieResult) => void;
-  onAdd: (item: MovieResult) => void;
-  onRemove: (item: MovieResult) => void;
 };
 
 const getUserId = (): string => {
@@ -52,126 +37,12 @@ const FAVORITES_CACHE_KEY = `favorites_cache_${uid}`;
 const SEARCH_QUERY_CACHE_KEY = `search_query_cache_${uid}`;
 const SEARCH_RESULTS_CACHE_KEY = `search_results_cache_${uid}`;
 const RECOMMENDATIONS_CACHE_KEY = `recommendations_cache_${uid}`;
+const BECAUSE_YOU_WATCHED_CACHE_KEY = `because_you_watched_cache_${uid}`;
 const SEARCH_TIMESTAMP_KEY = `search_timestamp_${uid}`;
 const ADDED_CACHE_KEY = `added_cache_${uid}`;
 
 const CACHE_EXPIRATION_MS =
   Number(import.meta.env.VITE_CACHE_EXPIRATION_MS) || 24 * 60 * 60 * 1000;
-
-const MovieCarousel = ({
-  title,
-  badge,
-  badgeClass,
-  movies,
-  isLoading,
-  fallback,
-  emptyElement,
-  favoriteIds,
-  addedIds,
-  watchedIds,
-  onToggleFavorite,
-  onAdd,
-  onRemove,
-}: MovieCarouselProps) => {
-  const { t } = useLang();
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (direction: "left" | "right") => {
-    if (scrollRef.current) {
-      const scrollAmount = scrollRef.current.clientWidth * 0.75;
-      scrollRef.current.scrollBy({
-        left: direction === "left" ? -scrollAmount : scrollAmount,
-        behavior: "smooth",
-      });
-    }
-  };
-
-  return (
-    <section>
-      <div className="flex justify-between items-center mb-4 border-b border-[#c8963c]/20 pb-3">
-        <div className="flex items-center gap-2">
-          <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
-            {title}
-          </h2>
-          {badge && <span className={badgeClass}>{badge}</span>}
-        </div>
-
-        {!isLoading && movies?.length > 0 && (
-          <div className="flex gap-1 sm:gap-2">
-            <button
-              onClick={() => scroll("left")}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-[#c8963c]/30 text-[#f0e6cc]/50 hover:text-[#c8963c] hover:border-[#c8963c] hover:bg-[#c8963c]/10 transition active:scale-95"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={() => scroll("right")}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-[#c8963c]/30 text-[#f0e6cc]/50 hover:text-[#c8963c] hover:border-[#c8963c] hover:bg-[#c8963c]/10 transition active:scale-95"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </button>
-          </div>
-        )}
-      </div>
-
-      {isLoading ? (
-        fallback
-      ) : movies && movies.length > 0 ? (
-        <div
-          ref={scrollRef}
-          className="flex overflow-x-auto gap-3 pb-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden -mx-4 px-4 sm:mx-0 sm:px-0"
-        >
-          {movies.map((movie: MovieResult) => (
-            <div
-              key={movie.id}
-              className="flex-none w-[140px] sm:w-[160px] lg:w-[180px] snap-start h-auto"
-            >
-              <MovieCard
-                movie={movie}
-                favoriteIds={favoriteIds}
-                addedIds={addedIds}
-                watchedIds={watchedIds}
-                onToggleFavorite={onToggleFavorite}
-                onAdd={onAdd}
-                onRemove={onRemove}
-              />
-            </div>
-          ))}
-        </div>
-      ) : (
-        emptyElement || (
-          <p className="text-[#f0e6cc]/50 text-center text-sm">
-            {t("search_empty")}
-          </p>
-        )
-      )}
-    </section>
-  );
-};
 
 const isReleased = (movie: MovieResult) => {
   if (movie.releaseDate) {
@@ -238,6 +109,16 @@ export default function Search() {
       return [];
     }
   });
+
+  const [becauseYouWatched, setBecauseYouWatched] =
+    useState<BecauseYouWatchedResponse | null>(() => {
+      try {
+        const c = localStorage.getItem(BECAUSE_YOU_WATCHED_CACHE_KEY);
+        return c ? JSON.parse(c) : null;
+      } catch {
+        return null;
+      }
+    });
 
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     try {
@@ -352,13 +233,19 @@ export default function Search() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [trendingData, profileData, recsData, upcomingData] =
-          await Promise.all([
-            moviesApi.getTrending().catch(() => []),
-            moviesApi.getProfile().catch(() => null),
-            moviesApi.getRecommendations().catch(() => []),
-            moviesApi.getUpcoming().catch(() => []),
-          ]);
+        const [
+          trendingData,
+          profileData,
+          recsData,
+          upcomingData,
+          becauseYouWatchedData,
+        ] = await Promise.all([
+          moviesApi.getTrending().catch(() => []),
+          moviesApi.getProfile().catch(() => null),
+          moviesApi.getRecommendations().catch(() => []),
+          moviesApi.getUpcoming().catch(() => []),
+          moviesApi.getBecauseYouWatched().catch(() => null),
+        ]);
 
         if (trendingData?.length > 0) {
           setTrending(trendingData);
@@ -380,6 +267,15 @@ export default function Search() {
             RECOMMENDATIONS_CACHE_KEY,
             JSON.stringify(recsData),
           );
+        }
+        setBecauseYouWatched(becauseYouWatchedData);
+        if (becauseYouWatchedData) {
+          localStorage.setItem(
+            BECAUSE_YOU_WATCHED_CACHE_KEY,
+            JSON.stringify(becauseYouWatchedData),
+          );
+        } else {
+          localStorage.removeItem(BECAUSE_YOU_WATCHED_CACHE_KEY);
         }
         if (profileData) {
           const profile = profileData as ProfileResponse;
@@ -819,6 +715,20 @@ export default function Search() {
                 onAdd={handleAdd}
                 onRemove={handleRemove}
               />
+
+              {becauseYouWatched && (
+                <BecauseYouWatchedCarousel
+                  basedOnMovie={becauseYouWatched.basedOnMovie}
+                  similarMovies={becauseYouWatched.similarMovies}
+                  favoriteIds={favoriteIds}
+                  addedIds={addedIds}
+                  watchedIds={watchedIds}
+                  onToggleFavorite={handleToggleFavorite}
+                  onAdd={handleAdd}
+                  onRemove={handleRemove}
+                  onFindSimilar={handleFindSimilar}
+                />
+              )}
             </div>
           )}
         </main>

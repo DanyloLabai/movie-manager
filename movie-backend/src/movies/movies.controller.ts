@@ -26,6 +26,7 @@ import { Public } from '../auth/decorators/public.decorator';
 import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
 import { SmartSearchQueryDto } from './dto/smart-search-query.dto';
 import { MovieFilterQueryDto } from './dto/movie-filter-query.dto';
+import { BecauseYouWatchedResponseDto } from './dto/because-you-watched-response.dto';
 import { VectorService } from '../vector/vector.service';
 
 interface RequestWithUser extends Request {
@@ -365,6 +366,22 @@ export class MoviesController {
   async getRecommendations(@Req() req: RequestWithUser) {
     const userId = Number(req.user.userId);
     return this.moviesService.getRecommendationsForUser(userId);
+  }
+
+  @Get('recommendations/because-you-watched')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Because you watched',
+    description:
+      "Semantic recommendations based on the user's most recently watched movie rated 6+ (requires authentication)",
+  })
+  @ApiResponse({ status: 200, type: BecauseYouWatchedResponseDto })
+  async getBecauseYouWatched(
+    @Req() req: RequestWithUser,
+  ): Promise<BecauseYouWatchedResponseDto | null> {
+    return this.moviesService.getBecauseYouWatchedRecommendations(
+      req.user.userId,
+    );
   }
 
   @Get(':id/similar')

@@ -23,6 +23,7 @@ import { TmdbTvDetailsResponse } from './dto/tv-details-response.dto';
 import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
 import { SmartSearchQueryDto } from './dto/smart-search-query.dto';
 import { MovieFilterQueryDto } from './dto/movie-filter-query.dto';
+import { BecauseYouWatchedResponseDto } from './dto/because-you-watched-response.dto';
 import { ActorDetailsDto } from './dto/actor-details.dto';
 import { CastMemberDto } from './dto/cast-member.dto';
 import { GenreDto } from './dto/genre.dto';
@@ -53,6 +54,10 @@ export class MoviesService {
   private readonly resendApiKey: string;
   private readonly frontendUrl: string;
   private groq: Groq;
+
+  // 0-10 scale (see StarRating.tsx's RATING_STAR_COUNT) — only recommend
+  // off a watch the user actually liked, not one they merely finished.
+  private readonly BECAUSE_YOU_WATCHED_RATING_THRESHOLD = 6;
 
   private readonly TTL_24H: number;
   private readonly TTL_1H: number;
@@ -250,6 +255,7 @@ export class MoviesService {
     tmdbId: number,
     dto: MovieFilterQueryDto,
     userId: number,
+    limit = 20,
   ): Promise<MovieResultDto[]> {
     const docs = await this.vectorService.searchSimilarToMovie(
       tmdbId,
@@ -263,10 +269,44 @@ export class MoviesService {
         excludeWatched: dto.excludeWatched,
       },
       userId,
-      20,
+      limit,
     );
 
     return this.hydrateEmbeddingDocs(docs);
+  }
+
+  async getBecauseYouWatchedRecommendations(
+    userId: number,
+  ): Promise<BecauseYouWatchedResponseDto | null> {
+    const recentGoodWatch = await this.watchlistRepo
+      .createQueryBuilder('w')
+      .where('w."userId" = :userId', { userId })
+      .andWhere('w."isWatched" = true')
+      .andWhere('w."rating" >= :threshold', {
+        threshold: this.BECAUSE_YOU_WATCHED_RATING_THRESHOLD,
+      })
+      .orderBy('w."watchedAt"', 'DESC', 'NULLS LAST')
+      .getOne();
+
+    if (!recentGoodWatch) return null;
+
+    const similarMovies = await this.findSimilarBySemantic(
+      recentGoodWatch.tmdbId,
+      { excludeWatched: true },
+      userId,
+      12,
+    );
+
+    if (similarMovies.length === 0) return null;
+
+    return {
+      basedOnMovie: {
+        id: recentGoodWatch.tmdbId,
+        title: recentGoodWatch.title,
+        posterUrl: recentGoodWatch.posterUrl || null,
+      },
+      similarMovies,
+    };
   }
 
   private async hydrateEmbeddingDocs(
