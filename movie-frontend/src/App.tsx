@@ -21,6 +21,7 @@ import ActorDetails from "./pages/ActorDetails";
 import Top100 from "./pages/Top100";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
+import Admin from "./pages/Admin";
 import { ApiNotification } from "./components/ApiNotification";
 import BottomNav from "./components/BottomNav";
 import type { JSX } from "react";
@@ -135,6 +136,15 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <Admin />
             </ProtectedRoute>
           }
         />

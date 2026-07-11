@@ -32,6 +32,9 @@ export class User {
   @Column({ default: false })
   isVerified: boolean;
 
+  @Column({ default: false })
+  isAdmin: boolean;
+
   @Exclude()
   @Column({ type: 'varchar', nullable: true })
   verificationToken: string | null;

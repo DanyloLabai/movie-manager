@@ -13,6 +13,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { VectorModule } from './vector/vector.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PushModule } from './push/push.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { PushModule } from './push/push.module';
     UsersModule,
     VectorModule,
     PushModule,
+    AdminModule,
   ],
   providers: [
     {
