@@ -45,6 +45,7 @@ import {
 } from 'src/vector/vector.service';
 import { ActivityService } from 'src/activity/activity.service';
 import { PushService } from 'src/push/push.service';
+import { SearchHistoryService } from 'src/search-history/search-history.service';
 
 @Injectable()
 export class MoviesService {
@@ -93,6 +94,7 @@ export class MoviesService {
     private readonly vectorService: VectorService,
     private readonly activityService: ActivityService,
     private readonly pushService: PushService,
+    private readonly searchHistoryService: SearchHistoryService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.tmdbToken = this.configService.get<string>('TMDB_API_TOKEN') as string;
@@ -169,7 +171,18 @@ export class MoviesService {
     throw new Error('Max retries exceeded');
   }
 
-  async searchMovies(query: string): Promise<MovieResultDto[]> {
+  async searchMovies(
+    query: string,
+    userId?: number,
+  ): Promise<MovieResultDto[]> {
+    if (userId !== undefined) {
+      this.searchHistoryService
+        .logSearch(userId, query)
+        .catch((err) =>
+          this.logger.error(`Failed to log search history: ${err.message}`),
+        );
+    }
+
     const cacheKey = `search_v3:${query.toLowerCase().trim().replace(/\s+/g, '_')}`;
 
     const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
@@ -233,6 +246,12 @@ export class MoviesService {
     dto: SmartSearchQueryDto,
     userId: number,
   ): Promise<MovieResultDto[]> {
+    this.searchHistoryService
+      .logSearch(userId, dto.query)
+      .catch((err) =>
+        this.logger.error(`Failed to log search history: ${err.message}`),
+      );
+
     const docs = await this.vectorService.searchSimilarMoviesFiltered(
       dto.query,
       {

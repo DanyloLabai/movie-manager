@@ -231,6 +231,26 @@ export class UsersController {
     return this.usersService.getActivityHeatmap(userId, parsedYear);
   }
 
+  @Get('me/search-history')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get recent search history',
+    description:
+      "Get the current user's most recent distinct search queries, for quick re-search chips (requires authentication)",
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Max number of queries to return (defaults to 10)',
+  })
+  @ApiResponse({ status: 200, description: 'Recent search queries' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getMySearchHistory(@Req() req, @Query('limit') limit?: string) {
+    const userId = req.user.userId;
+    const parsedLimit = limit ? parseInt(limit, 10) : 10;
+    return this.usersService.getSearchHistory(userId, parsedLimit);
+  }
+
   @Delete('friends/:id')
   @ApiBearerAuth()
   @ApiOperation({

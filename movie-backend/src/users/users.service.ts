@@ -20,6 +20,7 @@ import { DatabaseErrorDto } from './dto/database-error.dto';
 import { ActivityService } from 'src/activity/activity.service';
 import { VectorService } from 'src/vector/vector.service';
 import { PushService } from 'src/push/push.service';
+import { SearchHistoryService } from 'src/search-history/search-history.service';
 
 @Injectable()
 export class UsersService {
@@ -33,6 +34,7 @@ export class UsersService {
     private activityService: ActivityService,
     private vectorService: VectorService,
     private pushService: PushService,
+    private searchHistoryService: SearchHistoryService,
   ) {
     cloudinary.config({
       cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
@@ -360,6 +362,10 @@ export class UsersService {
 
   async getActivityHeatmap(userId: number, year: number) {
     return this.activityService.getUserActivityByDay(userId, year);
+  }
+
+  async getSearchHistory(userId: number, limit: number) {
+    return this.searchHistoryService.getRecentQueries(userId, limit);
   }
 
   async getTasteCompatibility(currentUserId: number, targetUserId: number) {

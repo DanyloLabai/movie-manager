@@ -145,9 +145,10 @@ export class MoviesController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async searchByTitle(
+    @Req() req: RequestWithUser,
     @Query('title') title: string,
   ): Promise<MovieResultDto[] | null> {
-    return this.moviesService.searchMovies(title);
+    return this.moviesService.searchMovies(title, req.user.userId);
   }
 
   @Get('search/smart')

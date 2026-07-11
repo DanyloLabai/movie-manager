@@ -13,6 +13,7 @@ import { MoviesService } from '../../movies/movies.service';
 import { ActivityService } from '../../activity/activity.service';
 import { VectorService } from '../../vector/vector.service';
 import { PushService } from '../../push/push.service';
+import { SearchHistoryService } from '../../search-history/search-history.service';
 
 // Mock cloudinary
 jest.mock('cloudinary', () => ({
@@ -69,6 +70,10 @@ const mockPushService = {
   sendToUser: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockSearchHistoryService = {
+  getRecentQueries: jest.fn(),
+};
+
 const mockFriendRequestRepository = {
   findOne: jest.fn(),
   find: jest.fn(),
@@ -104,6 +109,7 @@ describe('UsersService', () => {
         { provide: ActivityService, useValue: mockActivityService },
         { provide: VectorService, useValue: mockVectorService },
         { provide: PushService, useValue: mockPushService },
+        { provide: SearchHistoryService, useValue: mockSearchHistoryService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();

@@ -11,6 +11,7 @@ import { User } from 'src/users/users.entity';
 import { VectorModule } from 'src/vector/vector.module';
 import { ActivityModule } from 'src/activity/activity.module';
 import { PushModule } from 'src/push/push.module';
+import { SearchHistoryModule } from 'src/search-history/search-history.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PushModule } from 'src/push/push.module';
     VectorModule,
     ActivityModule,
     PushModule,
+    SearchHistoryModule,
   ],
   providers: [MoviesService, WatchedReminderService],
   controllers: [MoviesController],

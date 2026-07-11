@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
+import * as usersApi from "../api/users.api";
 import LogoImg from "../assets/logo.png";
 
 import { useLang } from "../context/LanguageContext";
@@ -145,6 +146,7 @@ export default function Search() {
   const [mode, setMode] = useState<"search" | "smart">("search");
   const [filters, setFilters] = useState<SmartSearchFilters>({});
   const [similarToTitle, setSimilarToTitle] = useState<string | null>(null);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const { t } = useLang();
   const navigate = useNavigate();
   const location = useLocation();
@@ -307,16 +309,32 @@ export default function Search() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!searchQuery.trim()) return;
+  const fetchSearchHistory = () => {
+    usersApi
+      .getSearchHistory()
+      .then((items) => setSearchHistory(items.map((item) => item.queryText)))
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    fetchSearchHistory();
+  }, []);
+
+  const handleSearch = async (eOrQuery?: React.FormEvent | string) => {
+    const queryOverride = typeof eOrQuery === "string" ? eOrQuery : undefined;
+    if (eOrQuery && typeof eOrQuery !== "string") eOrQuery.preventDefault();
+
+    const query = queryOverride ?? searchQuery;
+    if (!query.trim()) return;
+    if (queryOverride !== undefined) setSearchQuery(queryOverride);
+
     setIsSearching(true);
     try {
       setSimilarToTitle(null);
       const response =
         mode === "smart"
-          ? await moviesApi.smartSearchMovies(searchQuery, filters)
-          : await moviesApi.searchMovies({ title: searchQuery });
+          ? await moviesApi.smartSearchMovies(query, filters)
+          : await moviesApi.searchMovies({ title: query });
       setResults(response);
       if (mode === "search") {
         localStorage.setItem(
@@ -325,6 +343,7 @@ export default function Search() {
         );
         localStorage.setItem(SEARCH_TIMESTAMP_KEY, Date.now().toString());
       }
+      fetchSearchHistory();
     } catch (error: unknown) {
       console.error(error);
     } finally {
@@ -559,6 +578,27 @@ export default function Search() {
             </button>
           </div>
         </form>
+
+        {searchHistory.length > 0 &&
+          !isSearching &&
+          results.length === 0 &&
+          searchQuery.trim() === "" && (
+            <div className="max-w-2xl mx-auto mb-6 flex flex-wrap items-center justify-center gap-2">
+              <span className="text-[10px] font-bold text-[#f0e6cc]/40 uppercase tracking-widest mr-1">
+                {t("search_recent_label")}
+              </span>
+              {searchHistory.map((query) => (
+                <button
+                  key={query}
+                  type="button"
+                  onClick={() => handleSearch(query)}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold text-[#f0e6cc]/70 bg-[#1a1714] border border-[#c8963c]/30 hover:border-[#c8963c] hover:text-[#c8963c] transition"
+                >
+                  {query}
+                </button>
+              ))}
+            </div>
+          )}
 
         {mode === "smart" && (
           <div className="max-w-3xl mx-auto">
