@@ -57,7 +57,7 @@ export default function ActivityDayModal({
           {day.count} {t("stats_movies").toLowerCase()}
         </p>
 
-        <div className="flex flex-col gap-1.5 max-h-[60vh] overflow-y-auto pr-1">
+        <div className="flex flex-col gap-1.5 max-h-[50vh] overflow-y-auto pr-1">
           {day.actions.map((action, i) => (
             <Link
               key={`${action.tmdbId}-${action.actionType}-${i}`}
