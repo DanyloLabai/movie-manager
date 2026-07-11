@@ -28,6 +28,9 @@ export class WatchlistItem {
   @Column({ default: false })
   isWatched: boolean;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  watchedAt: Date | null;
+
   @Column({ default: false })
   isFavorite: boolean;
 

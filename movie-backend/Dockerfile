@@ -12,4 +12,4 @@ RUN npm run build
 
 EXPOSE 3000
 
-CMD ["npm", "run", "start:prod"]
+CMD ["sh", "-c", "npm run migrate && npm run start:prod"]
