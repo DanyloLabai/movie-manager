@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron } from '@nestjs/schedule';
 import { Pool } from 'pg';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { embed } from 'ai';
@@ -15,6 +16,10 @@ export class VectorService implements OnModuleInit {
   private pool: Pool;
   private geminiApiKey: string;
   private readonly logger = new Logger(VectorService.name);
+
+  // Below this distance, two preference embeddings are considered
+  // near-duplicates (e.g. "I hate horror movies" vs "horror scares me").
+  private readonly PREFERENCE_DUPLICATE_DISTANCE_THRESHOLD = 0.05;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -121,6 +126,87 @@ export class VectorService implements OnModuleInit {
         `Failed to save user memory: ${(error as Error).message}`,
       );
     }
+  }
+
+  // Runs off-peak, after the other daily cron jobs (movies.service's 9am
+  // release check, watched-reminder's 10am job).
+  @Cron('0 4 * * *')
+  async consolidateDuplicatePreferences() {
+    this.logger.log('Running daily preference deduplication...');
+
+    try {
+      const { rows: users } = await this.pool.query<{ userId: string }>(
+        `SELECT DISTINCT metadata->>'userId' AS "userId"
+         FROM user_memory_embeddings
+         WHERE metadata->>'type' = 'preference'`,
+      );
+
+      for (const { userId } of users) {
+        if (!userId) continue;
+
+        try {
+          const mergedCount = await this.consolidateUserPreferences(userId);
+          if (mergedCount > 0) {
+            this.logger.log(
+              `Merged ${mergedCount} duplicate preference(s) for user ${userId}`,
+            );
+          }
+        } catch (err) {
+          this.logger.error(
+            `Failed to consolidate preferences for user ${userId}: ${(err as Error).message}`,
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        `Preference deduplication job failed: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  // Plain pairwise comparison via pgvector's `<=>` operator, O(n^2) pairs
+  // per user — no clustering library. Fine at this scale: a single user's
+  // preference count stays in the tens, not thousands. Re-running this is
+  // safe: once near-duplicates are merged, no pair remains under the
+  // threshold, so a second run finds nothing to delete.
+  private async consolidateUserPreferences(userId: string): Promise<number> {
+    const { rows: pairs } = await this.pool.query<{
+      idA: string;
+      idB: string;
+      createdAtA: string;
+      createdAtB: string;
+    }>(
+      `SELECT a.id AS "idA", b.id AS "idB",
+              a."createdAt" AS "createdAtA", b."createdAt" AS "createdAtB"
+       FROM user_memory_embeddings a
+       JOIN user_memory_embeddings b ON a.id < b.id
+       WHERE a.metadata->>'userId' = $1 AND a.metadata->>'type' = 'preference'
+         AND b.metadata->>'userId' = $1 AND b.metadata->>'type' = 'preference'
+         AND a.embedding <=> b.embedding < $2
+       ORDER BY a.embedding <=> b.embedding ASC`,
+      [userId, this.PREFERENCE_DUPLICATE_DISTANCE_THRESHOLD],
+    );
+
+    const toDelete = new Set<string>();
+
+    for (const pair of pairs) {
+      if (toDelete.has(pair.idA) || toDelete.has(pair.idB)) continue;
+
+      const idToDelete =
+        new Date(pair.createdAtA) >= new Date(pair.createdAtB)
+          ? pair.idB
+          : pair.idA;
+      toDelete.add(idToDelete);
+    }
+
+    if (toDelete.size === 0) return 0;
+
+    await this.pool.query(
+      `DELETE FROM user_memory_embeddings WHERE id = ANY($1::uuid[])`,
+      [Array.from(toDelete)],
+    );
+
+    return toDelete.size;
   }
 
   async searchSimilarMovies(

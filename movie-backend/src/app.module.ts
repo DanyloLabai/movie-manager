@@ -55,7 +55,7 @@ import { AdminModule } from './admin/admin.module';
             : undefined,
 
           autoLoadEntities: true,
-          synchronize: true,
+          synchronize: process.env.NODE_ENV !== 'production',
           ssl:
             process.env.NODE_ENV === 'production'
               ? { rejectUnauthorized: false }

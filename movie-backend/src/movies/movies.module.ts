@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { MoviesService } from './movies.service';
+import { WatchedReminderService } from './watched-reminder.service';
 import { MoviesController } from './movies.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
@@ -20,7 +21,7 @@ import { PushModule } from 'src/push/push.module';
     ActivityModule,
     PushModule,
   ],
-  providers: [MoviesService],
+  providers: [MoviesService, WatchedReminderService],
   controllers: [MoviesController],
   exports: [MoviesService],
 })

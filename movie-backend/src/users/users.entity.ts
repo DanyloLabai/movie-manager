@@ -61,6 +61,9 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   hashedRefreshToken: string | null;
 
+  @Column({ type: 'timestamptz', nullable: true })
+  lastReminderSentAt: Date | null;
+
   @OneToMany(() => WatchlistItem, (watchlistItem) => watchlistItem.user)
   watchlist: WatchlistItem[];
 

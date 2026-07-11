@@ -845,6 +845,7 @@ export class MoviesService {
 
     if (!item) throw new NotFoundException('Media not found in your list');
 
+    if (!item.isWatched) item.watchedAt = new Date();
     item.isWatched = true;
     item.updatedAt = new Date();
 
@@ -884,6 +885,7 @@ export class MoviesService {
     const normalizedRating = this.normalizeRating(rating);
 
     item.rating = normalizedRating;
+    if (!item.isWatched) item.watchedAt = new Date();
     item.isWatched = true;
     item.updatedAt = new Date();
 
