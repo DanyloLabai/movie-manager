@@ -20,6 +20,7 @@ export const MovieCard = ({
   onToggleFavorite,
   onAdd,
   onRemove,
+  onFindSimilar,
 }: MovieCardProps) => {
   const { t } = useLang();
   const released = isReleased(movie);
@@ -63,6 +64,29 @@ export const MovieCard = ({
             />
           </svg>
         </div>
+      )}
+
+      {onFindSimilar && (
+        <button
+          type="button"
+          title={t("movie_find_similar")}
+          onClick={() => onFindSimilar(movie)}
+          className="absolute top-1.5 right-1.5 z-10 w-7 h-7 flex items-center justify-center bg-[#12100e]/80 rounded-full backdrop-blur-sm border border-[#c8963c]/30 text-[#f0e6cc]/60 hover:text-[#c8963c] hover:border-[#c8963c] transition"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M21 21l-4.35-4.35m0 0a7 7 0 10-9.9-9.9 7 7 0 009.9 9.9zM9 10h4M11 8v4"
+            />
+          </svg>
+        </button>
       )}
 
       <Link

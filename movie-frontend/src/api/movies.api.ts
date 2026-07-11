@@ -36,6 +36,16 @@ export async function smartSearchMovies(
   return res.data as MovieResult[];
 }
 
+export async function findSimilarMoviesSemantic(
+  tmdbId: number,
+  filters: SmartSearchFilters = {},
+): Promise<MovieResult[]> {
+  const res = await api.get(`/movies/${tmdbId}/similar/semantic`, {
+    params: filters,
+  });
+  return res.data as MovieResult[];
+}
+
 export async function getTrending(): Promise<MovieResult[]> {
   const res = await api.get("/movies/trending");
   return res.data as MovieResult[];
@@ -171,6 +181,7 @@ export async function markAllNotificationsRead(): Promise<void> {
 export default {
   searchMovies,
   smartSearchMovies,
+  findSimilarMoviesSemantic,
   getTrending,
   getUpcoming,
   getRecommendations,

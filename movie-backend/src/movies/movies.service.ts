@@ -22,6 +22,7 @@ import { isAxiosError } from 'axios';
 import { TmdbTvDetailsResponse } from './dto/tv-details-response.dto';
 import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
 import { SmartSearchQueryDto } from './dto/smart-search-query.dto';
+import { MovieFilterQueryDto } from './dto/movie-filter-query.dto';
 import { ActorDetailsDto } from './dto/actor-details.dto';
 import { CastMemberDto } from './dto/cast-member.dto';
 import { GenreDto } from './dto/genre.dto';
@@ -37,7 +38,10 @@ import {
   TmdbPersonRecordDto,
 } from './dto/person.dto';
 import { WatchProviderDto } from './dto/watch-provider.dto';
-import { VectorService } from 'src/vector/vector.service';
+import {
+  VectorService,
+  MovieEmbeddingMetadata,
+} from 'src/vector/vector.service';
 import { ActivityService } from 'src/activity/activity.service';
 import { PushService } from 'src/push/push.service';
 
@@ -239,6 +243,35 @@ export class MoviesService {
       20,
     );
 
+    return this.hydrateEmbeddingDocs(docs);
+  }
+
+  async findSimilarBySemantic(
+    tmdbId: number,
+    dto: MovieFilterQueryDto,
+    userId: number,
+  ): Promise<MovieResultDto[]> {
+    const docs = await this.vectorService.searchSimilarToMovie(
+      tmdbId,
+      {
+        genreId: dto.genreId,
+        yearFrom: dto.yearFrom,
+        yearTo: dto.yearTo,
+        minRating: dto.minRating,
+        runtimeFrom: dto.runtimeFrom,
+        runtimeTo: dto.runtimeTo,
+        excludeWatched: dto.excludeWatched,
+      },
+      userId,
+      20,
+    );
+
+    return this.hydrateEmbeddingDocs(docs);
+  }
+
+  private async hydrateEmbeddingDocs(
+    docs: Array<{ metadata: MovieEmbeddingMetadata }>,
+  ): Promise<MovieResultDto[]> {
     const results = await Promise.all(
       docs.map(async (doc) => {
         const tmdbId = Number(doc.metadata.tmdbId);

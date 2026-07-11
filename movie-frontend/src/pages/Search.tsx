@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 
@@ -263,9 +263,42 @@ export default function Search() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [mode, setMode] = useState<"search" | "smart">("search");
   const [filters, setFilters] = useState<SmartSearchFilters>({});
+  const [similarToTitle, setSimilarToTitle] = useState<string | null>(null);
   const { t } = useLang();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [visibleCount, setVisibleCount] = useState(20);
+
+  const handleFindSimilar = (movie: MovieResult) => {
+    navigate("/search", {
+      state: {
+        similarTo: { tmdbId: movie.id, mediaType: movie.mediaType, title: movie.title },
+      },
+    });
+  };
+
+  useEffect(() => {
+    const state = location.state as
+      | { similarTo?: { tmdbId: number; mediaType: string; title: string } }
+      | null;
+    if (!state?.similarTo) return;
+
+    const { tmdbId, title } = state.similarTo;
+    setMode("smart");
+    setFilters({});
+    setSearchQuery("");
+    setSimilarToTitle(title);
+    setIsSearching(true);
+
+    moviesApi
+      .findSimilarMoviesSemantic(tmdbId)
+      .then((response) => setResults(response))
+      .catch((error: unknown) => console.error(error))
+      .finally(() => setIsSearching(false));
+
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.state]);
 
   const visibleRecommendations = recommendations
     .filter((movie) => !addedIds.includes(movie.id))
@@ -383,6 +416,7 @@ export default function Search() {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
     try {
+      setSimilarToTitle(null);
       const response =
         mode === "smart"
           ? await moviesApi.smartSearchMovies(searchQuery, filters)
@@ -405,6 +439,7 @@ export default function Search() {
   const handleClearSearch = () => {
     setSearchQuery("");
     setResults([]);
+    setSimilarToTitle(null);
     localStorage.removeItem(SEARCH_QUERY_CACHE_KEY);
     localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
     localStorage.removeItem(SEARCH_TIMESTAMP_KEY);
@@ -502,6 +537,7 @@ export default function Search() {
             onToggleFavorite={handleToggleFavorite}
             onAdd={handleAdd}
             onRemove={handleRemove}
+            onFindSimilar={handleFindSimilar}
             watchedIds={watchedIds}
           />
         ))}
@@ -674,7 +710,9 @@ export default function Search() {
             <>
               <div className="flex justify-between items-center mb-6 border-b border-[#c8963c]/20 pb-3">
                 <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
-                  {t("search_results")}
+                  {similarToTitle
+                    ? `${t("search_similar_to")} "${similarToTitle}"`
+                    : t("search_results")}
                 </h2>
                 <button
                   onClick={handleClearSearch}

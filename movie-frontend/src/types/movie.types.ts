@@ -136,4 +136,5 @@ export interface MovieCardProps {
   onToggleFavorite: (item: MovieResult) => void;
   onAdd: (item: MovieResult) => void;
   onRemove: (item: MovieResult) => void;
+  onFindSimilar?: (item: MovieResult) => void;
 }
