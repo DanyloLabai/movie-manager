@@ -16,6 +16,7 @@ import { WatchlistItem } from '../movies/watchlist-entity';
 import { ChatMessage } from './ai-chat.controller';
 import { VectorService } from '../vector/vector.service';
 import { createGroq } from '@ai-sdk/groq';
+import { AiUsageLogService } from './ai-usage-log.service';
 
 const aiResponseSchema = z.object({
   message: z
@@ -77,6 +78,7 @@ export class AiChatService {
     private configService: ConfigService,
     private moviesService: MoviesService,
     private vectorService: VectorService,
+    private aiUsageLogService: AiUsageLogService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     const groqApiKey = this.configService.get<string>('GROQ_API_KEY') || '';
@@ -126,13 +128,26 @@ export class AiChatService {
 
     try {
       this.logger.log('Calling Groq with generateText...');
-      const response = await this.generateAiResponse(
+      const startedAt = Date.now();
+      const { tokenCount, ...response } = await this.generateAiResponse(
         this.groqClient('openai/gpt-oss-120b'),
         systemPrompt,
         formattedMessages,
         userContextData,
         alreadyShownIds,
       );
+      this.aiUsageLogService
+        .logUsage({
+          userId,
+          provider: 'groq',
+          wasFailover: false,
+          requestType: 'chat',
+          tokenCount,
+          latencyMs: Date.now() - startedAt,
+        })
+        .catch((err) =>
+          this.logger.warn(`AI usage logging failed: ${err.message}`),
+        );
       return response;
     } catch (groqError: unknown) {
       this.logger.error(
@@ -140,13 +155,26 @@ export class AiChatService {
       );
       this.logger.warn('Falling back to Gemini...');
       try {
-        const response = await this.generateAiResponse(
+        const startedAt = Date.now();
+        const { tokenCount, ...response } = await this.generateAiResponse(
           this.geminiClient('gemini-flash-latest'),
           systemPrompt,
           formattedMessages,
           userContextData,
           alreadyShownIds,
         );
+        this.aiUsageLogService
+          .logUsage({
+            userId,
+            provider: 'gemini',
+            wasFailover: true,
+            requestType: 'chat',
+            tokenCount,
+            latencyMs: Date.now() - startedAt,
+          })
+          .catch((err) =>
+            this.logger.warn(`AI usage logging failed: ${err.message}`),
+          );
         return response;
       } catch (geminiError: unknown) {
         const geminiMessage =
@@ -167,8 +195,12 @@ export class AiChatService {
     messages: Array<{ role: 'user' | 'assistant'; content: string }>,
     userContextData: UserContextData,
     alreadyShownIds: Set<number>,
-  ): Promise<{ message: string; movies?: MovieResultDto[] }> {
-    const { object } = await generateObject({
+  ): Promise<{
+    message: string;
+    movies?: MovieResultDto[];
+    tokenCount?: number;
+  }> {
+    const { object, usage } = await generateObject({
       model,
       system: systemPrompt,
       messages,
@@ -192,6 +224,9 @@ export class AiChatService {
     return {
       message: object.message,
       ...(foundMovies && foundMovies.length > 0 && { movies: foundMovies }),
+      ...(usage?.totalTokens !== undefined && {
+        tokenCount: usage.totalTokens,
+      }),
     };
   }
 
@@ -538,8 +573,12 @@ RESPONSE TONE:
 
     const runWith = async (
       model: ReturnType<typeof this.groqClient>,
-    ): Promise<{ message: string; movies?: MovieResultDto[] }> => {
-      const { object } = await generateObject({
+    ): Promise<{
+      message: string;
+      movies?: MovieResultDto[];
+      tokenCount?: number;
+    }> => {
+      const { object, usage } = await generateObject({
         model,
         system: systemPrompt,
         messages: [
@@ -562,17 +601,52 @@ RESPONSE TONE:
       return {
         message: object.message,
         ...(movies.length > 0 && { movies }),
+        ...(usage?.totalTokens !== undefined && {
+          tokenCount: usage.totalTokens,
+        }),
       };
     };
 
     try {
-      return await runWith(this.groqClient('openai/gpt-oss-120b'));
+      const startedAt = Date.now();
+      const { tokenCount, ...response } = await runWith(
+        this.groqClient('openai/gpt-oss-120b'),
+      );
+      this.aiUsageLogService
+        .logUsage({
+          userId: userIdA,
+          provider: 'groq',
+          wasFailover: false,
+          requestType: 'chat',
+          tokenCount,
+          latencyMs: Date.now() - startedAt,
+        })
+        .catch((err) =>
+          this.logger.warn(`AI usage logging failed: ${err.message}`),
+        );
+      return response;
     } catch (groqError: unknown) {
       this.logger.error(
         `Watch-together Groq failed: ${groqError instanceof Error ? groqError.message : String(groqError)}`,
       );
       try {
-        return await runWith(this.geminiClient('gemini-flash-latest'));
+        const startedAt = Date.now();
+        const { tokenCount, ...response } = await runWith(
+          this.geminiClient('gemini-flash-latest'),
+        );
+        this.aiUsageLogService
+          .logUsage({
+            userId: userIdA,
+            provider: 'gemini',
+            wasFailover: true,
+            requestType: 'chat',
+            tokenCount,
+            latencyMs: Date.now() - startedAt,
+          })
+          .catch((err) =>
+            this.logger.warn(`AI usage logging failed: ${err.message}`),
+          );
+        return response;
       } catch (geminiError: unknown) {
         const geminiMessage =
           geminiError instanceof Error

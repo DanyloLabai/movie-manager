@@ -3,6 +3,7 @@ import { AiChatService } from './ai-chat.service';
 import { ConfigService } from '@nestjs/config';
 import { MoviesService } from '../movies/movies.service';
 import { VectorService } from '../vector/vector.service';
+import { AiUsageLogService } from './ai-usage-log.service';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 
 describe('AiChatService', () => {
@@ -30,6 +31,10 @@ describe('AiChatService', () => {
     searchSimilarMovies: jest.fn(),
   };
 
+  const mockAiUsageLogService = {
+    logUsage: jest.fn().mockResolvedValue(undefined),
+  };
+
   const mockCacheManager = {
     get: jest.fn(),
     set: jest.fn(),
@@ -46,6 +51,7 @@ describe('AiChatService', () => {
         { provide: ConfigService, useValue: mockConfigService },
         { provide: MoviesService, useValue: mockMoviesService },
         { provide: VectorService, useValue: mockVectorService },
+        { provide: AiUsageLogService, useValue: mockAiUsageLogService },
         { provide: CACHE_MANAGER, useValue: mockCacheManager },
       ],
     }).compile();
