@@ -16,8 +16,12 @@ interface ActivityHeatmapProps {
   isLoading?: boolean;
 }
 
-const SQUARE = 11;
-const GAP = 3;
+// Squares grow a bit at wider breakpoints so the grid doesn't look lost
+// inside the much wider desktop card.
+const SQUARE_CLASS =
+  "w-[11px] h-[11px] sm:w-[13px] sm:h-[13px] lg:w-[16px] lg:h-[16px]";
+const LABEL_WIDTH_CLASS = "w-[11px] sm:w-[13px] lg:w-[16px]";
+const GAP_CLASS = "gap-[3px] sm:gap-[3px] lg:gap-[4px]";
 const TOOLTIP_WIDTH = 220;
 const TOOLTIP_HEIGHT_ESTIMATE = 150;
 
@@ -126,15 +130,15 @@ export default function ActivityHeatmap({
   };
 
   return (
-    <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl mt-4">
+    <div className="p-4 lg:p-5 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl mt-4">
       <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest">
+        <h3 className="text-xs lg:text-sm font-black text-[#f0e6cc] uppercase tracking-widest">
           {t("activity_heatmap_title")}
         </h3>
-        <div className="flex items-center gap-1 text-[8px] text-[#f0e6cc]/40 font-bold uppercase tracking-wide">
+        <div className="flex items-center gap-1 text-[8px] lg:text-[9px] text-[#f0e6cc]/40 font-bold uppercase tracking-wide">
           <span>{t("activity_legend_less")}</span>
           {ACTIVITY_LEVEL_CLASSES.map((cls, i) => (
-            <span key={i} className={`w-2.5 h-2.5 rounded-sm ${cls}`} />
+            <span key={i} className={`w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-sm ${cls}`} />
           ))}
           <span>{t("activity_legend_more")}</span>
         </div>
@@ -149,21 +153,20 @@ export default function ActivityHeatmap({
           className="overflow-x-auto pb-1"
           onMouseLeave={() => setHovered(null)}
         >
-          <div className="inline-flex flex-col gap-1">
-            <div className="flex" style={{ gap: GAP }}>
+          <div className="inline-flex flex-col gap-1.5">
+            <div className={`flex ${GAP_CLASS}`}>
               {weeks.map((_, wi) => (
                 <div
                   key={wi}
-                  className="shrink-0 text-[8px] text-[#f0e6cc]/40 font-bold"
-                  style={{ width: SQUARE }}
+                  className={`shrink-0 text-[8px] lg:text-[9px] text-[#f0e6cc]/40 font-bold ${LABEL_WIDTH_CLASS}`}
                 >
                   {monthLabels[wi]}
                 </div>
               ))}
             </div>
-            <div className="flex" style={{ gap: GAP }}>
+            <div className={`flex ${GAP_CLASS}`}>
               {weeks.map((week, wi) => (
-                <div key={wi} className="flex flex-col" style={{ gap: GAP }}>
+                <div key={wi} className={`flex flex-col ${GAP_CLASS}`}>
                   {week.map((day) => (
                     <div
                       key={day.date}
@@ -173,7 +176,7 @@ export default function ActivityHeatmap({
                       onClick={() =>
                         day.inYear && day.count > 0 && setSelectedDay(day)
                       }
-                      className={`rounded-sm transition-colors ${
+                      className={`rounded-sm transition-colors ${SQUARE_CLASS} ${
                         day.inYear
                           ? `${ACTIVITY_LEVEL_CLASSES[getActivityLevel(day.count)]} ${
                               day.count > 0
@@ -182,7 +185,6 @@ export default function ActivityHeatmap({
                             }`
                           : "opacity-0"
                       }`}
-                      style={{ width: SQUARE, height: SQUARE }}
                     />
                   ))}
                 </div>
