@@ -12,6 +12,7 @@ import { User } from '../../users/users.entity';
 import { VectorService } from '../../vector/vector.service';
 import { ActivityService } from '../../activity/activity.service';
 import { PushService } from '../../push/push.service';
+import { SearchHistoryService } from '../../search-history/search-history.service';
 
 jest.mock('groq-sdk', () => {
   const Groq = jest.fn().mockImplementation(() => ({}));
@@ -122,6 +123,10 @@ const buildModule = async (): Promise<TestingModule> =>
       {
         provide: PushService,
         useValue: { sendToUser: jest.fn().mockResolvedValue(undefined) },
+      },
+      {
+        provide: SearchHistoryService,
+        useValue: { logSearch: jest.fn().mockResolvedValue(undefined) },
       },
     ],
   }).compile();

@@ -94,6 +94,18 @@ export async function getActivityHeatmap(year: number): Promise<ActivityDay[]> {
   return res.data;
 }
 
+export type SearchHistoryItem = {
+  queryText: string;
+  createdAt: string;
+};
+
+export async function getSearchHistory(
+  limit = 10,
+): Promise<SearchHistoryItem[]> {
+  const res = await api.get(`/users/me/search-history`, { params: { limit } });
+  return res.data;
+}
+
 export default {
   getPublicProfile,
   updateProfile,
@@ -108,4 +120,5 @@ export default {
   declineFriendRequest,
   deleteAccount,
   getActivityHeatmap,
+  getSearchHistory,
 };
