@@ -116,9 +116,9 @@ export default function RatingDistributionChart({
           {t("stats_avg")} {averageRating ?? "0.0"}
         </p>
       </div>
-      <div className="flex-grow w-full -ml-3">
+      <div className="flex-grow w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 16, right: 8, left: -20, bottom: 0 }}>
+          <BarChart data={data} margin={{ top: 16, right: 8, left: 4, bottom: 0 }}>
             <XAxis
               dataKey="name"
               axisLine={{ stroke: "#c8963c", strokeOpacity: 0.15 }}
