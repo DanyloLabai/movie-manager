@@ -211,6 +211,26 @@ export class UsersController {
     return this.usersService.declineFriendRequest(userId, requestId);
   }
 
+  @Get('me/activity')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get activity heatmap',
+    description:
+      "Get the current user's daily activity counts (and the movies behind them) for a given year, for the contribution heatmap (requires authentication)",
+  })
+  @ApiQuery({
+    name: 'year',
+    required: false,
+    description: 'Calendar year to fetch (defaults to the current year)',
+  })
+  @ApiResponse({ status: 200, description: 'Daily activity buckets' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getMyActivity(@Req() req, @Query('year') year?: string) {
+    const userId = req.user.userId;
+    const parsedYear = year ? parseInt(year, 10) : new Date().getFullYear();
+    return this.usersService.getActivityHeatmap(userId, parsedYear);
+  }
+
   @Delete('friends/:id')
   @ApiBearerAuth()
   @ApiOperation({

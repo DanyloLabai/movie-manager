@@ -1,0 +1,206 @@
+import { useMemo, useState } from "react";
+import type { CSSProperties, MouseEvent } from "react";
+import { useLang } from "../context/LanguageContext";
+import {
+  ACTIVITY_LEVEL_CLASSES,
+  getActivityLevel,
+  type ActivityDay,
+  type HeatmapDay,
+} from "../utils/activity";
+import ActivityDayTooltip from "./ActivityDayTooltip";
+import ActivityDayModal from "./ActivityDayModal";
+
+interface ActivityHeatmapProps {
+  days: ActivityDay[];
+  year: number;
+  isLoading?: boolean;
+}
+
+const SQUARE = 11;
+const GAP = 3;
+const TOOLTIP_WIDTH = 220;
+const TOOLTIP_HEIGHT_ESTIMATE = 150;
+
+function buildWeeks(
+  year: number,
+  byDate: Map<string, ActivityDay>,
+): HeatmapDay[][] {
+  const jan1 = new Date(Date.UTC(year, 0, 1));
+  const dec31 = new Date(Date.UTC(year, 11, 31));
+
+  // Pad out to full weeks (Sun-Sat) so every column has 7 rows.
+  const start = new Date(jan1);
+  start.setUTCDate(start.getUTCDate() - start.getUTCDay());
+  const end = new Date(dec31);
+  end.setUTCDate(end.getUTCDate() + (6 - end.getUTCDay()));
+
+  const weeks: HeatmapDay[][] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const week: HeatmapDay[] = [];
+    for (let i = 0; i < 7; i++) {
+      const dateStr = cursor.toISOString().slice(0, 10);
+      const inYear = cursor.getUTCFullYear() === year;
+      const entry = byDate.get(dateStr);
+      week.push({
+        date: dateStr,
+        inYear,
+        count: entry?.count ?? 0,
+        actions: entry?.actions ?? [],
+      });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}
+
+function getMonthLabels(weeks: HeatmapDay[][], lang: string): string[] {
+  const dateLocale = lang === "uk" ? "uk-UA" : "en-US";
+  const labels: string[] = [];
+  let lastMonth = -1;
+  for (const week of weeks) {
+    const firstInYear = week.find((d) => d.inYear);
+    const month = firstInYear
+      ? new Date(`${firstInYear.date}T00:00:00Z`).getUTCMonth()
+      : -1;
+    if (firstInYear && month !== lastMonth) {
+      lastMonth = month;
+      labels.push(
+        new Date(Date.UTC(2000, month, 1)).toLocaleDateString(dateLocale, {
+          month: "short",
+          timeZone: "UTC",
+        }),
+      );
+    } else {
+      labels.push("");
+    }
+  }
+  return labels;
+}
+
+export default function ActivityHeatmap({
+  days,
+  year,
+  isLoading,
+}: ActivityHeatmapProps) {
+  const { t, lang } = useLang();
+  const [hovered, setHovered] = useState<{
+    day: HeatmapDay;
+    style: CSSProperties;
+  } | null>(null);
+  const [selectedDay, setSelectedDay] = useState<HeatmapDay | null>(null);
+
+  const byDate = useMemo(() => {
+    const map = new Map<string, ActivityDay>();
+    for (const day of days) map.set(day.date, day);
+    return map;
+  }, [days]);
+
+  const weeks = useMemo(() => buildWeeks(year, byDate), [year, byDate]);
+  const monthLabels = useMemo(
+    () => getMonthLabels(weeks, lang),
+    [weeks, lang],
+  );
+
+  const handleMouseEnter = (
+    e: MouseEvent<HTMLDivElement>,
+    day: HeatmapDay,
+  ) => {
+    if (!day.inYear || day.count === 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const anchorCenterX = rect.left + rect.width / 2;
+    const above = rect.top >= TOOLTIP_HEIGHT_ESTIMATE + 8;
+    let left = anchorCenterX - TOOLTIP_WIDTH / 2;
+    left = Math.max(
+      8,
+      Math.min(left, window.innerWidth - TOOLTIP_WIDTH - 8),
+    );
+    const top = above
+      ? rect.top - TOOLTIP_HEIGHT_ESTIMATE - 8
+      : rect.bottom + 8;
+    setHovered({
+      day,
+      style: { position: "fixed", left, top, width: TOOLTIP_WIDTH, zIndex: 9999 },
+    });
+  };
+
+  return (
+    <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl mt-4">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest">
+          {t("activity_heatmap_title")}
+        </h3>
+        <div className="flex items-center gap-1 text-[8px] text-[#f0e6cc]/40 font-bold uppercase tracking-wide">
+          <span>{t("activity_legend_less")}</span>
+          {ACTIVITY_LEVEL_CLASSES.map((cls, i) => (
+            <span key={i} className={`w-2.5 h-2.5 rounded-sm ${cls}`} />
+          ))}
+          <span>{t("activity_legend_more")}</span>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="text-center py-6 text-[#c8963c] animate-pulse font-bold uppercase tracking-widest text-[10px]">
+          {t("profile_loading")}
+        </div>
+      ) : (
+        <div
+          className="overflow-x-auto pb-1"
+          onMouseLeave={() => setHovered(null)}
+        >
+          <div className="inline-flex flex-col gap-1">
+            <div className="flex" style={{ gap: GAP }}>
+              {weeks.map((_, wi) => (
+                <div
+                  key={wi}
+                  className="shrink-0 text-[8px] text-[#f0e6cc]/40 font-bold"
+                  style={{ width: SQUARE }}
+                >
+                  {monthLabels[wi]}
+                </div>
+              ))}
+            </div>
+            <div className="flex" style={{ gap: GAP }}>
+              {weeks.map((week, wi) => (
+                <div key={wi} className="flex flex-col" style={{ gap: GAP }}>
+                  {week.map((day) => (
+                    <div
+                      key={day.date}
+                      title={day.inYear ? `${day.date}: ${day.count}` : undefined}
+                      onMouseEnter={(e) => handleMouseEnter(e, day)}
+                      onMouseLeave={() => setHovered(null)}
+                      onClick={() =>
+                        day.inYear && day.count > 0 && setSelectedDay(day)
+                      }
+                      className={`rounded-sm transition-colors ${
+                        day.inYear
+                          ? `${ACTIVITY_LEVEL_CLASSES[getActivityLevel(day.count)]} ${
+                              day.count > 0
+                                ? "cursor-pointer hover:ring-1 hover:ring-[#e8c070]"
+                                : ""
+                            }`
+                          : "opacity-0"
+                      }`}
+                      style={{ width: SQUARE, height: SQUARE }}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hovered && (
+        <ActivityDayTooltip day={hovered.day} style={hovered.style} />
+      )}
+      {selectedDay && (
+        <ActivityDayModal
+          day={selectedDay}
+          onClose={() => setSelectedDay(null)}
+        />
+      )}
+    </div>
+  );
+}
