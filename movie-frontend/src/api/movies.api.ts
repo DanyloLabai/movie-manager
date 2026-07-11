@@ -46,6 +46,16 @@ export async function findSimilarMoviesSemantic(
   return res.data as MovieResult[];
 }
 
+export interface BecauseYouWatchedResponse {
+  basedOnMovie: { id: number; title: string; posterUrl: string | null };
+  similarMovies: MovieResult[];
+}
+
+export async function getBecauseYouWatched(): Promise<BecauseYouWatchedResponse | null> {
+  const res = await api.get("/movies/recommendations/because-you-watched");
+  return res.data as BecauseYouWatchedResponse | null;
+}
+
 export async function getTrending(): Promise<MovieResult[]> {
   const res = await api.get("/movies/trending");
   return res.data as MovieResult[];
@@ -182,6 +192,7 @@ export default {
   searchMovies,
   smartSearchMovies,
   findSimilarMoviesSemantic,
+  getBecauseYouWatched,
   getTrending,
   getUpcoming,
   getRecommendations,

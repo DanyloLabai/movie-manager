@@ -67,6 +67,7 @@ const translations = {
     quick_short: "Short series for tonight",
 
     // Search page
+    because_you_watched: "Because you watched",
     search_placeholder: "Enter movie title...",
     search_btn: "Search",
     search_find: "Find",
@@ -432,6 +433,7 @@ const translations = {
     quick_short: "Короткий серіал на вечір",
 
     // Search page
+    because_you_watched: "Тому що ви дивились",
     search_placeholder: "Введіть назву фільму...",
     search_btn: "Пошук",
     search_find: "Знайти",
