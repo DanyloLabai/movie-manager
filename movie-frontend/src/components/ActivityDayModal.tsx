@@ -24,11 +24,15 @@ export default function ActivityDayModal({
 
   return (
     <div
-      className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm sm:p-4 animate-fade-in"
+      className="fixed inset-0 z-[110] bg-black/80 backdrop-blur-sm animate-fade-in sm:flex sm:items-center sm:justify-center sm:p-4"
       onClick={onClose}
     >
+      {/* On mobile this pins itself directly to the screen's bottom edge
+          (its own `fixed`, not just flex alignment inside the overlay) —
+          the safe-area padding matches BottomNav's convention so the sheet
+          isn't cut off by the home-indicator area on notched phones. */}
       <div
-        className="w-full sm:max-w-md max-h-[75vh] sm:max-h-[80vh] p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-t-3xl sm:rounded-3xl shadow-2xl relative animate-modal-in overflow-y-auto"
+        className="fixed inset-x-0 bottom-0 sm:relative w-full sm:max-w-md max-h-[75vh] sm:max-h-[80vh] p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-t-3xl sm:rounded-3xl shadow-2xl animate-modal-in overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <button

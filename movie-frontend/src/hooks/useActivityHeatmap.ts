@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import * as usersApi from "../api/users.api";
 import type { ActivityDay } from "../api/users.api";
 
+const CURRENT_YEAR = new Date().getFullYear();
+
 export function useActivityHeatmap(enabled: boolean) {
-  const [year] = useState(() => new Date().getFullYear());
+  const [year, setYear] = useState(CURRENT_YEAR);
   const [days, setDays] = useState<ActivityDay[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -23,7 +25,20 @@ export function useActivityHeatmap(enabled: boolean) {
     if (enabled) fetchActivity();
   }, [enabled, fetchActivity]);
 
-  return { days, isLoading, year } as const;
+  const goToPreviousYear = useCallback(() => setYear((y) => y - 1), []);
+  const goToNextYear = useCallback(
+    () => setYear((y) => Math.min(y + 1, CURRENT_YEAR)),
+    [],
+  );
+
+  return {
+    days,
+    isLoading,
+    year,
+    goToPreviousYear,
+    goToNextYear,
+    canGoNext: year < CURRENT_YEAR,
+  } as const;
 }
 
 export default useActivityHeatmap;

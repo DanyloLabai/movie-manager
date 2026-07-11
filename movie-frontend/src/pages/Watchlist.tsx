@@ -764,6 +764,9 @@ export default function Watchlist() {
           days={activityHeatmap.days}
           year={activityHeatmap.year}
           isLoading={activityHeatmap.isLoading}
+          onPrevYear={activityHeatmap.goToPreviousYear}
+          onNextYear={activityHeatmap.goToNextYear}
+          canGoNext={activityHeatmap.canGoNext}
         />
       </div>
     );
