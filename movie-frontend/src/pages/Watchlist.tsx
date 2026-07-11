@@ -1,15 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  BarChart,
-  Bar,
-  XAxis,
-} from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import LogoImg from "../assets/logo.png";
 import * as moviesApi from "../api/movies.api";
 import * as usersApi from "../api/users.api";
@@ -20,6 +11,7 @@ import AchievementTooltip from "../components/AchievementTooltip";
 import NotificationBell from "../components/NotificationBell";
 import SettingsMenu from "../components/SettingsMenu";
 import StarRating from "../components/StarRating";
+import RatingDistributionChart from "../components/RatingDistributionChart";
 import type {
   WatchlistItem as WatchlistItemType,
   ProfileData as ProfileDataType,
@@ -57,29 +49,6 @@ const CustomTooltip = ({ active, payload }: ChartTooltipProps) => {
           {payload[0].name}:{" "}
           <span className="text-[#c8963c]">{payload[0].value}</span>
         </p>
-      </div>
-    );
-  }
-  return null;
-};
-
-interface RatingTooltipProps {
-  active?: boolean;
-  payload?: Array<{ payload: { name: string }; value: number }>;
-  t: (key: TranslationKey) => string;
-}
-
-const RatingTooltip = ({ active, payload, t }: RatingTooltipProps) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#1a1714] border border-[#c8963c]/50 px-2 py-1.5 rounded-xl shadow-xl flex items-center gap-1.5">
-        <span className="text-[#c8963c] font-black text-xs">
-          ★ {payload[0].payload.name}
-        </span>
-        <span className="text-[#f0e6cc]/50 text-xs">|</span>
-        <span className="text-[#f0e6cc] font-bold text-[10px]">
-          {payload[0].value} {t("stats_movies").toLowerCase()}
-        </span>
       </div>
     );
   }
@@ -643,48 +612,10 @@ export default function Watchlist() {
               </div>
 
               {profileData?.stats?.ratingDistribution && (
-                <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px] flex flex-col">
-                  <div className="flex justify-between items-center mb-1">
-                    <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold">
-                      {t("stats_rating")}
-                    </p>
-                    <p className="text-[10px] font-black text-[#c8963c]">
-                      {t("stats_avg")} {profileData.stats.averageRating}
-                    </p>
-                  </div>
-                  <div className="flex-grow w-full -ml-3">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={profileData.stats.ratingDistribution}
-                        margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
-                      >
-                        <XAxis
-                          dataKey="name"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{
-                            fill: "#f0e6cc",
-                            opacity: 0.5,
-                            fontSize: 9,
-                            fontWeight: "bold",
-                          }}
-                          dy={4}
-                        />
-                        <Tooltip
-                          content={<RatingTooltip t={t} />}
-                          cursor={{ fill: "#c8963c", opacity: 0.1 }}
-                          wrapperStyle={{ zIndex: 9999 }}
-                        />
-                        <Bar
-                          dataKey="value"
-                          fill="#c8963c"
-                          radius={[3, 3, 0, 0]}
-                          maxBarSize={32}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
+                <RatingDistributionChart
+                  data={profileData.stats.ratingDistribution}
+                  averageRating={profileData.stats.averageRating}
+                />
               )}
             </div>
 
