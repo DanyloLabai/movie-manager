@@ -220,7 +220,10 @@ export class MoviesService {
     }
   }
 
-  async smartSearchMovies(dto: SmartSearchQueryDto): Promise<MovieResultDto[]> {
+  async smartSearchMovies(
+    dto: SmartSearchQueryDto,
+    userId: number,
+  ): Promise<MovieResultDto[]> {
     const docs = await this.vectorService.searchSimilarMoviesFiltered(
       dto.query,
       {
@@ -230,7 +233,9 @@ export class MoviesService {
         minRating: dto.minRating,
         runtimeFrom: dto.runtimeFrom,
         runtimeTo: dto.runtimeTo,
+        excludeWatched: dto.excludeWatched,
       },
+      userId,
       20,
     );
 
