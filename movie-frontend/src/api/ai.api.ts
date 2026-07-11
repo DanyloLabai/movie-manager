@@ -1,10 +1,16 @@
 import { api } from "./index";
 import type { MovieResult } from "../types/movie.types";
 
+export type RecommendationReason = {
+  preferenceText: string;
+  similarityScore: number;
+};
+
 export type AIMessage = {
   role: "user" | "assistant" | "system";
   content: string;
   movies?: MovieResult[];
+  reasoning?: RecommendationReason[];
 };
 
 export async function getHistory(): Promise<AIMessage[]> {
@@ -22,9 +28,17 @@ export async function postHistory(
 export async function aiSearch(payload: {
   messages: AIMessage[];
   shownMovieIds?: number[];
-}): Promise<{ message?: string; movies?: MovieResult[] }> {
+}): Promise<{
+  message?: string;
+  movies?: MovieResult[];
+  reasoning?: RecommendationReason[];
+}> {
   const res = await api.post("/ai/search", payload);
-  return res.data as { message?: string; movies?: MovieResult[] };
+  return res.data as {
+    message?: string;
+    movies?: MovieResult[];
+    reasoning?: RecommendationReason[];
+  };
 }
 
 export async function watchTogether(

@@ -219,6 +219,32 @@ export class MoviesService {
     }
   }
 
+  // "Search by mood" — reuses the same embed + pgvector nearest-neighbor
+  // search as the AI chat's conceptual search (VectorService.searchSimilarMovies),
+  // just entered directly instead of via an LLM-picked concept phrase, and
+  // resolves matches to full MovieResultDtos the same way executeSearchMovies
+  // does in ai-chat.service.ts.
+  async searchMoviesByMood(
+    userId: number,
+    moodDescription: string,
+  ): Promise<MovieResultDto[]> {
+    const { movies: similarDocs } = await this.vectorService.searchMoviesByMood(
+      userId,
+      moodDescription,
+      10,
+    );
+
+    const foundMoviesMap = new Map<number, MovieResultDto>();
+    for (const doc of similarDocs) {
+      const mediaData = await this.findMovieByTitle(doc.metadata.title);
+      if (mediaData && !foundMoviesMap.has(mediaData.id)) {
+        foundMoviesMap.set(mediaData.id, mediaData);
+      }
+    }
+
+    return Array.from(foundMoviesMap.values());
+  }
+
   async findMovieByTitle(
     title: string,
     year?: number,

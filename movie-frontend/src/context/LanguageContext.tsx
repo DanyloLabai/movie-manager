@@ -57,6 +57,7 @@ const translations = {
       "(P.S. I found some titles but couldn't load their posters from the database.)",
     chat_tv: "TV Show",
     chat_movie: "Movie",
+    chat_why_this: "Why this?",
 
     // Quick prompts
     quick_watchlist: "From my watchlist",
@@ -69,6 +70,10 @@ const translations = {
     search_placeholder: "Enter movie title...",
     search_btn: "Search",
     search_find: "Find",
+    search_mode_title: "By title",
+    search_mode_mood: "By mood",
+    search_mood_placeholder: "Describe the mood you're in...",
+    search_mood_empty: "No movies matched that mood. Try describing it differently.",
     search_results: "Search Results",
     search_empty: "No movies found.",
     search_add: "Add",
@@ -405,6 +410,7 @@ const translations = {
       "(P.S. Знайшов кілька назв, але не зміг підтягнути постери з бази.)",
     chat_tv: "Серіал",
     chat_movie: "Фільм",
+    chat_why_this: "Чому саме це?",
 
     // Quick prompts
     quick_watchlist: "З мого списку",
@@ -417,6 +423,10 @@ const translations = {
     search_placeholder: "Введіть назву фільму...",
     search_btn: "Пошук",
     search_find: "Знайти",
+    search_mode_title: "За назвою",
+    search_mode_mood: "За настроєм",
+    search_mood_placeholder: "Опишіть свій настрій...",
+    search_mood_empty: "Не знайшли фільмів під цей настрій. Спробуй описати інакше.",
     search_results: "Результати пошуку",
     search_empty: "Фільмів не знайдено.",
     search_add: "Додати",

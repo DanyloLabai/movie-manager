@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import * as aiApi from "../api/ai.api";
-import type { AIMessage } from "../api/ai.api";
+import type { AIMessage, RecommendationReason } from "../api/ai.api";
 import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
@@ -20,6 +20,7 @@ interface Message {
   role: "user" | "ai";
   text: string;
   movies?: MovieResult[];
+  reasoning?: RecommendationReason[];
 }
 
 const MOBILE_BREAKPOINT_PX = 640;
@@ -58,6 +59,41 @@ const getBottomReserve = (isInputFocused: boolean) =>
   window.innerWidth < MOBILE_BREAKPOINT_PX && !isInputFocused
     ? BOTTOM_NAV_CONTENT_PX + getSafeAreaInsetBottomPx()
     : 0;
+
+function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
+  const { t } = useLang();
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="mt-2 px-1">
+      <button
+        type="button"
+        onClick={() => setIsOpen((prev) => !prev)}
+        className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[#c8963c]/70 hover:text-[#c8963c] transition"
+      >
+        <span className={`transition-transform ${isOpen ? "rotate-90" : ""}`}>
+          ▸
+        </span>
+        {t("chat_why_this")}
+      </button>
+      {isOpen && (
+        <ul className="mt-1.5 flex flex-col gap-1 border-l border-[#c8963c]/20 pl-2.5">
+          {reasoning.map((reason, idx) => (
+            <li
+              key={idx}
+              className="text-[10px] leading-snug text-[#f0e6cc]/60"
+            >
+              {reason.preferenceText}{" "}
+              <span className="text-[#c8963c]/60 font-semibold">
+                ({Math.round(reason.similarityScore * 100)}%)
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
 const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
@@ -277,6 +313,7 @@ export default function AiChat() {
           role: "ai",
           text: response.message || t("chat_default_found"),
           movies: response.movies,
+          reasoning: response.reasoning,
         },
       ]);
     } catch {
@@ -462,6 +499,9 @@ export default function AiChat() {
                         </div>
                       ))}
                     </div>
+                  )}
+                  {msg.reasoning && msg.reasoning.length > 0 && (
+                    <WhyThisHint reasoning={msg.reasoning} />
                   )}
                 </div>
               </div>

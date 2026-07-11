@@ -259,6 +259,7 @@ export default function Search() {
   const [isLoadingHome, setIsLoadingHome] = useState(trending.length === 0);
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [searchMode, setSearchMode] = useState<"title" | "mood">("title");
   const { t } = useLang();
 
   const [visibleCount, setVisibleCount] = useState(20);
@@ -379,7 +380,10 @@ export default function Search() {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
     try {
-      const response = await moviesApi.searchMovies({ title: searchQuery });
+      const response =
+        searchMode === "mood"
+          ? await moviesApi.searchMoviesByMood(searchQuery)
+          : await moviesApi.searchMovies({ title: searchQuery });
       setResults(response);
       localStorage.setItem(SEARCH_RESULTS_CACHE_KEY, JSON.stringify(response));
       localStorage.setItem(SEARCH_TIMESTAMP_KEY, Date.now().toString());
@@ -396,6 +400,12 @@ export default function Search() {
     localStorage.removeItem(SEARCH_QUERY_CACHE_KEY);
     localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
     localStorage.removeItem(SEARCH_TIMESTAMP_KEY);
+  };
+
+  const handleSearchModeChange = (mode: "title" | "mood") => {
+    if (mode === searchMode) return;
+    setSearchMode(mode);
+    handleClearSearch();
   };
 
   const handleAdd = async (movie: MovieResult) => {
@@ -556,6 +566,30 @@ export default function Search() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12">
+        <div className="flex items-center justify-center gap-5 mb-4 max-w-2xl mx-auto">
+          <button
+            type="button"
+            onClick={() => handleSearchModeChange("title")}
+            className={`text-[11px] sm:text-xs font-black uppercase tracking-widest pb-1 transition-colors border-b-2 ${
+              searchMode === "title"
+                ? "text-[#c8963c] border-[#c8963c]"
+                : "text-[#f0e6cc]/50 border-transparent hover:text-[#c8963c]"
+            }`}
+          >
+            {t("search_mode_title")}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSearchModeChange("mood")}
+            className={`text-[11px] sm:text-xs font-black uppercase tracking-widest pb-1 transition-colors border-b-2 ${
+              searchMode === "mood"
+                ? "text-[#c8963c] border-[#c8963c]"
+                : "text-[#f0e6cc]/50 border-transparent hover:text-[#c8963c]"
+            }`}
+          >
+            {t("search_mode_mood")}
+          </button>
+        </div>
         <form
           onSubmit={handleSearch}
           className="relative max-w-2xl mx-auto mb-10"
@@ -564,7 +598,11 @@ export default function Search() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("search_placeholder")}
+            placeholder={t(
+              searchMode === "mood"
+                ? "search_mood_placeholder"
+                : "search_placeholder",
+            )}
             className="w-full pl-6 pr-24 py-3.5 sm:py-4 bg-[#1a1714] border border-[#c8963c]/30 rounded-full text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition text-sm sm:text-base font-medium tracking-wide"
           />
           <div className="absolute right-2 top-0 bottom-0 flex items-center gap-1">
@@ -642,7 +680,9 @@ export default function Search() {
             !isSearching && (
               <div className="text-center mt-10 border border-[#c8963c]/20 bg-[#1a1714] p-10 rounded-3xl max-w-sm mx-auto shadow-2xl">
                 <p className="text-[#f0e6cc]/60 text-lg mb-6 font-semibold">
-                  {t("search_empty")}
+                  {t(
+                    searchMode === "mood" ? "search_mood_empty" : "search_empty",
+                  )}
                 </p>
                 <button
                   onClick={handleClearSearch}
