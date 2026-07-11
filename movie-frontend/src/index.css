@@ -63,6 +63,20 @@ textarea {
   background: #1a1714;
 }
 
+/* Hide native number-input spin buttons everywhere; they render as plain
+   white browser-default arrows that clash with the dark/gold theme. */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 /* Used by horizontal carousels (genres, cast, etc.) that want no visible
    scrollbar at all rather than the themed one above. */
 .scrollbar-hide {
