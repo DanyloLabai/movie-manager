@@ -19,6 +19,7 @@ import type { TranslationKey } from "../context/LanguageContext";
 import AchievementTooltip from "../components/AchievementTooltip";
 import NotificationBell from "../components/NotificationBell";
 import SettingsMenu from "../components/SettingsMenu";
+import StarRating from "../components/StarRating";
 import type {
   WatchlistItem as WatchlistItemType,
   ProfileData as ProfileDataType,
@@ -114,9 +115,6 @@ export default function Watchlist() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
-  const [hoveredMovieId, setHoveredMovieId] = useState<number | null>(null);
-  const [hoveredStar, setHoveredStar] = useState(0);
-  const [modalHoveredStar, setModalHoveredStar] = useState(0);
   const [ratingModalData, setRatingModalData] = useState<{
     isOpen: boolean;
     tmdbId: number | null;
@@ -267,7 +265,6 @@ export default function Watchlist() {
   const handleMarkWatched = (tmdbId: number) => {
     const targetMovie = movies.find((m) => m.tmdbId === tmdbId);
     if (!targetMovie) return;
-    setModalHoveredStar(0);
     setRatingModalData({
       isOpen: true,
       tmdbId: targetMovie.tmdbId,
@@ -288,9 +285,7 @@ export default function Watchlist() {
     }
   };
 
-  const handleRateMovie = async (tmdbId: number, clickedStar: number) => {
-    const targetMovie = movies.find((m) => m.tmdbId === tmdbId);
-    const newRating = targetMovie?.rating === clickedStar ? 0 : clickedStar;
+  const handleRateMovie = async (tmdbId: number, newRating: number) => {
     if (activeTab === "watchlist") {
       setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
     } else {
@@ -331,12 +326,11 @@ export default function Watchlist() {
 
   const closeRatingModal = () => {
     setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
-    setModalHoveredStar(0);
   };
 
-  const handleModalRate = async (star: number) => {
+  const handleModalRate = async (rating: number) => {
     if (ratingModalData.tmdbId)
-      await confirmMarkWatched(ratingModalData.tmdbId, star);
+      await confirmMarkWatched(ratingModalData.tmdbId, rating);
     closeRatingModal();
   };
 
@@ -729,7 +723,7 @@ export default function Watchlist() {
                             {item.title}
                           </h5>
                           <span className="text-[#c8963c] text-[10px] font-black">
-                            ★ {item.rating}.0
+                            ★ {item.rating}/10
                           </span>
                         </div>
                       </Link>
@@ -1072,38 +1066,14 @@ export default function Watchlist() {
                         </Link>
 
                         {released || activeTab === "watched" ? (
-                          <div
-                            className="flex justify-center gap-0 mb-1.5 mt-auto pt-2"
-                            onMouseLeave={() => {
-                              setHoveredMovieId(null);
-                              setHoveredStar(0);
-                            }}
-                          >
-                            {[1, 2, 3, 4, 5].map((star) => {
-                              const isActive =
-                                (hoveredMovieId === item.tmdbId
-                                  ? hoveredStar
-                                  : item.rating || 0) >= star;
-                              return (
-                                <button
-                                  key={star}
-                                  onMouseEnter={() => {
-                                    setHoveredMovieId(item.tmdbId);
-                                    setHoveredStar(star);
-                                  }}
-                                  onClick={() =>
-                                    handleRateMovie(item.tmdbId, star)
-                                  }
-                                  className={`text-lg p-0.5 transition-all active:scale-150 ${
-                                    isActive
-                                      ? "text-[#c8963c]"
-                                      : "text-[#f0e6cc]/20"
-                                  }`}
-                                >
-                                  ★
-                                </button>
-                              );
-                            })}
+                          <div className="mb-1.5 mt-auto pt-2">
+                            <StarRating
+                              size="sm"
+                              value={item.rating || 0}
+                              onRate={(rating) =>
+                                handleRateMovie(item.tmdbId, rating)
+                              }
+                            />
                           </div>
                         ) : (
                           <div className="flex justify-center mb-1.5 mt-auto pt-2">
@@ -1201,20 +1171,8 @@ export default function Watchlist() {
                 {t("movie_rate_desc")} "{ratingModalData.title}"{" "}
                 {t("movie_or_skip")}.
               </p>
-              <div
-                className="flex justify-center gap-1 mb-6"
-                onMouseLeave={() => setModalHoveredStar(0)}
-              >
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onMouseEnter={() => setModalHoveredStar(star)}
-                    onClick={() => handleModalRate(star)}
-                    className={`text-4xl transition-all duration-150 transform active:scale-125 p-1 ${modalHoveredStar >= star ? "text-[#c8963c]" : "text-[#f0e6cc]/20"}`}
-                  >
-                    ★
-                  </button>
-                ))}
+              <div className="mb-6">
+                <StarRating size="lg" value={0} onRate={handleModalRate} />
               </div>
               <button
                 onClick={handleModalSkip}

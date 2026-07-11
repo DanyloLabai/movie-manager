@@ -67,6 +67,10 @@ export class MoviesService {
   private readonly RECOMMENDATIONS_REFERENCE_LIMIT: number;
   private readonly GENRE_DISTRIBUTION_LIMIT: number;
 
+  private readonly MIN_RATING = 0;
+  private readonly MAX_RATING = 10;
+  private readonly RATING_STEP = 0.5;
+
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
@@ -667,7 +671,11 @@ export class MoviesService {
     const topGenre =
       genreDistribution.length > 0 ? genreDistribution[0].name : 'N/A';
 
-    const ratingDistribution = [1, 2, 3, 4, 5].map((star) => ({
+    const RATING_BUCKETS = Array.from(
+      { length: this.MAX_RATING / this.RATING_STEP },
+      (_, i) => (i + 1) * this.RATING_STEP,
+    );
+    const ratingDistribution = RATING_BUCKETS.map((star) => ({
       name: String(star),
       value: 0,
     }));
@@ -675,8 +683,11 @@ export class MoviesService {
     let ratedCount = 0;
 
     watchedItems.forEach((item) => {
-      if (item.rating && item.rating >= 1 && item.rating <= 5) {
-        ratingDistribution[item.rating - 1].value += 1;
+      if (item.rating && item.rating >= this.RATING_STEP && item.rating <= this.MAX_RATING) {
+        const bucketIndex = RATING_BUCKETS.indexOf(item.rating);
+        if (bucketIndex !== -1) {
+          ratingDistribution[bucketIndex].value += 1;
+        }
         totalRatingSum += item.rating;
         ratedCount += 1;
       }
@@ -855,6 +866,14 @@ export class MoviesService {
     return this.watchlistRepo.save(item);
   }
 
+  private normalizeRating(rating: number): number {
+    const clamped = Math.min(
+      this.MAX_RATING,
+      Math.max(this.MIN_RATING, rating),
+    );
+    return Math.round(clamped / this.RATING_STEP) * this.RATING_STEP;
+  }
+
   async rateMovie(userId: number, tmdbId: number, rating: number) {
     const item = await this.watchlistRepo.findOne({
       where: { user: { id: userId }, tmdbId },
@@ -862,7 +881,9 @@ export class MoviesService {
 
     if (!item) throw new NotFoundException('Media not found in your list');
 
-    item.rating = rating;
+    const normalizedRating = this.normalizeRating(rating);
+
+    item.rating = normalizedRating;
     item.isWatched = true;
     item.updatedAt = new Date();
 
@@ -876,7 +897,7 @@ export class MoviesService {
         title: item.title,
         posterUrl: item.posterUrl,
         mediaType: item.mediaType,
-        rating,
+        rating: normalizedRating,
       })
       .catch((err) =>
         this.logger.error(`Failed to log activity: ${err.message}`),

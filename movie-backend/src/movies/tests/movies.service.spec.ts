@@ -256,16 +256,52 @@ describe('MoviesService', () => {
     it('should set rating and mark as watched', async () => {
       const item = mockWatchlistItem({ isWatched: false, rating: null });
       mockWatchlistRepo.findOne.mockResolvedValue(item);
-      mockWatchlistRepo.save.mockResolvedValue({
-        ...item,
-        rating: 8,
-        isWatched: true,
-      });
+      mockWatchlistRepo.save.mockImplementation((saved) => saved);
 
       const result = await service.rateMovie(1, 550, 8);
 
       expect(result.rating).toBe(8);
       expect(result.isWatched).toBe(true);
+    });
+
+    it('should store a valid half-star value as-is', async () => {
+      const item = mockWatchlistItem({ isWatched: false, rating: null });
+      mockWatchlistRepo.findOne.mockResolvedValue(item);
+      mockWatchlistRepo.save.mockImplementation((saved) => saved);
+
+      const result = await service.rateMovie(1, 550, 8.5);
+
+      expect(result.rating).toBe(8.5);
+    });
+
+    it('should round a value with an invalid step to the nearest 0.5', async () => {
+      const item = mockWatchlistItem({ isWatched: false, rating: null });
+      mockWatchlistRepo.findOne.mockResolvedValue(item);
+      mockWatchlistRepo.save.mockImplementation((saved) => saved);
+
+      const result = await service.rateMovie(1, 550, 7.3);
+
+      expect(result.rating).toBe(7.5);
+    });
+
+    it('should clamp a negative rating to 0', async () => {
+      const item = mockWatchlistItem({ isWatched: false, rating: null });
+      mockWatchlistRepo.findOne.mockResolvedValue(item);
+      mockWatchlistRepo.save.mockImplementation((saved) => saved);
+
+      const result = await service.rateMovie(1, 550, -3);
+
+      expect(result.rating).toBe(0);
+    });
+
+    it('should clamp a rating above the max to 10', async () => {
+      const item = mockWatchlistItem({ isWatched: false, rating: null });
+      mockWatchlistRepo.findOne.mockResolvedValue(item);
+      mockWatchlistRepo.save.mockImplementation((saved) => saved);
+
+      const result = await service.rateMovie(1, 550, 25);
+
+      expect(result.rating).toBe(10);
     });
 
     it('should throw NotFoundException when item is not found', async () => {
