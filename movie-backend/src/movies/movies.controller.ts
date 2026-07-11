@@ -24,6 +24,7 @@ import { MoviesService } from './movies.service';
 import { MovieResultDto } from './dto/movie-result.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
+import { SmartSearchQueryDto } from './dto/smart-search-query.dto';
 import { VectorService } from '../vector/vector.service';
 
 interface RequestWithUser extends Request {
@@ -145,6 +146,25 @@ export class MoviesController {
     @Query('title') title: string,
   ): Promise<MovieResultDto[] | null> {
     return this.moviesService.searchMovies(title);
+  }
+
+  @Get('search/smart')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Smart search',
+    description:
+      'Semantic search with optional genre/year/rating/runtime filters (requires authentication)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of matching movies',
+    type: [MovieResultDto],
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async smartSearch(
+    @Query() dto: SmartSearchQueryDto,
+  ): Promise<MovieResultDto[]> {
+    return this.moviesService.smartSearchMovies(dto);
   }
 
   @Post('watchlist')

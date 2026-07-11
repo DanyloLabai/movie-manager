@@ -8,7 +8,9 @@ import { useLang } from "../context/LanguageContext";
 import { MovieCard } from "../components/movie/MovieCard";
 import NotificationBell from "../components/NotificationBell";
 import SettingsMenu from "../components/SettingsMenu";
+import { SearchFilterBar } from "../components/search/SearchFilterBar";
 import type { MovieResult } from "../types/movie.types";
+import type { SmartSearchFilters } from "../api/movies.api";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
@@ -259,6 +261,8 @@ export default function Search() {
   const [isLoadingHome, setIsLoadingHome] = useState(trending.length === 0);
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [mode, setMode] = useState<"search" | "smart">("search");
+  const [filters, setFilters] = useState<SmartSearchFilters>({});
   const { t } = useLang();
 
   const [visibleCount, setVisibleCount] = useState(20);
@@ -379,10 +383,18 @@ export default function Search() {
     if (!searchQuery.trim()) return;
     setIsSearching(true);
     try {
-      const response = await moviesApi.searchMovies({ title: searchQuery });
+      const response =
+        mode === "smart"
+          ? await moviesApi.smartSearchMovies(searchQuery, filters)
+          : await moviesApi.searchMovies({ title: searchQuery });
       setResults(response);
-      localStorage.setItem(SEARCH_RESULTS_CACHE_KEY, JSON.stringify(response));
-      localStorage.setItem(SEARCH_TIMESTAMP_KEY, Date.now().toString());
+      if (mode === "search") {
+        localStorage.setItem(
+          SEARCH_RESULTS_CACHE_KEY,
+          JSON.stringify(response),
+        );
+        localStorage.setItem(SEARCH_TIMESTAMP_KEY, Date.now().toString());
+      }
     } catch (error: unknown) {
       console.error(error);
     } finally {
@@ -556,15 +568,44 @@ export default function Search() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12">
+        <div className="flex justify-center gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setMode("search")}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition border ${
+              mode === "search"
+                ? "bg-[#c8963c] text-[#12100e] border-[#c8963c]"
+                : "bg-transparent text-[#f0e6cc]/60 border-[#c8963c]/30 hover:border-[#c8963c]"
+            }`}
+          >
+            {t("search_mode_basic")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("smart")}
+            className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition border ${
+              mode === "smart"
+                ? "bg-[#c8963c] text-[#12100e] border-[#c8963c]"
+                : "bg-transparent text-[#f0e6cc]/60 border-[#c8963c]/30 hover:border-[#c8963c]"
+            }`}
+          >
+            {t("search_mode_smart")}
+          </button>
+        </div>
+
         <form
           onSubmit={handleSearch}
-          className="relative max-w-2xl mx-auto mb-10"
+          className="relative max-w-2xl mx-auto mb-6"
         >
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("search_placeholder")}
+            placeholder={
+              mode === "smart"
+                ? t("search_smart_placeholder")
+                : t("search_placeholder")
+            }
             className="w-full pl-6 pr-24 py-3.5 sm:py-4 bg-[#1a1714] border border-[#c8963c]/30 rounded-full text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition text-sm sm:text-base font-medium tracking-wide"
           />
           <div className="absolute right-2 top-0 bottom-0 flex items-center gap-1">
@@ -586,6 +627,12 @@ export default function Search() {
             </button>
           </div>
         </form>
+
+        {mode === "smart" && (
+          <div className="max-w-3xl mx-auto">
+            <SearchFilterBar filters={filters} onChange={setFilters} />
+          </div>
+        )}
 
         <main>
           {!isSearching &&

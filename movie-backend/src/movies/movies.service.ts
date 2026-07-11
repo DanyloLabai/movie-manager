@@ -21,6 +21,7 @@ import { MovieDetailsResponse } from './dto/movies-details-response.dto';
 import { isAxiosError } from 'axios';
 import { TmdbTvDetailsResponse } from './dto/tv-details-response.dto';
 import { MovieDetailsExtendedDto } from './dto/movie-details-extended.dto';
+import { SmartSearchQueryDto } from './dto/smart-search-query.dto';
 import { ActorDetailsDto } from './dto/actor-details.dto';
 import { CastMemberDto } from './dto/cast-member.dto';
 import { GenreDto } from './dto/genre.dto';
@@ -217,6 +218,56 @@ export class MoviesService {
       this.logger.error(`Search error: ${errorMsg}`);
       return [];
     }
+  }
+
+  async smartSearchMovies(dto: SmartSearchQueryDto): Promise<MovieResultDto[]> {
+    const docs = await this.vectorService.searchSimilarMoviesFiltered(
+      dto.query,
+      {
+        genreId: dto.genreId,
+        yearFrom: dto.yearFrom,
+        yearTo: dto.yearTo,
+        minRating: dto.minRating,
+        runtimeFrom: dto.runtimeFrom,
+        runtimeTo: dto.runtimeTo,
+      },
+      20,
+    );
+
+    const results = await Promise.all(
+      docs.map(async (doc) => {
+        const tmdbId = Number(doc.metadata.tmdbId);
+        const mediaType = doc.metadata.mediaType || 'movie';
+        try {
+          const details = await this.getMovieDetails(tmdbId, mediaType);
+          return this.mapDetailsToResultDto(details);
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    return results.filter((r): r is MovieResultDto => r !== null);
+  }
+
+  private mapDetailsToResultDto(
+    details: MovieDetailsExtendedDto,
+  ): MovieResultDto {
+    return {
+      id: details.id,
+      title: details.title,
+      originalTitle: details.title,
+      description: details.overview || '',
+      releaseYear: details.releaseDate
+        ? details.releaseDate.split('-')[0]
+        : 'N/A',
+      rating: details.voteAverage || 0,
+      posterUrl: details.posterPath
+        ? `https://image.tmdb.org/t/p/w500${details.posterPath}`
+        : null,
+      mediaType: details.mediaType,
+      releaseDate: details.releaseDate || null,
+    };
   }
 
   async findMovieByTitle(
@@ -806,7 +857,13 @@ export class MoviesService {
           id: tmdbId,
           title: title,
           description: details.overview || '',
-          genres: details.genres?.map((g) => g.name) || [],
+          genres: details.genres || [],
+          releaseYear: details.releaseDate
+            ? parseInt(details.releaseDate.split('-')[0], 10) || null
+            : null,
+          voteAverage: details.voteAverage ?? null,
+          runtime: details.runtime ?? null,
+          mediaType,
         });
       })
       .catch((err) =>
@@ -1390,10 +1447,18 @@ export class MoviesService {
     let failedCount = 0;
 
     for (const movie of movies) {
-      let genres: string[] = [];
+      let genres: GenreDto[] = [];
+      let releaseYear: number | null = null;
+      let voteAverage: number | null = null;
+      let runtime: number | null = null;
       try {
         const details = await this.getMovieDetails(movie.id, 'movie');
-        genres = details.genres?.map((g) => g.name) || [];
+        genres = details.genres || [];
+        releaseYear = details.releaseDate
+          ? parseInt(details.releaseDate.split('-')[0], 10) || null
+          : null;
+        voteAverage = details.voteAverage ?? null;
+        runtime = details.runtime ?? null;
       } catch (err) {
         this.logger.warn(
           `Failed to fetch genres for movie ${movie.id}: ${(err as Error).message}`,
@@ -1405,6 +1470,10 @@ export class MoviesService {
         title: movie.title,
         description: movie.description || '',
         genres,
+        releaseYear,
+        voteAverage,
+        runtime,
+        mediaType: 'movie',
       });
 
       if (success) {

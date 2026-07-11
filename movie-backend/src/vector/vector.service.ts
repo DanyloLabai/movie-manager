@@ -4,11 +4,22 @@ import { Cron } from '@nestjs/schedule';
 import { Pool } from 'pg';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { embed } from 'ai';
+import { GenreDto } from '../movies/dto/genre.dto';
 
 interface MovieEmbeddingMetadata {
   tmdbId: number;
   title: string;
+  mediaType?: 'movie' | 'tv';
   [key: string]: unknown;
+}
+
+export interface MovieSearchFilters {
+  genreId?: number;
+  yearFrom?: number;
+  yearTo?: number;
+  minRating?: number;
+  runtimeFrom?: number;
+  runtimeTo?: number;
 }
 
 @Injectable()
@@ -68,7 +79,11 @@ export class VectorService implements OnModuleInit {
     id: number;
     title: string;
     description: string;
-    genres: string[];
+    genres: GenreDto[];
+    releaseYear: number | null;
+    voteAverage: number | null;
+    runtime: number | null;
+    mediaType: 'movie' | 'tv';
   }): Promise<boolean> {
     try {
       const existing = await this.pool.query(
@@ -79,14 +94,30 @@ export class VectorService implements OnModuleInit {
         return true;
       }
 
-      const text = `Title: ${movie.title}. Description: ${movie.description}. Genres: ${movie.genres.join(', ')}.`;
+      const genreNames = movie.genres.map((g) => g.name);
+      const genreIds = movie.genres.map((g) => g.id);
+      const text = `Title: ${movie.title}. Description: ${movie.description}. Genres: ${genreNames.join(', ')}.`;
       const embedding = await this.embed(text);
-      const metadata = { tmdbId: movie.id, title: movie.title };
+      const metadata = {
+        tmdbId: movie.id,
+        title: movie.title,
+        mediaType: movie.mediaType,
+      };
 
       await this.pool.query(
-        `INSERT INTO movie_embeddings (text, embedding, metadata)
-         VALUES ($1, $2::vector, $3)`,
-        [text, JSON.stringify(embedding), JSON.stringify(metadata)],
+        `INSERT INTO movie_embeddings
+           (text, embedding, metadata, genre_ids, release_year, vote_average, runtime, media_type)
+         VALUES ($1, $2::vector, $3, $4, $5, $6, $7, $8)`,
+        [
+          text,
+          JSON.stringify(embedding),
+          JSON.stringify(metadata),
+          genreIds,
+          movie.releaseYear,
+          movie.voteAverage,
+          movie.runtime,
+          movie.mediaType,
+        ],
       );
       return true;
     } catch (error) {
@@ -221,6 +252,71 @@ export class VectorService implements OnModuleInit {
        ORDER BY embedding <=> $1::vector
        LIMIT $2`,
       [JSON.stringify(embedding), k],
+    );
+
+    return result.rows.map((row) => ({
+      pageContent: row.text,
+      metadata:
+        typeof row.metadata === 'string'
+          ? (JSON.parse(row.metadata) as MovieEmbeddingMetadata)
+          : (row.metadata as MovieEmbeddingMetadata),
+    }));
+  }
+
+  private buildFilterClause(
+    filters: MovieSearchFilters,
+    startParamIndex: number,
+  ): { clause: string; params: unknown[] } {
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let i = startParamIndex;
+
+    if (filters.genreId !== undefined) {
+      conditions.push(`genre_ids @> ARRAY[$${i++}]::int[]`);
+      params.push(filters.genreId);
+    }
+    if (filters.yearFrom !== undefined) {
+      conditions.push(`release_year >= $${i++}`);
+      params.push(filters.yearFrom);
+    }
+    if (filters.yearTo !== undefined) {
+      conditions.push(`release_year <= $${i++}`);
+      params.push(filters.yearTo);
+    }
+    if (filters.minRating !== undefined) {
+      conditions.push(`vote_average >= $${i++}`);
+      params.push(filters.minRating);
+    }
+    if (filters.runtimeFrom !== undefined) {
+      conditions.push(`runtime >= $${i++}`);
+      params.push(filters.runtimeFrom);
+    }
+    if (filters.runtimeTo !== undefined) {
+      conditions.push(`runtime <= $${i++}`);
+      params.push(filters.runtimeTo);
+    }
+
+    return {
+      clause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
+      params,
+    };
+  }
+
+  async searchSimilarMoviesFiltered(
+    query: string,
+    filters: MovieSearchFilters,
+    k = 20,
+  ): Promise<Array<{ pageContent: string; metadata: MovieEmbeddingMetadata }>> {
+    const embedding = await this.embed(query);
+    const { clause, params } = this.buildFilterClause(filters, 3);
+
+    const result = await this.pool.query(
+      `SELECT text, metadata
+       FROM movie_embeddings
+       ${clause}
+       ORDER BY embedding <=> $1::vector
+       LIMIT $2`,
+      [JSON.stringify(embedding), k, ...params],
     );
 
     return result.rows.map((row) => ({
