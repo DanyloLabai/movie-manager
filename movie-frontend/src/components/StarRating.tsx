@@ -9,9 +9,12 @@ interface StarRatingProps {
   disabled?: boolean;
 }
 
-const SIZE_CLASSES: Record<"sm" | "lg", string> = {
-  sm: "text-lg p-0.5",
-  lg: "text-2xl sm:text-3xl p-0.5",
+// Font size is driven by container width (cqw) so the 10-star row always
+// fits its parent, whether that's a ~140px watchlist card or a wide modal —
+// fixed pixel sizes overflowed narrow containers like the ActionPanel sidebar.
+const SIZE_STYLE: Record<"sm" | "lg", string> = {
+  sm: "clamp(0.65rem, 7.5cqw, 1.125rem)",
+  lg: "clamp(0.85rem, 8.5cqw, 1.875rem)",
 };
 
 function resolveValueFromPointer(
@@ -32,11 +35,12 @@ export default function StarRating({
   const [hoverValue, setHoverValue] = useState<number | null>(null);
 
   const displayValue = hoverValue ?? value;
-  const sizeClass = SIZE_CLASSES[size];
+  const fontSize = SIZE_STYLE[size];
 
   return (
     <div
-      className="flex justify-center items-center gap-0"
+      className="flex w-full items-center"
+      style={{ containerType: "inline-size" }}
       onMouseLeave={() => setHoverValue(null)}
     >
       {Array.from({ length: RATING_STAR_COUNT }, (_, i) => i + 1).map(
@@ -52,12 +56,13 @@ export default function StarRating({
               disabled={disabled}
               onMouseMove={(e) => setHoverValue(resolveValueFromPointer(e, star))}
               onClick={(e) => onRate(resolveValueFromPointer(e, star))}
-              className={`relative transition-all active:scale-125 disabled:opacity-50 disabled:pointer-events-none ${sizeClass}`}
+              style={{ fontSize }}
+              className="relative flex-1 min-w-0 flex items-center justify-center leading-none transition-all active:scale-125 disabled:opacity-50 disabled:pointer-events-none"
             >
               <span className="text-[#f0e6cc]/20">★</span>
               <span
-                className="absolute inset-0 overflow-hidden text-[#c8963c] whitespace-nowrap"
-                style={{ width: `${fillPercent}%` }}
+                className="absolute inset-0 flex items-center justify-center text-[#c8963c]"
+                style={{ clipPath: `inset(0 ${100 - fillPercent}% 0 0)` }}
               >
                 ★
               </span>
