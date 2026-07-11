@@ -162,9 +162,10 @@ export class MoviesController {
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async smartSearch(
+    @Req() req: RequestWithUser,
     @Query() dto: SmartSearchQueryDto,
   ): Promise<MovieResultDto[]> {
-    return this.moviesService.smartSearchMovies(dto);
+    return this.moviesService.smartSearchMovies(dto, req.user.userId);
   }
 
   @Post('watchlist')

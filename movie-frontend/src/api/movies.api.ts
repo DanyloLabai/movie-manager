@@ -23,6 +23,7 @@ export interface SmartSearchFilters {
   minRating?: number;
   runtimeFrom?: number;
   runtimeTo?: number;
+  excludeWatched?: boolean;
 }
 
 export async function smartSearchMovies(

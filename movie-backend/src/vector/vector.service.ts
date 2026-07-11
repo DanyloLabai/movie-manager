@@ -20,6 +20,7 @@ export interface MovieSearchFilters {
   minRating?: number;
   runtimeFrom?: number;
   runtimeTo?: number;
+  excludeWatched?: boolean;
 }
 
 @Injectable()
@@ -265,6 +266,7 @@ export class VectorService implements OnModuleInit {
 
   private buildFilterClause(
     filters: MovieSearchFilters,
+    userId: number | undefined,
     startParamIndex: number,
   ): { clause: string; params: unknown[] } {
     const conditions: string[] = [];
@@ -295,6 +297,17 @@ export class VectorService implements OnModuleInit {
       conditions.push(`runtime <= $${i++}`);
       params.push(filters.runtimeTo);
     }
+    if (filters.excludeWatched && userId !== undefined) {
+      conditions.push(
+        `NOT EXISTS (
+           SELECT 1 FROM watchlist w
+           WHERE w."userId" = $${i++}
+             AND w."isWatched" = true
+             AND w."tmdbId" = (movie_embeddings.metadata->>'tmdbId')::int
+         )`,
+      );
+      params.push(userId);
+    }
 
     return {
       clause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
@@ -305,10 +318,11 @@ export class VectorService implements OnModuleInit {
   async searchSimilarMoviesFiltered(
     query: string,
     filters: MovieSearchFilters,
+    userId?: number,
     k = 20,
   ): Promise<Array<{ pageContent: string; metadata: MovieEmbeddingMetadata }>> {
     const embedding = await this.embed(query);
-    const { clause, params } = this.buildFilterClause(filters, 3);
+    const { clause, params } = this.buildFilterClause(filters, userId, 3);
 
     const result = await this.pool.query(
       `SELECT text, metadata

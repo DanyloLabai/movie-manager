@@ -149,6 +149,18 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
           />
         </div>
       </div>
+
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={filters.excludeWatched ?? false}
+          onChange={(e) => setFilter("excludeWatched", e.target.checked)}
+          className="w-4 h-4 rounded accent-[#c8963c] cursor-pointer"
+        />
+        <span className="text-xs font-bold text-[#f0e6cc]/70 uppercase tracking-wider">
+          {t("filter_hide_watched")}
+        </span>
+      </label>
     </div>
   );
 }
