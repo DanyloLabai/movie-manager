@@ -4,31 +4,24 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
+  Unique,
 } from 'typeorm';
 import { User } from '../users/users.entity';
 
-@Entity('notification')
-export class Notification {
+@Entity('user_achievements')
+@Unique('UQ_user_achievements_userId_achievementId', [
+  'user',
+  'achievementId',
+])
+export class UserAchievement {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  tmdbId: number;
-
-  @Column()
-  title: string;
-
-  @Column({ nullable: true })
-  posterUrl: string;
-
-  @Column()
-  mediaType: string;
-
-  @Column({ default: false })
-  isRead: boolean;
+  achievementId: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  unlockedAt: Date;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   user: User;

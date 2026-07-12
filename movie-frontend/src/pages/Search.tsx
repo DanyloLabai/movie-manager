@@ -7,12 +7,14 @@ import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import { MovieCarousel } from "../components/movie/MovieCarousel";
 import { BecauseYouWatchedCarousel } from "../components/movie/BecauseYouWatchedCarousel";
+import { FriendActivityCarousel } from "../components/movie/FriendActivityCarousel";
 import { MovieCard } from "../components/movie/MovieCard";
 import NotificationBell from "../components/NotificationBell";
 import SettingsMenu from "../components/SettingsMenu";
 import { SearchFilterBar } from "../components/search/SearchFilterBar";
 import type { MovieResult } from "../types/movie.types";
 import type { SmartSearchFilters, BecauseYouWatchedResponse } from "../api/movies.api";
+import type { FriendLastWatched } from "../api/users.api";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
@@ -39,6 +41,9 @@ const SEARCH_QUERY_CACHE_KEY = `search_query_cache_${uid}`;
 const SEARCH_RESULTS_CACHE_KEY = `search_results_cache_${uid}`;
 const RECOMMENDATIONS_CACHE_KEY = `recommendations_cache_${uid}`;
 const BECAUSE_YOU_WATCHED_CACHE_KEY = `because_you_watched_cache_${uid}`;
+const FRIENDS_ACTIVITY_CACHE_KEY = `friends_activity_cache_${uid}`;
+const FILTERS_CACHE_KEY = `search_filters_cache_${uid}`;
+const SHOW_FILTERS_CACHE_KEY = `search_show_filters_cache_${uid}`;
 const SEARCH_TIMESTAMP_KEY = `search_timestamp_${uid}`;
 const ADDED_CACHE_KEY = `added_cache_${uid}`;
 
@@ -121,6 +126,17 @@ export default function Search() {
       }
     });
 
+  const [friendsActivity, setFriendsActivity] = useState<FriendLastWatched[]>(
+    () => {
+      try {
+        const c = localStorage.getItem(FRIENDS_ACTIVITY_CACHE_KEY);
+        return c ? JSON.parse(c) : [];
+      } catch {
+        return [];
+      }
+    },
+  );
+
   const [favoriteIds, setFavoriteIds] = useState<number[]>(() => {
     try {
       const c = localStorage.getItem(FAVORITES_CACHE_KEY);
@@ -143,8 +159,29 @@ export default function Search() {
   const [isLoadingHome, setIsLoadingHome] = useState(trending.length === 0);
   const [isSearching, setIsSearching] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [filters, setFilters] = useState<SmartSearchFilters>({});
-  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState<SmartSearchFilters>(() => {
+    try {
+      const timestamp = localStorage.getItem(SEARCH_TIMESTAMP_KEY);
+      if (timestamp && Date.now() - parseInt(timestamp) < CACHE_EXPIRATION_MS) {
+        const cached = localStorage.getItem(FILTERS_CACHE_KEY);
+        return cached ? JSON.parse(cached) : {};
+      }
+      return {};
+    } catch {
+      return {};
+    }
+  });
+  const [showFilters, setShowFilters] = useState(() => {
+    try {
+      const timestamp = localStorage.getItem(SEARCH_TIMESTAMP_KEY);
+      if (timestamp && Date.now() - parseInt(timestamp) < CACHE_EXPIRATION_MS) {
+        return localStorage.getItem(SHOW_FILTERS_CACHE_KEY) === "true";
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  });
   const [similarToTitle, setSimilarToTitle] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const { t } = useLang();
@@ -186,6 +223,12 @@ export default function Search() {
   const visibleRecommendations = recommendations
     .filter((movie) => !addedIds.includes(movie.id))
     .slice(0, 20);
+
+  const visibleBecauseYouWatched = becauseYouWatched
+    ? becauseYouWatched.similarMovies.filter(
+        (movie) => !watchedIds.includes(movie.id),
+      )
+    : [];
 
   useEffect(() => {
     localStorage.setItem(ADDED_CACHE_KEY, JSON.stringify(addedIds));
@@ -241,12 +284,14 @@ export default function Search() {
           recsData,
           upcomingData,
           becauseYouWatchedData,
+          friendsActivityData,
         ] = await Promise.all([
           moviesApi.getTrending().catch(() => []),
           moviesApi.getProfile().catch(() => null),
           moviesApi.getRecommendations().catch(() => []),
           moviesApi.getUpcoming().catch(() => []),
           moviesApi.getBecauseYouWatched().catch(() => null),
+          usersApi.getFriendsLastWatched().catch(() => []),
         ]);
 
         if (trendingData?.length > 0) {
@@ -279,6 +324,11 @@ export default function Search() {
         } else {
           localStorage.removeItem(BECAUSE_YOU_WATCHED_CACHE_KEY);
         }
+        setFriendsActivity(friendsActivityData);
+        localStorage.setItem(
+          FRIENDS_ACTIVITY_CACHE_KEY,
+          JSON.stringify(friendsActivityData),
+        );
         if (profileData) {
           const profile = profileData as ProfileResponse;
           const favs = profile.favorites?.map((f) => f.tmdbId) || [];
@@ -303,6 +353,14 @@ export default function Search() {
     localStorage.setItem(SEARCH_QUERY_CACHE_KEY, searchQuery);
     localStorage.setItem(SEARCH_TIMESTAMP_KEY, Date.now().toString());
   }, [searchQuery]);
+
+  useEffect(() => {
+    localStorage.setItem(FILTERS_CACHE_KEY, JSON.stringify(filters));
+  }, [filters]);
+
+  useEffect(() => {
+    localStorage.setItem(SHOW_FILTERS_CACHE_KEY, String(showFilters));
+  }, [showFilters]);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -339,13 +397,8 @@ export default function Search() {
         ? await moviesApi.smartSearchMovies(query, filters)
         : await moviesApi.searchMovies({ title: query });
       setResults(response);
-      if (!hasActiveFilters) {
-        localStorage.setItem(
-          SEARCH_RESULTS_CACHE_KEY,
-          JSON.stringify(response),
-        );
-        localStorage.setItem(SEARCH_TIMESTAMP_KEY, Date.now().toString());
-      }
+      localStorage.setItem(SEARCH_RESULTS_CACHE_KEY, JSON.stringify(response));
+      localStorage.setItem(SEARCH_TIMESTAMP_KEY, Date.now().toString());
       fetchSearchHistory();
     } catch (error: unknown) {
       console.error(error);
@@ -363,6 +416,8 @@ export default function Search() {
     localStorage.removeItem(SEARCH_QUERY_CACHE_KEY);
     localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
     localStorage.removeItem(SEARCH_TIMESTAMP_KEY);
+    localStorage.removeItem(FILTERS_CACHE_KEY);
+    localStorage.removeItem(SHOW_FILTERS_CACHE_KEY);
   };
 
   const handleAdd = async (movie: MovieResult) => {
@@ -709,6 +764,8 @@ export default function Search() {
                 onRemove={handleRemove}
               />
 
+              <FriendActivityCarousel items={friendsActivity} />
+
               <MovieCarousel
                 title={t("search_coming_soon")}
                 badge={t("search_new")}
@@ -758,10 +815,10 @@ export default function Search() {
                 onRemove={handleRemove}
               />
 
-              {becauseYouWatched && (
+              {becauseYouWatched && visibleBecauseYouWatched.length > 0 && (
                 <BecauseYouWatchedCarousel
                   basedOnMovie={becauseYouWatched.basedOnMovie}
-                  similarMovies={becauseYouWatched.similarMovies}
+                  similarMovies={visibleBecauseYouWatched}
                   favoriteIds={favoriteIds}
                   addedIds={addedIds}
                   watchedIds={watchedIds}

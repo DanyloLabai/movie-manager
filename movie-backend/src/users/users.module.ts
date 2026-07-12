@@ -7,8 +7,8 @@ import { UsersController } from './users.controller';
 import { MoviesModule } from 'src/movies/movies.module';
 import { ActivityModule } from 'src/activity/activity.module';
 import { VectorModule } from 'src/vector/vector.module';
-import { PushModule } from 'src/push/push.module';
 import { SearchHistoryModule } from 'src/search-history/search-history.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -16,8 +16,8 @@ import { SearchHistoryModule } from 'src/search-history/search-history.module';
     MoviesModule,
     ActivityModule,
     VectorModule,
-    PushModule,
     SearchHistoryModule,
+    NotificationsModule,
   ],
   providers: [UsersService],
   exports: [UsersService, TypeOrmModule],

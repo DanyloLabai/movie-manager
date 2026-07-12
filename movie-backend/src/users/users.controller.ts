@@ -147,6 +147,20 @@ export class UsersController {
     );
   }
 
+  @Get('friends/last-watched')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Get each friend's most recently watched movie",
+    description:
+      'For each friend, returns the movie/show they most recently marked as watched, along with their rating (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: "Friends' last-watched movies" })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getFriendsLastWatched(@Req() req) {
+    const userId = req.user.userId;
+    return this.usersService.getFriendsLastWatched(userId);
+  }
+
   @Post('friends/:id')
   @ApiBearerAuth()
   @ApiOperation({

@@ -3,6 +3,21 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { Activity, ActivityType } from './activity.entity';
 import { User } from '../users/users.entity';
+import { WatchlistItem } from '../movies/watchlist-entity';
+
+export interface FriendLastWatchedDto {
+  tmdbId: number;
+  title: string;
+  posterUrl: string | null;
+  mediaType: string;
+  rating: number | null;
+  watchedAt: Date | null;
+  user: {
+    id: number;
+    username: string;
+    avatarUrl: string | null;
+  };
+}
 
 export interface ActivityFeedItemDto {
   id: number;
@@ -44,6 +59,8 @@ export class ActivityService {
     private activityRepo: Repository<Activity>,
     @InjectRepository(User)
     private usersRepo: Repository<User>,
+    @InjectRepository(WatchlistItem)
+    private watchlistRepo: Repository<WatchlistItem>,
   ) {}
 
   async logActivity(
@@ -109,6 +126,46 @@ export class ActivityService {
         avatarUrl: entry.user.avatarUrl || null,
       },
     }));
+  }
+
+  async getFriendsLastWatched(userId: number): Promise<FriendLastWatchedDto[]> {
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      relations: ['friends'],
+    });
+
+    const friendIds = (user?.friends || []).map((f) => f.id);
+    if (friendIds.length === 0) return [];
+
+    const rows = await this.watchlistRepo
+      .createQueryBuilder('w')
+      .distinctOn(['w.userId'])
+      .innerJoinAndSelect('w.user', 'friend')
+      .where('w.userId IN (:...friendIds)', { friendIds })
+      .andWhere('w.isWatched = true')
+      .orderBy('w.userId', 'ASC')
+      .addOrderBy('w.watchedAt', 'DESC', 'NULLS LAST')
+      .getMany();
+
+    return rows
+      .map((row) => ({
+        tmdbId: row.tmdbId,
+        title: row.title,
+        posterUrl: row.posterUrl || null,
+        mediaType: row.mediaType,
+        rating: row.rating ?? null,
+        watchedAt: row.watchedAt,
+        user: {
+          id: row.user.id,
+          username: row.user.username,
+          avatarUrl: row.user.avatarUrl || null,
+        },
+      }))
+      .sort((a, b) => {
+        const aTime = a.watchedAt ? new Date(a.watchedAt).getTime() : 0;
+        const bTime = b.watchedAt ? new Date(b.watchedAt).getTime() : 0;
+        return bTime - aTime;
+      });
   }
 
   async getUserActivityByDay(
