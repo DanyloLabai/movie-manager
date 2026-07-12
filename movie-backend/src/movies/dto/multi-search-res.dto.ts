@@ -12,6 +12,7 @@ export class TmdbMultiSearchResultDto {
   poster_path: string | null;
   original_language: string;
   vote_count: number;
+  genre_ids?: number[];
 }
 
 export class TmdbMultiSearchResponseDto {

@@ -110,6 +110,8 @@ const translations = {
     search_ai_curating: "AI curating your list...",
     search_ai_empty:
       "Add movies to your Watchlist so AI can recommend similar titles!",
+    search_friends_activity: "Friends' Latest Watches",
+    search_friends_activity_empty: "No friend activity yet.",
 
     // Ranks
     rank_film_legend: "Film Legend",
@@ -355,6 +357,7 @@ const translations = {
     notif_empty: "Nothing new right now.",
     notif_friend_requests: "Friend Requests",
     notif_releases: "New Releases",
+    notif_updates: "Updates",
     notif_mark_all_read: "Mark all read",
     notif_released_today: "Out today",
     movie_friends_watched: "Friends who watched this",
@@ -476,6 +479,8 @@ const translations = {
     search_ai_curating: "ШІ підбирає фільми...",
     search_ai_empty:
       "Додайте фільми до списку, щоб ШІ міг рекомендувати схожі!",
+    search_friends_activity: "Останні перегляди друзів",
+    search_friends_activity_empty: "Поки немає активності друзів.",
 
     // Ranks
     rank_film_legend: "Легенда кіно",
@@ -721,6 +726,7 @@ const translations = {
     notif_empty: "Наразі нічого нового.",
     notif_friend_requests: "Запити у друзі",
     notif_releases: "Нові релізи",
+    notif_updates: "Оновлення",
     notif_mark_all_read: "Прочитати все",
     notif_released_today: "Вийшов сьогодні",
     movie_friends_watched: "Твої друзі дивились це",

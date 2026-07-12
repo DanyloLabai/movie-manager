@@ -19,8 +19,8 @@ import { FriendDto } from './dto/friend.dto';
 import { DatabaseErrorDto } from './dto/database-error.dto';
 import { ActivityService } from 'src/activity/activity.service';
 import { VectorService } from 'src/vector/vector.service';
-import { PushService } from 'src/push/push.service';
 import { SearchHistoryService } from 'src/search-history/search-history.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class UsersService {
@@ -33,8 +33,8 @@ export class UsersService {
     private moviesService: MoviesService,
     private activityService: ActivityService,
     private vectorService: VectorService,
-    private pushService: PushService,
     private searchHistoryService: SearchHistoryService,
+    private notificationsService: NotificationsService,
   ) {
     cloudinary.config({
       cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME'),
@@ -220,8 +220,9 @@ export class UsersService {
       await this.makeFriends(currentUser, friendToAdd);
       await this.friendRequestRepository.remove(incoming);
 
-      this.pushService
-        .sendToUser(friendId, {
+      this.notificationsService
+        .notify(friendId, {
+          type: 'friend_accepted',
           title: 'Friend request accepted',
           body: `${currentUser.username} accepted your friend request`,
           url: '/watchlist',
@@ -244,8 +245,9 @@ export class UsersService {
     });
     await this.friendRequestRepository.save(request);
 
-    this.pushService
-      .sendToUser(friendId, {
+    this.notificationsService
+      .notify(friendId, {
+        type: 'friend_request',
         title: 'New friend request',
         body: `${currentUser.username} wants to be your friend`,
         url: '/notifications',
@@ -285,8 +287,9 @@ export class UsersService {
     await this.makeFriends(request.toUser, request.fromUser);
     await this.friendRequestRepository.remove(request);
 
-    this.pushService
-      .sendToUser(request.fromUser.id, {
+    this.notificationsService
+      .notify(request.fromUser.id, {
+        type: 'friend_accepted',
         title: 'Friend request accepted',
         body: `${request.toUser.username} accepted your friend request`,
         url: '/watchlist',
@@ -358,6 +361,10 @@ export class UsersService {
 
   async getFriendsFeed(userId: number, before?: Date) {
     return this.activityService.getFriendsFeed(userId, before);
+  }
+
+  async getFriendsLastWatched(userId: number) {
+    return this.activityService.getFriendsLastWatched(userId);
   }
 
   async getActivityHeatmap(userId: number, year: number) {

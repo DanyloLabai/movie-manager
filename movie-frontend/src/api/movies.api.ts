@@ -162,12 +162,21 @@ export async function getFriendsWatched(
   return res.data as FriendWatched[];
 }
 
+export type AppNotificationType =
+  | "release"
+  | "achievement"
+  | "friend_request"
+  | "friend_accepted";
+
 export type AppNotification = {
   id: number;
-  tmdbId: number;
+  type: AppNotificationType;
+  tmdbId: number | null;
   title: string;
+  body: string | null;
   posterUrl: string | null;
-  mediaType: string;
+  mediaType: string | null;
+  url: string | null;
   isRead: boolean;
   createdAt: string;
 };

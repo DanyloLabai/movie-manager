@@ -10,7 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
-import { Notification } from './notification.entity';
+import { NotificationsService } from 'src/notifications/notifications.service';
 import { In, MoreThanOrEqual, Repository } from 'typeorm';
 import {
   TmdbMultiSearchResponseDto,
@@ -44,8 +44,8 @@ import {
   MovieEmbeddingMetadata,
 } from 'src/vector/vector.service';
 import { ActivityService } from 'src/activity/activity.service';
-import { PushService } from 'src/push/push.service';
 import { SearchHistoryService } from 'src/search-history/search-history.service';
+import { AchievementsService } from 'src/achievements/achievements.service';
 
 @Injectable()
 export class MoviesService {
@@ -55,9 +55,6 @@ export class MoviesService {
   private readonly resendApiKey: string;
   private readonly frontendUrl: string;
   private groq: Groq;
-
-  // 0-10 scale (see StarRating.tsx's RATING_STAR_COUNT) — only recommend
-  // off a watch the user actually liked, not one they merely finished.
   private readonly BECAUSE_YOU_WATCHED_RATING_THRESHOLD = 6;
 
   private readonly TTL_24H: number;
@@ -89,12 +86,11 @@ export class MoviesService {
     private usersRepo: Repository<User>,
     @InjectRepository(WatchlistItem)
     private watchlistRepo: Repository<WatchlistItem>,
-    @InjectRepository(Notification)
-    private notificationRepo: Repository<Notification>,
     private readonly vectorService: VectorService,
     private readonly activityService: ActivityService,
-    private readonly pushService: PushService,
     private readonly searchHistoryService: SearchHistoryService,
+    private readonly achievementsService: AchievementsService,
+    private readonly notificationsService: NotificationsService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.tmdbToken = this.configService.get<string>('TMDB_API_TOKEN') as string;
@@ -171,6 +167,37 @@ export class MoviesService {
     throw new Error('Max retries exceeded');
   }
 
+  private async fetchTmdbMultiSearch(
+    query: string,
+  ): Promise<TmdbMultiSearchResultDto[]> {
+    const requests = [1, 2].map((page) =>
+      firstValueFrom(
+        this.httpService.get<TmdbMultiSearchResponseDto>(
+          `${this.baseUrl}/search/multi`,
+          {
+            params: { query, language: 'en-US', page },
+            headers: { Authorization: `Bearer ${this.tmdbToken}` },
+          },
+        ),
+      ).catch(() => null),
+    );
+
+    const responses = await Promise.all(requests);
+    let allResults: TmdbMultiSearchResultDto[] = [];
+
+    responses.forEach((res) => {
+      if (res?.data?.results) {
+        const existingIds = new Set(allResults.map((item) => item.id));
+        const newItems = res.data.results.filter(
+          (item) => !existingIds.has(item.id),
+        );
+        allResults = [...allResults, ...newItems];
+      }
+    });
+
+    return allResults;
+  }
+
   async searchMovies(
     query: string,
     userId?: number,
@@ -189,31 +216,7 @@ export class MoviesService {
     if (cached) return cached;
 
     try {
-      const requests = [1, 2].map((page) =>
-        firstValueFrom(
-          this.httpService.get<TmdbMultiSearchResponseDto>(
-            `${this.baseUrl}/search/multi`,
-            {
-              params: { query, language: 'en-US', page },
-              headers: { Authorization: `Bearer ${this.tmdbToken}` },
-            },
-          ),
-        ).catch(() => null),
-      );
-
-      const responses = await Promise.all(requests);
-      let allResults: TmdbMultiSearchResultDto[] = [];
-
-      responses.forEach((res) => {
-        if (res?.data?.results) {
-          const existingIds = new Set(allResults.map((item) => item.id));
-          const newItems = res.data.results.filter(
-            (item) => !existingIds.has(item.id),
-          );
-          allResults = [...allResults, ...newItems];
-        }
-      });
-
+      const allResults = await this.fetchTmdbMultiSearch(query);
       if (allResults.length === 0) return [];
 
       const results = allResults
@@ -252,6 +255,9 @@ export class MoviesService {
         this.logger.error(`Failed to log search history: ${err.message}`),
       );
 
+    const literalResults = await this.searchLiteralWithFilters(dto, userId);
+    if (literalResults.length > 0) return literalResults;
+
     const docs = await this.vectorService.searchSimilarMoviesFiltered(
       dto.query,
       {
@@ -268,6 +274,96 @@ export class MoviesService {
     );
 
     return this.hydrateEmbeddingDocs(docs);
+  }
+
+  private async searchLiteralWithFilters(
+    dto: SmartSearchQueryDto,
+    userId: number,
+  ): Promise<MovieResultDto[]> {
+    const allResults = await this.fetchTmdbMultiSearch(dto.query);
+    if (allResults.length === 0) return [];
+
+    let watchedTmdbIds: Set<number> | null = null;
+    if (dto.excludeWatched) {
+      const watched = await this.watchlistRepo.find({
+        where: { user: { id: userId }, isWatched: true },
+        select: ['tmdbId'],
+      });
+      watchedTmdbIds = new Set(watched.map((w) => w.tmdbId));
+    }
+
+    let candidates = allResults.filter((item: TmdbMultiSearchResultDto) => {
+      if (item.media_type !== 'movie' && item.media_type !== 'tv') return false;
+      if (item.original_language === 'ru' || !item.poster_path) return false;
+
+      if (
+        dto.genreId !== undefined &&
+        !(item.genre_ids || []).includes(dto.genreId)
+      ) {
+        return false;
+      }
+
+      const year = parseInt(
+        (item.release_date || item.first_air_date || '').split('-')[0],
+        10,
+      );
+      if (dto.yearFrom !== undefined && (!year || year < dto.yearFrom))
+        return false;
+      if (dto.yearTo !== undefined && (!year || year > dto.yearTo))
+        return false;
+
+      if (
+        dto.minRating !== undefined &&
+        (item.vote_average || 0) < dto.minRating
+      ) {
+        return false;
+      }
+
+      if (watchedTmdbIds?.has(item.id)) return false;
+
+      return true;
+    });
+
+    candidates = candidates
+      .sort((a, b) => {
+        const scoreA = (a.vote_average || 0) * (a.vote_count || 0);
+        const scoreB = (b.vote_average || 0) * (b.vote_count || 0);
+        return scoreB - scoreA;
+      })
+      .slice(0, 40);
+
+    if (dto.runtimeFrom !== undefined || dto.runtimeTo !== undefined) {
+      const withRuntime = await Promise.all(
+        candidates.map(async (item) => {
+          try {
+            const details = await this.getMovieDetails(
+              item.id,
+              item.media_type as 'movie' | 'tv',
+            );
+            return { item, runtime: details.runtime ?? null };
+          } catch {
+            return { item, runtime: null };
+          }
+        }),
+      );
+
+      candidates = withRuntime
+        .filter(({ runtime }) => {
+          if (runtime === null) return false;
+          if (dto.runtimeFrom !== undefined && runtime < dto.runtimeFrom)
+            return false;
+          if (dto.runtimeTo !== undefined && runtime > dto.runtimeTo)
+            return false;
+          return true;
+        })
+        .map(({ item }) => item);
+    }
+
+    return candidates
+      .slice(0, 20)
+      .map((media) =>
+        this.mapMediaToDto(media, media.media_type as 'movie' | 'tv'),
+      );
   }
 
   async findSimilarBySemantic(
@@ -831,7 +927,11 @@ export class MoviesService {
     let ratedCount = 0;
 
     watchedItems.forEach((item) => {
-      if (item.rating && item.rating >= this.RATING_STEP && item.rating <= this.MAX_RATING) {
+      if (
+        item.rating &&
+        item.rating >= this.RATING_STEP &&
+        item.rating <= this.MAX_RATING
+      ) {
         const bucketIndex = RATING_BUCKETS.indexOf(item.rating);
         if (bucketIndex !== -1) {
           ratingDistribution[bucketIndex].value += 1;
@@ -948,6 +1048,12 @@ export class MoviesService {
         this.logger.error(`Failed to log activity: ${err.message}`),
       );
 
+    this.achievementsService
+      .checkAndNotify(userId)
+      .catch((err) =>
+        this.logger.error(`Failed to check achievements: ${err.message}`),
+      );
+
     this.getMovieDetails(tmdbId, mediaType)
       .then((details) => {
         this.vectorService.addMovieToVectorStore({
@@ -1018,7 +1124,15 @@ export class MoviesService {
         this.logger.error(`Failed to log activity: ${err.message}`),
       );
 
-    return this.watchlistRepo.save(item);
+    const savedItem = await this.watchlistRepo.save(item);
+
+    this.achievementsService
+      .checkAndNotify(userId)
+      .catch((err) =>
+        this.logger.error(`Failed to check achievements: ${err.message}`),
+      );
+
+    return savedItem;
   }
 
   private normalizeRating(rating: number): number {
@@ -1112,7 +1226,17 @@ export class MoviesService {
         );
     }
 
-    return this.watchlistRepo.save(item);
+    const savedItem = await this.watchlistRepo.save(item);
+
+    if (item.isFavorite) {
+      this.achievementsService
+        .checkAndNotify(userId)
+        .catch((err) =>
+          this.logger.error(`Failed to check achievements: ${err.message}`),
+        );
+    }
+
+    return savedItem;
   }
 
   async getMovieUserStatus(userId: number, tmdbId: number) {
@@ -1325,37 +1449,25 @@ export class MoviesService {
         if (!item.user) continue;
 
         try {
-          await this.notificationRepo.save(
-            this.notificationRepo.create({
-              user: item.user,
-              tmdbId: item.tmdbId,
-              title: item.title,
-              posterUrl: item.posterUrl,
-              mediaType: item.mediaType,
-            }),
-          );
+          await this.notificationsService.notify(item.user.id, {
+            type: 'release',
+            title: item.title,
+            body: 'Released today',
+            pushTitle: "🍿 It's out today!",
+            pushBody: `"${item.title}" is officially released today.`,
+            tmdbId: item.tmdbId,
+            posterUrl: item.posterUrl,
+            mediaType: item.mediaType,
+            url: `/movie/${item.tmdbId}?type=${item.mediaType}`,
+          });
           item.notified = true;
           await this.watchlistRepo.save(item);
-
-          await this.pushService
-            .sendToUser(item.user.id, {
-              title: '🍿 It\'s out today!',
-              body: `"${item.title}" is officially released today.`,
-              url: `/movie/${item.tmdbId}?type=${item.mediaType}`,
-            })
-            .catch((pushError: unknown) =>
-              this.logger.warn(
-                `Failed to send push for "${item.title}": ${
-                  pushError instanceof Error
-                    ? pushError.message
-                    : String(pushError)
-                }`,
-              ),
-            );
         } catch (notifError: unknown) {
           this.logger.error(
             `Failed to create in-app notification for "${item.title}": ${
-              notifError instanceof Error ? notifError.message : String(notifError)
+              notifError instanceof Error
+                ? notifError.message
+                : String(notifError)
             }`,
           );
         }
@@ -1413,32 +1525,18 @@ export class MoviesService {
   }
 
   async getNotifications(userId: number, limit = 30, offset = 0) {
-    return this.notificationRepo.find({
-      where: { user: { id: userId } },
-      order: { createdAt: 'DESC' },
-      take: limit,
-      skip: offset,
-    });
+    return this.notificationsService.getNotifications(userId, limit, offset);
   }
 
   async markNotificationRead(userId: number, notificationId: number) {
-    const notification = await this.notificationRepo.findOne({
-      where: { id: notificationId, user: { id: userId } },
-    });
-    if (!notification) {
-      throw new NotFoundException('Notification not found');
-    }
-    notification.isRead = true;
-    await this.notificationRepo.save(notification);
-    return { message: 'Notification marked as read' };
+    return this.notificationsService.markNotificationRead(
+      userId,
+      notificationId,
+    );
   }
 
   async markAllNotificationsRead(userId: number) {
-    await this.notificationRepo.update(
-      { user: { id: userId }, isRead: false },
-      { isRead: true },
-    );
-    return { message: 'All notifications marked as read' };
+    return this.notificationsService.markAllNotificationsRead(userId);
   }
 
   private mapMediaToDto(
@@ -1575,9 +1673,7 @@ export class MoviesService {
 
       if (success) {
         syncedCount += 1;
-        this.logger.log(
-          `Synced movie ${syncedCount}/${total}: ${movie.title}`,
-        );
+        this.logger.log(`Synced movie ${syncedCount}/${total}: ${movie.title}`);
       } else {
         failedCount += 1;
         this.logger.warn(`Failed to sync movie: ${movie.title}`);

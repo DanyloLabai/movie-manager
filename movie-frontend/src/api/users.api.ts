@@ -106,6 +106,21 @@ export async function getSearchHistory(
   return res.data;
 }
 
+export type FriendLastWatched = {
+  tmdbId: number;
+  title: string;
+  posterUrl: string | null;
+  mediaType: string;
+  rating: number | null;
+  watchedAt: string | null;
+  user: { id: number; username: string; avatarUrl: string | null };
+};
+
+export async function getFriendsLastWatched(): Promise<FriendLastWatched[]> {
+  const res = await api.get(`/users/friends/last-watched`);
+  return res.data;
+}
+
 export default {
   getPublicProfile,
   updateProfile,
@@ -121,4 +136,5 @@ export default {
   deleteAccount,
   getActivityHeatmap,
   getSearchHistory,
+  getFriendsLastWatched,
 };

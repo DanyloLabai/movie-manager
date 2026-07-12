@@ -108,7 +108,18 @@ export default function Notifications() {
         prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)),
       );
     }
-    navigate(`/movie/${n.tmdbId}?type=${n.mediaType}`);
+    if (n.url) {
+      navigate(n.url);
+    } else if (n.tmdbId) {
+      navigate(`/movie/${n.tmdbId}?type=${n.mediaType || "movie"}`);
+    }
+  };
+
+  const NOTIFICATION_ICONS: Record<AppNotification["type"], string> = {
+    release: "🎬",
+    achievement: "🏆",
+    friend_request: "👥",
+    friend_accepted: "👥",
   };
 
   const handleMarkAllRead = async () => {
@@ -218,7 +229,7 @@ export default function Notifications() {
               <section>
                 <div className="flex items-center justify-between mb-3 px-1">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-[#c8963c]">
-                    {t("notif_releases")}
+                    {t("notif_updates")}
                   </h4>
                   {unreadNotifCount > 0 && (
                     <button
@@ -240,21 +251,26 @@ export default function Notifications() {
                           : "bg-[#1a1714] border-[#c8963c]/30 hover:border-[#c8963c]/60"
                       }`}
                     >
-                      <div className="w-10 h-14 rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20 bg-[#12100e]">
+                      <div className="w-10 h-14 rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20 bg-[#12100e] flex items-center justify-center text-lg">
                         {n.posterUrl ? (
                           <img
                             src={n.posterUrl}
                             alt={n.title}
                             className="w-full h-full object-cover"
                           />
-                        ) : null}
+                        ) : (
+                          NOTIFICATION_ICONS[n.type] || "🔔"
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-[#f0e6cc] truncate">
                           {n.title}
                         </p>
-                        <p className="text-[9px] text-[#f0e6cc]/40 uppercase tracking-wide">
-                          {t("notif_released_today")}
+                        <p className="text-[9px] text-[#f0e6cc]/40 uppercase tracking-wide truncate">
+                          {n.body ||
+                            (n.type === "release"
+                              ? t("notif_released_today")
+                              : "")}
                         </p>
                       </div>
                       <span className="text-[9px] text-[#f0e6cc]/30 shrink-0">

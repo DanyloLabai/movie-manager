@@ -29,9 +29,9 @@ export class VectorService implements OnModuleInit {
   private geminiApiKey: string;
   private readonly logger = new Logger(VectorService.name);
 
-  // Below this distance, two preference embeddings are considered
-  // near-duplicates (e.g. "I hate horror movies" vs "horror scares me").
   private readonly PREFERENCE_DUPLICATE_DISTANCE_THRESHOLD = 0.05;
+
+  private readonly SEARCH_RELEVANCE_DISTANCE_THRESHOLD = 0.6;
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -325,7 +325,7 @@ export class VectorService implements OnModuleInit {
     const { clause, params } = this.buildFilterClause(filters, userId, 3);
 
     const result = await this.pool.query(
-      `SELECT text, metadata
+      `SELECT text, metadata, embedding <=> $1::vector AS distance
        FROM movie_embeddings
        ${clause}
        ORDER BY embedding <=> $1::vector
@@ -333,13 +333,18 @@ export class VectorService implements OnModuleInit {
       [JSON.stringify(embedding), k, ...params],
     );
 
-    return result.rows.map((row) => ({
-      pageContent: row.text,
-      metadata:
-        typeof row.metadata === 'string'
-          ? (JSON.parse(row.metadata) as MovieEmbeddingMetadata)
-          : (row.metadata as MovieEmbeddingMetadata),
-    }));
+    return result.rows
+      .filter(
+        (row) =>
+          Number(row.distance) <= this.SEARCH_RELEVANCE_DISTANCE_THRESHOLD,
+      )
+      .map((row) => ({
+        pageContent: row.text,
+        metadata:
+          typeof row.metadata === 'string'
+            ? (JSON.parse(row.metadata) as MovieEmbeddingMetadata)
+            : (row.metadata as MovieEmbeddingMetadata),
+      }));
   }
 
   async searchSimilarToMovie(

@@ -7,12 +7,12 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { of } from 'rxjs';
 import { MoviesService } from '../movies.service';
 import { WatchlistItem } from '../watchlist-entity';
-import { Notification } from '../notification.entity';
 import { User } from '../../users/users.entity';
 import { VectorService } from '../../vector/vector.service';
 import { ActivityService } from '../../activity/activity.service';
-import { PushService } from '../../push/push.service';
 import { SearchHistoryService } from '../../search-history/search-history.service';
+import { AchievementsService } from '../../achievements/achievements.service';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 jest.mock('groq-sdk', () => {
   const Groq = jest.fn().mockImplementation(() => ({}));
@@ -99,16 +99,6 @@ const buildModule = async (): Promise<TestingModule> =>
         useValue: mockWatchlistRepo,
       },
       { provide: getRepositoryToken(User), useValue: mockUsersRepo },
-      {
-        provide: getRepositoryToken(Notification),
-        useValue: {
-          find: jest.fn(),
-          findOne: jest.fn(),
-          create: jest.fn((data) => data),
-          save: jest.fn(),
-          update: jest.fn(),
-        },
-      },
       { provide: HttpService, useValue: mockHttpService },
       { provide: ConfigService, useValue: mockConfigService },
       { provide: CACHE_MANAGER, useValue: mockCacheManager },
@@ -121,12 +111,21 @@ const buildModule = async (): Promise<TestingModule> =>
         useValue: { logActivity: jest.fn().mockResolvedValue(undefined) },
       },
       {
-        provide: PushService,
-        useValue: { sendToUser: jest.fn().mockResolvedValue(undefined) },
-      },
-      {
         provide: SearchHistoryService,
         useValue: { logSearch: jest.fn().mockResolvedValue(undefined) },
+      },
+      {
+        provide: AchievementsService,
+        useValue: { checkAndNotify: jest.fn().mockResolvedValue(undefined) },
+      },
+      {
+        provide: NotificationsService,
+        useValue: {
+          notify: jest.fn().mockResolvedValue(undefined),
+          getNotifications: jest.fn().mockResolvedValue([]),
+          markNotificationRead: jest.fn().mockResolvedValue(undefined),
+          markAllNotificationsRead: jest.fn().mockResolvedValue(undefined),
+        },
       },
     ],
   }).compile();
