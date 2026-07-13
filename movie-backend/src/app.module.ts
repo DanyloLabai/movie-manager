@@ -14,6 +14,7 @@ import { VectorModule } from './vector/vector.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PushModule } from './push/push.module';
 import { AdminModule } from './admin/admin.module';
+import { QuizModule } from './quiz/quiz.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { AdminModule } from './admin/admin.module';
     VectorModule,
     PushModule,
     AdminModule,
+    QuizModule,
   ],
   providers: [
     {

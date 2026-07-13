@@ -362,7 +362,7 @@ export default function AiChat() {
       }}
     >
       <div className="shrink-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
+        <header className="flex flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
             className="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0"
@@ -376,28 +376,36 @@ export default function AiChat() {
               LUMEN AI
             </h1>
           </Link>
-          <nav className="hidden sm:flex items-center gap-2 sm:gap-6 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
-            <Link
-              to="/ai-chat"
-              className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap"
-            >
-              {t("nav_ai_chat")}
-            </Link>
-            <Link
-              to="/search"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap"
-            >
-              {t("nav_search")}
-            </Link>
-            <Link
-              to="/watchlist"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap"
-            >
-              {t("nav_profile")}
-            </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <nav className="hidden sm:flex items-center gap-2 sm:gap-6 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
+              <Link
+                to="/ai-chat"
+                className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap"
+              >
+                {t("nav_ai_chat")}
+              </Link>
+              <Link
+                to="/search"
+                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap"
+              >
+                {t("nav_search")}
+              </Link>
+              <Link
+                to="/quiz"
+                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap"
+              >
+                {t("nav_quiz")}
+              </Link>
+              <Link
+                to="/watchlist"
+                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap"
+              >
+                {t("nav_profile")}
+              </Link>
+              <SettingsMenu />
+            </nav>
             <NotificationBell />
-            <SettingsMenu />
-          </nav>
+          </div>
         </header>
       </div>
 

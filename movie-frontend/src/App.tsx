@@ -11,6 +11,7 @@ import Register from "./pages/Register";
 import Watchlist from "./pages/Watchlist";
 import Search from "./pages/Search";
 import AiChat from "./pages/AiChat";
+import DailyQuiz from "./pages/DailyQuiz";
 import MovieDetails from "./pages/MovieDetails";
 import ChangePassword from "./pages/ChangePassword";
 import VerifyEmail from "./pages/VerifyEmail";
@@ -100,6 +101,15 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <AiChat />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/quiz"
+          element={
+            <ProtectedRoute>
+              <DailyQuiz />
             </ProtectedRoute>
           }
         />
