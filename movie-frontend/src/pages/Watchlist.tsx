@@ -361,11 +361,11 @@ export default function Watchlist() {
             <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={() => setIsFriendsModalOpen(true)}
-                className="w-8 h-8 bg-[#12100e] hover:bg-[#c8963c]/20 rounded-full flex items-center justify-center border border-[#c8963c]/30 text-[#c8963c] transition"
+                className="h-11 px-4 bg-[#12100e] hover:bg-[#c8963c]/10 rounded-full flex items-center gap-2 text-[#c8963c] font-black uppercase tracking-widest text-xs border-2 border-[#c8963c] shadow-lg transition active:scale-95"
                 title={t("profile_friends")}
               >
                 <svg
-                  className="w-3.5 h-3.5"
+                  className="w-5 h-5"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -377,6 +377,7 @@ export default function Watchlist() {
                     d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5.13a4 4 0 11-8 0 4 4 0 018 0zm6 3a4 4 0 10-4-4"
                   />
                 </svg>
+                <span className="hidden sm:inline">{t("profile_friends")}</span>
               </button>
             </div>
           </div>
@@ -775,7 +776,7 @@ export default function Watchlist() {
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
-        <header className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
+        <header className="flex flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
             className="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0"
@@ -794,29 +795,37 @@ export default function Watchlist() {
               </span>
             </div>
           </Link>
-          <nav className="hidden sm:flex items-center gap-2 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
-            <Link
-              to="/ai-chat"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
-            >
-              {t("nav_ai_chat")}
-            </Link>
-            <Link
-              to="/search"
-              className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
-            >
-              {t("nav_search")}
-            </Link>
-            <Link
-              to="/watchlist"
-              className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
-            >
-              {t("nav_profile")}
-            </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <nav className="hidden sm:flex items-center gap-2 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
+              <Link
+                to="/ai-chat"
+                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
+              >
+                {t("nav_ai_chat")}
+              </Link>
+              <Link
+                to="/search"
+                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
+              >
+                {t("nav_search")}
+              </Link>
+              <Link
+                to="/quiz"
+                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
+              >
+                {t("nav_quiz")}
+              </Link>
+              <Link
+                to="/watchlist"
+                className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
+              >
+                {t("nav_profile")}
+              </Link>
 
+              <SettingsMenu />
+            </nav>
             <NotificationBell />
-            <SettingsMenu />
-          </nav>
+          </div>
         </header>
       </div>
 
