@@ -4,6 +4,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import LogoImg from "../assets/logo.png";
 import * as moviesApi from "../api/movies.api";
 import * as usersApi from "../api/users.api";
+import * as quizApi from "../api/quiz.api";
+import type { QuizStats } from "../api/quiz.api";
 import { useLang } from "../context/LanguageContext";
 import { getUserRank, getAchievementsList } from "../utils/achievements";
 import type { TranslationKey } from "../context/LanguageContext";
@@ -85,6 +87,11 @@ export default function Watchlist() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
+  const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
+
+  useEffect(() => {
+    quizApi.getMyStats().then(setQuizStats).catch(() => {});
+  }, []);
   const [ratingModalData, setRatingModalData] = useState<{
     isOpen: boolean;
     tmdbId: number | null;
@@ -325,7 +332,14 @@ export default function Watchlist() {
     );
 
     const achievementsList = getAchievementsList(
-      { favoritesCount, watchedCount, totalCount },
+      {
+        favoritesCount,
+        watchedCount,
+        totalCount,
+        quizSolvedCount: quizStats?.totalSolved,
+        quizPerfectCount: quizStats?.perfectSolves,
+        quizCurrentStreak: quizStats?.currentStreak,
+      },
       t,
     );
 

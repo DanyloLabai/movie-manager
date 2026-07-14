@@ -201,8 +201,9 @@ export class MoviesService {
   async searchMovies(
     query: string,
     userId?: number,
+    options?: { skipHistory?: boolean },
   ): Promise<MovieResultDto[]> {
-    if (userId !== undefined) {
+    if (userId !== undefined && !options?.skipHistory) {
       this.searchHistoryService
         .logSearch(userId, query)
         .catch((err) =>

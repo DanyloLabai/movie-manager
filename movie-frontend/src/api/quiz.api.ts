@@ -1,6 +1,5 @@
 import { api } from "./index";
 
-export type QuizDifficulty = "easy" | "normal" | "hard";
 export type QuizLanguage = "en" | "uk";
 
 export interface QuizAnswer {
@@ -17,11 +16,13 @@ export interface QuizStreak {
 
 export interface QuizState {
   date: string;
-  difficulty: QuizDifficulty;
-  maxAttempts: number;
+  score: number;
+  hintsRevealed: number;
+  nextHintCost: number | null;
   hints: string[];
   guesses: string[];
-  attemptsLeft: number;
+  guessesLeft: number;
+  maxGuesses: number;
   isSolved: boolean;
   isFailed: boolean;
   posterUrl: string | null;
@@ -33,26 +34,37 @@ export interface QuizGuessResult extends QuizState {
   correct: boolean;
 }
 
-export type QuizFriendStatus = "solved" | "failed" | "not_played";
+export type QuizTodayStatus = "solved" | "failed" | "in_progress" | "not_played";
 
-export interface QuizFriendState {
+export interface QuizLeaderboardEntry {
   id: number;
   username: string;
   avatarUrl: string | null;
-  status: QuizFriendStatus;
-  guessCount: number;
+  totalScore: number;
+  rank: number;
+  todayScore: number | null;
+  todayStatus: QuizTodayStatus;
+  isMe: boolean;
 }
 
-export async function getTodayQuiz(
-  difficulty: QuizDifficulty,
-  lang: QuizLanguage,
-): Promise<QuizState> {
-  const res = await api.get("/quiz/today", { params: { difficulty, lang } });
+export interface QuizStats {
+  totalSolved: number;
+  perfectSolves: number;
+  currentStreak: number;
+  bestStreak: number;
+}
+
+export async function getTodayQuiz(lang: QuizLanguage): Promise<QuizState> {
+  const res = await api.get("/quiz/today", { params: { lang } });
+  return res.data as QuizState;
+}
+
+export async function buyHint(lang: QuizLanguage): Promise<QuizState> {
+  const res = await api.post("/quiz/hint", { lang });
   return res.data as QuizState;
 }
 
 export async function submitGuess(body: {
-  difficulty: QuizDifficulty;
   title: string;
   tmdbId: number;
   lang: QuizLanguage;
@@ -61,7 +73,12 @@ export async function submitGuess(body: {
   return res.data as QuizGuessResult;
 }
 
-export async function getFriendsStatus(): Promise<QuizFriendState[]> {
-  const res = await api.get("/quiz/friends-status");
-  return res.data as QuizFriendState[];
+export async function getFriendsLeaderboard(): Promise<QuizLeaderboardEntry[]> {
+  const res = await api.get("/quiz/friends-leaderboard");
+  return res.data as QuizLeaderboardEntry[];
+}
+
+export async function getMyStats(): Promise<QuizStats> {
+  const res = await api.get("/quiz/my-stats");
+  return res.data as QuizStats;
 }

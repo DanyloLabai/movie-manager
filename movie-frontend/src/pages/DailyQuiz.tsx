@@ -3,69 +3,96 @@ import { Link } from "react-router-dom";
 import * as quizApi from "../api/quiz.api";
 import * as moviesApi from "../api/movies.api";
 import { useLang } from "../context/LanguageContext";
-import type { TranslationKey } from "../context/LanguageContext";
 import { useToast } from "../hooks/useToast";
 import NotificationBell from "../components/NotificationBell";
 import SettingsMenu from "../components/SettingsMenu";
 import LogoImg from "../assets/logo.png";
 import type { MovieResult } from "../types/movie.types";
-import type { QuizDifficulty, QuizState, QuizFriendState } from "../api/quiz.api";
+import type { QuizState, QuizLeaderboardEntry } from "../api/quiz.api";
 
 const TOTAL_HINTS = 5;
 const MAX_BLUR_PX = 20;
 const MIN_BLUR_PX = 4;
-const DIFFICULTIES: QuizDifficulty[] = ["easy", "normal", "hard"];
-const DIFFICULTY_LABEL_KEY: Record<QuizDifficulty, TranslationKey> = {
-  easy: "quiz_difficulty_easy",
-  normal: "quiz_difficulty_normal",
-  hard: "quiz_difficulty_hard",
+
+const ICONS = {
+  fire: (
+    <>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"
+      />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"
+      />
+    </>
+  ),
+  star: (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0L6.982 21.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z"
+    />
+  ),
+  check: (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  ),
+  cross: (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    />
+  ),
+  lock: (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+    />
+  ),
+  film: (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M4 4h16v16H4V4zm4 0v16m8-16v16M4 8h16M4 16h16"
+    />
+  ),
 };
-
-const getUserId = (): string => {
-  const token = localStorage.getItem("token");
-  if (!token) return "guest";
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return String(payload.sub || payload.id || payload.userId || "guest");
-  } catch {
-    return "guest";
-  }
-};
-
-const uid = getUserId();
-const DIFFICULTY_CACHE_KEY = `quiz_difficulty_${uid}`;
-
-const isDifficulty = (v: string | null): v is QuizDifficulty =>
-  v === "easy" || v === "normal" || v === "hard";
 
 export default function DailyQuiz() {
   const { t, lang } = useLang();
   const { toastMessage, showToast } = useToast();
 
-  const [difficulty, setDifficulty] = useState<QuizDifficulty>(() => {
-    const cached = localStorage.getItem(DIFFICULTY_CACHE_KEY);
-    return isDifficulty(cached) ? cached : "normal";
-  });
   const [quiz, setQuiz] = useState<QuizState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [guessQuery, setGuessQuery] = useState("");
   const [suggestions, setSuggestions] = useState<MovieResult[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [friends, setFriends] = useState<QuizFriendState[]>([]);
+  const [isBuyingHint, setIsBuyingHint] = useState(false);
+  const [leaderboard, setLeaderboard] = useState<QuizLeaderboardEntry[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const hasStarted = (quiz?.guesses.length ?? 0) > 0;
   const isDone = !!quiz && (quiz.isSolved || quiz.isFailed);
-
-  useEffect(() => {
-    localStorage.setItem(DIFFICULTY_CACHE_KEY, difficulty);
-  }, [difficulty]);
 
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
     quizApi
-      .getTodayQuiz(difficulty, lang)
+      .getTodayQuiz(lang)
       .then((state) => {
         if (!cancelled) setQuiz(state);
       })
@@ -79,13 +106,13 @@ export default function DailyQuiz() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [difficulty, lang]);
+  }, [lang]);
 
   useEffect(() => {
     quizApi
-      .getFriendsStatus()
-      .then(setFriends)
-      .catch(() => setFriends([]));
+      .getFriendsLeaderboard()
+      .then(setLeaderboard)
+      .catch(() => setLeaderboard([]));
   }, [quiz?.isSolved, quiz?.isFailed]);
 
   useEffect(() => {
@@ -97,7 +124,10 @@ export default function DailyQuiz() {
     }
     debounceRef.current = setTimeout(async () => {
       try {
-        const results = await moviesApi.searchMovies({ title: q });
+        const results = await moviesApi.searchMovies({
+          title: q,
+          skipHistory: true,
+        });
         setSuggestions(
           (results || []).filter((r) => r.mediaType === "movie").slice(0, 6),
         );
@@ -110,10 +140,18 @@ export default function DailyQuiz() {
     };
   }, [guessQuery]);
 
-  const handleDifficultyChange = (next: QuizDifficulty) => {
-    if (hasStarted || next === difficulty) return;
-    setDifficulty(next);
-  };
+  const handleBuyHint = useCallback(async () => {
+    if (!quiz || isDone || isBuyingHint || quiz.nextHintCost === null) return;
+    setIsBuyingHint(true);
+    try {
+      const result = await quizApi.buyHint(lang);
+      setQuiz(result);
+    } catch {
+      showToast(t("quiz_hint_error"));
+    } finally {
+      setIsBuyingHint(false);
+    }
+  }, [quiz, isDone, isBuyingHint, lang, showToast, t]);
 
   const handleGuess = useCallback(
     async (movie: MovieResult) => {
@@ -123,7 +161,6 @@ export default function DailyQuiz() {
       setGuessQuery("");
       try {
         const result = await quizApi.submitGuess({
-          difficulty: quiz.difficulty,
           title: movie.title,
           tmdbId: movie.id,
           lang,
@@ -150,7 +187,7 @@ export default function DailyQuiz() {
     : isDone
       ? 0
       : Math.max(
-          MAX_BLUR_PX * (1 - quiz.guesses.length / quiz.maxAttempts),
+          MAX_BLUR_PX * (1 - quiz.hintsRevealed / TOTAL_HINTS),
           MIN_BLUR_PX,
         );
 
@@ -161,7 +198,7 @@ export default function DailyQuiz() {
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
-        <header className="flex items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
+        <header className="flex flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
             className="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0"
@@ -223,34 +260,22 @@ export default function DailyQuiz() {
         {quiz && (quiz.streak.current > 0 || quiz.streak.best > 0) && (
           <div className="flex justify-center mb-6">
             <div className="px-4 py-1.5 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-xs font-bold text-[#f0e6cc]/80 flex items-center gap-3">
-              <span>
-                🔥 {quiz.streak.current} {t("quiz_streak_current")}
+              <span className="flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 text-[#c8963c]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {ICONS.fire}
+                </svg>
+                {quiz.streak.current} {t("quiz_streak_current")}
               </span>
               <span className="text-[#f0e6cc]/30">|</span>
-              <span>
-                🏆 {quiz.streak.best} {t("quiz_streak_best")}
+              <span className="flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 text-[#c8963c]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {ICONS.star}
+                </svg>
+                {quiz.streak.best} {t("quiz_streak_best")}
               </span>
             </div>
           </div>
         )}
-
-        <div className="flex justify-center gap-2 mb-6">
-          {DIFFICULTIES.map((d) => (
-            <button
-              key={d}
-              type="button"
-              disabled={hasStarted}
-              onClick={() => handleDifficultyChange(d)}
-              className={`px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest border transition ${
-                (quiz?.difficulty ?? difficulty) === d
-                  ? "bg-[#c8963c] text-[#12100e] border-[#c8963c]"
-                  : "bg-[#1a1714] text-[#f0e6cc]/60 border-[#c8963c]/30 hover:border-[#c8963c]/70"
-              } ${hasStarted ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
-              {t(DIFFICULTY_LABEL_KEY[d])}
-            </button>
-          ))}
-        </div>
 
         {isLoading || !quiz ? (
           <div className="flex justify-center py-20">
@@ -258,7 +283,16 @@ export default function DailyQuiz() {
           </div>
         ) : (
           <>
-            <div className="relative w-40 sm:w-48 aspect-[2/3] mx-auto mb-6 rounded-2xl overflow-hidden border border-[#c8963c]/30 shadow-xl bg-[#1a1714]">
+            <div className="flex justify-center items-end gap-1.5 mb-4">
+              <span className="text-4xl font-black text-[#c8963c] leading-none">
+                {quiz.score}
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#f0e6cc]/40 mb-1">
+                {t("quiz_score_label")}
+              </span>
+            </div>
+
+            <div className="relative w-40 sm:w-48 aspect-[2/3] mx-auto mb-4 rounded-2xl overflow-hidden border border-[#c8963c]/30 shadow-xl bg-[#1a1714]">
               {posterUrl ? (
                 <img
                   src={posterUrl}
@@ -267,14 +301,31 @@ export default function DailyQuiz() {
                   style={{ filter: `blur(${blurPx}px)` }}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-4xl">
-                  🎬
+                <div className="w-full h-full flex items-center justify-center">
+                  <svg className="w-12 h-12 text-[#c8963c]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {ICONS.film}
+                  </svg>
                 </div>
               )}
             </div>
 
+            {!isDone && (
+              <div className="flex justify-center mb-6">
+                <button
+                  type="button"
+                  onClick={handleBuyHint}
+                  disabled={quiz.nextHintCost === null || isBuyingHint}
+                  className="px-4 py-2 rounded-full text-xs font-black uppercase tracking-widest border border-[#c8963c]/50 text-[#c8963c] hover:bg-[#c8963c]/10 transition disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  {quiz.nextHintCost !== null
+                    ? `${t("quiz_buy_hint")} (−${quiz.nextHintCost})`
+                    : t("quiz_all_hints_revealed")}
+                </button>
+              </div>
+            )}
+
             <div className="flex justify-center items-center gap-1.5 mb-6">
-              {Array.from({ length: quiz.maxAttempts }).map((_, i) => {
+              {Array.from({ length: quiz.maxGuesses }).map((_, i) => {
                 const isUsed = i < quiz.guesses.length;
                 const isLastAndCorrect =
                   isUsed && quiz.isSolved && i === quiz.guesses.length - 1;
@@ -292,7 +343,7 @@ export default function DailyQuiz() {
                 );
               })}
               <span className="ml-2 text-[10px] font-bold uppercase tracking-widest text-[#f0e6cc]/40">
-                {t("quiz_attempts_left")}: {quiz.attemptsLeft}
+                {t("quiz_guesses_left")}: {quiz.guessesLeft}
               </span>
             </div>
 
@@ -313,7 +364,9 @@ export default function DailyQuiz() {
                   key={`locked-${i}`}
                   className="px-4 py-3 rounded-xl bg-[#1a1714]/40 border border-[#c8963c]/10 text-sm text-[#f0e6cc]/25 flex items-center gap-2"
                 >
-                  <span>🔒</span>
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {ICONS.lock}
+                  </svg>
                   {t("quiz_hint_locked")}
                 </div>
               ))}
@@ -327,13 +380,16 @@ export default function DailyQuiz() {
                   return (
                     <span
                       key={i}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
                         isCorrectGuess
                           ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-400"
                           : "bg-red-500/10 border-red-500/40 text-red-400"
                       }`}
                     >
-                      {isCorrectGuess ? "✓" : "✗"} {g}
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {isCorrectGuess ? ICONS.check : ICONS.cross}
+                      </svg>
+                      {g}
                     </span>
                   );
                 })}
@@ -345,6 +401,11 @@ export default function DailyQuiz() {
                 <p className="text-lg font-black text-[#c8963c] uppercase tracking-widest mb-1">
                   {quiz.isSolved ? t("quiz_correct") : t("quiz_failed")}
                 </p>
+                {quiz.isSolved && (
+                  <p className="text-sm text-[#f0e6cc]/60 mb-2">
+                    {t("quiz_final_score")}: {quiz.score}
+                  </p>
+                )}
                 {quiz.answer && (
                   <>
                     <p className="text-[#f0e6cc] font-bold mb-1">
@@ -408,46 +469,71 @@ export default function DailyQuiz() {
               </div>
             )}
 
-            {friends.length > 0 && (
+            {leaderboard.length > 0 && (
               <div className="mt-8">
                 <h2 className="text-xs font-black text-[#c8963c] uppercase tracking-widest mb-3 text-center">
-                  {t("quiz_friends_today")}
+                  {t("quiz_leaderboard_title")}
                 </h2>
                 <div className="space-y-2">
-                  {friends.map((friend) => (
-                    <div
-                      key={friend.id}
-                      className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#1a1714] border border-[#c8963c]/20"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-xs font-black text-[#12100e] shrink-0 overflow-hidden">
-                        {friend.avatarUrl ? (
-                          <img
-                            src={friend.avatarUrl}
-                            alt={friend.username}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          friend.username.charAt(0).toUpperCase()
-                        )}
+                  {leaderboard.map((entry) => {
+                    const rowContent = (
+                      <>
+                        <span
+                          className={`w-6 text-center text-sm font-black shrink-0 ${
+                            entry.rank === 1
+                              ? "text-[#c8963c]"
+                              : entry.rank === 2
+                                ? "text-[#e8c070]"
+                                : entry.rank === 3
+                                  ? "text-[#9a732a]"
+                                  : "text-[#f0e6cc]/40"
+                          }`}
+                        >
+                          #{entry.rank}
+                        </span>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-xs font-black text-[#12100e] shrink-0 overflow-hidden">
+                          {entry.avatarUrl ? (
+                            <img
+                              src={entry.avatarUrl}
+                              alt={entry.username}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            entry.username.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-[#f0e6cc] truncate">
+                            {entry.isMe ? t("quiz_you_label") : entry.username}
+                          </p>
+                          <p className="text-[10px] text-[#f0e6cc]/40 truncate">
+                            {entry.todayStatus === "solved"
+                              ? `${t("quiz_friend_solved")} ${entry.todayScore}`
+                              : entry.todayStatus === "failed"
+                                ? t("quiz_friend_failed")
+                                : entry.todayStatus === "in_progress"
+                                  ? t("quiz_in_progress")
+                                  : t("quiz_friend_not_played")}
+                          </p>
+                        </div>
+                        <span className="text-sm font-black text-[#c8963c] shrink-0">
+                          {entry.totalScore}
+                        </span>
+                      </>
+                    );
+                    const rowClass = `flex items-center gap-3 px-4 py-2.5 rounded-xl bg-[#1a1714] border ${
+                      entry.isMe ? "border-[#c8963c]/60" : "border-[#c8963c]/20"
+                    }`;
+                    return entry.isMe ? (
+                      <div key={entry.id} className={rowClass}>
+                        {rowContent}
                       </div>
-                      <span className="flex-1 text-sm font-semibold text-[#f0e6cc] truncate">
-                        {friend.username}
-                      </span>
-                      {friend.status === "solved" ? (
-                        <span className="text-xs font-bold text-emerald-400">
-                          ✅ {t("quiz_friend_solved")} {friend.guessCount}
-                        </span>
-                      ) : friend.status === "failed" ? (
-                        <span className="text-xs font-bold text-red-400">
-                          ❌ {t("quiz_friend_failed")}
-                        </span>
-                      ) : (
-                        <span className="text-xs font-bold text-[#f0e6cc]/30">
-                          {t("quiz_friend_not_played")}
-                        </span>
-                      )}
-                    </div>
-                  ))}
+                    ) : (
+                      <Link key={entry.id} to={`/user/${entry.id}`} className={rowClass}>
+                        {rowContent}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}

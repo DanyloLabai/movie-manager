@@ -9,12 +9,14 @@ import { QuizHintsService } from './quiz-hints.service';
 import { QuizSchedulerService } from './quiz-scheduler.service';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { AchievementsModule } from '../achievements/achievements.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([QuizMoviePool, DailyMovieQuiz, QuizAttempt]),
     UsersModule,
     NotificationsModule,
+    AchievementsModule,
   ],
   providers: [QuizService, QuizHintsService, QuizSchedulerService],
   controllers: [QuizController],

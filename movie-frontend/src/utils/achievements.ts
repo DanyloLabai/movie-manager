@@ -19,11 +19,27 @@ export interface Achievement {
   needed: number;
 }
 
+export interface AchievementCounts {
+  favoritesCount: number;
+  watchedCount: number;
+  totalCount: number;
+  quizSolvedCount?: number;
+  quizPerfectCount?: number;
+  quizCurrentStreak?: number;
+}
+
 export function getAchievementsList(
-  counts: { favoritesCount: number; watchedCount: number; totalCount: number },
+  counts: AchievementCounts,
   t: T,
 ): Achievement[] {
-  const { favoritesCount, watchedCount, totalCount } = counts;
+  const {
+    favoritesCount,
+    watchedCount,
+    totalCount,
+    quizSolvedCount = 0,
+    quizPerfectCount = 0,
+    quizCurrentStreak = 0,
+  } = counts;
   return [
     {
       id: "first_blood",
@@ -80,6 +96,46 @@ export function getAchievementsList(
       requirement: t("achievement_librarian_req"),
       current: totalCount,
       needed: 100,
+    },
+    {
+      id: "quiz_first_win",
+      isUnlocked: quizSolvedCount >= 1,
+      text: t("achievement_quiz_first_win_text"),
+      requirement: t("achievement_quiz_first_win_req"),
+      current: quizSolvedCount,
+      needed: 1,
+    },
+    {
+      id: "quiz_perfectionist",
+      isUnlocked: quizPerfectCount >= 1,
+      text: t("achievement_quiz_perfectionist_text"),
+      requirement: t("achievement_quiz_perfectionist_req"),
+      current: quizPerfectCount,
+      needed: 1,
+    },
+    {
+      id: "quiz_streak_7",
+      isUnlocked: quizCurrentStreak >= 7,
+      text: t("achievement_quiz_streak_7_text"),
+      requirement: t("achievement_quiz_streak_7_req"),
+      current: quizCurrentStreak,
+      needed: 7,
+    },
+    {
+      id: "quiz_streak_30",
+      isUnlocked: quizCurrentStreak >= 30,
+      text: t("achievement_quiz_streak_30_text"),
+      requirement: t("achievement_quiz_streak_30_req"),
+      current: quizCurrentStreak,
+      needed: 30,
+    },
+    {
+      id: "quiz_veteran",
+      isUnlocked: quizSolvedCount >= 50,
+      text: t("achievement_quiz_veteran_text"),
+      requirement: t("achievement_quiz_veteran_req"),
+      current: quizSolvedCount,
+      needed: 50,
     },
   ];
 }
