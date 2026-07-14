@@ -9,8 +9,6 @@ import {
 } from 'typeorm';
 import { User } from '../users/users.entity';
 
-export type QuizDifficulty = 'easy' | 'normal' | 'hard';
-
 @Entity('quiz_attempt')
 @Unique('UQ_quiz_attempt_userId_quizDate', ['userId', 'quizDate'])
 export class QuizAttempt {
@@ -27,11 +25,14 @@ export class QuizAttempt {
   @Column({ type: 'date' })
   quizDate: string;
 
-  @Column({ type: 'varchar' })
-  difficulty: QuizDifficulty;
-
   @Column({ type: 'jsonb', default: () => "'[]'" })
   guesses: string[];
+
+  @Column({ default: 0 })
+  hintsRevealed: number;
+
+  @Column({ default: 100 })
+  score: number;
 
   @Column({ default: false })
   isSolved: boolean;

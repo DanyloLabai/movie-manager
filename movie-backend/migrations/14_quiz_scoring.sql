@@ -1,0 +1,4 @@
+ALTER TABLE "quiz_attempt"
+  DROP COLUMN IF EXISTS "difficulty",
+  ADD COLUMN IF NOT EXISTS "hintsRevealed" integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS "score" integer NOT NULL DEFAULT 100;

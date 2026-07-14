@@ -7,8 +7,6 @@ import {
   ApiTags,
 } from '@nestjs/swagger';
 import { QuizService } from './quiz.service';
-import { isQuizDifficulty } from './quiz-difficulty';
-import { QuizDifficulty } from './quiz-attempt.entity';
 import { QuizLanguage } from './daily-movie-quiz.entity';
 
 interface RequestWithUser extends Request {
@@ -18,7 +16,6 @@ interface RequestWithUser extends Request {
   };
 }
 
-const DEFAULT_DIFFICULTY: QuizDifficulty = 'normal';
 const DEFAULT_LANGUAGE: QuizLanguage = 'en';
 
 const resolveLanguage = (value?: string): QuizLanguage =>
@@ -34,58 +31,69 @@ export class QuizController {
   @ApiOperation({
     summary: "Get today's movie quiz",
     description:
-      "Returns today's quiz state (hints revealed so far, guesses, attempts left) for the given difficulty.",
+      "Returns today's quiz state — current score, hints revealed so far, guesses left.",
   })
-  @ApiQuery({ name: 'difficulty', required: false, enum: ['easy', 'normal', 'hard'] })
   @ApiQuery({ name: 'lang', required: false, enum: ['en', 'uk'] })
   @ApiResponse({ status: 200, description: "Today's quiz state" })
-  async getToday(
+  async getToday(@Req() req: RequestWithUser, @Query('lang') lang?: string) {
+    return this.quizService.getToday(req.user.userId, resolveLanguage(lang));
+  }
+
+  @Post('hint')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Buy the next hint',
+    description: "Reveals today's next hint, deducting its cost from the score.",
+  })
+  @ApiResponse({ status: 200, description: 'Updated quiz state' })
+  async buyHint(
     @Req() req: RequestWithUser,
-    @Query('difficulty') difficulty?: string,
-    @Query('lang') lang?: string,
+    @Body() body: { lang?: string },
   ) {
-    const resolvedDifficulty = isQuizDifficulty(difficulty)
-      ? difficulty
-      : DEFAULT_DIFFICULTY;
-    return this.quizService.getToday(
+    return this.quizService.buyHint(
       req.user.userId,
-      resolvedDifficulty,
-      resolveLanguage(lang),
+      resolveLanguage(body?.lang),
     );
   }
 
   @Post('guess')
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Submit a guess for today\'s movie quiz',
+    summary: "Submit a guess for today's movie quiz",
   })
   @ApiResponse({ status: 200, description: 'Updated quiz state' })
   async guess(
     @Req() req: RequestWithUser,
-    @Body()
-    body: { difficulty?: string; title: string; tmdbId: number; lang?: string },
+    @Body() body: { title: string; tmdbId: number; lang?: string },
   ) {
-    const resolvedDifficulty = isQuizDifficulty(body.difficulty)
-      ? body.difficulty
-      : DEFAULT_DIFFICULTY;
     return this.quizService.submitGuess(
       req.user.userId,
-      resolvedDifficulty,
       body.title,
       body.tmdbId,
       resolveLanguage(body.lang),
     );
   }
 
-  @Get('friends-status')
+  @Get('friends-leaderboard')
   @ApiBearerAuth()
   @ApiOperation({
-    summary: "Get friends' status on today's quiz",
+    summary: 'Get the quiz leaderboard among you and your friends',
     description:
-      "For each friend, whether they've solved today's quiz, failed it, or haven't played yet.",
+      'Ranks you and your friends by total lifetime quiz score, plus each of your statuses on today\'s quiz.',
   })
-  @ApiResponse({ status: 200, description: "Friends' quiz status" })
-  async getFriendsStatus(@Req() req: RequestWithUser) {
-    return this.quizService.getFriendsStatus(req.user.userId);
+  @ApiResponse({ status: 200, description: 'Leaderboard entries' })
+  async getFriendsLeaderboard(@Req() req: RequestWithUser) {
+    return this.quizService.getFriendsLeaderboard(req.user.userId);
+  }
+
+  @Get('my-stats')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get your own lifetime quiz stats',
+    description: 'Used to drive quiz-related achievements.',
+  })
+  @ApiResponse({ status: 200, description: 'Quiz stats' })
+  async getMyStats(@Req() req: RequestWithUser) {
+    return this.quizService.getMyStats(req.user.userId);
   }
 }

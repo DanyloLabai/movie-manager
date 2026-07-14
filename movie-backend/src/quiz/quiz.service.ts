@@ -8,13 +8,20 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { DailyMovieQuiz, QuizLanguage } from './daily-movie-quiz.entity';
 import { QuizMoviePool } from './quiz-movie-pool.entity';
-import { QuizAttempt, QuizDifficulty } from './quiz-attempt.entity';
-import { QUIZ_DIFFICULTY_CONFIG } from './quiz-difficulty';
+import { QuizAttempt } from './quiz-attempt.entity';
 import { QuizHintsService } from './quiz-hints.service';
 import { UsersService } from '../users/users.service';
+import { User } from '../users/users.entity';
+import { AchievementsService } from '../achievements/achievements.service';
 
 const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+const STARTING_SCORE = 100;
+const TOTAL_HINTS = 5;
+const HINT_COSTS = [10, 15, 20, 25, 30];
+const WRONG_GUESS_PENALTY = 5;
+const MAX_GUESSES = 5;
 
 export interface QuizAnswer {
   title: string;
@@ -30,11 +37,13 @@ export interface QuizStreak {
 
 export interface QuizStateDto {
   date: string;
-  difficulty: QuizDifficulty;
-  maxAttempts: number;
+  score: number;
+  hintsRevealed: number;
+  nextHintCost: number | null;
   hints: string[];
   guesses: string[];
-  attemptsLeft: number;
+  guessesLeft: number;
+  maxGuesses: number;
   isSolved: boolean;
   isFailed: boolean;
   /** Poster of today's movie, always present — the client blurs it and
@@ -45,14 +54,28 @@ export interface QuizStateDto {
   answer?: QuizAnswer;
 }
 
-export type QuizFriendStatus = 'solved' | 'failed' | 'not_played';
+export type QuizTodayStatus =
+  | 'solved'
+  | 'failed'
+  | 'in_progress'
+  | 'not_played';
 
-export interface QuizFriendStateDto {
+export interface QuizLeaderboardEntryDto {
   id: number;
   username: string;
   avatarUrl: string | null;
-  status: QuizFriendStatus;
-  guessCount: number;
+  totalScore: number;
+  rank: number;
+  todayScore: number | null;
+  todayStatus: QuizTodayStatus;
+  isMe: boolean;
+}
+
+export interface QuizStatsDto {
+  totalSolved: number;
+  perfectSolves: number;
+  currentStreak: number;
+  bestStreak: number;
 }
 
 @Injectable()
@@ -66,71 +89,88 @@ export class QuizService {
     private readonly poolRepo: Repository<QuizMoviePool>,
     @InjectRepository(QuizAttempt)
     private readonly attemptRepo: Repository<QuizAttempt>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
     private readonly quizHintsService: QuizHintsService,
     private readonly usersService: UsersService,
+    private readonly achievementsService: AchievementsService,
   ) {}
 
-  async getToday(
-    userId: number,
-    requestedDifficulty: QuizDifficulty,
-    lang: QuizLanguage,
-  ): Promise<QuizStateDto> {
+  async getToday(userId: number, lang: QuizLanguage): Promise<QuizStateDto> {
     const quiz = await this.getOrCreateTodayQuiz();
     const attempt = await this.attemptRepo.findOne({
       where: { userId, quizDate: quiz.date },
     });
-    // Once the player has made a guess today, the difficulty they started
-    // with is locked in — otherwise they could switch tabs mid-game to
-    // reveal extra hints or attempts for free.
-    const difficulty = attempt?.difficulty ?? requestedDifficulty;
     const streak = await this.getStreak(userId);
-    return this.buildState(quiz, difficulty, attempt, lang, streak);
+    return this.buildState(quiz, attempt, lang, streak);
+  }
+
+  async buyHint(userId: number, lang: QuizLanguage): Promise<QuizStateDto> {
+    const quiz = await this.getOrCreateTodayQuiz();
+    const attempt = await this.getOrCreateAttempt(userId, quiz.date);
+
+    if (attempt.isSolved || attempt.isFailed) {
+      throw new BadRequestException("Today's quiz is already finished.");
+    }
+    if (attempt.hintsRevealed >= TOTAL_HINTS) {
+      throw new BadRequestException('All hints are already revealed.');
+    }
+
+    const cost = HINT_COSTS[attempt.hintsRevealed];
+    attempt.hintsRevealed += 1;
+    attempt.score = Math.max(attempt.score - cost, 0);
+    await this.attemptRepo.save(attempt);
+
+    const streak = await this.getStreak(userId);
+    return this.buildState(quiz, attempt, lang, streak);
   }
 
   async submitGuess(
     userId: number,
-    requestedDifficulty: QuizDifficulty,
     guessTitle: string,
     guessTmdbId: number,
     lang: QuizLanguage,
   ): Promise<QuizStateDto & { correct: boolean }> {
     const quiz = await this.getOrCreateTodayQuiz();
+    const attempt = await this.getOrCreateAttempt(userId, quiz.date);
 
-    let attempt = await this.attemptRepo.findOne({
-      where: { userId, quizDate: quiz.date },
-    });
-    if (attempt && (attempt.isSolved || attempt.isFailed)) {
+    if (attempt.isSolved || attempt.isFailed) {
       throw new BadRequestException("Today's quiz is already finished.");
     }
-    const difficulty = attempt?.difficulty ?? requestedDifficulty;
-    const config = QUIZ_DIFFICULTY_CONFIG[difficulty];
-    if (!attempt) {
-      attempt = this.attemptRepo.create({
-        userId,
-        quizDate: quiz.date,
-        difficulty,
-        guesses: [],
-      });
-    }
-    if (attempt.guesses.length >= config.maxAttempts) {
-      throw new BadRequestException('No attempts left for today.');
+    if (attempt.guesses.length >= MAX_GUESSES) {
+      throw new BadRequestException('No guesses left for today.');
     }
 
     const isCorrect = guessTmdbId === quiz.pool.tmdbId;
-
     attempt.guesses = [...attempt.guesses, guessTitle];
+
     if (isCorrect) {
       attempt.isSolved = true;
       attempt.completedAt = new Date();
-    } else if (attempt.guesses.length >= config.maxAttempts) {
-      attempt.isFailed = true;
-      attempt.completedAt = new Date();
+    } else {
+      attempt.score = Math.max(attempt.score - WRONG_GUESS_PENALTY, 0);
+      if (attempt.guesses.length >= MAX_GUESSES) {
+        attempt.isFailed = true;
+        attempt.completedAt = new Date();
+      }
     }
     await this.attemptRepo.save(attempt);
 
+    if (isCorrect) {
+      this.achievementsService
+        .checkAndNotify(userId)
+        .catch((err: unknown) =>
+          this.logger.warn(
+            `Achievement check failed for user ${userId}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          ),
+        );
+    }
+
     const streak = await this.getStreak(userId);
     return {
-      ...this.buildState(quiz, difficulty, attempt, lang, streak),
+      ...this.buildState(quiz, attempt, lang, streak),
       correct: isCorrect,
     };
   }
@@ -160,79 +200,125 @@ export class QuizService {
     return { current, best };
   }
 
-  async getFriendsStatus(userId: number): Promise<QuizFriendStateDto[]> {
-    const friends = await this.usersService.getFriends(userId);
-    if (friends.length === 0) return [];
-
-    const quiz = await this.getOrCreateTodayQuiz();
-    const friendIds = friends.map((f) => f.id);
-    const attempts = await this.attemptRepo.find({
-      where: { userId: In(friendIds), quizDate: quiz.date },
+  async getMyStats(userId: number): Promise<QuizStatsDto> {
+    const solved = await this.attemptRepo.find({
+      where: { userId, isSolved: true },
+      select: ['score'],
     });
-    const attemptByUserId = new Map(attempts.map((a) => [a.userId, a]));
+    const streak = await this.getStreak(userId);
+    return {
+      totalSolved: solved.length,
+      perfectSolves: solved.filter((s) => s.score === STARTING_SCORE).length,
+      currentStreak: streak.current,
+      bestStreak: streak.best,
+    };
+  }
 
-    const result: QuizFriendStateDto[] = friends.map((friend) => {
-      const attempt = attemptByUserId.get(friend.id);
-      const status: QuizFriendStatus = attempt?.isSolved
-        ? 'solved'
-        : attempt?.isFailed
-          ? 'failed'
-          : 'not_played';
+  async getFriendsLeaderboard(
+    userId: number,
+  ): Promise<QuizLeaderboardEntryDto[]> {
+    const [friends, self] = await Promise.all([
+      this.usersService.getFriends(userId),
+      this.userRepo.findOne({
+        where: { id: userId },
+        select: ['id', 'username', 'avatarUrl'],
+      }),
+    ]);
+    if (!self) return [];
+
+    const people = [self, ...friends];
+    const userIds = people.map((p) => p.id);
+    const quiz = await this.getOrCreateTodayQuiz();
+
+    const [totals, todayAttempts] = await Promise.all([
+      this.attemptRepo
+        .createQueryBuilder('a')
+        .select('a."userId"', 'userId')
+        .addSelect('COALESCE(SUM(a.score), 0)', 'totalScore')
+        .where('a."userId" IN (:...userIds)', { userIds })
+        .andWhere('a."isSolved" = true')
+        .groupBy('a."userId"')
+        .getRawMany<{ userId: number; totalScore: string }>(),
+      this.attemptRepo.find({
+        where: { userId: In(userIds), quizDate: quiz.date },
+      }),
+    ]);
+
+    const totalsMap = new Map(
+      totals.map((t) => [t.userId, Number(t.totalScore)]),
+    );
+    const todayMap = new Map(todayAttempts.map((a) => [a.userId, a]));
+
+    const entries: Omit<QuizLeaderboardEntryDto, 'rank'>[] = people.map((p) => {
+      const todayAttempt = todayMap.get(p.id);
+      const todayStatus: QuizTodayStatus = !todayAttempt
+        ? 'not_played'
+        : todayAttempt.isSolved
+          ? 'solved'
+          : todayAttempt.isFailed
+            ? 'failed'
+            : 'in_progress';
       return {
-        id: friend.id,
-        username: friend.username,
-        avatarUrl: friend.avatarUrl,
-        status,
-        guessCount: attempt?.guesses.length ?? 0,
+        id: p.id,
+        username: p.username,
+        avatarUrl: p.avatarUrl,
+        totalScore: totalsMap.get(p.id) ?? 0,
+        todayScore: todayAttempt?.isSolved ? todayAttempt.score : null,
+        todayStatus,
+        isMe: p.id === userId,
       };
     });
 
-    const statusRank: Record<QuizFriendStatus, number> = {
-      solved: 0,
-      failed: 1,
-      not_played: 2,
-    };
-    result.sort((a, b) => {
-      const rankDiff = statusRank[a.status] - statusRank[b.status];
-      if (rankDiff !== 0) return rankDiff;
-      if (a.status === 'solved') return a.guessCount - b.guessCount;
-      return 0;
-    });
-
-    return result;
+    entries.sort((a, b) => b.totalScore - a.totalScore);
+    return entries.map((e, i) => ({ ...e, rank: i + 1 }));
   }
 
-  /** userIds who have ever submitted a guess — the audience for "quiz updated" reminders. */
-  async getEverPlayedUserIds(): Promise<number[]> {
-    const rows = await this.attemptRepo
-      .createQueryBuilder('a')
-      .select('DISTINCT a."userId"', 'userId')
-      .getRawMany<{ userId: number }>();
-    return rows.map((r) => r.userId);
+  private async getOrCreateAttempt(
+    userId: number,
+    quizDate: string,
+  ): Promise<QuizAttempt> {
+    const existing = await this.attemptRepo.findOne({
+      where: { userId, quizDate },
+    });
+    if (existing) return existing;
+
+    return this.attemptRepo.save(
+      this.attemptRepo.create({
+        userId,
+        quizDate,
+        guesses: [],
+        hintsRevealed: 0,
+        score: STARTING_SCORE,
+      }),
+    );
   }
 
   private buildState(
     quiz: DailyMovieQuiz,
-    difficulty: QuizDifficulty,
     attempt: QuizAttempt | null,
     lang: QuizLanguage,
     streak: QuizStreak,
   ): QuizStateDto {
-    const config = QUIZ_DIFFICULTY_CONFIG[difficulty];
-    const hints = quiz.hints[lang] ?? quiz.hints.en ?? [];
+    const allHints = quiz.hints[lang] ?? quiz.hints.en ?? [];
+    const hintsRevealed = attempt?.hintsRevealed ?? 0;
     const guessCount = attempt?.guesses.length ?? 0;
     const isDone = !!attempt && (attempt.isSolved || attempt.isFailed);
-    const revealedCount = isDone
-      ? hints.length
-      : Math.min(config.initialHints + guessCount, hints.length);
+    const revealedCount = isDone ? allHints.length : hintsRevealed;
 
     return {
       date: quiz.date,
-      difficulty,
-      maxAttempts: config.maxAttempts,
-      hints: hints.filter((h) => h.level <= revealedCount).map((h) => h.text),
+      score: attempt?.score ?? STARTING_SCORE,
+      hintsRevealed,
+      nextHintCost:
+        isDone || hintsRevealed >= TOTAL_HINTS
+          ? null
+          : HINT_COSTS[hintsRevealed],
+      hints: allHints
+        .filter((h) => h.level <= revealedCount)
+        .map((h) => h.text),
       guesses: attempt?.guesses ?? [],
-      attemptsLeft: Math.max(config.maxAttempts - guessCount, 0),
+      guessesLeft: Math.max(MAX_GUESSES - guessCount, 0),
+      maxGuesses: MAX_GUESSES,
       isSolved: attempt?.isSolved ?? false,
       isFailed: attempt?.isFailed ?? false,
       posterUrl: this.buildPosterUrl(quiz.pool),
@@ -325,6 +411,15 @@ export class QuizService {
       pool.usedAt = new Date();
       return manager.save(pool);
     });
+  }
+
+  /** userIds who have ever submitted a guess — the audience for "quiz updated" reminders. */
+  async getEverPlayedUserIds(): Promise<number[]> {
+    const rows = await this.attemptRepo
+      .createQueryBuilder('a')
+      .select('DISTINCT a."userId"', 'userId')
+      .getRawMany<{ userId: number }>();
+    return rows.map((r) => r.userId);
   }
 
   private isNextCalendarDay(prev: string, next: string): boolean {

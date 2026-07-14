@@ -138,6 +138,11 @@ export class MoviesController {
     required: true,
     description: 'Movie title to search for',
   })
+  @ApiQuery({
+    name: 'skipHistory',
+    required: false,
+    description: 'Skip logging this query to the search history (used by the quiz autocomplete)',
+  })
   @ApiResponse({
     status: 200,
     description: 'List of matching movies',
@@ -147,8 +152,11 @@ export class MoviesController {
   async searchByTitle(
     @Req() req: RequestWithUser,
     @Query('title') title: string,
+    @Query('skipHistory') skipHistory?: string,
   ): Promise<MovieResultDto[] | null> {
-    return this.moviesService.searchMovies(title, req.user.userId);
+    return this.moviesService.searchMovies(title, req.user.userId, {
+      skipHistory: skipHistory === 'true',
+    });
   }
 
   @Get('search/smart')
