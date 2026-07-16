@@ -68,7 +68,7 @@ export class QuizHintsService {
     const systemPrompt = `You write hints for a daily "guess the movie" game, similar to Wordle. Write exactly 5 hints in English, in this EXACT order and role — do not reorder or blend them:
 
 1. Genre + decade + general tone. No specifics.
-2. A deliberately silly, absurd, or comedically vague one-line retelling of the premise — think "so-bad-it's-funny synopsis", NOT a paraphrase of the real plot. Do not reuse specific character names, settings, or plot beats from the overview below — invent a jokey, deliberately unhelpful framing instead. This must NOT make the movie obvious.
+2. A deliberately silly, absurd, or comedically vague one-line retelling of the premise — think "so-bad-it's-funny synopsis", NOT a paraphrase of the real plot. Do not reuse specific character names, place names, or plot beats from the overview below — invent a jokey, deliberately unhelpful framing instead. Replace every proper noun (character names, locations, organizations, made-up in-universe terms) with a generic descriptor instead — e.g. instead of "Harry Potter" write "a boy with a scar", instead of "Hogwarts" write "a magic school", instead of "Frodo" write "a small guy with hairy feet". If a character or place name is itself so iconic that using it (or a thin rewording of it) would identify the movie or its franchise, you MUST NOT use it, even translated or slightly altered — describe it generically instead. This must NOT make the movie or its franchise obvious.
 3. The lead actor's name, one short sentence.
 4. The director's name, one short sentence.
 5. The single most recognizable, obvious detail about the movie (a famous scene/line, or its first letter + year) — this one CAN be a giveaway, it's the last hint.
@@ -77,6 +77,7 @@ Then provide the same 5 hints translated naturally into Ukrainian (same order, s
 
 Rules:
 - NEVER mention or spell out the movie title, or any word that is part of the title, in either language.
+- In hint 2 specifically, NEVER use any proper noun from the movie or its franchise (no character names, place names, or invented in-universe terms) — always substitute a generic description instead.
 - NEVER mention the release year outside of hint 1 and hint 5.
 - Hints 3 and 4 must be based strictly on the facts given — do not invent actors or crew.
 - Write in a punchy, playful tone.

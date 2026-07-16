@@ -11,7 +11,7 @@ import type { MovieResult } from "../types/movie.types";
 import type { QuizState, QuizLeaderboardEntry } from "../api/quiz.api";
 
 const TOTAL_HINTS = 5;
-const MAX_BLUR_PX = 20;
+const MAX_BLUR_PX = 12;
 const MIN_BLUR_PX = 4;
 
 const ICONS = {
@@ -84,6 +84,7 @@ export default function DailyQuiz() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBuyingHint, setIsBuyingHint] = useState(false);
   const [leaderboard, setLeaderboard] = useState<QuizLeaderboardEntry[]>([]);
+  const [openHintIndex, setOpenHintIndex] = useState<number | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isDone = !!quiz && (quiz.isSolved || quiz.isFailed);
@@ -114,6 +115,11 @@ export default function DailyQuiz() {
       .then(setLeaderboard)
       .catch(() => setLeaderboard([]));
   }, [quiz?.isSolved, quiz?.isFailed]);
+
+  useEffect(() => {
+    const count = quiz?.hints?.length ?? 0;
+    setOpenHintIndex(count > 0 ? count - 1 : null);
+  }, [quiz?.hints?.length]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -348,17 +354,52 @@ export default function DailyQuiz() {
             </div>
 
             <div className="space-y-2 mb-6">
-              {revealedHints.map((hint, i) => (
-                <div
-                  key={i}
-                  className="px-4 py-3 rounded-xl bg-[#1a1714] border border-[#c8963c]/20 text-sm text-[#f0e6cc]/90"
-                >
-                  <span className="text-[#c8963c] font-black mr-2">
-                    #{i + 1}
-                  </span>
-                  {hint}
-                </div>
-              ))}
+              {revealedHints.map((hint, i) => {
+                const isOpen = openHintIndex === i;
+                return (
+                  <div
+                    key={i}
+                    className="rounded-xl bg-[#1a1714] border border-[#c8963c]/20 overflow-hidden"
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenHintIndex(isOpen ? null : i)
+                      }
+                      className="w-full flex items-center gap-2 px-4 py-3 text-left"
+                    >
+                      <span className="text-[#c8963c] font-black">
+                        #{i + 1}
+                      </span>
+                      {!isOpen && (
+                        <span className="flex-1 truncate text-sm text-[#f0e6cc]/50">
+                          {hint}
+                        </span>
+                      )}
+                      <svg
+                        className={`w-4 h-4 text-[#c8963c]/60 ml-auto shrink-0 transition-transform ${
+                          isOpen ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </button>
+                    {isOpen && (
+                      <div className="px-4 pb-3 text-sm text-[#f0e6cc]/90">
+                        {hint}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {Array.from({ length: lockedHintCount }).map((_, i) => (
                 <div
                   key={`locked-${i}`}

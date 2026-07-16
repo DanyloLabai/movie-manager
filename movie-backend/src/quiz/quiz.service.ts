@@ -19,7 +19,9 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const STARTING_SCORE = 100;
 const TOTAL_HINTS = 5;
-const HINT_COSTS = [10, 15, 20, 25, 30];
+/** Hint 1 is free/auto-revealed; these are the costs for hints 2-5. */
+const FREE_HINTS = 1;
+const HINT_COSTS = [10, 15, 20, 25];
 const WRONG_GUESS_PENALTY = 5;
 const MAX_GUESSES = 5;
 
@@ -116,7 +118,7 @@ export class QuizService {
       throw new BadRequestException('All hints are already revealed.');
     }
 
-    const cost = HINT_COSTS[attempt.hintsRevealed];
+    const cost = HINT_COSTS[attempt.hintsRevealed - FREE_HINTS];
     attempt.hintsRevealed += 1;
     attempt.score = Math.max(attempt.score - cost, 0);
     await this.attemptRepo.save(attempt);
@@ -287,7 +289,7 @@ export class QuizService {
         userId,
         quizDate,
         guesses: [],
-        hintsRevealed: 0,
+        hintsRevealed: FREE_HINTS,
         score: STARTING_SCORE,
       }),
     );
@@ -300,7 +302,7 @@ export class QuizService {
     streak: QuizStreak,
   ): QuizStateDto {
     const allHints = quiz.hints[lang] ?? quiz.hints.en ?? [];
-    const hintsRevealed = attempt?.hintsRevealed ?? 0;
+    const hintsRevealed = attempt?.hintsRevealed ?? FREE_HINTS;
     const guessCount = attempt?.guesses.length ?? 0;
     const isDone = !!attempt && (attempt.isSolved || attempt.isFailed);
     const revealedCount = isDone ? allHints.length : hintsRevealed;
@@ -312,7 +314,7 @@ export class QuizService {
       nextHintCost:
         isDone || hintsRevealed >= TOTAL_HINTS
           ? null
-          : HINT_COSTS[hintsRevealed],
+          : HINT_COSTS[hintsRevealed - FREE_HINTS],
       hints: allHints
         .filter((h) => h.level <= revealedCount)
         .map((h) => h.text),
@@ -383,6 +385,7 @@ export class QuizService {
         .createQueryBuilder(QuizMoviePool, 'p')
         .where('p."usedAt" IS NULL')
         .orderBy('RANDOM()')
+        .limit(1)
         .setLock('pessimistic_write')
         .getOne();
 
@@ -398,6 +401,7 @@ export class QuizService {
         pool = await manager
           .createQueryBuilder(QuizMoviePool, 'p')
           .orderBy('RANDOM()')
+          .limit(1)
           .setLock('pessimistic_write')
           .getOne();
       }
