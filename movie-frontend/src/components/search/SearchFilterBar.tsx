@@ -90,10 +90,10 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
           <button
             type="button"
             onClick={() => setFilter("minRating", undefined)}
-            className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition border ${
+            className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition ${
               filters.minRating === undefined
-                ? "bg-[#c8963c] text-[#12100e] border-[#c8963c]"
-                : "bg-transparent text-[#f0e6cc]/60 border-[#c8963c]/30 hover:border-[#c8963c]"
+                ? "btn-glass btn-glass-gold text-[#12100e]"
+                : "border border-[#c8963c]/30 text-[#f0e6cc]/60 hover:border-[#c8963c]"
             }`}
           >
             {t("filter_any_rating")}
@@ -103,10 +103,10 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
               key={tier}
               type="button"
               onClick={() => setFilter("minRating", tier)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition border ${
+              className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition ${
                 filters.minRating === tier
-                  ? "bg-[#c8963c] text-[#12100e] border-[#c8963c]"
-                  : "bg-transparent text-[#f0e6cc]/60 border-[#c8963c]/30 hover:border-[#c8963c]"
+                  ? "btn-glass btn-glass-gold text-[#12100e]"
+                  : "border border-[#c8963c]/30 text-[#f0e6cc]/60 hover:border-[#c8963c]"
               }`}
             >
               {tier}+

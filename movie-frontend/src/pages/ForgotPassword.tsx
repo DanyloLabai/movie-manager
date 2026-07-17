@@ -69,7 +69,7 @@ export default function ForgotPassword() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow-lg"
+            className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition btn-glass btn-glass-gold active:scale-[0.98] disabled:!bg-[#2a241f] disabled:!text-[#c8963c]/30 disabled:!border-transparent disabled:!shadow-none"
           >
             {isLoading ? t("password_reset_sending") : t("password_reset_send")}
           </button>

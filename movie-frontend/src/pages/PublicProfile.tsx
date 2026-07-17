@@ -217,7 +217,7 @@ export default function PublicProfile() {
         </p>
         <Link
           to="/search"
-          className="px-6 py-3 bg-[#c8963c] text-[#12100e] font-black uppercase tracking-widest rounded-xl hover:bg-[#e8c070] transition shadow text-sm"
+          className="px-6 py-3 btn-glass btn-glass-gold text-[#12100e] font-black uppercase tracking-widest rounded-xl transition text-sm"
         >
           {t("profile_go_home")}
         </Link>
@@ -296,7 +296,7 @@ export default function PublicProfile() {
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
 
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-[#12100e] border-2 border-[#c8963c]/50 rounded-full flex items-center justify-center text-2xl font-black text-[#c8963c] shrink-0 overflow-hidden">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#12100e] border-2 border-[#c8963c]/50 rounded-full flex items-center justify-center text-2xl font-black text-[#c8963c] shrink-0 overflow-hidden glow-gold-sm">
               {profileData.avatarUrl ? (
                 <img
                   src={profileData.avatarUrl}
@@ -327,7 +327,7 @@ export default function PublicProfile() {
               ) : (
                 <button
                   onClick={handleAddFriend}
-                  className="px-3 py-1.5 bg-[#c8963c] text-[#12100e] rounded-full font-black uppercase text-[9px] hover:bg-[#e8c070] transition shadow active:scale-95"
+                  className="px-3 py-1.5 btn-glass btn-glass-gold text-[#12100e] rounded-full font-black uppercase text-[9px] transition active:scale-95"
                 >
                   {t("profile_add_friend")}
                 </button>
@@ -335,16 +335,10 @@ export default function PublicProfile() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-1.5 mb-4">
-            {achievementsList.map((ach) => (
-              <AchievementTooltip key={ach.id} achievement={ach} />
-            ))}
-          </div>
-
           {profileData.isFriend && compat && compat.score !== null && (
             <button
               onClick={() => setIsCompatModalOpen(true)}
-              className="w-full flex items-center justify-between gap-3 p-3 mb-4 bg-[#12100e] border border-[#c8963c]/30 rounded-xl hover:border-[#c8963c]/60 transition"
+              className="w-full flex items-center justify-between gap-3 p-3 mb-4 btn-glass btn-glass-dark rounded-xl transition"
             >
               <div className="flex items-center gap-2">
                 <svg
@@ -370,24 +364,81 @@ export default function PublicProfile() {
             </button>
           )}
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-2 border-t border-[#c8963c]/10 pt-3">
-            <div>
-              <div className="text-xl font-black text-[#c8963c]">
-                {favoritesCount}
+        </div>
+
+        {/* Overview + Achievements bento */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="md:col-span-2 glass-panel border border-[#c8963c]/20 rounded-2xl p-4 sm:p-6">
+            <h3 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
+              {t("profile_overview")}
+            </h3>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3 text-center">
+                <div className="text-xl sm:text-2xl font-black text-[#c8963c]">
+                  {watchedCount}
+                </div>
+                <div className="text-[8px] sm:text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
+                  {t("watchlist_watched")}
+                </div>
               </div>
-              <div className="text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
-                {t("watchlist_favorites")}
+              <div className="bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3 text-center">
+                <div className="text-xl sm:text-2xl font-black text-[#c8963c]">
+                  {profileData?.stats?.averageRating || "0.0"}
+                </div>
+                <div className="text-[8px] sm:text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
+                  {t("stats_avg")}
+                </div>
+              </div>
+              <div className="bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3 text-center">
+                <div className="text-xl sm:text-2xl font-black text-[#c8963c]">
+                  {favoritesCount}
+                </div>
+                <div className="text-[8px] sm:text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
+                  {t("watchlist_favorites")}
+                </div>
               </div>
             </div>
-            <div className="border-l border-[#c8963c]/10 pl-3">
-              <div className="text-xl font-black text-[#c8963c]">
-                {watchedCount}
+          </div>
+
+          <div className="glass-panel border border-[#c8963c]/20 rounded-2xl p-4 sm:p-6">
+            <h3 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
+              {t("profile_achievements")}
+            </h3>
+            {achievementsList.some((a) => a.isUnlocked) ? (
+              <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto scrollbar-hide">
+                {achievementsList
+                  .filter((a) => a.isUnlocked)
+                  .map((ach) => (
+                    <div
+                      key={ach.id}
+                      className="flex items-center gap-3 bg-[#12100e] border border-[#c8963c]/10 p-2.5 rounded-lg"
+                    >
+                      <svg
+                        className="w-5 h-5 text-[#c8963c] shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35"
+                        />
+                      </svg>
+                      <span className="text-xs font-bold text-[#f0e6cc] truncate">
+                        {ach.text}
+                      </span>
+                    </div>
+                  ))}
               </div>
-              <div className="text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
-                {t("watchlist_watched")}
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {achievementsList.map((ach) => (
+                  <AchievementTooltip key={ach.id} achievement={ach} />
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -631,7 +682,7 @@ export default function PublicProfile() {
               onClick={() => setActiveTab("favorites")}
               className={`px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition ${
                 activeTab === "favorites"
-                  ? "bg-[#c8963c] text-[#12100e] shadow"
+                  ? "btn-glass btn-glass-gold text-[#12100e]"
                   : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
               }`}
             >
@@ -641,7 +692,7 @@ export default function PublicProfile() {
               onClick={() => setActiveTab("watched")}
               className={`px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition ${
                 activeTab === "watched"
-                  ? "bg-[#c8963c] text-[#12100e] shadow"
+                  ? "btn-glass btn-glass-gold text-[#12100e]"
                   : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
               }`}
             >
@@ -657,7 +708,7 @@ export default function PublicProfile() {
               <Link
                 to={`/movie/${movie.tmdbId}?type=${movie.mediaType || "movie"}`}
                 key={movie.id}
-                className="group flex flex-col bg-[#1a1714] border border-[#c8963c]/10 rounded-xl overflow-hidden hover:border-[#c8963c]/50 transition duration-300 shadow relative"
+                className="group flex flex-col bg-[#1a1714] border border-[#c8963c]/10 rounded-xl overflow-hidden hover:border-[#c8963c]/50 hover:glow-gold-sm hover:scale-[1.03] transition-all duration-300 shadow relative"
               >
                 <div className="aspect-[2/3] relative overflow-hidden bg-[#12100e]">
                   {movie.posterUrl ? (
@@ -767,7 +818,7 @@ export default function PublicProfile() {
               <button
                 onClick={handleGenerateWatchTogether}
                 disabled={isGenerating}
-                className="w-full py-3 bg-[#c8963c] text-[#12100e] font-black uppercase tracking-widest rounded-xl hover:bg-[#e8c070] transition active:scale-95 disabled:opacity-50 text-xs"
+                className="w-full py-3 btn-glass btn-glass-gold text-[#12100e] font-black uppercase tracking-widest rounded-xl transition active:scale-95 disabled:opacity-50 text-xs"
               >
                 {isGenerating ? t("compat_generating") : t("compat_generate")}
               </button>
@@ -808,7 +859,7 @@ export default function PublicProfile() {
                       ) : (
                         <button
                           onClick={() => handleAddFromCompat(movie)}
-                          className="shrink-0 text-[9px] border border-[#c8963c]/50 text-[#c8963c] px-2.5 py-1 rounded-lg font-bold hover:bg-[#c8963c] hover:text-[#12100e] transition active:scale-95"
+                          className="shrink-0 text-[9px] btn-glass btn-glass-dark text-[#c8963c] px-2.5 py-1 rounded-lg font-bold transition active:scale-95"
                         >
                           {t("chat_add_btn")}
                         </button>
@@ -819,7 +870,7 @@ export default function PublicProfile() {
                 <button
                   onClick={handleGenerateWatchTogether}
                   disabled={isGenerating}
-                  className="w-full mt-3 py-2.5 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] font-black uppercase tracking-widest rounded-xl hover:border-[#c8963c]/60 transition active:scale-95 disabled:opacity-50 text-[10px]"
+                  className="w-full mt-3 py-2.5 btn-glass btn-glass-dark text-[#c8963c] font-black uppercase tracking-widest rounded-xl transition active:scale-95 disabled:opacity-50 text-[10px]"
                 >
                   {isGenerating ? t("compat_generating") : t("compat_regenerate")}
                 </button>

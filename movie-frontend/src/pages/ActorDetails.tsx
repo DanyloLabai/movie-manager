@@ -232,7 +232,7 @@ export default function ActorDetails() {
               <div className="flex gap-2 ml-4">
                 <button
                   onClick={() => scrollSlider("left")}
-                  className="w-8 h-8 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition-all"
+                  className="w-8 h-8 rounded-full btn-glass btn-glass-dark text-[#c8963c] flex items-center justify-center active:scale-95 transition-all"
                 >
                   <svg
                     className="w-4 h-4"
@@ -250,7 +250,7 @@ export default function ActorDetails() {
                 </button>
                 <button
                   onClick={() => scrollSlider("right")}
-                  className="w-8 h-8 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition-all"
+                  className="w-8 h-8 rounded-full btn-glass btn-glass-dark text-[#c8963c] flex items-center justify-center active:scale-95 transition-all"
                 >
                   <svg
                     className="w-4 h-4"

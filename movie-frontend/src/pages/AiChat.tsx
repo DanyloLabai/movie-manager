@@ -6,7 +6,6 @@ import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import NotificationBell from "../components/NotificationBell";
-import SettingsMenu from "../components/SettingsMenu";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
@@ -354,14 +353,14 @@ export default function AiChat() {
 
   return (
     <div
-      className="fixed left-0 right-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden"
+      className="fixed left-0 sm:left-60 right-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden"
       style={{
         top: viewportTop,
         height: viewportHeight,
         paddingTop: "env(safe-area-inset-top)",
       }}
     >
-      <div className="shrink-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
+      <div className="sm:hidden shrink-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
         <header className="flex flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
@@ -377,41 +376,25 @@ export default function AiChat() {
             </h1>
           </Link>
           <div className="flex items-center gap-2 shrink-0">
-            <nav className="hidden sm:flex items-center gap-2 sm:gap-6 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center sm:justify-end">
-              <Link
-                to="/ai-chat"
-                className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap"
-              >
-                {t("nav_ai_chat")}
-              </Link>
-              <Link
-                to="/search"
-                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap"
-              >
-                {t("nav_search")}
-              </Link>
-              <Link
-                to="/quiz"
-                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap"
-              >
-                {t("nav_quiz")}
-              </Link>
-              <Link
-                to="/watchlist"
-                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap"
-              >
-                {t("nav_profile")}
-              </Link>
-              <SettingsMenu />
-            </nav>
             <NotificationBell />
           </div>
         </header>
       </div>
 
+      <div className="hidden sm:flex shrink-0 z-40 glass-panel border-b border-[#c8963c]/10 px-8 py-5 items-center justify-center">
+        <h1 className="text-xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+          {t("chat_header_title")}
+        </h1>
+      </div>
+
+      <div className="absolute inset-0 -z-10 pointer-events-none overflow-hidden">
+        <div className="absolute -top-20 -left-20 w-80 h-80 bg-[#c8963c]/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-10 -right-20 w-96 h-96 bg-[#c8963c]/5 rounded-full blur-[120px]" />
+      </div>
+
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide bg-[#12100e]"
+        className="relative flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide"
       >
         <div className="max-w-2xl mx-auto space-y-4 pb-2">
           {isHistoryLoading ? (
@@ -426,99 +409,144 @@ export default function AiChat() {
             messages.map((msg, idx) => (
               <div
                 key={idx}
-                className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
+                className={`flex items-start gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
               >
                 <div
-                  className={`max-w-[92%] p-3 rounded-2xl shadow-xl text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "bg-[#c8963c] text-[#12100e] rounded-tr-sm font-medium"
-                      : "bg-[#1a1714] border border-[#c8963c]/30 text-[#f0e6cc] rounded-tl-sm"
+                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                    msg.role === "ai"
+                      ? "bg-[#12100e] border border-[#c8963c]/40 p-1 glow-gold-sm"
+                      : "bg-gradient-to-br from-[#c8963c] to-[#9a732a] glow-gold-sm"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap select-text cursor-text">
-                    {msg.text}
-                  </p>
-                  {msg.movies && msg.movies.length > 0 && (
-                    <div className="mt-3 flex flex-col gap-1.5 bg-[#12100e]/60 p-2 rounded-xl border border-[#c8963c]/20">
-                      <h5 className="text-[#c8963c] text-[9px] font-bold uppercase tracking-widest px-1 pt-0.5 pb-1.5">
-                        {t("chat_recommended")}
-                      </h5>
-                      {msg.movies.map((movie) => (
-                        <div
-                          key={movie.id}
-                          className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-[#c8963c]/10 transition border border-transparent hover:border-[#c8963c]/20 cursor-pointer group"
-                          onClick={() =>
-                            navigate(
-                              `/movie/${movie.id}?type=${movie.mediaType}`,
-                            )
-                          }
-                        >
-                          <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <div className="w-9 h-12 bg-[#12100e] rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20">
-                              {movie.posterUrl ? (
-                                <img
-                                  src={movie.posterUrl}
-                                  alt={movie.title}
-                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/30">
-                                  N/A
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex flex-col min-w-0">
-                              <h4 className="font-bold text-[#f0e6cc] text-xs truncate group-hover:text-[#c8963c] transition">
-                                {movie.title}{" "}
-                                <span className="font-normal text-[#f0e6cc]/50">
-                                  (
-                                  {movie.releaseDate
-                                    ? new Date(movie.releaseDate).getFullYear()
-                                    : movie.releaseYear}
+                  {msg.role === "ai" ? (
+                    <img
+                      src={LogoImg}
+                      alt=""
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <svg
+                      className="w-3 h-3 text-[#12100e]"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                  )}
+                </div>
+                <div
+                  className={`flex flex-col max-w-[85%] ${msg.role === "user" ? "items-end" : "items-start"}`}
+                >
+                  <div
+                    className={`p-3 rounded-2xl shadow-xl text-sm leading-relaxed ${
+                      msg.role === "user"
+                        ? "bg-[#c8963c] text-[#12100e] rounded-tr-sm font-medium"
+                        : "glass-panel border border-[#c8963c]/30 text-[#f0e6cc] rounded-tl-sm"
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap select-text cursor-text">
+                      {msg.text}
+                    </p>
+                    {msg.movies && msg.movies.length > 0 && (
+                      <div className="mt-3">
+                        <h5 className="text-[#c8963c] text-[9px] font-bold uppercase tracking-widest px-1 pb-1.5">
+                          {t("chat_recommended")}
+                        </h5>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {msg.movies.map((movie) => (
+                            <div
+                              key={movie.id}
+                              className="group flex flex-col rounded-lg overflow-hidden border border-[#c8963c]/20 hover:border-[#c8963c]/70 transition"
+                            >
+                              <div
+                                className="relative aspect-[2/3] cursor-pointer"
+                                onClick={() =>
+                                  navigate(
+                                    `/movie/${movie.id}?type=${movie.mediaType}`,
                                   )
-                                </span>
-                              </h4>
-                              <p className="text-[8px] text-[#f0e6cc]/50 mt-0.5 uppercase font-semibold tracking-wider">
-                                {movie.mediaType === "tv"
-                                  ? t("chat_tv")
-                                  : t("chat_movie")}
-                                {isReleased(movie) &&
-                                  ` • ★ ${Number(movie.rating || 0).toFixed(1)}`}
-                              </p>
-                            </div>
-                          </div>
-                          <div
-                            className="shrink-0 flex items-center gap-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {addedIds.includes(movie.id) ? (
-                              <div className="text-[9px] text-[#c8963c] px-2 py-1 font-bold">
-                                ✓
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => handleAddFromChat(movie)}
-                                className="text-[9px] border border-[#c8963c]/50 text-[#c8963c] px-2.5 py-1 rounded-lg font-bold hover:bg-[#c8963c] hover:text-[#12100e] transition active:scale-95"
+                                }
                               >
-                                {t("chat_add_btn")}
-                              </button>
-                            )}
-                          </div>
+                                {movie.posterUrl ? (
+                                  <img
+                                    src={movie.posterUrl}
+                                    alt={movie.title}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-[#12100e] flex items-center justify-center text-[7px] text-[#f0e6cc]/30">
+                                    N/A
+                                  </div>
+                                )}
+                                {isReleased(movie) && (
+                                  <div className="absolute top-1 left-1 bg-[#12100e]/90 backdrop-blur-sm px-1 py-0.5 rounded text-[7px] font-black text-[#c8963c] border border-[#c8963c]/30">
+                                    ★ {Number(movie.rating || 0).toFixed(1)}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="p-1 bg-[#1a1714] flex flex-col gap-1 flex-1">
+                                <h4
+                                  className="font-bold text-[#f0e6cc] text-[9px] leading-tight truncate cursor-pointer"
+                                  onClick={() =>
+                                    navigate(
+                                      `/movie/${movie.id}?type=${movie.mediaType}`,
+                                    )
+                                  }
+                                >
+                                  {movie.title}
+                                </h4>
+                                {addedIds.includes(movie.id) ? (
+                                  <div className="w-full py-1 rounded-md btn-glass btn-glass-gold flex items-center justify-center gap-0.5 text-[#12100e] text-[7px] font-black uppercase tracking-wide">
+                                    <span>✓</span> {t("search_added_btn")}
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => handleAddFromChat(movie)}
+                                    className="w-full py-1 rounded-md btn-glass btn-glass-dark flex items-center justify-center text-[#c8963c] text-[7px] font-black uppercase tracking-wide active:scale-95 transition"
+                                  >
+                                    + {t("search_add")}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  {msg.reasoning && msg.reasoning.length > 0 && (
-                    <WhyThisHint reasoning={msg.reasoning} />
-                  )}
+                      </div>
+                    )}
+                    {msg.reasoning && msg.reasoning.length > 0 && (
+                      <WhyThisHint reasoning={msg.reasoning} />
+                    )}
+                  </div>
                 </div>
               </div>
             ))
           )}
 
+          {!isHistoryLoading && messages.length <= 1 && (
+            <div className="flex flex-wrap gap-2 pl-[42px]">
+              {(
+                [
+                  "chat_suggestion_1",
+                  "chat_suggestion_2",
+                  "chat_suggestion_3",
+                ] as const
+              ).map((key) => (
+                <button
+                  key={key}
+                  onClick={() => sendMessageToAi(t(key))}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold text-[#f0e6cc]/70 btn-glass btn-glass-dark hover:text-[#c8963c] transition"
+                >
+                  {t(key)}
+                </button>
+              ))}
+            </div>
+          )}
+
           {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-[#1a1714] border border-[#c8963c]/30 p-4 rounded-2xl rounded-tl-sm shadow">
+            <div className="flex items-start gap-2.5">
+              <div className="w-6 h-6 rounded-full bg-[#12100e] border border-[#c8963c]/40 p-1 flex items-center justify-center shrink-0 glow-gold-sm">
+                <img src={LogoImg} alt="" className="w-full h-full object-contain" />
+              </div>
+              <div className="glass-panel border border-[#c8963c]/30 p-4 rounded-2xl rounded-tl-sm shadow">
                 <div className="flex gap-1.5">
                   <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce" />
                   <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.2s]" />
@@ -530,13 +558,13 @@ export default function AiChat() {
         </div>
       </div>
 
-      <div className="shrink-0 px-3 pt-2 pb-3 bg-[#12100e] border-t border-[#c8963c]/20 z-40">
+      <div className="shrink-0 px-3 pt-2 pb-2 bg-[#12100e] border-t border-[#c8963c]/20 z-40">
         <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
           <button
             onClick={handleClearChat}
             disabled={isLoading || messages.length <= 1}
             title={t("chat_clear_title")}
-            className="shrink-0 w-10 h-10 text-[#c8963c]/50 bg-[#1a1714] border border-[#c8963c]/20 rounded-xl hover:text-red-400 hover:bg-red-900/20 transition disabled:opacity-30 flex items-center justify-center"
+            className="shrink-0 w-10 h-10 text-[#c8963c]/50 btn-glass btn-glass-dark rounded-xl hover:text-red-400 hover:!bg-red-900/20 hover:!border-red-500/40 transition disabled:opacity-30 flex items-center justify-center"
           >
             <svg
               className="w-4 h-4"
@@ -553,7 +581,10 @@ export default function AiChat() {
             </svg>
           </button>
 
-          <form onSubmit={handleSend} className="relative flex-grow">
+          <form
+            onSubmit={handleSend}
+            className="relative flex-grow flex items-center gap-2 glass-panel border border-[#c8963c]/30 rounded-full pl-4 pr-1.5 py-1.5 focus-within:border-[#c8963c] focus-within:shadow-[0_0_0_3px_rgba(200,150,60,0.15),0_0_24px_-6px_rgba(200,150,60,0.5)] transition-shadow"
+          >
             <input
               ref={inputRef}
               type="text"
@@ -575,17 +606,38 @@ export default function AiChat() {
                       )
                     : t("chat_placeholder")
               }
-              className="w-full pl-4 pr-12 py-3 bg-[#1a1714] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition disabled:opacity-50 text-sm"
+              className="w-full bg-transparent border-none text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:ring-0 transition disabled:opacity-50 text-sm"
             />
             <button
               type="submit"
               disabled={isLoading || !input.trim() || cooldownTime > 0}
-              className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-[#c8963c] text-[#12100e] rounded-lg font-black hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 text-base"
+              className="shrink-0 w-9 h-9 rounded-full btn-glass btn-glass-gold text-[#12100e] flex items-center justify-center font-black transition active:scale-95 disabled:cursor-not-allowed"
             >
-              {isLoading ? "…" : cooldownTime > 0 ? cooldownTime : "→"}
+              {isLoading ? (
+                "…"
+              ) : cooldownTime > 0 ? (
+                <span className="text-xs">{cooldownTime}</span>
+              ) : (
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2.5"
+                    d="M12 19V5m0 0l-6 6m6-6l6 6"
+                  />
+                </svg>
+              )}
             </button>
           </form>
         </div>
+        <p className="text-center text-[9px] text-[#f0e6cc]/30 font-semibold mt-1.5 tracking-wide">
+          {t("chat_disclaimer")}
+        </p>
       </div>
 
       {toastMessage && (

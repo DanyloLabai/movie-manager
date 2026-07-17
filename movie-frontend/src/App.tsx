@@ -25,6 +25,7 @@ import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
 import { ApiNotification } from "./components/ApiNotification";
 import BottomNav from "./components/BottomNav";
+import Sidebar, { SIDEBAR_PADDING_CLASS } from "./components/layout/Sidebar";
 import type { JSX } from "react";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
@@ -172,7 +173,10 @@ function AppShell() {
   return (
     <div className="min-h-[100dvh] bg-[#12100e] text-[#f0e6cc] font-sans overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
       <ApiNotification />
-      <AppRoutes />
+      {isAuthenticated && <Sidebar />}
+      <div className={isAuthenticated ? SIDEBAR_PADDING_CLASS : undefined}>
+        <AppRoutes />
+      </div>
       {isAuthenticated && <BottomNav />}
     </div>
   );
