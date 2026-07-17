@@ -521,30 +521,14 @@ export default function AiChat() {
             ))
           )}
 
-          {!isHistoryLoading && messages.length <= 1 && (
-            <div className="flex flex-wrap gap-2 pl-[42px]">
-              {(
-                [
-                  "chat_suggestion_1",
-                  "chat_suggestion_2",
-                  "chat_suggestion_3",
-                ] as const
-              ).map((key) => (
-                <button
-                  key={key}
-                  onClick={() => sendMessageToAi(t(key))}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold text-[#f0e6cc]/70 btn-glass btn-glass-dark hover:text-[#c8963c] transition"
-                >
-                  {t(key)}
-                </button>
-              ))}
-            </div>
-          )}
-
           {isLoading && (
             <div className="flex items-start gap-2.5">
               <div className="w-6 h-6 rounded-full bg-[#12100e] border border-[#c8963c]/40 p-1 flex items-center justify-center shrink-0 glow-gold-sm">
-                <img src={LogoImg} alt="" className="w-full h-full object-contain" />
+                <img
+                  src={LogoImg}
+                  alt=""
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div className="glass-panel border border-[#c8963c]/30 p-4 rounded-2xl rounded-tl-sm shadow">
                 <div className="flex gap-1.5">
