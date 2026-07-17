@@ -20,7 +20,6 @@ export const MovieCard = ({
   onToggleFavorite,
   onAdd,
   onRemove,
-  onFindSimilar,
 }: MovieCardProps) => {
   const { t } = useLang();
   const released = isReleased(movie);
@@ -28,10 +27,10 @@ export const MovieCard = ({
   const isInPlans = addedIds.includes(movie.id);
 
   return (
-    <div className="group relative overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 shadow rounded-xl flex flex-col hover:border-[#c8963c]/70 hover:-translate-y-0.5 transition h-full">
+    <div className="group relative overflow-hidden bg-[#1a1714]/90 backdrop-blur-sm border border-[#c8963c]/20 shadow rounded-2xl flex flex-col hover:border-[#c8963c]/60 hover:-translate-y-1 hover:shadow-[0_12px_32px_-10px_rgba(200,150,60,0.4)] transition-all duration-300 h-full">
       {released ? (
         <button
-          className="absolute top-1.5 left-1.5 z-10 w-7 h-7 flex items-center justify-center bg-[#12100e]/80 rounded-full backdrop-blur-sm border border-[#c8963c]/30 transition group/heart"
+          className="absolute top-1.5 left-1.5 z-10 w-7 h-7 flex items-center justify-center btn-glass btn-glass-dark rounded-full shadow-[0_2px_10px_-2px_rgba(0,0,0,0.6)] transition group/heart"
           onClick={() => onToggleFavorite(movie)}
         >
           <svg
@@ -66,29 +65,6 @@ export const MovieCard = ({
         </div>
       )}
 
-      {onFindSimilar && (
-        <button
-          type="button"
-          title={t("movie_find_similar")}
-          onClick={() => onFindSimilar(movie)}
-          className="absolute top-1.5 right-1.5 z-10 w-7 h-7 flex items-center justify-center bg-[#12100e]/80 rounded-full backdrop-blur-sm border border-[#c8963c]/30 text-[#f0e6cc]/60 hover:text-[#c8963c] hover:border-[#c8963c] transition"
-        >
-          <svg
-            className="w-3.5 h-3.5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M21 21l-4.35-4.35m0 0a7 7 0 10-9.9-9.9 7 7 0 009.9 9.9zM9 10h4M11 8v4"
-            />
-          </svg>
-        </button>
-      )}
-
       <Link
         to={`/movie/${movie.id}?type=${movie.mediaType}`}
         className="relative w-full aspect-[2/3] bg-[#12100e] block overflow-hidden"
@@ -108,7 +84,7 @@ export const MovieCard = ({
         )}
       </Link>
 
-      <div className="p-2.5 flex flex-col flex-grow bg-[#1a1714]">
+      <div className="p-2.5 flex flex-col flex-grow bg-transparent">
         <Link to={`/movie/${movie.id}?type=${movie.mediaType}`}>
           <h4
             className="text-[11px] lg:text-[13px] font-bold mb-1 truncate text-[#f0e6cc] hover:text-[#c8963c] transition-colors"
@@ -143,10 +119,10 @@ export const MovieCard = ({
           {isInPlans ? (
             <button
               onClick={() => onRemove(movie)}
-              className={`w-full py-1.5 font-bold rounded-lg uppercase text-[9px] lg:text-[11px] tracking-wider border flex items-center justify-center gap-1 active:scale-95 transition ${
+              className={`w-full py-1.5 font-bold rounded-lg uppercase text-[9px] lg:text-[11px] tracking-wider btn-glass flex items-center justify-center gap-1 active:scale-95 transition ${
                 isWatched
-                  ? "bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20"
-                  : "bg-[#c8963c]/10 text-[#c8963c] border-[#c8963c]/30 hover:bg-[#c8963c]/20"
+                  ? "btn-glass-dark !border-green-500/40 text-green-500 hover:!border-green-500/70"
+                  : "btn-glass-dark text-[#c8963c]"
               }`}
             >
               <span>✓</span> {t("search_added_btn")}
@@ -154,7 +130,7 @@ export const MovieCard = ({
           ) : (
             <button
               onClick={() => onAdd(movie)}
-              className="w-full py-1.5 bg-[#2a241f] hover:bg-[#c8963c] hover:text-[#12100e] text-[#c8963c] border border-[#c8963c]/30 font-bold rounded-lg transition-all active:scale-95 uppercase text-[9px] lg:text-[11px] tracking-wider shadow-sm"
+              className="w-full py-1.5 btn-glass btn-glass-dark text-[#c8963c] font-bold rounded-lg transition-all active:scale-95 uppercase text-[9px] lg:text-[11px] tracking-wider"
             >
               + {t("search_add")}
             </button>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
+import { NAV_ICONS as ICONS } from "./navIcons";
 
 const VISIBLE_ROUTES = [
   "/ai-chat",
@@ -13,57 +14,6 @@ const VISIBLE_ROUTES = [
 const MOBILE_BREAKPOINT_PX = 640; // Tailwind `sm`
 const SWIPE_MIN_DISTANCE_PX = 60;
 const SWIPE_MAX_VERTICAL_RATIO = 0.5; // vertical drift must stay well under the horizontal distance
-
-const ICONS = {
-  chat: (
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-    />
-  ),
-  search: (
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M21 21l-4.35-4.35M19 11a8 8 0 11-16 0 8 8 0 0116 0z"
-    />
-  ),
-  profile: (
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-    />
-  ),
-  settings: (
-    <>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-    </>
-  ),
-  quiz: (
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth={2}
-      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0c-.703.703-1.278 1.605-1.313 2.6a1 1 0 01-1 .961h-2.516a1 1 0 01-1-.962c-.035-.994-.61-1.896-1.313-2.6z"
-    />
-  ),
-};
 
 export default function BottomNav() {
   const { t } = useLang();
@@ -183,7 +133,7 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#12100e]/95 backdrop-blur-md border-t border-[#c8963c]/10 pb-[env(safe-area-inset-bottom)]">
+    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-[100] glass-panel rounded-t-2xl border-t border-x border-[#c8963c]/20 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.6)] pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around px-1 py-2">
         {tabs.map((tab) => {
           const isActive = location.pathname.startsWith(tab.to);
@@ -191,10 +141,12 @@ export default function BottomNav() {
             <Link
               key={tab.key}
               to={tab.to}
-              className="relative flex flex-col items-center gap-0.5 px-2 py-1 min-w-[56px]"
+              className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 min-w-[56px] rounded-xl transition-colors ${
+                isActive ? "bg-[#c8963c]/10" : ""
+              }`}
             >
               <svg
-                className={`w-5 h-5 ${isActive ? "text-[#c8963c]" : "text-[#f0e6cc]/50"}`}
+                className={`w-5 h-5 ${isActive ? "text-[#c8963c] drop-shadow-[0_0_6px_rgba(200,150,60,0.6)]" : "text-[#f0e6cc]/50"}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

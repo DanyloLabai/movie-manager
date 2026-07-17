@@ -58,7 +58,7 @@ export default function VerifyEmail() {
           </p>
           <button
             onClick={() => navigate("/login")}
-            className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] shadow-lg shadow-[#c8963c]/10"
+            className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition btn-glass btn-glass-gold active:scale-[0.98]"
           >
             Log In
           </button>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import LogoImg from "../assets/logo.png";
@@ -9,9 +9,7 @@ import type { QuizStats } from "../api/quiz.api";
 import { useLang } from "../context/LanguageContext";
 import { getUserRank, getAchievementsList } from "../utils/achievements";
 import type { TranslationKey } from "../context/LanguageContext";
-import AchievementTooltip from "../components/AchievementTooltip";
 import NotificationBell from "../components/NotificationBell";
-import SettingsMenu from "../components/SettingsMenu";
 import StarRating from "../components/StarRating";
 import RatingDistributionChart from "../components/RatingDistributionChart";
 import ActivityHeatmap from "../components/ActivityHeatmap";
@@ -90,8 +88,40 @@ export default function Watchlist() {
   const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
 
   useEffect(() => {
-    quizApi.getMyStats().then(setQuizStats).catch(() => {});
+    quizApi
+      .getMyStats()
+      .then(setQuizStats)
+      .catch(() => {});
   }, []);
+
+  // Achievements card should never grow taller than its Overview sibling —
+  // CSS Grid stretch would do the opposite (grow both to the tallest), so
+  // measure Overview's real height and cap Achievements to match it,
+  // scrolling internally. Only applied at the md+ breakpoint where the two
+  // sit side by side; below that they stack and should size naturally.
+  const overviewCardRef = useRef<HTMLDivElement>(null);
+  const [achievementsMaxHeight, setAchievementsMaxHeight] = useState<
+    number | undefined
+  >(undefined);
+
+  useEffect(() => {
+    if (activeTab !== "profile") return;
+    const el = overviewCardRef.current;
+    if (!el) return;
+    const update = () => {
+      setAchievementsMaxHeight(
+        window.innerWidth >= 768 ? el.offsetHeight : undefined,
+      );
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [activeTab, profileData, quizStats]);
   const [ratingModalData, setRatingModalData] = useState<{
     isOpen: boolean;
     tmdbId: number | null;
@@ -323,7 +353,6 @@ export default function Watchlist() {
     const totalCount = profileData?.totalCount || 0;
     const favoritesCount = profileData?.favorites?.length || 0;
     const watchedCount = profileData?.watchedCount || 0;
-    const userRank = getUserRank(watchedCount, t);
 
     const hasStats = Boolean(
       profileData?.stats &&
@@ -345,112 +374,232 @@ export default function Watchlist() {
 
     return (
       <div className="space-y-4 animate-fade-in">
-        {/* Profile Header */}
-        <div className="flex flex-col p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl gap-4 relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
-
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-tr from-[#c8963c] to-[#9a732a] rounded-full flex items-center justify-center text-2xl font-black shadow-lg uppercase text-[#12100e] shrink-0 overflow-hidden border-2 border-[#c8963c]/50">
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt={username}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                username.charAt(0)
-              )}
+        {/* Overview + Achievements bento */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+          <div
+            ref={overviewCardRef}
+            className="md:col-span-2 glass-panel border border-[#c8963c]/20 rounded-2xl p-4 sm:p-6"
+          >
+            <h3 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
+              {t("profile_overview")}
+            </h3>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3 text-center">
+                <div className="text-xl sm:text-2xl font-black text-[#c8963c]">
+                  {watchedCount}
+                </div>
+                <div className="text-[8px] sm:text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
+                  {t("watchlist_watched")}
+                </div>
+              </div>
+              <div className="bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3 text-center">
+                <div className="text-xl sm:text-2xl font-black text-[#c8963c]">
+                  {profileData?.stats?.averageRating || "0.0"}
+                </div>
+                <div className="text-[8px] sm:text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
+                  {t("stats_avg")}
+                </div>
+              </div>
+              <div className="bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3 text-center">
+                <div className="text-xl sm:text-2xl font-black text-[#c8963c]">
+                  {quizStats?.currentStreak ?? 0}
+                </div>
+                <div className="text-[8px] sm:text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
+                  {t("quiz_streak_current")}
+                </div>
+              </div>
             </div>
 
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-black text-[#f0e6cc] tracking-tight truncate">
-                {username}
-              </h2>
-              <p className="text-[10px] text-[#c8963c] font-bold uppercase tracking-[0.15em]">
-                {userRank}
-              </p>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setIsFriendsModalOpen(true)}
-                className="h-11 px-4 bg-[#12100e] hover:bg-[#c8963c]/10 rounded-full flex items-center gap-2 text-[#c8963c] font-black uppercase tracking-widest text-xs border-2 border-[#c8963c] shadow-lg transition active:scale-95"
-                title={t("profile_friends")}
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5.13a4 4 0 11-8 0 4 4 0 018 0zm6 3a4 4 0 10-4-4"
+            {hasStats && (
+              <div className="mt-4 pt-4 border-t border-[#c8963c]/10">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#f0e6cc]/50">
+                    {t("profile_completion")}
+                  </span>
+                  <span className="text-[#c8963c] font-black text-xs">
+                    {profileData?.stats?.completionRate || 0}%
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-[#12100e] rounded-full overflow-hidden border border-[#c8963c]/10">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#9a732a] to-[#c8963c] transition-all duration-1000 ease-out"
+                    style={{
+                      width: `${profileData?.stats?.completionRate || 0}%`,
+                    }}
                   />
-                </svg>
-                <span className="hidden sm:inline">{t("profile_friends")}</span>
-              </button>
-            </div>
+                </div>
+                <p className="text-[8px] text-center text-[#f0e6cc]/40 mt-1.5 italic">
+                  {watchedCount} / {totalCount}{" "}
+                  {t("watchlist_watched").toLowerCase()}
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Achievements */}
-          <div className="flex flex-wrap gap-1.5">
-            {achievementsList.map((ach) => (
-              <AchievementTooltip key={ach.id} achievement={ach} />
-            ))}
-          </div>
-
-          {/* Stats row */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="text-center bg-[#12100e] px-3 py-3 rounded-xl border border-[#c8963c]/20">
-              <div className="text-2xl font-black text-[#c8963c]">
-                {favoritesCount}
-              </div>
-              <div className="text-[9px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mt-0.5">
-                {t("watchlist_favorites")}
-              </div>
-            </div>
-            <div className="text-center bg-[#12100e] px-3 py-3 rounded-xl border border-[#c8963c]/20">
-              <div className="text-2xl font-black text-[#c8963c]">
-                {watchedCount}
-              </div>
-              <div className="text-[9px] text-[#f0e6cc]/50 uppercase tracking-widest font-bold mt-0.5">
-                {t("watchlist_watched")}
-              </div>
+          <div
+            className="glass-panel border border-[#c8963c]/20 rounded-2xl p-4 sm:p-6 flex flex-col"
+            style={
+              achievementsMaxHeight
+                ? { maxHeight: achievementsMaxHeight }
+                : undefined
+            }
+          >
+            <h3 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest mb-4 shrink-0">
+              {t("profile_achievements")}
+            </h3>
+            <div className="grid grid-cols-2 sm:flex sm:flex-col gap-1.5 sm:gap-2 flex-1 min-h-0 overflow-y-auto scrollbar-hide pr-1">
+              {achievementsList.map((ach) => (
+                <div
+                  key={ach.id}
+                  className={`flex items-center gap-1.5 sm:gap-3 border p-1.5 sm:p-2.5 rounded-lg transition ${
+                    ach.isUnlocked
+                      ? "bg-[#12100e] border-[#c8963c]/10"
+                      : "bg-[#12100e]/40 border-[#c8963c]/5"
+                  }`}
+                >
+                  <svg
+                    className={`w-3.5 h-3.5 sm:w-5 sm:h-5 shrink-0 ${ach.isUnlocked ? "text-[#c8963c]" : "text-[#f0e6cc]/20"}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    {ach.isUnlocked ? (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35"
+                      />
+                    ) : (
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    )}
+                  </svg>
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={`text-[10px] sm:text-xs font-bold truncate ${ach.isUnlocked ? "text-[#f0e6cc]" : "text-[#f0e6cc]/40"}`}
+                    >
+                      {ach.text}
+                    </p>
+                    <p className="hidden sm:block text-[9px] text-[#f0e6cc]/40 truncate">
+                      {ach.requirement}
+                      {!ach.isUnlocked && ` · ${ach.current}/${ach.needed}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Completion Rate */}
-        {hasStats && (
-          <div className="w-full bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3">
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-[#f0e6cc]/50">
-                {t("profile_completion")}
-              </span>
-              <span className="text-[#c8963c] font-black text-xs">
-                {profileData?.stats?.completionRate || 0}%
-              </span>
+        {/* Activity Heatmap */}
+        <ActivityHeatmap
+          days={activityHeatmap.days}
+          year={activityHeatmap.year}
+          isLoading={activityHeatmap.isLoading}
+          onPrevYear={activityHeatmap.goToPreviousYear}
+          onNextYear={activityHeatmap.goToNextYear}
+          canGoNext={activityHeatmap.canGoNext}
+        />
+
+        {/* Top Favorites */}
+        <div className="p-4 glass-panel rounded-2xl border border-[#c8963c]/20 shadow-xl">
+          <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-3">
+            {t("watchlist_top_fav")}
+          </h3>
+          {!profileData?.favorites || profileData.favorites.length === 0 ? (
+            <div className="text-center py-6 bg-[#12100e] rounded-xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
+              {t("watchlist_no_fav")}
             </div>
-            <div className="w-full h-2 bg-[#1a1714] rounded-full overflow-hidden border border-[#c8963c]/10">
-              <div
-                className="h-full bg-gradient-to-r from-[#9a732a] to-[#c8963c] transition-all duration-1000 ease-out"
-                style={{ width: `${profileData?.stats?.completionRate || 0}%` }}
-              />
+          ) : (
+            <div className="grid grid-cols-5 gap-2">
+              {profileData.favorites.slice(0, 5).map((fav) => {
+                const released = isReleased(fav);
+                return (
+                  <div
+                    key={fav.id}
+                    className="group relative flex flex-col items-center"
+                  >
+                    <div className="w-full aspect-[2/3] rounded-lg overflow-hidden shadow border border-[#c8963c]/20 bg-[#12100e] relative">
+                      <Link
+                        to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}&fromTab=profile`}
+                        className="block w-full h-full"
+                      >
+                        {fav.posterUrl ? (
+                          <img
+                            src={fav.posterUrl}
+                            alt={fav.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center w-full h-full text-[8px] text-[#f0e6cc]/30 italic">
+                            {t("common_na")}
+                          </div>
+                        )}
+                      </Link>
+                      {released ? (
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleToggleFavorite(fav.tmdbId);
+                          }}
+                          className="absolute top-1 right-1 w-6 h-6 btn-glass btn-glass-dark rounded-full flex items-center justify-center transition z-10"
+                        >
+                          <svg
+                            className={`w-2.5 h-2.5 ${fav.isFavorite ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30"}`}
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            fill={fav.isFavorite ? "currentColor" : "none"}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2.5"
+                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                            />
+                          </svg>
+                        </button>
+                      ) : (
+                        <div className="absolute top-1 right-1 w-6 h-6 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] z-10">
+                          <svg
+                            className="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    <Link
+                      to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}&fromTab=profile`}
+                      className="mt-1 w-full text-center"
+                    >
+                      <h4 className="text-[8px] font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition">
+                        {fav.title}
+                      </h4>
+                    </Link>
+                  </div>
+                );
+              })}
             </div>
-            <p className="text-[8px] text-center text-[#f0e6cc]/40 mt-1.5 italic">
-              {watchedCount} / {totalCount}{" "}
-              {t("watchlist_watched").toLowerCase()}
-            </p>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Movie Wrapped */}
         {hasStats && (
-          <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl">
+          <div className="p-4 glass-panel rounded-2xl border border-[#c8963c]/20 shadow-xl">
             <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-4 border-b border-[#c8963c]/20 pb-2">
               {t("stats_wrapped").replace("[username]", username)}
             </h3>
@@ -682,114 +831,13 @@ export default function Watchlist() {
               )}
           </div>
         )}
-
-        {/* Top Favorites */}
-        <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl mt-4">
-          <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-3">
-            {t("watchlist_top_fav")}
-          </h3>
-          {!profileData?.favorites || profileData.favorites.length === 0 ? (
-            <div className="text-center py-6 bg-[#12100e] rounded-xl border border-[#c8963c]/20 border-dashed text-[#f0e6cc]/50 text-xs italic">
-              {t("watchlist_no_fav")}
-            </div>
-          ) : (
-            <div className="grid grid-cols-5 gap-2">
-              {profileData.favorites.slice(0, 5).map((fav) => {
-                const released = isReleased(fav);
-                return (
-                  <div
-                    key={fav.id}
-                    className="group relative flex flex-col items-center"
-                  >
-                    <div className="w-full aspect-[2/3] rounded-lg overflow-hidden shadow border border-[#c8963c]/20 bg-[#12100e] relative">
-                      <Link
-                        to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}&fromTab=profile`}
-                        className="block w-full h-full"
-                      >
-                        {fav.posterUrl ? (
-                          <img
-                            src={fav.posterUrl}
-                            alt={fav.title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center w-full h-full text-[8px] text-[#f0e6cc]/30 italic">
-                            {t("common_na")}
-                          </div>
-                        )}
-                      </Link>
-                      {released ? (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleToggleFavorite(fav.tmdbId);
-                          }}
-                          className="absolute top-1 right-1 w-6 h-6 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 transition z-10"
-                        >
-                          <svg
-                            className={`w-2.5 h-2.5 ${fav.isFavorite ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30"}`}
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            fill={fav.isFavorite ? "currentColor" : "none"}
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2.5"
-                              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                            />
-                          </svg>
-                        </button>
-                      ) : (
-                        <div className="absolute top-1 right-1 w-6 h-6 bg-[#12100e]/90 rounded-full flex items-center justify-center border border-[#c8963c]/40 text-[#c8963c] z-10">
-                          <svg
-                            className="w-3 h-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                    <Link
-                      to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}&fromTab=profile`}
-                      className="mt-1 w-full text-center"
-                    >
-                      <h4 className="text-[8px] font-bold text-[#f0e6cc] truncate hover:text-[#c8963c] transition">
-                        {fav.title}
-                      </h4>
-                    </Link>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Activity Heatmap */}
-        <ActivityHeatmap
-          days={activityHeatmap.days}
-          year={activityHeatmap.year}
-          isLoading={activityHeatmap.isLoading}
-          onPrevYear={activityHeatmap.goToPreviousYear}
-          onNextYear={activityHeatmap.goToNextYear}
-          canGoNext={activityHeatmap.canGoNext}
-        />
       </div>
     );
   };
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
+      <div className="sm:hidden sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-row items-center justify-between gap-3 py-4 sm:py-5 px-4 sm:px-8 w-full">
           <Link
             to="/search"
@@ -810,49 +858,67 @@ export default function Watchlist() {
             </div>
           </Link>
           <div className="flex items-center gap-2 shrink-0">
-            <nav className="hidden sm:flex items-center gap-2 sm:gap-8 overflow-x-auto w-full sm:w-auto pb-1 scrollbar-hide justify-center">
-              <Link
-                to="/ai-chat"
-                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
-              >
-                {t("nav_ai_chat")}
-              </Link>
-              <Link
-                to="/search"
-                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
-              >
-                {t("nav_search")}
-              </Link>
-              <Link
-                to="/quiz"
-                className="text-[#f0e6cc]/60 hover:text-[#c8963c] transition-colors text-xs sm:text-sm px-1 tracking-wide uppercase font-semibold whitespace-nowrap flex-shrink-0"
-              >
-                {t("nav_quiz")}
-              </Link>
-              <Link
-                to="/watchlist"
-                className="text-[#c8963c] font-bold border-b-2 border-[#c8963c] transition-all text-xs sm:text-sm px-1 tracking-wide uppercase whitespace-nowrap flex-shrink-0"
-              >
-                {t("nav_profile")}
-              </Link>
-
-              <SettingsMenu />
-            </nav>
             <NotificationBell />
           </div>
         </header>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12">
-        <div className="flex gap-2 sm:gap-3 mb-8 overflow-x-auto scrollbar-hide">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12 sm:pt-10">
+        <div className="flex items-center gap-4 p-4 mb-6 glass-panel rounded-2xl border border-[#c8963c]/20 shadow-xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
+
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-tr from-[#c8963c] to-[#9a732a] rounded-full flex items-center justify-center text-2xl font-black shadow-lg uppercase text-[#12100e] shrink-0 overflow-hidden border-2 border-[#c8963c]/50 glow-gold-sm">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={username}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              username.charAt(0)
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h2 className="text-xl font-black text-[#f0e6cc] tracking-tight truncate">
+              {username}
+            </h2>
+            <p className="text-[10px] text-[#c8963c] font-bold uppercase tracking-[0.15em]">
+              {getUserRank(profileData?.watchedCount || 0, t)}
+            </p>
+          </div>
+
+          <button
+            onClick={() => setIsFriendsModalOpen(true)}
+            className="shrink-0 h-10 sm:h-11 px-4 btn-glass btn-glass-dark rounded-full flex items-center gap-2 text-[#c8963c] font-black uppercase tracking-widest text-[10px] sm:text-xs transition active:scale-95"
+            title={t("profile_friends")}
+          >
+            <svg
+              className="w-4 h-4 sm:w-5 sm:h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-5.13a4 4 0 11-8 0 4 4 0 018 0zm6 3a4 4 0 10-4-4"
+              />
+            </svg>
+            <span className="hidden sm:inline">{t("profile_friends")}</span>
+          </button>
+        </div>
+
+        <div className="flex gap-6 sm:gap-8 mb-8 border-b border-[#c8963c]/10 overflow-x-auto scrollbar-hide">
           {(["profile", "watchlist", "watched"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2.5 rounded-2xl font-black text-[10px] sm:text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 max-w-[150px] ${
+              className={`relative pb-3 shrink-0 font-black text-[10px] sm:text-xs uppercase tracking-widest transition-colors ${
                 activeTab === tab
-                  ? "bg-[#c8963c] text-[#12100e]"
-                  : "bg-[#1a1714] text-[#f0e6cc]/40 border border-[#c8963c]/10 hover:border-[#c8963c]/30"
+                  ? "text-[#c8963c]"
+                  : "text-[#f0e6cc]/40 hover:text-[#f0e6cc]/70"
               }`}
             >
               {tab === "watchlist"
@@ -860,6 +926,9 @@ export default function Watchlist() {
                 : tab === "profile"
                   ? t("nav_profile")
                   : t("watchlist_watched")}
+              {activeTab === tab && (
+                <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-[#c8963c] shadow-[0_0_8px_1px_rgba(200,150,60,0.6)]" />
+              )}
             </button>
           ))}
         </div>
@@ -878,7 +947,7 @@ export default function Watchlist() {
               </p>
               <Link
                 to="/search"
-                className="inline-block px-6 py-3 bg-[#c8963c] text-[#12100e] font-black uppercase tracking-wider rounded-xl hover:bg-[#e8c070] transition shadow-lg text-sm"
+                className="inline-block px-6 py-3 btn-glass btn-glass-gold text-[#12100e] font-black uppercase tracking-wider rounded-xl transition text-sm"
               >
                 {t("watchlist_discover")}
               </Link>
@@ -936,7 +1005,7 @@ export default function Watchlist() {
                               e.stopPropagation();
                               handleToggleFavorite(item.tmdbId);
                             }}
-                            className="absolute top-1.5 right-1.5 w-7 h-7 bg-[#12100e]/80 rounded-full flex items-center justify-center border border-[#c8963c]/30 transition backdrop-blur-sm z-10"
+                            className="absolute top-1.5 right-1.5 w-7 h-7 btn-glass btn-glass-dark rounded-full flex items-center justify-center transition z-10"
                           >
                             <svg
                               className={`w-3 h-3 ${item.isFavorite ? "text-red-500 fill-red-500" : "text-[#f0e6cc]/30"}`}
@@ -1040,7 +1109,7 @@ export default function Watchlist() {
                   <button
                     onClick={loadMoreMovies}
                     disabled={isLoadingMore}
-                    className="px-6 py-2.5 bg-[#1a1714] border border-[#c8963c]/40 text-[#c8963c] font-black uppercase tracking-wider rounded-xl hover:bg-[#c8963c]/10 hover:border-[#c8963c] transition text-xs disabled:opacity-50"
+                    className="px-6 py-2.5 btn-glass btn-glass-dark text-[#c8963c] font-black uppercase tracking-wider rounded-xl transition text-xs disabled:opacity-50"
                   >
                     {isLoadingMore
                       ? t("common_loading_more")
@@ -1322,7 +1391,7 @@ function FriendsModal({ onClose }: FriendsModalProps) {
             onClick={() => setMode("list")}
             className={`flex-1 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition ${
               mode === "list"
-                ? "bg-[#c8963c] text-[#12100e] shadow"
+                ? "btn-glass btn-glass-gold text-[#12100e]"
                 : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
             }`}
           >
@@ -1332,7 +1401,7 @@ function FriendsModal({ onClose }: FriendsModalProps) {
             onClick={() => setMode("feed")}
             className={`flex-1 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition ${
               mode === "feed"
-                ? "bg-[#c8963c] text-[#12100e] shadow"
+                ? "btn-glass btn-glass-gold text-[#12100e]"
                 : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
             }`}
           >
@@ -1342,7 +1411,7 @@ function FriendsModal({ onClose }: FriendsModalProps) {
             onClick={() => setMode("search")}
             className={`flex-1 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition flex items-center justify-center ${
               mode === "search"
-                ? "bg-[#c8963c] text-[#12100e] shadow"
+                ? "btn-glass btn-glass-gold text-[#12100e]"
                 : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
             }`}
           >
@@ -1428,7 +1497,7 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                 <button
                   onClick={loadMoreFeed}
                   disabled={feedLoadingMore}
-                  className="px-5 py-2 bg-[#12100e] border border-[#c8963c]/40 text-[#c8963c] font-black uppercase tracking-wider rounded-xl hover:bg-[#c8963c]/10 hover:border-[#c8963c] transition text-[10px] disabled:opacity-50"
+                  className="px-5 py-2 btn-glass btn-glass-dark text-[#c8963c] font-black uppercase tracking-wider rounded-xl transition text-[10px] disabled:opacity-50"
                 >
                   {feedLoadingMore
                     ? t("common_loading_more")
@@ -1499,7 +1568,7 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                       <button
                         onClick={() => handleAddFriend(u.id)}
                         disabled={addingId === u.id}
-                        className="shrink-0 text-[9px] font-black text-[#12100e] bg-[#c8963c] hover:bg-[#e8c070] uppercase tracking-wide transition disabled:opacity-40 px-2.5 py-1.5 rounded-lg"
+                        className="shrink-0 text-[9px] font-black text-[#12100e] btn-glass btn-glass-gold uppercase tracking-wide transition disabled:opacity-40 px-2.5 py-1.5 rounded-lg"
                       >
                         {addingId === u.id ? "..." : t("profile_add_friend")}
                       </button>

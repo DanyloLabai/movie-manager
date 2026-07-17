@@ -136,3 +136,208 @@ input[type="number"]::-webkit-inner-spin-button {
     animation: none;
   }
 }
+
+/* Cascade-layered so these custom component classes sit below Tailwind's
+   utilities layer — without this, un-layered rules like `.btn-glass`'s
+   `position: relative` unconditionally beat Tailwind's `.absolute` /
+   `.right-*` utilities on any element combining both (equal specificity,
+   but un-layered CSS always wins over `@layer`-wrapped CSS regardless of
+   source order), silently turning "absolute corner badge" buttons into
+   in-flow relative ones. */
+@layer components {
+
+/* Shared glassmorphism + glow vocabulary — reused across the sidebar,
+   search hero and movie cards so the "modern" pass reads as one system
+   instead of one-off per-component shadows. */
+.glass-panel {
+  background: rgba(26, 23, 20, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.glow-gold-sm {
+  box-shadow: 0 0 16px -4px rgba(200, 150, 60, 0.35);
+}
+
+.glow-gold {
+  box-shadow: 0 8px 30px -8px rgba(200, 150, 60, 0.4);
+}
+
+.glow-gold-lg {
+  box-shadow: 0 0 40px -8px rgba(200, 150, 60, 0.55);
+}
+
+/* Modern "liquid glass" button system — replaces flat single-color buttons
+   with a glossy gradient + backdrop blur, plus a light sweep on hover.
+   Combine `.btn-glass` (the shared shine mechanics) with either
+   `.btn-glass-gold` (primary) or `.btn-glass-dark` (secondary); the
+   caller still supplies shape/size/typography via Tailwind (rounded-*,
+   px-*, text-*, uppercase, etc). Needs `position: relative` +
+   `overflow: hidden` so the sweep clips to the button's own border-radius. */
+.btn-glass {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.btn-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.35) 40%,
+    rgba(255, 255, 255, 0.05) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.btn-glass:hover::after {
+  transform: translateX(100%);
+}
+
+.btn-glass-gold {
+  background: linear-gradient(
+    160deg,
+    rgba(232, 192, 112, 0.95) 0%,
+    rgba(200, 150, 60, 0.92) 45%,
+    rgba(154, 115, 42, 0.92) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(244, 214, 155, 0.6);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 8px 20px -8px rgba(200, 150, 60, 0.5);
+  transition:
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+
+.btn-glass-gold:hover {
+  filter: brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 10px 28px -6px rgba(200, 150, 60, 0.7);
+}
+
+.btn-glass-dark {
+  background: linear-gradient(
+    160deg,
+    rgba(38, 33, 28, 0.75) 0%,
+    rgba(20, 18, 15, 0.75) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(200, 150, 60, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease;
+}
+
+.btn-glass-dark:hover {
+  border-color: rgba(200, 150, 60, 0.7);
+  background: linear-gradient(
+    160deg,
+    rgba(200, 150, 60, 0.16) 0%,
+    rgba(20, 18, 15, 0.75) 100%
+  );
+}
+
+.btn-glass-dark:disabled,
+.btn-glass-gold:disabled {
+  filter: grayscale(0.4);
+  opacity: 0.4;
+}
+
+/* Destructive variant — same glass mechanics, red instead of gold. Used
+   sparingly for confirm-delete style actions. */
+.btn-glass-red {
+  background: linear-gradient(
+    160deg,
+    rgba(239, 68, 68, 0.95) 0%,
+    rgba(185, 28, 28, 0.92) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(252, 165, 165, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 8px 20px -8px rgba(220, 38, 38, 0.5);
+  transition:
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+
+.btn-glass-red:hover {
+  filter: brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 10px 28px -6px rgba(220, 38, 38, 0.7);
+}
+
+.btn-glass-red:disabled {
+  filter: grayscale(0.4);
+  opacity: 0.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-glass::after {
+    transition: none;
+  }
+}
+
+/* Slow, periodic holographic sheen for glass panels that just sit on
+   screen (profile stat blocks etc) rather than react to hover — gives
+   them the same "light catching glass" feel as the buttons, without
+   needing user interaction. A soft diagonal highlight drifts across
+   the panel every few seconds. */
+@keyframes glass-shine-sweep {
+  0%,
+  8% {
+    left: -45%;
+  }
+  55%,
+  100% {
+    left: 135%;
+  }
+}
+
+.glass-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-shine::before {
+  content: "";
+  position: absolute;
+  top: -30%;
+  bottom: -30%;
+  left: -45%;
+  width: 32%;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 35%,
+    rgba(232, 192, 112, 0.22) 50%,
+    rgba(255, 255, 255, 0.05) 65%,
+    transparent 100%
+  );
+  animation: glass-shine-sweep 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-shine::before {
+    animation: none;
+    display: none;
+  }
+}
+
+} /* @layer components */

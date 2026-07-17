@@ -51,9 +51,7 @@ export default function MovieDetails() {
   const [recommendations, setRecommendations] = useState<
     RecommendedMovieType[]
   >([]);
-  const [friendsWatched, setFriendsWatched] = useState<FriendWatchedType[]>(
-    [],
-  );
+  const [friendsWatched, setFriendsWatched] = useState<FriendWatchedType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -276,8 +274,7 @@ export default function MovieDetails() {
 
   const handleModalRate = async (rating: number) => {
     setIsRatingModalOpen(false);
-    if (pendingAction === "new_watched")
-      await handleAddNewMovie(true, rating);
+    if (pendingAction === "new_watched") await handleAddNewMovie(true, rating);
     else if (pendingAction === "update_watched") await handleRate(rating);
     setPendingAction(null);
   };
@@ -353,7 +350,7 @@ export default function MovieDetails() {
             if (fromTab) navigate(`/watchlist?tab=${fromTab}`);
             else navigate(-1);
           }}
-          className="flex items-center gap-1.5 text-xs font-black uppercase text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-panel border border-[#c8963c]/20 text-xs font-black uppercase text-[#f0e6cc]/60 hover:text-[#c8963c] hover:border-[#c8963c]/50 transition active:scale-95"
         >
           <svg
             className="w-4 h-4"
@@ -372,16 +369,18 @@ export default function MovieDetails() {
         </button>
       </header>
 
-      {/* Backdrop */}
-      <div className="relative w-full h-[35vh] sm:h-[50vh] bg-[#1a1714]">
+      {/* Backdrop — heavily blurred ambient atmosphere, not a sharp photo */}
+      <div className="relative w-full h-[45vh] sm:h-[65vh] bg-[#1a1714] overflow-hidden">
         {backdropUrl && (
           <>
             <img
               src={backdropUrl}
-              alt="Backdrop"
-              className="w-full h-full object-cover opacity-80"
+              alt=""
+              aria-hidden="true"
+              className="w-full h-full object-cover scale-105 blur-sm opacity-70"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#12100e] via-[#12100e]/50 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#12100e] via-[#12100e]/80 to-transparent" />
+            <div className="hidden sm:block absolute inset-0 bg-gradient-to-r from-[#12100e] via-[#12100e]/60 to-transparent" />
           </>
         )}
       </div>
@@ -401,7 +400,7 @@ export default function MovieDetails() {
             )}
           </div>
           <div className="flex-1 min-w-0 pb-1">
-            <span className="inline-block mb-2 px-2 py-0.5 bg-[#1a1714] border border-[#c8963c]/30 rounded-md text-[9px] text-[#f0e6cc]/60 font-black uppercase tracking-widest">
+            <span className="inline-block mb-2 px-2 py-0.5 glass-panel border border-[#c8963c]/30 rounded-md text-[9px] text-[#f0e6cc]/60 font-black uppercase tracking-widest">
               {mediaType === "tv" ? t("common_tv") : t("common_movie")}
             </span>
             <h1 className="text-xl font-black text-[#f0e6cc] tracking-tight leading-tight mb-2 line-clamp-3">
@@ -414,7 +413,7 @@ export default function MovieDetails() {
                 {movie.runtime || "0"} {t("stats_min")}
               </span>
               {released && (
-                <span className="text-[#c8963c] px-2 py-0.5 bg-[#c8963c]/10 rounded-md border border-[#c8963c]/20 font-black">
+                <span className="text-[#c8963c] px-2 py-0.5 glass-panel rounded-md border border-[#c8963c]/30 font-black">
                   ★ {movie.voteAverage?.toFixed(1)}
                 </span>
               )}
@@ -482,7 +481,7 @@ export default function MovieDetails() {
           <div className="col-span-8 lg:col-span-9 flex flex-col pt-32 md:pt-40">
             <h1 className="text-4xl sm:text-6xl font-black text-[#f0e6cc] mb-4 tracking-tighter">
               {movie.title}
-              <span className="ml-4 inline-block px-2.5 py-1 bg-[#1a1714] border border-[#c8963c]/30 rounded-lg text-xs align-middle text-[#f0e6cc]/60 font-bold uppercase tracking-widest">
+              <span className="ml-4 inline-block px-2.5 py-1 glass-panel border border-[#c8963c]/30 rounded-lg text-xs align-middle text-[#f0e6cc]/60 font-bold uppercase tracking-widest">
                 {mediaType === "tv"
                   ? t("common_tv").toUpperCase()
                   : t("common_movie").toUpperCase()}
@@ -499,10 +498,29 @@ export default function MovieDetails() {
                 {released && (
                   <>
                     <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
-                    <span className="text-[#c8963c] px-2 py-1 bg-[#c8963c]/10 rounded-lg border border-[#c8963c]/20 tracking-tighter font-black">
+                    <span className="text-[#c8963c] px-2 py-1 glass-panel rounded-lg border border-[#c8963c]/30 tracking-tighter font-black">
                       {t("movie_imdb")} {movie.voteAverage?.toFixed(1)}
                     </span>
                   </>
+                )}
+                {movie.trailerUrl && (
+                  <button
+                    onClick={() =>
+                      document
+                        .getElementById("trailer-section")
+                        ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                    }
+                    className="flex items-center gap-1.5 px-3 py-1 btn-glass btn-glass-gold text-[#12100e] rounded-lg font-black uppercase tracking-wider transition active:scale-95"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                    {t("movie_trailer")}
+                  </button>
                 )}
                 <div className="flex gap-2">
                   {movie.genres?.slice(0, 3).map((g) => (
@@ -555,19 +573,19 @@ export default function MovieDetails() {
             movie.productionCountries.length > 0 && (
               <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#f0e6cc]/70 bg-[#1a1714] border border-[#c8963c]/20 px-3 py-1.5 rounded-lg w-fit">
                 <svg
-                      className="w-4 h-4 shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <title>{t("movie_production_countries")}</title>
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
+                  className="w-4 h-4 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <title>{t("movie_production_countries")}</title>
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
                 <span>{movie.productionCountries.join(", ")}</span>
               </div>
             )}
@@ -576,12 +594,12 @@ export default function MovieDetails() {
             {movie.overview}
           </p>
 
-          <div className="bg-[#1a1714]/80 border border-[#c8963c]/20 p-4 rounded-3xl shadow-xl backdrop-blur-md">
+          <div className="glass-panel border border-[#c8963c]/20 p-4 rounded-3xl shadow-xl">
             {!status ? (
               <div className="flex gap-3">
                 <button
                   onClick={() => handleAddNewMovie(false)}
-                  className={`py-3 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg ${released ? "flex-1" : "w-full"}`}
+                  className={`py-3 btn-glass btn-glass-dark text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider transition active:scale-95 ${released ? "flex-1" : "w-full"}`}
                 >
                   + {t("search_add")}
                 </button>
@@ -591,7 +609,7 @@ export default function MovieDetails() {
                       setPendingAction("new_watched");
                       setIsRatingModalOpen(true);
                     }}
-                    className="flex-1 py-3 bg-[#c8963c] text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 shadow-lg"
+                    className="flex-1 py-3 btn-glass btn-glass-gold text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider transition active:scale-95"
                   >
                     ✓ {t("watchlist_watched")}
                   </button>
@@ -615,10 +633,10 @@ export default function MovieDetails() {
                   {released ? (
                     <button
                       onClick={handleToggleFavorite}
-                      className={`p-2.5 rounded-xl transition active:scale-90 border ${
+                      className={`p-2.5 rounded-xl btn-glass btn-glass-dark transition active:scale-90 ${
                         status.isFavorite
-                          ? "bg-red-500/20 text-red-500 border-red-500/30 shadow-lg"
-                          : "bg-[#12100e] text-[#f0e6cc]/30 border-[#c8963c]/20 hover:text-red-500"
+                          ? "!border-red-500/40 text-red-500"
+                          : "text-[#f0e6cc]/30 hover:text-red-500"
                       }`}
                     >
                       <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -678,8 +696,12 @@ export default function MovieDetails() {
                             className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c] truncate"
                           >
                             {movie.seasons.map((s) => (
-                              <option key={s.seasonNumber} value={s.seasonNumber}>
-                                {s.name || `${t("movie_season")} ${s.seasonNumber}`}
+                              <option
+                                key={s.seasonNumber}
+                                value={s.seasonNumber}
+                              >
+                                {s.name ||
+                                  `${t("movie_season")} ${s.seasonNumber}`}
                               </option>
                             ))}
                           </select>
@@ -718,8 +740,8 @@ export default function MovieDetails() {
                       </div>
                       {status.currentSeason && status.currentEpisode && (
                         <p className="text-[9px] text-[#c8963c]/70 mt-1.5">
-                          {t("movie_currently_watching")} S{status.currentSeason}
-                          E{status.currentEpisode}
+                          {t("movie_currently_watching")} S
+                          {status.currentSeason}E{status.currentEpisode}
                         </p>
                       )}
                     </div>
@@ -727,30 +749,13 @@ export default function MovieDetails() {
 
                 <button
                   onClick={handleRemove}
-                  className="w-full py-2 bg-red-900/20 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest border border-red-500/30 hover:bg-red-600 hover:text-[#f0e6cc] transition active:scale-95"
+                  className="w-full py-2 btn-glass btn-glass-dark !border-red-500/30 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:!bg-red-900/30 hover:!border-red-500/70 transition active:scale-95"
                 >
                   {t("watchlist_remove")}
                 </button>
               </div>
             )}
           </div>
-
-          <button
-            onClick={() =>
-              navigate("/search", {
-                state: {
-                  similarTo: {
-                    tmdbId: movie.id,
-                    mediaType,
-                    title: movie.title,
-                  },
-                },
-              })
-            }
-            className="w-full py-3 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg"
-          >
-            {t("movie_find_similar")}
-          </button>
 
           {movie.cast && movie.cast.length > 0 && (
             <CastBlock cast={movie.cast} />
@@ -805,10 +810,10 @@ export default function MovieDetails() {
               <button
                 onClick={() => scrollSlider("left")}
                 disabled={!canScrollLeft}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center border transition active:scale-90 ${
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-90 ${
                   canScrollLeft
-                    ? "bg-[#1a1714] border-[#c8963c]/30 text-[#c8963c] hover:bg-[#c8963c]/10"
-                    : "bg-[#12100e] border-[#c8963c]/10 text-[#f0e6cc]/20 cursor-not-allowed"
+                    ? "btn-glass btn-glass-dark text-[#c8963c]"
+                    : "bg-[#12100e] border border-[#c8963c]/10 text-[#f0e6cc]/20 cursor-not-allowed"
                 }`}
               >
                 <svg
@@ -828,10 +833,10 @@ export default function MovieDetails() {
               <button
                 onClick={() => scrollSlider("right")}
                 disabled={!canScrollRight}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center border transition active:scale-90 ${
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-90 ${
                   canScrollRight
-                    ? "bg-[#1a1714] border-[#c8963c]/30 text-[#c8963c] hover:bg-[#c8963c]/10"
-                    : "bg-[#12100e] border-[#c8963c]/10 text-[#f0e6cc]/20 cursor-not-allowed"
+                    ? "btn-glass btn-glass-dark text-[#c8963c]"
+                    : "bg-[#12100e] border border-[#c8963c]/10 text-[#f0e6cc]/20 cursor-not-allowed"
                 }`}
               >
                 <svg
@@ -982,19 +987,19 @@ function ActionPanel({
 }) {
   const { t } = useLang();
   return (
-    <div className="bg-[#1a1714] border border-[#c8963c]/20 p-6 rounded-[2rem] shadow-2xl backdrop-blur-md">
+    <div className="glass-panel border border-[#c8963c]/20 p-6 rounded-[2rem] shadow-2xl">
       {!status ? (
         <div className="flex flex-col gap-3">
           <button
             onClick={onAddWatchlist}
-            className="w-full py-3.5 bg-[#12100e] border border-[#c8963c]/30 text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#c8963c]/10 transition active:scale-95 shadow-lg"
+            className="w-full py-3.5 btn-glass btn-glass-dark text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider transition active:scale-95"
           >
             {t("search_add")}
           </button>
           {released && (
             <button
               onClick={onWatched}
-              className="w-full py-3.5 bg-[#c8963c] text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider hover:bg-[#e8c070] transition active:scale-95 shadow-lg"
+              className="w-full py-3.5 btn-glass btn-glass-gold text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider transition active:scale-95"
             >
               {t("watchlist_watched")}
             </button>
@@ -1017,10 +1022,10 @@ function ActionPanel({
             {released ? (
               <button
                 onClick={onToggleFavorite}
-                className={`p-2.5 rounded-xl transition border ${
+                className={`p-2.5 rounded-xl btn-glass btn-glass-dark transition ${
                   status.isFavorite
-                    ? "bg-red-500/20 text-red-500 border-red-500/30 shadow-lg"
-                    : "bg-[#12100e] text-[#f0e6cc]/30 border-[#c8963c]/20 hover:text-red-500"
+                    ? "!border-red-500/40 text-red-500"
+                    : "text-[#f0e6cc]/30 hover:text-red-500"
                 }`}
               >
                 <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -1054,7 +1059,11 @@ function ActionPanel({
               <p className="text-[11px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
                 {t("movie_rate_this")}
               </p>
-              <StarRating size="lg" value={status.rating || 0} onRate={onRate} />
+              <StarRating
+                size="lg"
+                value={status.rating || 0}
+                onRate={onRate}
+              />
             </div>
           )}
 
@@ -1067,7 +1076,9 @@ function ActionPanel({
                 <div className="flex items-center gap-1.5">
                   <select
                     value={progressSeason}
-                    onChange={(e) => onProgressSeasonChange(Number(e.target.value))}
+                    onChange={(e) =>
+                      onProgressSeasonChange(Number(e.target.value))
+                    }
                     className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-[13px] focus:outline-none focus:border-[#c8963c] truncate"
                   >
                     {seasons.map((s) => (
@@ -1078,7 +1089,9 @@ function ActionPanel({
                   </select>
                   <select
                     value={progressEpisode}
-                    onChange={(e) => onProgressEpisodeChange(Number(e.target.value))}
+                    onChange={(e) =>
+                      onProgressEpisodeChange(Number(e.target.value))
+                    }
                     className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-[13px] focus:outline-none focus:border-[#c8963c] truncate"
                   >
                     {Array.from(
@@ -1117,7 +1130,7 @@ function ActionPanel({
 
           <button
             onClick={onRemove}
-            className="w-full py-2.5 bg-red-900/20 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest border border-red-500/30 hover:bg-red-600 hover:text-[#f0e6cc] transition active:scale-95"
+            className="w-full py-2.5 btn-glass btn-glass-dark !border-red-500/30 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:!bg-red-900/30 hover:!border-red-500/70 transition active:scale-95"
           >
             {t("watchlist_remove")}
           </button>
@@ -1130,7 +1143,7 @@ function ActionPanel({
 function TrailerBlock({ trailerUrl }: { trailerUrl: string }) {
   const { t } = useLang();
   return (
-    <div className="w-full max-w-2xl mt-8">
+    <div id="trailer-section" className="w-full max-w-2xl mt-8 scroll-mt-24">
       <div className="flex items-center gap-4 mb-6">
         <h3 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest italic">
           {t("movie_trailer")}
@@ -1214,7 +1227,7 @@ function WatchProvidersBlock({
   };
 
   return (
-    <div className="bg-[#1a1714] border border-[#c8963c]/20 p-5 rounded-[2rem] shadow-xl backdrop-blur-md w-full mt-6">
+    <div className="glass-panel border border-[#c8963c]/20 p-5 rounded-[2rem] shadow-xl w-full mt-6">
       <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
         {t("movie_where_to_watch")}
       </h3>
@@ -1240,7 +1253,7 @@ function WatchProvidersBlock({
 function FriendsWatchedBlock({ friends }: { friends: FriendWatchedType[] }) {
   const { t } = useLang();
   return (
-    <div className="bg-[#1a1714] border border-[#c8963c]/20 p-4 sm:p-5 rounded-[2rem] shadow-xl backdrop-blur-md">
+    <div className="glass-panel border border-[#c8963c]/20 p-4 sm:p-5 rounded-[2rem] shadow-xl">
       <h3 className="text-xs sm:text-sm font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
         {t("movie_friends_watched")}
       </h3>
@@ -1305,13 +1318,13 @@ function CastBlock({ cast }: { cast: CastMemberType[] }) {
         <div className="flex gap-2">
           <button
             onClick={() => scroll("left")}
-            className="w-7 h-7 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition-all"
+            className="w-7 h-7 rounded-full btn-glass btn-glass-dark text-[#c8963c] flex items-center justify-center active:scale-95 transition-all"
           >
             &larr;
           </button>
           <button
             onClick={() => scroll("right")}
-            className="w-7 h-7 rounded-full bg-[#1a1714] border border-[#c8963c]/30 text-[#c8963c] flex items-center justify-center hover:bg-[#c8963c]/10 active:scale-95 transition-all"
+            className="w-7 h-7 rounded-full btn-glass btn-glass-dark text-[#c8963c] flex items-center justify-center active:scale-95 transition-all"
           >
             &rarr;
           </button>
@@ -1327,19 +1340,19 @@ function CastBlock({ cast }: { cast: CastMemberType[] }) {
           <Link
             key={actor.id}
             to={`/actor/${actor.id}`}
-            className="flex-shrink-0 w-24 sm:w-28 snap-start group block cursor-pointer"
+            className="flex-shrink-0 w-20 sm:w-24 snap-start group block cursor-pointer text-center"
           >
-            <div className="w-24 h-36 sm:w-28 sm:h-40 rounded-2xl overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 mb-2 shadow-md group-hover:border-[#c8963c]/80 group-hover:shadow-[0_0_15px_rgba(200,150,60,0.2)] transition-all duration-300">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full overflow-hidden bg-[#1a1714] border-2 border-[#c8963c]/20 mb-2 shadow-md group-hover:border-[#c8963c] glow-gold-sm group-hover:scale-105 transition-all duration-300">
               {actor.profile_path ? (
                 <img
                   src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
                   alt={actor.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="w-full h-full object-cover"
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-[#f0e6cc]/20">
                   <svg
-                    className="w-8 h-8 mb-1"
+                    className="w-8 h-8"
                     fill="currentColor"
                     viewBox="0 0 24 24"
                   >

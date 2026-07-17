@@ -35,7 +35,7 @@ export const FriendActivityCarousel = ({
         <div className="flex gap-1 sm:gap-2">
           <button
             onClick={() => scroll("left")}
-            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-[#c8963c]/30 text-[#f0e6cc]/50 hover:text-[#c8963c] hover:border-[#c8963c] hover:bg-[#c8963c]/10 transition active:scale-95"
+            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg btn-glass btn-glass-dark text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"
           >
             <svg
               className="w-4 h-4"
@@ -53,7 +53,7 @@ export const FriendActivityCarousel = ({
           </button>
           <button
             onClick={() => scroll("right")}
-            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-[#c8963c]/30 text-[#f0e6cc]/50 hover:text-[#c8963c] hover:border-[#c8963c] hover:bg-[#c8963c]/10 transition active:scale-95"
+            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg btn-glass btn-glass-dark text-[#f0e6cc]/50 hover:text-[#c8963c] transition active:scale-95"
           >
             <svg
               className="w-4 h-4"

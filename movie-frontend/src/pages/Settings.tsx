@@ -267,7 +267,7 @@ export default function Settings() {
           <button
             type="submit"
             disabled={isSaving || !username.trim() || !hasChanges}
-            className="w-full py-3 font-black text-[#12100e] uppercase tracking-widest transition bg-[#c8963c] rounded-xl hover:bg-[#e8c070] active:scale-[0.98] disabled:bg-[#2a241f] disabled:text-[#c8963c]/30 shadow text-sm"
+            className="w-full py-3 font-black text-[#12100e] uppercase tracking-widest transition btn-glass btn-glass-gold active:scale-[0.98] disabled:cursor-not-allowed text-sm"
           >
             {isSaving ? t("edit_saving") : t("edit_save")}
           </button>
@@ -320,7 +320,7 @@ export default function Settings() {
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-between px-4 py-4 bg-[#1a1714] border border-red-900/30 rounded-xl hover:border-red-500/50 transition text-left"
+            className="w-full flex items-center justify-between px-4 py-4 btn-glass btn-glass-dark !border-red-900/30 rounded-xl hover:!border-red-500/50 transition text-left"
           >
             <span className="text-sm font-bold text-red-500/80">
               {t("nav_logout")}
@@ -339,7 +339,7 @@ export default function Settings() {
           </p>
           <button
             onClick={() => setIsDeleteModalOpen(true)}
-            className="w-full py-3 font-black text-red-500 uppercase tracking-widest transition bg-red-900/10 border border-red-900/40 rounded-xl hover:bg-red-900/20 active:scale-[0.98] text-sm"
+            className="w-full py-3 font-black text-red-500 uppercase tracking-widest transition btn-glass btn-glass-dark !border-red-900/40 hover:!bg-red-900/20 hover:!border-red-500/60 active:scale-[0.98] text-sm"
           >
             {t("settings_delete_account")}
           </button>
@@ -372,14 +372,14 @@ export default function Settings() {
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
                 disabled={isDeleting}
-                className="flex-1 py-3 font-black text-[#f0e6cc] uppercase tracking-widest transition bg-[#12100e] border border-[#c8963c]/30 rounded-xl hover:border-[#c8963c]/60 active:scale-[0.98] disabled:opacity-50 text-xs"
+                className="flex-1 py-3 font-black text-[#f0e6cc] uppercase tracking-widest transition btn-glass btn-glass-dark active:scale-[0.98] disabled:opacity-50 text-xs"
               >
                 {t("settings_delete_cancel")}
               </button>
               <button
                 onClick={handleDeleteAccount}
                 disabled={isDeleting}
-                className="flex-1 py-3 font-black text-white uppercase tracking-widest transition bg-red-600 rounded-xl hover:bg-red-700 active:scale-[0.98] disabled:opacity-50 text-xs"
+                className="flex-1 py-3 font-black text-white uppercase tracking-widest transition btn-glass btn-glass-red rounded-xl active:scale-[0.98] disabled:opacity-50 text-xs"
               >
                 {isDeleting
                   ? t("settings_delete_deleting")

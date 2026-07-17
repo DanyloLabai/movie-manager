@@ -52,7 +52,8 @@ export const MovieCarousel = ({
 
   return (
     <section>
-      <div className="flex justify-between items-center mb-4 border-b border-[#c8963c]/20 pb-3">
+      <div className="relative flex justify-between items-center mb-4 pb-3">
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-[#c8963c]/50 via-[#c8963c]/10 to-transparent" />
         <div className="flex items-center gap-2">
           <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
             {title}
@@ -64,7 +65,7 @@ export const MovieCarousel = ({
           <div className="flex gap-1 sm:gap-2">
             <button
               onClick={() => scroll("left")}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-[#c8963c]/30 text-[#f0e6cc]/50 hover:text-[#c8963c] hover:border-[#c8963c] hover:bg-[#c8963c]/10 transition active:scale-95"
+              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg btn-glass btn-glass-dark text-[#f0e6cc]/50 hover:text-[#c8963c] hover:shadow-[0_0_14px_-3px_rgba(200,150,60,0.6)] transition active:scale-95"
             >
               <svg
                 className="w-4 h-4"
@@ -82,7 +83,7 @@ export const MovieCarousel = ({
             </button>
             <button
               onClick={() => scroll("right")}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg border border-[#c8963c]/30 text-[#f0e6cc]/50 hover:text-[#c8963c] hover:border-[#c8963c] hover:bg-[#c8963c]/10 transition active:scale-95"
+              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg btn-glass btn-glass-dark text-[#f0e6cc]/50 hover:text-[#c8963c] hover:shadow-[0_0_14px_-3px_rgba(200,150,60,0.6)] transition active:scale-95"
             >
               <svg
                 className="w-4 h-4"
