@@ -238,9 +238,14 @@ export default function DailyQuiz() {
       </div>
 
       <main className="max-w-xl lg:max-w-5xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12 sm:pt-10">
-        <p className="text-center text-xs sm:text-sm text-[#f0e6cc]/50 font-medium mb-6">
-          {t("quiz_subtitle")}
-        </p>
+        <div className="text-center mb-6 pb-4 border-b border-[#c8963c]/20">
+          <h2 className="text-xl sm:text-2xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
+            {t("nav_quiz")}
+          </h2>
+          <p className="text-[11px] sm:text-xs text-[#f0e6cc]/50 font-medium mt-1.5">
+            {t("quiz_subtitle")}
+          </p>
+        </div>
 
         {quiz && (quiz.streak.current > 0 || quiz.streak.best > 0) && (
           <div className="flex justify-center gap-2 mb-6">

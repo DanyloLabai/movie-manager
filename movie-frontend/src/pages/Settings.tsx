@@ -147,7 +147,7 @@ export default function Settings() {
         <header className="flex items-center justify-between py-4 px-4 sm:px-12 w-full">
           <Link
             to="/search"
-            className="flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
+            className="sm:hidden flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
           >
             <img
               src={LogoImg}
@@ -163,6 +163,10 @@ export default function Settings() {
               </span>
             </div>
           </Link>
+
+          <h1 className="hidden sm:block text-xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+            {t("nav_settings")}
+          </h1>
 
           <button
             onClick={() => navigate(-1)}
