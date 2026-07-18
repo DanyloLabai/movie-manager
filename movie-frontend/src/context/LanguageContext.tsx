@@ -309,6 +309,7 @@ const translations = {
     movie_currently_watching: "Currently watching",
 
     // Actor details
+    actor_page_title: "Actor",
     actor_not_found: "Actor not found.",
     actor_read_more: "Read More...",
     actor_read_less: "Read Less",
@@ -731,6 +732,7 @@ const translations = {
     movie_currently_watching: "Зараз дивишся",
 
     // Actor details
+    actor_page_title: "Актор",
     actor_not_found: "Актор не знайдено.",
     actor_read_more: "Показати більше...",
     actor_read_less: "Показати менше",

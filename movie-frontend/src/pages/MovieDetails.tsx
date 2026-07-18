@@ -328,7 +328,7 @@ export default function MovieDetails() {
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5 pt-[env(safe-area-inset-top,12px)]">
         <Link
           to="/search"
-          className="flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
+          className="sm:hidden flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
         >
           <img
             src={LogoImg}
@@ -344,6 +344,11 @@ export default function MovieDetails() {
             </span>
           </div>
         </Link>
+
+        <h1 className="hidden sm:block text-xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+          {mediaType === "tv" ? t("common_tv") : t("common_movie")}
+        </h1>
+
         <button
           onClick={() => {
             const fromTab = searchParams.get("fromTab");
