@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import {
   ApiTags,
@@ -47,6 +48,7 @@ const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const refreshCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: without this, the object literal widens sameSite to `string`, which fails CookieOptions typing (verified via tsc).
   sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as
     | 'none'
     | 'lax',
@@ -78,6 +80,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   @Post('signin')
   @ApiOperation({
@@ -248,6 +251,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Patch('reset-password')
   @ApiOperation({
     summary: 'Reset password',

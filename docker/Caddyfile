@@ -1,0 +1,7 @@
+{$DOMAIN} {
+	reverse_proxy frontend:80
+}
+
+{$API_DOMAIN} {
+	reverse_proxy backend:3000
+}
