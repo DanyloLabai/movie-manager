@@ -1,0 +1,38 @@
+config:
+  target: 'https://lumen-api.up.railway.app'
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 50
+      name: 'Високе навантаження з лімітованим AI'
+
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+      Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjUxLCJ1c2VybmFtZSI6IkRhbmNpb0w3IiwiZW1haWwiOiJkYW55bG9sYWJhaUBnbWFpbC5jb20iLCJpYXQiOjE3NzkzOTI2MzYsImV4cCI6MTc3OTk5NzQzNn0.E8H2lz2J0XXcxG41sccsb5QGqC80ibf6SsLpKaoYGFM'
+
+scenarios:
+  - name: 'Звичайний користувач (Основний трафік)'
+    weight: 50
+    flow:
+      - get:
+          url: '/api/movies/search?title=matrix'
+      - think: 1
+      - get:
+          url: '/api/movies/trending'
+      - think: 1
+      - get:
+          url: '/api/movies/watchlist'
+      - think: 1
+      - get:
+          url: '/api/users/public/51'
+
+  - name: 'Користувач ШІ (~20 запитів за хвилину)'
+    weight: 1
+    flow:
+      - post:
+          url: '/api/ai/search'
+          json:
+            messages:
+              - role: 'user'
+                content: 'Рекомендуй фільм на вечір'
