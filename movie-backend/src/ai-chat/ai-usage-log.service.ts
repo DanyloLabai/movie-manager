@@ -65,6 +65,24 @@ export class AiUsageLogService {
     }
   }
 
+  async getUserUsageSince(
+    userId: number,
+    since: Date,
+  ): Promise<{ requestCount: number; totalTokens: number }> {
+    const row = await this.aiUsageLogRepo
+      .createQueryBuilder('log')
+      .select('COUNT(*)', 'requestCount')
+      .addSelect('COALESCE(SUM(log.tokenCount), 0)', 'totalTokens')
+      .where('log.userId = :userId', { userId })
+      .andWhere('log.createdAt >= :since', { since })
+      .getRawOne<{ requestCount: string; totalTokens: string }>();
+
+    return {
+      requestCount: Number(row?.requestCount ?? 0),
+      totalTokens: Number(row?.totalTokens ?? 0),
+    };
+  }
+
   async getStats(): Promise<AiUsageStats> {
     const now = Date.now();
     const [last24h, last7d, last30d] = await Promise.all([

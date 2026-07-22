@@ -315,8 +315,13 @@ export default function AiChat() {
           reasoning: response.reasoning,
         },
       ]);
-    } catch {
-      setMessages((prev) => [...prev, { role: "ai", text: t("chat_error") }]);
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      const errorText =
+        apiError.response?.status === 429
+          ? t("chat_daily_limit")
+          : t("chat_error");
+      setMessages((prev) => [...prev, { role: "ai", text: errorText }]);
     } finally {
       setIsLoading(false);
       setCooldownTime(COOLDOWN_SECONDS);

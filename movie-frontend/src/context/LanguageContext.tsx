@@ -85,6 +85,8 @@ const translations = {
     chat_fav_error: "Failed to add to favorites",
     chat_server_error: "Server error",
     chat_error: "Oops, something went wrong. Please try again later.",
+    chat_daily_limit:
+      "You've reached today's AI request limit. Please come back tomorrow.",
     chat_no_posters:
       "(P.S. I found some titles but couldn't load their posters from the database.)",
     chat_tv: "TV Show",
@@ -504,6 +506,8 @@ const translations = {
     chat_fav_error: "Не вдалося додати до улюблених",
     chat_server_error: "Помилка сервера",
     chat_error: "Ой, щось пішло не так. Спробуй пізніше.",
+    chat_daily_limit:
+      "Ти вичерпав денний ліміт запитів до AI. Повертайся завтра.",
     chat_no_posters:
       "(P.S. Знайшов кілька назв, але не зміг підтягнути постери з бази.)",
     chat_tv: "Серіал",

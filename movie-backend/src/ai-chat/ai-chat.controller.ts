@@ -6,6 +6,7 @@ import {
   Req,
   Param,
   ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
@@ -17,6 +18,7 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AiChatService } from './ai-chat.service';
+import { AiDailyLimitGuard } from './ai-daily-limit.guard';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
 
 export interface ChatMessage {
@@ -38,6 +40,7 @@ export class AiChatController {
 
   @Post('search')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseGuards(AiDailyLimitGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Search movies with AI',
@@ -59,6 +62,7 @@ export class AiChatController {
 
   @Post('watch-together/:friendId')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @UseGuards(AiDailyLimitGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get AI movie picks for watching with a friend',
