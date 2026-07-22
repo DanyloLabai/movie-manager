@@ -15,6 +15,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { PushModule } from './push/push.module';
 import { AdminModule } from './admin/admin.module';
 import { QuizModule } from './quiz/quiz.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -61,6 +62,10 @@ import { QuizModule } from './quiz/quiz.module';
             process.env.NODE_ENV === 'production'
               ? { rejectUnauthorized: false }
               : false,
+          // Explicit cap so this pool plus VectorService's own pg.Pool (see
+          // vector.service.ts) stay within a managed/serverless Postgres
+          // plan's total connection limit. Tune to whatever the plan allows.
+          extra: { max: 10 },
         };
       },
     }),
@@ -80,6 +85,7 @@ import { QuizModule } from './quiz/quiz.module';
     PushModule,
     AdminModule,
     QuizModule,
+    HealthModule,
   ],
   providers: [
     {

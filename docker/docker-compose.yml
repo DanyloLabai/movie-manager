@@ -4,13 +4,15 @@ services:
     image: pgvector/pgvector:pg15
     container_name: movie_postgres
     restart: always
-    env_file: .env
+    # Навмисно без env_file: .env — Postgres-контейнеру не потрібні секрети
+    # AI/JWT/тощо з .env, лише свої три змінні нижче.
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5432:5432"
+    # Навмисно без ports: — публікувати 5432 на хост на публічному VPS
+    # означає відкрити Postgres усьому інтернету. Контейнери й так бачать
+    # один одного через внутрішню docker-мережу за назвою сервісу ("db").
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -18,8 +20,7 @@ services:
     image: redis:7-alpine
     container_name: movie_redis
     restart: always
-    ports:
-      - "6379:6379"
+    # Так само без ports: — те саме міркування, що і для db.
     command: redis-server --appendonly yes
     volumes:
       - redisdata:/data
@@ -31,14 +32,19 @@ services:
     container_name: movie_nestjs
     restart: always
     env_file: .env
-    ports:
-      - "3000:3000"
+    # Без ports: — назовні бекенд віддає лише Caddy через reverse_proxy до backend:3000.
     environment:
+      - NODE_ENV=production
       - DB_HOST=db
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      # ВАЖЛИВО: додаток читає саме REDIS_URL (app.module.ts), а не
+      # REDIS_HOST/REDIS_PORT, які тут раніше не мали ефекту — без цього
+      # рядка кеш намагався б з'єднатись з "localhost" всередині контейнера
+      # backend, де Redis не слухає.
+      - REDIS_URL=redis://redis:6379
       - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
+      - FRONTEND_URL=https://${DOMAIN}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - TMDB_API_TOKEN=${TMDB_API_TOKEN}
       - GROQ_API_KEY=${GROQ_API_KEY}
@@ -48,19 +54,39 @@ services:
 
   frontend:
     build:
-      context: ../movie-frontend # <-- Додали ../
+      context: ../movie-frontend
       dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+        - VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
     container_name: movie_react
     restart: always
-    env_file: .env
-    ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
-      - VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
+    # Без ports: — статику назовні віддає Caddy через reverse_proxy до frontend:80.
     depends_on:
       - backend
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: movie_caddy
+    restart: always
+    # Без env_file: .env — Caddy потребує лише DOMAIN/API_DOMAIN, решта
+    # секретів з .env йому не потрібна.
+    environment:
+      - DOMAIN=${DOMAIN}
+      - API_DOMAIN=${API_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
 
 volumes:
   pgdata:
   redisdata:
+  caddy_data:
+  caddy_config:

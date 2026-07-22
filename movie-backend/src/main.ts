@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { Reflector } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -12,6 +13,8 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   const frontendUrl = process.env.FRONTEND_URL;
+
+  app.use(helmet());
 
   // Express auto-generates ETags for every JSON response, which makes
   // browsers send conditional requests and can silently keep serving a
@@ -63,6 +66,8 @@ async function bootstrap() {
       persistAuthorization: true,
     },
   });
+
+  app.enableShutdownHooks();
 
   await app.listen(port, '0.0.0.0');
   console.log(`Application is running on port: ${port}`);

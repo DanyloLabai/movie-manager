@@ -51,6 +51,10 @@ export class VectorService implements OnModuleInit {
         process.env.NODE_ENV === 'production'
           ? { rejectUnauthorized: false }
           : undefined,
+      // Conservative cap so this pool plus TypeORM's (see app.module.ts) stay
+      // within a managed/serverless Postgres plan's total connection limit.
+      // Tune to whatever the DB plan actually allows.
+      max: 5,
     });
 
     await this.pool.query('SELECT 1');
