@@ -21,6 +21,11 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Blur now, before the async request, so the on-screen keyboard has the
+    // whole request round-trip to finish closing. Otherwise it's still
+    // animating shut when we land on /watchlist, visually covering the
+    // bottom nav bar until the user scrolls or waits it out.
+    (document.activeElement as HTMLElement | null)?.blur();
     setError("");
     setIsLoading(true);
 
