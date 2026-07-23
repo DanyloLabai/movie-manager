@@ -123,6 +123,8 @@ export default function AiChat() {
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isProgrammaticBlurRef = useRef(false);
+  const caretNudgeDoneRef = useRef(false);
 
   const navigate = useNavigate();
 
@@ -634,16 +636,32 @@ export default function AiChat() {
                 onChange={(e) => setInput(e.target.value)}
                 onFocus={() => {
                   setIsInputFocused(true);
+
+                  if (caretNudgeDoneRef.current) return;
+                  caretNudgeDoneRef.current = true;
                   setTimeout(() => {
                     scrollToBottom("smooth");
+
                     const el = inputRef.current;
-                    if (el) {
-                      const pos = el.value.length;
-                      el.setSelectionRange(pos, pos);
+                    if (el && document.activeElement === el) {
+                      isProgrammaticBlurRef.current = true;
+                      el.blur();
+                      requestAnimationFrame(() => {
+                        el.focus({ preventScroll: true });
+                        const pos = el.value.length;
+                        el.setSelectionRange(pos, pos);
+                      });
                     }
                   }, 300);
                 }}
-                onBlur={() => setIsInputFocused(false)}
+                onBlur={() => {
+                  if (isProgrammaticBlurRef.current) {
+                    isProgrammaticBlurRef.current = false;
+                    return;
+                  }
+                  caretNudgeDoneRef.current = false;
+                  setIsInputFocused(false);
+                }}
                 placeholder={
                   isLoading
                     ? t("chat_thinking")
