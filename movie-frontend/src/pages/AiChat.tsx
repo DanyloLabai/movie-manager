@@ -420,7 +420,13 @@ export default function AiChat() {
           ref={chatContainerRef}
           className={`relative p-3 space-y-4 scrollbar-hide transition-[flex-grow] duration-500 ease-in-out ${
             isEmpty
-              ? "flex flex-col justify-center flex-1 sm:flex-none overflow-y-auto sm:overflow-visible"
+              ? `flex-1 sm:flex-none overflow-y-auto sm:overflow-visible ${
+                  // Skip the extra vertical-centering reflow on mobile while
+                  // the keyboard is up: it compounds with the visualViewport
+                  // resize already happening on focus, which is when iOS's
+                  // caret-position bug tends to show up.
+                  isInputFocused ? "" : "flex flex-col justify-center"
+                }`
               : "flex-1 overflow-y-auto"
           }`}
         >
@@ -628,7 +634,14 @@ export default function AiChat() {
                 onChange={(e) => setInput(e.target.value)}
                 onFocus={() => {
                   setIsInputFocused(true);
-                  setTimeout(() => scrollToBottom("smooth"), 300);
+                  setTimeout(() => {
+                    scrollToBottom("smooth");
+                    const el = inputRef.current;
+                    if (el) {
+                      const pos = el.value.length;
+                      el.setSelectionRange(pos, pos);
+                    }
+                  }, 300);
                 }}
                 onBlur={() => setIsInputFocused(false)}
                 placeholder={
