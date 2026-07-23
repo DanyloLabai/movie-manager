@@ -311,12 +311,16 @@ input[type="number"]::-webkit-inner-spin-button {
 
   .ai-chat-background {
     background:
+      /* Fades to the header's own flat color over the first ~16% of
+         height, so the gradient/glow below blends into the header
+         instead of showing a hard seam right at its bottom edge. */
+      linear-gradient(to bottom, #12100e 0%, rgba(18, 16, 14, 0) 16%),
       radial-gradient(
-        circle at 50% 20%,
+        circle at 50% 30%,
         rgba(200, 150, 60, 0.16) 0%,
         rgba(200, 150, 60, 0) 42%
       ),
-      radial-gradient(circle at 50% 20%, #2a2013 0%, #17130d 50%, #12100e 100%);
+      radial-gradient(circle at 50% 30%, #2a2013 0%, #17130d 50%, #12100e 100%);
   }
 
   .ai-chat-background::before {
