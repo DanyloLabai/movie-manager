@@ -127,6 +127,7 @@ export default function Watchlist() {
     tmdbId: number | null;
     title: string;
   }>({ isOpen: false, tmdbId: null, title: "" });
+  const [modalRating, setModalRating] = useState(0);
 
   const showToast = (message: string) => {
     setToastMessage(message);
@@ -274,6 +275,7 @@ export default function Watchlist() {
   const handleMarkWatched = (tmdbId: number) => {
     const targetMovie = movies.find((m) => m.tmdbId === tmdbId);
     if (!targetMovie) return;
+    setModalRating(0);
     setRatingModalData({
       isOpen: true,
       tmdbId: targetMovie.tmdbId,
@@ -335,17 +337,15 @@ export default function Watchlist() {
 
   const closeRatingModal = () => {
     setRatingModalData({ isOpen: false, tmdbId: null, title: "" });
+    setModalRating(0);
   };
 
-  const handleModalRate = async (rating: number) => {
+  const handleModalConfirm = async () => {
     if (ratingModalData.tmdbId)
-      await confirmMarkWatched(ratingModalData.tmdbId, rating);
-    closeRatingModal();
-  };
-
-  const handleModalSkip = async () => {
-    if (ratingModalData.tmdbId)
-      await confirmMarkWatched(ratingModalData.tmdbId, null);
+      await confirmMarkWatched(
+        ratingModalData.tmdbId,
+        modalRating > 0 ? modalRating : null,
+      );
     closeRatingModal();
   };
 
@@ -1152,18 +1152,29 @@ export default function Watchlist() {
                 {t("movie_how_was_it")}
               </h3>
               <p className="text-sm text-[#f0e6cc]/60 mb-6">
-                {t("movie_rate_desc")} "{ratingModalData.title}"{" "}
-                {t("movie_or_skip")}.
+                {t("movie_rate_desc")} "{ratingModalData.title}"
               </p>
               <div className="mb-6">
-                <StarRating size="lg" value={0} onRate={handleModalRate} />
+                <StarRating
+                  size="lg"
+                  value={modalRating}
+                  onRate={setModalRating}
+                />
               </div>
-              <button
-                onClick={handleModalSkip}
-                className="text-xs font-bold text-[#f0e6cc]/50 hover:text-[#c8963c] uppercase tracking-widest transition py-2 px-4"
-              >
-                {t("movie_skip_rating")}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={closeRatingModal}
+                  className="flex-1 py-3 font-black text-[#f0e6cc] uppercase tracking-widest transition btn-glass btn-glass-dark active:scale-[0.98] text-xs"
+                >
+                  {t("movie_rating_cancel")}
+                </button>
+                <button
+                  onClick={handleModalConfirm}
+                  className="flex-1 py-3 font-black text-[#12100e] uppercase tracking-widest transition btn-glass btn-glass-gold active:scale-[0.98] text-xs"
+                >
+                  {t("movie_rating_ok")}
+                </button>
+              </div>
             </div>
           </div>
         </div>

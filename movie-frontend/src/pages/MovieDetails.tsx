@@ -59,6 +59,7 @@ export default function MovieDetails() {
   const [pendingAction, setPendingAction] = useState<
     "new_watched" | "update_watched" | null
   >(null);
+  const [modalRating, setModalRating] = useState(0);
 
   const sliderRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -272,18 +273,20 @@ export default function MovieDetails() {
     }
   };
 
-  const handleModalRate = async (rating: number) => {
+  const closeRatingModal = () => {
     setIsRatingModalOpen(false);
-    if (pendingAction === "new_watched") await handleAddNewMovie(true, rating);
-    else if (pendingAction === "update_watched") await handleRate(rating);
     setPendingAction(null);
+    setModalRating(0);
   };
 
-  const handleModalSkip = async () => {
-    setIsRatingModalOpen(false);
-    if (pendingAction === "new_watched") await handleAddNewMovie(true, null);
-    else if (pendingAction === "update_watched") await handleMarkWatched();
-    setPendingAction(null);
+  const handleModalConfirm = async () => {
+    const rating = modalRating > 0 ? modalRating : null;
+    if (pendingAction === "new_watched") await handleAddNewMovie(true, rating);
+    else if (pendingAction === "update_watched") {
+      if (rating !== null) await handleRate(rating);
+      else await handleMarkWatched();
+    }
+    closeRatingModal();
   };
 
   const isReleased = (dateStr?: string | null) => {
@@ -458,6 +461,7 @@ export default function MovieDetails() {
               onAddWatchlist={() => handleAddNewMovie(false)}
               onWatched={() => {
                 setPendingAction("new_watched");
+                setModalRating(0);
                 setIsRatingModalOpen(true);
               }}
               onToggleFavorite={handleToggleFavorite}
@@ -612,6 +616,7 @@ export default function MovieDetails() {
                   <button
                     onClick={() => {
                       setPendingAction("new_watched");
+                      setModalRating(0);
                       setIsRatingModalOpen(true);
                     }}
                     className="flex-1 py-3 btn-glass btn-glass-gold text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider transition active:scale-95"
@@ -909,7 +914,7 @@ export default function MovieDetails() {
           >
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
             <button
-              onClick={() => setIsRatingModalOpen(false)}
+              onClick={closeRatingModal}
               className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
             >
               <svg
@@ -931,17 +936,29 @@ export default function MovieDetails() {
                 {t("movie_how_was_it")}
               </h3>
               <p className="text-sm text-[#f0e6cc]/60 mb-6">
-                {t("movie_rate_desc")} "{movie?.title}" {t("movie_or_skip")}.
+                {t("movie_rate_desc")} "{movie?.title}"
               </p>
               <div className="mb-6">
-                <StarRating size="lg" value={0} onRate={handleModalRate} />
+                <StarRating
+                  size="lg"
+                  value={modalRating}
+                  onRate={setModalRating}
+                />
               </div>
-              <button
-                onClick={handleModalSkip}
-                className="text-xs font-bold text-[#f0e6cc]/50 hover:text-[#c8963c] uppercase tracking-widest transition py-2 px-4"
-              >
-                {t("movie_skip_rating")}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={closeRatingModal}
+                  className="flex-1 py-3 font-black text-[#f0e6cc] uppercase tracking-widest transition btn-glass btn-glass-dark active:scale-[0.98] text-xs"
+                >
+                  {t("movie_rating_cancel")}
+                </button>
+                <button
+                  onClick={handleModalConfirm}
+                  className="flex-1 py-3 font-black text-[#12100e] uppercase tracking-widest transition btn-glass btn-glass-gold active:scale-[0.98] text-xs"
+                >
+                  {t("movie_rating_ok")}
+                </button>
+              </div>
             </div>
           </div>
         </div>

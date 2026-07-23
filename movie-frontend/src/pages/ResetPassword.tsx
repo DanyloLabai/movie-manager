@@ -108,7 +108,7 @@ export default function ResetPassword() {
           <div
             className={`p-4 text-xs font-bold rounded-xl text-center uppercase tracking-wider ${
               status.type === "success"
-                ? "text-green-500 bg-green-900/10 border border-green-500/20"
+                ? "text-[#c8963c] bg-[#c8963c]/10 border border-[#c8963c]/30"
                 : "text-red-500 bg-red-900/10 border border-red-500/20"
             }`}
           >
