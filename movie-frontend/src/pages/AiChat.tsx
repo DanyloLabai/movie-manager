@@ -401,7 +401,7 @@ export default function AiChat() {
         ref={chatContainerRef}
         className="relative flex-1 overflow-y-auto p-3 space-y-4 scrollbar-hide"
       >
-        <div className="max-w-2xl mx-auto space-y-4 pb-2">
+        <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto space-y-4 pb-2">
           {isHistoryLoading ? (
             <div className="flex items-center justify-center pt-20">
               <div className="flex gap-2">
@@ -548,7 +548,7 @@ export default function AiChat() {
       </div>
 
       <div className="shrink-0 px-3 pt-2 pb-2 bg-[#12100e] border-t border-[#c8963c]/20 z-40">
-        <div className="max-w-2xl w-full mx-auto flex items-center gap-2">
+        <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl w-full mx-auto flex items-center gap-2">
           <button
             onClick={handleClearChat}
             disabled={isLoading || messages.length <= 1}
