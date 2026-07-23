@@ -121,7 +121,7 @@ export const MovieCard = ({
               onClick={() => onRemove(movie)}
               className={`w-full py-1.5 font-bold rounded-lg uppercase text-[9px] lg:text-[11px] tracking-wider btn-glass flex items-center justify-center gap-1 active:scale-95 transition ${
                 isWatched
-                  ? "btn-glass-dark !border-green-500/40 text-green-500 hover:!border-green-500/70"
+                  ? "btn-glass-dark !border-[#c8963c]/60 text-[#c8963c] hover:!border-[#c8963c]"
                   : "btn-glass-dark text-[#c8963c]"
               }`}
             >
