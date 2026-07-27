@@ -364,7 +364,7 @@ export default function AiChat() {
 
   return (
     <div
-      className="fixed left-0 sm:left-60 right-0 flex flex-col text-[#f0e6cc] font-sans overflow-hidden transition-[top,height] duration-200 ease-out"
+      className="fixed left-0 sm:left-60 right-0 flex flex-col bg-[#12100e] text-[#f0e6cc] font-sans overflow-hidden transition-[top,height] duration-200 ease-out"
       style={{
         top: viewportTop,
         height: viewportHeight,

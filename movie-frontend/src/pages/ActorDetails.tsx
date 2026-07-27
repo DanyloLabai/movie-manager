@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
@@ -30,7 +30,6 @@ export default function ActorDetails() {
   const [actor, setActor] = useState<ActorDetailsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBioExpanded, setIsBioExpanded] = useState(false);
-  const sliderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -60,17 +59,6 @@ export default function ActorDetails() {
       (maybe.profileUrl === null || typeof maybe.profileUrl === "string")
     );
   }
-
-  const scrollSlider = (direction: "left" | "right") => {
-    if (sliderRef.current) {
-      const { scrollLeft, clientWidth } = sliderRef.current;
-      const scrollTo =
-        direction === "left"
-          ? scrollLeft - clientWidth / 1.5
-          : scrollLeft + clientWidth / 1.5;
-      sliderRef.current.scrollTo({ left: scrollTo, behavior: "smooth" });
-    }
-  };
 
   if (isLoading) {
     return (
@@ -227,63 +215,19 @@ export default function ActorDetails() {
 
         {actor.knownFor && actor.knownFor.length > 0 && (
           <div className="mt-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3 flex-grow">
-                <h3 className="text-sm sm:text-base font-black text-[#f0e6cc] uppercase tracking-widest italic">
-                  {t("actor_known_for")}
-                </h3>
-                <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent" />
-              </div>
-              <div className="flex gap-2 ml-4">
-                <button
-                  onClick={() => scrollSlider("left")}
-                  className="w-8 h-8 rounded-full btn-glass btn-glass-dark text-[#c8963c] flex items-center justify-center active:scale-95 transition-all"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M15 19l-7-7 7-7"
-                    />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => scrollSlider("right")}
-                  className="w-8 h-8 rounded-full btn-glass btn-glass-dark text-[#c8963c] flex items-center justify-center active:scale-95 transition-all"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2.5}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-              </div>
+            <div className="flex items-center gap-3 mb-4">
+              <h3 className="text-sm sm:text-base font-black text-[#f0e6cc] uppercase tracking-widest italic">
+                {t("actor_known_for")}
+              </h3>
+              <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent" />
             </div>
 
-            <div
-              ref={sliderRef}
-              className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide snap-x pb-6"
-              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-            >
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
               {actor.knownFor.map((m) => (
                 <Link
                   key={m.id}
                   to={`/movie/${m.id}?type=${m.mediaType}`}
-                  className="group flex-shrink-0 w-32 sm:w-36 snap-start block"
+                  className="group block"
                 >
                   <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-[#1a1714] border border-[#c8963c]/20 mb-2 group-hover:border-[#c8963c]/70 group-hover:-translate-y-1 shadow transition-all duration-300">
                     {m.posterUrl ? (
