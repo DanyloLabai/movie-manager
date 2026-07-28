@@ -1,7 +1,19 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import * as authApi from "../api/auth.api";
 import { useLang } from "../context/LanguageContext";
+import EyeIcon from "../components/auth/EyeIcon";
+
+function passwordStrength(pw: string): 0 | 1 | 2 | 3 {
+  if (pw.length === 0) return 0;
+  if (pw.length < 8) return 1;
+  const varietyCount = [/[A-Z]/, /[0-9]/, /[^A-Za-z0-9]/].filter((re) =>
+    re.test(pw),
+  ).length;
+  if (pw.length >= 12 && varietyCount >= 2) return 3;
+  if (varietyCount >= 1) return 2;
+  return 1;
+}
 
 export default function ChangePassword() {
   const { t } = useLang();
@@ -17,6 +29,14 @@ export default function ChangePassword() {
   const [successMsg, setSuccessMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  const strength = passwordStrength(newPassword);
+  const strengthLabel = [
+    "",
+    t("password_strength_weak"),
+    t("password_strength_normal"),
+    t("password_strength_strong"),
+  ][strength];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,122 +66,87 @@ export default function ChangePassword() {
     }
   };
 
-  const EyeIcon = ({ isOpen }: { isOpen: boolean }) => {
-    return isOpen ? (
-      <svg
-        className="w-5 h-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-        />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-        />
-      </svg>
-    ) : (
-      <svg
-        className="w-5 h-5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
-        />
-      </svg>
-    );
-  };
+  const inputWrapClass = (filled: string | number) =>
+    `flex items-center px-[18px] py-3 rounded-lg bg-white/[.03] border transition-colors focus-within:border-[#d9ac54] ${
+      filled ? "border-[#d9ac54]/30" : "border-white/[.14]"
+    }`;
 
   return (
-    <div className="relative flex items-center justify-center min-h-[100dvh] overscroll-none bg-[#12100e] px-4 overflow-hidden selection:bg-[#c8963c] selection:text-[#12100e]">
+    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative selection:bg-[#d9ac54] selection:text-[#14110c]">
+      <div className="sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] pt-[env(safe-area-inset-top)]">
+        <header className="flex items-center justify-between py-9 px-4 sm:px-12 w-full">
+          <div className="flex flex-col gap-1">
+            <span className="text-xl sm:text-2xl font-bold tracking-[4px] text-[#f2ead9] uppercase">
+              {t("password_security")}
+            </span>
+            <span className="text-xs text-[#8f8574]">{t("password_subtitle")}</span>
+          </div>
+          <Link
+            to="/settings"
+            className="font-mono-ui text-[10.5px] font-semibold tracking-[2px] text-[#8f8574] uppercase hover:text-[#d9ac54] transition-colors shrink-0"
+          >
+            ‹ {t("nav_settings")}
+          </Link>
+        </header>
+      </div>
+
       {successMsg && (
-        <div className="absolute top-10 left-1/2 transform -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-4 bg-[#1a1714] border border-[#c8963c]/50 rounded-2xl shadow-2xl backdrop-blur-sm transition-all duration-500 ease-out animate-bounce w-max max-w-[90vw]">
-          <div className="flex items-center justify-center w-8 h-8 bg-[#c8963c] rounded-full shadow-lg shrink-0">
-            <svg
-              className="w-5 h-5 text-[#12100e]"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="3"
-                d="M5 13l4 4L19 7"
-              ></path>
+        <div className="fixed top-10 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-4 bg-[#14110d] border border-[#d9ac54]/50 rounded-2xl shadow-2xl w-max max-w-[90vw] animate-fade-in">
+          <div className="flex items-center justify-center w-8 h-8 bg-[#d9ac54] rounded-full shrink-0">
+            <svg className="w-5 h-5 text-[#14110c]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <p className="text-xs sm:text-sm font-bold text-[#c8963c] uppercase tracking-wider">
+          <p className="text-xs sm:text-sm font-bold text-[#d9ac54] uppercase tracking-wider">
             {successMsg}
           </p>
         </div>
       )}
 
-      <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/20 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
-
-        <div className="text-center">
-          <h2 className="text-2xl sm:text-3xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
-            {t("password_security")}
-          </h2>
-          <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium tracking-wide">
-            {t("password_subtitle")}
-          </p>
-        </div>
-
+      <main className="max-w-[440px] mx-auto px-4 sm:px-12 py-7 pb-24">
         {error && (
-          <div className="p-4 text-xs font-bold text-red-500 bg-red-900/10 border border-red-500/20 rounded-xl text-center uppercase tracking-wider">
+          <div className="mb-5 p-4 rounded-2xl text-center text-xs font-bold uppercase tracking-wider text-red-500 bg-red-900/10 border border-red-500/20">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <div className="flex flex-col gap-2">
+            <label className="font-mono-ui text-[9.5px] font-semibold tracking-[2px] text-[#d9ac54] uppercase">
               {t("password_current")}
             </label>
-            <div className="relative">
+            <div className={inputWrapClass(oldPassword)}>
               <input
                 type={showOldPassword ? "text" : "password"}
                 value={oldPassword}
                 onChange={(e) => setOldPassword(e.target.value)}
-                className="w-full px-4 py-3.5 pr-12 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
+                className="flex-1 min-w-0 bg-transparent text-[14px] text-[#f2ead9] placeholder-[#645c4d] focus:outline-none"
                 placeholder="••••••••"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowOldPassword(!showOldPassword)}
-                className="absolute inset-y-0 right-0 flex items-center px-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition-colors focus:outline-none"
                 tabIndex={-1}
+                className="ml-2 shrink-0 text-[#645c4d] hover:text-[#d9ac54] transition-colors"
               >
                 <EyeIcon isOpen={showOldPassword} />
               </button>
             </div>
           </div>
 
-          <div className="border-t border-[#c8963c]/20 my-2 pt-5">
-            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
+          <div className="h-px bg-[rgba(217,172,84,.12)]" />
+
+          <div className="flex flex-col gap-2">
+            <label className="font-mono-ui text-[9.5px] font-semibold tracking-[2px] text-[#d9ac54] uppercase">
               {t("password_new")}
             </label>
-            <div className="relative">
+            <div className={inputWrapClass(newPassword)}>
               <input
                 type={showNewPassword ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-4 py-3.5 pr-12 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
+                className="flex-1 min-w-0 bg-transparent text-[14px] text-[#f2ead9] placeholder-[#645c4d] focus:outline-none"
                 placeholder={t("password_min")}
                 minLength={8}
                 required
@@ -169,55 +154,72 @@ export default function ChangePassword() {
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute inset-y-0 right-0 flex items-center px-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition-colors focus:outline-none"
                 tabIndex={-1}
+                className="ml-2 shrink-0 text-[#645c4d] hover:text-[#d9ac54] transition-colors"
               >
                 <EyeIcon isOpen={showNewPassword} />
               </button>
             </div>
+            {newPassword.length > 0 && (
+              <div className="flex items-center gap-[5px] pt-0.5">
+                {[1, 2, 3].map((seg) => (
+                  <span
+                    key={seg}
+                    className={`flex-1 h-[3px] rounded-sm ${
+                      seg <= strength ? "bg-[#d9ac54]" : "bg-white/[.08]"
+                    }`}
+                  />
+                ))}
+                <span className="font-mono-ui text-[10px] text-[#645c4d] pl-2 shrink-0">
+                  {strengthLabel}
+                </span>
+              </div>
+            )}
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
+          <div className="flex flex-col gap-2">
+            <label className="font-mono-ui text-[9.5px] font-semibold tracking-[2px] text-[#d9ac54] uppercase">
               {t("password_confirm")}
             </label>
-            <div className="relative">
+            <div className={inputWrapClass(confirmPassword)}>
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3.5 pr-12 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] focus:ring-1 focus:ring-[#c8963c]/50 transition-all placeholder-[#f0e6cc]/20 shadow-inner"
+                className="flex-1 min-w-0 bg-transparent text-[14px] text-[#f2ead9] placeholder-[#645c4d] focus:outline-none"
                 placeholder="Re-enter new password"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 flex items-center px-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition-colors focus:outline-none"
                 tabIndex={-1}
+                className="ml-2 shrink-0 text-[#645c4d] hover:text-[#d9ac54] transition-colors"
               >
                 <EyeIcon isOpen={showConfirmPassword} />
               </button>
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading || !!successMsg}
-            className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition btn-glass btn-glass-gold active:scale-[0.98] disabled:opacity-50 min-h-[52px]"
-          >
-            {isLoading ? t("password_updating") : t("password_update")}
-          </button>
+          <div className="flex items-center gap-4 mt-1">
+            <button
+              type="submit"
+              disabled={isLoading || !!successMsg}
+              className="py-3 px-7 rounded-full bg-[#d9ac54] hover:bg-[#e8c377] active:scale-[0.98] disabled:opacity-50 transition text-[11.5px] font-bold tracking-[2px] text-[#14110c] uppercase whitespace-nowrap min-h-[44px]"
+            >
+              {isLoading ? t("password_updating") : t("password_update")}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              disabled={!!successMsg}
+              className="font-mono-ui text-[10.5px] font-semibold tracking-[1.5px] text-[#8f8574] uppercase hover:text-[#d9ac54] transition-colors disabled:opacity-50 whitespace-nowrap"
+            >
+              {t("password_cancel")}
+            </button>
+          </div>
         </form>
-
-        <button
-          onClick={() => navigate(-1)}
-          className="w-full text-xs font-bold text-[#f0e6cc]/40 hover:text-[#c8963c] transition uppercase tracking-wider underline underline-offset-4"
-          disabled={!!successMsg}
-        >
-          {t("password_cancel")}
-        </button>
-      </div>
+      </main>
     </div>
   );
 }

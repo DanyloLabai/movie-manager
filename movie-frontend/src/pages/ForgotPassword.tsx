@@ -2,6 +2,19 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import * as authApi from "../api/auth.api";
 import { useLang } from "../context/LanguageContext";
+import AuthLayout from "../components/auth/AuthLayout";
+import { AuthTextField } from "../components/auth/AuthTextField";
+
+const MailIcon = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.75}
+      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+    />
+  </svg>
+);
 
 export default function ForgotPassword() {
   const { t } = useLang();
@@ -28,62 +41,49 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-[#12100e] px-4 sm:px-6">
-      <div className="w-full max-w-md p-6 sm:p-10 space-y-8 bg-[#1a1714] rounded-3xl shadow-2xl border border-[#c8963c]/20 relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
-
-        <div className="text-center">
-          <h2 className="text-2xl sm:text-3xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
-            {t("password_reset_title")}
-          </h2>
-          <p className="mt-3 text-sm text-[#f0e6cc]/60 font-medium">
-            {t("password_reset_subtitle")}
-          </p>
+    <AuthLayout
+      title={t("password_reset_title")}
+      subtitle={t("password_reset_subtitle")}
+      subtitleMono={false}
+      icon={<MailIcon />}
+    >
+      {status.message && (
+        <div
+          className={`mb-5 p-4 rounded-2xl text-center text-xs font-bold uppercase tracking-wider ${
+            status.type === "success"
+              ? "text-[#d9ac54] bg-[#d9ac54]/10 border border-[#d9ac54]/30"
+              : "text-red-500 bg-red-900/10 border border-red-500/20"
+          }`}
+        >
+          {status.message}
         </div>
+      )}
 
-        {status.message && (
-          <div
-            className={`p-4 text-xs font-bold rounded-xl text-center uppercase tracking-wider ${
-              status.type === "success"
-                ? "text-[#c8963c] bg-[#c8963c]/10 border border-[#c8963c]/30"
-                : "text-red-500 bg-red-900/10 border border-red-500/20"
-            }`}
-          >
-            {status.message}
-          </div>
-        )}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <AuthTextField
+          label={t("login_email")}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="name@example.com"
+          required
+        />
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-xs font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-2">
-              {t("login_email")}
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3.5 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] transition-all"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full py-4 font-black text-[#12100e] uppercase tracking-widest transition btn-glass btn-glass-gold active:scale-[0.98] disabled:opacity-50"
-          >
-            {isLoading ? t("password_reset_sending") : t("password_reset_send")}
-          </button>
-        </form>
+        <button
+          type="submit"
+          disabled={isLoading || status.type === "success"}
+          className="mt-1 w-full py-3.5 rounded-full bg-[#d9ac54] hover:bg-[#e8c377] active:scale-[0.98] disabled:opacity-50 transition text-[12.5px] font-bold tracking-[2.5px] text-[#14110c] uppercase"
+        >
+          {isLoading ? t("password_reset_sending") : t("password_reset_send")}
+        </button>
 
-        <div className="text-center pt-4 border-t border-[#c8963c]/20">
-          <Link
-            to="/login"
-            className="text-xs font-bold text-[#f0e6cc]/40 hover:text-[#c8963c] transition uppercase underline underline-offset-4"
-          >
-            {t("password_reset_back")}
-          </Link>
-        </div>
-      </div>
-    </div>
+        <Link
+          to="/login"
+          className="text-center font-mono-ui text-[10.5px] font-semibold tracking-[1.5px] text-[#8f8574] uppercase hover:text-[#d9ac54] transition-colors"
+        >
+          ‹ {t("password_reset_back")}
+        </Link>
+      </form>
+    </AuthLayout>
   );
 }
