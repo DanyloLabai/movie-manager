@@ -71,4 +71,8 @@ export class SearchHistoryService {
     }
     return result;
   }
+
+  async clearHistory(userId: number): Promise<void> {
+    await this.searchHistoryRepo.delete({ user: { id: userId } });
+  }
 }

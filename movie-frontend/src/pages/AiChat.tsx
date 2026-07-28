@@ -6,6 +6,7 @@ import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import NotificationBell from "../components/NotificationBell";
+import LogoIcon from "../components/LogoIcon";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
@@ -25,13 +26,13 @@ interface Message {
 const MOBILE_BREAKPOINT_PX = 640;
 // Height of the nav bar's own content (icon + label + vertical padding),
 // not counting the safe-area inset it adds on top of that via
-// `pb-[env(safe-area-inset-bottom)]`.
+// pb-[env(safe-area-inset-bottom)].
 const BOTTOM_NAV_CONTENT_PX = 60;
 
 // In an installed PWA (standalone display mode) the app draws edge-to-edge,
 // so env(safe-area-inset-bottom) resolves to the real home-indicator/gesture
 // inset. In a regular mobile browser tab that space is already occupied by
-// the browser's own chrome, so the inset is 0 there — which is why this bug
+// the browser own chrome, so the inset is 0 there, which is why this bug
 // only showed up in the installed app. Measure it instead of assuming 0, so
 // the reserved space always matches what the nav bar actually renders at.
 let cachedSafeAreaInsetBottomPx: number | null = null;
@@ -59,6 +60,9 @@ const getBottomReserve = (isInputFocused: boolean) =>
     ? BOTTOM_NAV_CONTENT_PX + getSafeAreaInsetBottomPx()
     : 0;
 
+const formatTokenCount = (n: number) =>
+  n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : String(n);
+
 function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
   const { t } = useLang();
   const [isOpen, setIsOpen] = useState(false);
@@ -68,7 +72,7 @@ function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider text-[#c8963c]/70 hover:text-[#c8963c] transition"
+        className="flex items-center gap-1 font-mono-ui text-[9px] font-semibold uppercase tracking-wider text-[#d9ac54]/70 hover:text-[#d9ac54] transition"
       >
         <span className={`transition-transform ${isOpen ? "rotate-90" : ""}`}>
           ▸
@@ -76,14 +80,11 @@ function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
         {t("chat_why_this")}
       </button>
       {isOpen && (
-        <ul className="mt-1.5 flex flex-col gap-1 border-l border-[#c8963c]/20 pl-2.5">
+        <ul className="mt-1.5 flex flex-col gap-1 border-l border-[#d9ac54]/20 pl-2.5">
           {reasoning.map((reason, idx) => (
-            <li
-              key={idx}
-              className="text-[10px] leading-snug text-[#f0e6cc]/60"
-            >
+            <li key={idx} className="font-ui text-[10px] leading-snug text-[#8f8574]">
               {reason.preferenceText}{" "}
-              <span className="text-[#c8963c]/60 font-semibold">
+              <span className="text-[#d9ac54]/70 font-semibold">
                 ({Math.round(reason.similarityScore * 100)}%)
               </span>
             </li>
@@ -111,6 +112,8 @@ export default function AiChat() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [cooldownTime, setCooldownTime] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [usage, setUsage] = useState<aiApi.AiUsage | null>(null);
+  const [isUsageOpen, setIsUsageOpen] = useState(false);
 
   const [viewportHeight, setViewportHeight] = useState(
     () =>
@@ -145,7 +148,7 @@ export default function AiChat() {
   };
 
   const [messages, setMessages] = useState<Message[]>([getWelcomeMessage()]);
-  // Only the initial welcome message present — no user turn sent yet.
+  // Only the initial welcome message present - no user turn sent yet.
   // Matches the threshold already used elsewhere (clear-chat button) to
   // mean "nothing to a real conversation yet".
   const isEmpty = messages.length <= 1;
@@ -258,6 +261,10 @@ export default function AiChat() {
     fetchProfileData();
   }, []);
 
+  useEffect(() => {
+    aiApi.getUsage().then(setUsage).catch(() => void 0);
+  }, []);
+
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => setToastMessage(null), 3000);
@@ -329,6 +336,7 @@ export default function AiChat() {
     } finally {
       setIsLoading(false);
       setCooldownTime(COOLDOWN_SECONDS);
+      aiApi.getUsage().then(setUsage).catch(() => void 0);
     }
   };
 
@@ -338,6 +346,11 @@ export default function AiChat() {
     const text = input;
     setInput("");
     await sendMessageToAi(text);
+  };
+
+  const handleSuggestionClick = (text: string) => {
+    if (isLoading || cooldownTime > 0) return;
+    void sendMessageToAi(text);
   };
 
   const handleAddFromChat = async (movie: MovieResult) => {
@@ -360,246 +373,72 @@ export default function AiChat() {
     }
   };
 
+  const suggestionChips = [
+    t("chat_suggestion_1"),
+    t("chat_suggestion_2"),
+    t("chat_suggestion_3"),
+    t("chat_suggestion_4"),
+  ];
+
   return (
     <div
-      className="fixed left-0 sm:left-60 right-0 flex flex-col text-[#f0e6cc] font-sans overflow-hidden"
+      className="fixed left-0 sm:left-60 right-0 flex flex-col text-[#f2ead9] font-ui overflow-hidden"
       style={{
         top: viewportTop,
         height: viewportHeight,
         paddingTop: "env(safe-area-inset-top)",
       }}
     >
-      <div className="sm:hidden shrink-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10">
-        <header className="flex flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
+      <div className="sm:hidden shrink-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)]">
+        <header className="flex flex-row items-center justify-between gap-3 py-4 px-4 w-full">
           <Link
             to="/search"
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0"
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0"
           >
-            <img
-              src={LogoImg}
-              alt="LUMEN Logo"
-              className="h-6 sm:h-8 w-auto object-contain"
-            />
-            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+            <span className="font-ui font-bold text-[15px] tracking-[4px] text-[#d9ac54]">
               LUMEN AI
-            </h1>
+            </span>
+            <LogoIcon />
           </Link>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
+            {usage && (
+              <button
+                onClick={() => setIsUsageOpen(true)}
+                title={t("chat_usage_title")}
+                className="w-8 h-8 rounded-full flex items-center justify-center border border-white/[.12] text-[#8f8574] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] transition"
+              >
+                <svg
+                  className="w-3.5 h-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M4 19V10M10 19V4M16 19v-7"
+                  />
+                </svg>
+              </button>
+            )}
             <NotificationBell />
           </div>
         </header>
       </div>
 
-      <div className="hidden sm:flex shrink-0 z-40 glass-panel border-b border-[#c8963c]/10 px-8 py-5 items-center justify-center">
-        <h1 className="text-xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-          {t("chat_header_title")}
-        </h1>
-      </div>
-
-      <div className="absolute inset-0 -z-10 ai-chat-background pointer-events-none overflow-hidden">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[28rem] h-[28rem] bg-[#c8963c]/10 rounded-full blur-[130px]" />
-        <div className="absolute -top-20 -left-20 w-80 h-80 bg-[#c8963c]/10 rounded-full blur-[120px]" />
-        <div className="absolute bottom-10 -right-20 w-96 h-96 bg-[#c8963c]/10 rounded-full blur-[120px]" />
-      </div>
-
-      <div className="relative flex-1 flex flex-col overflow-hidden">
-        {/* Desktop-only spacers: grow equally to push the (shrunk-to-fit)
-            message block + input down into the vertical center while the
-            conversation is empty; collapse back to 0 once it isn't, so the
-            block slides down to its normal top/bottom-pinned layout. Kept
-            out of mobile entirely — centering there would fight the
-            on-screen keyboard when the input is focused. */}
+      {isUsageOpen && usage && (
         <div
-          aria-hidden="true"
-          className={`hidden sm:block shrink-0 transition-[flex-grow] duration-500 ease-in-out ${
-            isEmpty ? "sm:grow" : "sm:grow-0"
-          }`}
-        />
-
-        <div
-          ref={chatContainerRef}
-          className={`relative p-3 space-y-4 scrollbar-hide transition-[flex-grow] duration-500 ease-in-out ${
-            isEmpty
-              ? "flex flex-col justify-center flex-1 sm:flex-none overflow-y-auto sm:overflow-visible"
-              : "flex-1 overflow-y-auto"
-          }`}
+          className="sm:hidden fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setIsUsageOpen(false)}
         >
-          <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto space-y-4 pb-2">
-            {isHistoryLoading ? (
-              <div className="flex items-center justify-center pt-20">
-                <div className="flex gap-2">
-                  <div className="w-2 h-2 bg-[#c8963c] rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.2s]" />
-                  <div className="w-2 h-2 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.4s]" />
-                </div>
-              </div>
-            ) : isEmpty ? (
-              <div className="flex flex-col items-center text-center gap-3 px-4 py-2">
-                <div className="flex items-center gap-3">
-                  <h1 className="text-3xl sm:text-4xl font-black text-[#c8963c] tracking-widest uppercase leading-none drop-shadow-[0_0_10px_rgba(244,189,95,0.5)]">
-                    LUMEN AI
-                  </h1>
-                  <div className="relative shrink-0">
-                    <div className="absolute inset-0 bg-[#c8963c]/30 blur-xl rounded-full" />
-                    <img
-                      src={LogoImg}
-                      alt=""
-                      className="relative h-10 sm:h-12 w-auto object-contain drop-shadow-[0_0_10px_rgba(244,189,95,0.5)]"
-                    />
-                  </div>
-                </div>
-                <p className="max-w-sm text-sm leading-relaxed text-[#f0e6cc]/60">
-                  {messages[0]?.text}
-                </p>
-              </div>
-            ) : (
-              messages.map((msg, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-start gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
-                >
-                  <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                      msg.role === "ai"
-                        ? "bg-[#12100e] border border-[#c8963c]/40 p-1 glow-gold-sm"
-                        : "bg-gradient-to-br from-[#c8963c] to-[#9a732a] glow-gold-sm"
-                    }`}
-                  >
-                    {msg.role === "ai" ? (
-                      <img
-                        src={LogoImg}
-                        alt=""
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <svg
-                        className="w-3 h-3 text-[#12100e]"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                      </svg>
-                    )}
-                  </div>
-                  <div
-                    className={`flex flex-col max-w-[85%] ${msg.role === "user" ? "items-end" : "items-start"}`}
-                  >
-                    <div
-                      className={`p-3 rounded-2xl shadow-xl text-sm leading-relaxed ${
-                        msg.role === "user"
-                          ? "bg-[#c8963c] text-[#12100e] rounded-tr-sm font-medium"
-                          : "glass-panel border border-[#c8963c]/30 text-[#f0e6cc] rounded-tl-sm"
-                      }`}
-                    >
-                      <p className="whitespace-pre-wrap select-text cursor-text">
-                        {msg.text}
-                      </p>
-                      {msg.movies && msg.movies.length > 0 && (
-                        <div className="mt-3">
-                          <h5 className="text-[#c8963c] text-[9px] font-bold uppercase tracking-widest px-1 pb-1.5">
-                            {t("chat_recommended")}
-                          </h5>
-                          <div className="grid grid-cols-4 gap-1.5">
-                            {msg.movies.map((movie) => (
-                              <div
-                                key={movie.id}
-                                className="group flex flex-col rounded-lg overflow-hidden border border-[#c8963c]/20 hover:border-[#c8963c]/70 transition"
-                              >
-                                <div
-                                  className="relative aspect-[2/3] cursor-pointer"
-                                  onClick={() =>
-                                    navigate(
-                                      `/movie/${movie.id}?type=${movie.mediaType}`,
-                                    )
-                                  }
-                                >
-                                  {movie.posterUrl ? (
-                                    <img
-                                      src={movie.posterUrl}
-                                      alt={movie.title}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                    />
-                                  ) : (
-                                    <div className="w-full h-full bg-[#12100e] flex items-center justify-center text-[7px] text-[#f0e6cc]/30">
-                                      N/A
-                                    </div>
-                                  )}
-                                  {isReleased(movie) && (
-                                    <div className="absolute top-1 left-1 bg-[#12100e]/90 backdrop-blur-sm px-1 py-0.5 rounded text-[7px] font-black text-[#c8963c] border border-[#c8963c]/30">
-                                      ★ {Number(movie.rating || 0).toFixed(1)}
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="p-1 bg-[#1a1714] flex flex-col gap-1 flex-1">
-                                  <h4
-                                    className="font-bold text-[#f0e6cc] text-[9px] leading-tight truncate cursor-pointer"
-                                    onClick={() =>
-                                      navigate(
-                                        `/movie/${movie.id}?type=${movie.mediaType}`,
-                                      )
-                                    }
-                                  >
-                                    {movie.title}
-                                  </h4>
-                                  {addedIds.includes(movie.id) ? (
-                                    <div className="w-full py-1 rounded-md btn-glass btn-glass-gold flex items-center justify-center gap-0.5 text-[#12100e] text-[7px] font-black uppercase tracking-wide">
-                                      <span>✓</span> {t("search_added_btn")}
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => handleAddFromChat(movie)}
-                                      className="w-full py-1 rounded-md btn-glass btn-glass-dark flex items-center justify-center text-[#c8963c] text-[7px] font-black uppercase tracking-wide active:scale-95 transition"
-                                    >
-                                      + {t("search_add")}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {msg.reasoning && msg.reasoning.length > 0 && (
-                        <WhyThisHint reasoning={msg.reasoning} />
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-
-            {isLoading && (
-              <div className="flex items-start gap-2.5">
-                <div className="w-6 h-6 rounded-full bg-[#12100e] border border-[#c8963c]/40 p-1 flex items-center justify-center shrink-0 glow-gold-sm">
-                  <img
-                    src={LogoImg}
-                    alt=""
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                <div className="glass-panel border border-[#c8963c]/30 p-4 rounded-2xl rounded-tl-sm shadow">
-                  <div className="flex gap-1.5">
-                    <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce" />
-                    <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-bounce [animation-delay:0.4s]" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div
-          className={`shrink-0 px-3 pt-2 pb-2 z-40 bg-[#12100e] border-t border-[#c8963c]/20 transition-colors duration-500 ease-in-out ${
-            isEmpty ? "sm:bg-transparent sm:border-transparent" : ""
-          }`}
-        >
-          <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl w-full mx-auto flex items-center gap-2">
+          <div
+            className="w-full max-w-xs bg-[#14110d] border border-[#d9ac54]/25 rounded-2xl p-5 shadow-2xl relative animate-modal-in font-ui"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
-              onClick={handleClearChat}
-              disabled={isLoading || messages.length <= 1}
-              title={t("chat_clear_title")}
-              className="shrink-0 w-10 h-10 text-[#c8963c]/50 btn-glass btn-glass-dark rounded-xl hover:text-red-400 hover:!bg-red-900/20 hover:!border-red-500/40 transition disabled:opacity-30 flex items-center justify-center"
+              onClick={() => setIsUsageOpen(false)}
+              className="absolute top-4 right-4 text-[#8f8574] hover:text-[#d9ac54] transition p-1"
             >
               <svg
                 className="w-4 h-4"
@@ -611,6 +450,295 @@ export default function AiChat() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+            <h3 className="font-bold text-[13px] tracking-[2px] text-[#f2ead9] uppercase mb-5">
+              {t("chat_usage_title")}
+            </h3>
+            <div className="flex flex-col gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-mono-ui text-[9.5px] tracking-[2px] text-[#8f8574] uppercase">
+                    {t("chat_usage_requests_label")}
+                  </span>
+                  <span className="font-semibold text-[12px] text-[#f2ead9]">
+                    {usage.requestCount}/{usage.requestLimit}
+                  </span>
+                </div>
+                <div className="h-[5px] bg-white/[.08] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (usage.requestCount / usage.requestLimit) * 100)}%`,
+                      background: "linear-gradient(90deg, #a87c2e, #d9ac54)",
+                    }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-mono-ui text-[9.5px] tracking-[2px] text-[#8f8574] uppercase">
+                    {t("chat_usage_tokens_label")}
+                  </span>
+                  <span className="font-semibold text-[12px] text-[#f2ead9]">
+                    {formatTokenCount(usage.totalTokens)}/
+                    {formatTokenCount(usage.tokenLimit)}
+                  </span>
+                </div>
+                <div className="h-[5px] bg-white/[.08] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (usage.totalTokens / usage.tokenLimit) * 100)}%`,
+                      background: "linear-gradient(90deg, #a87c2e, #d9ac54)",
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="hidden sm:flex shrink-0 z-40 bg-[#0f0d0a] border-b border-[rgba(217,172,84,.16)] px-10 py-[18px] items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="font-ui font-bold text-[15px] tracking-[4px] text-[#d9ac54]">
+            LUMEN AI
+          </span>
+        </div>
+        <div className="flex items-center gap-4">
+          {usage && (
+            <span className="font-mono-ui text-[10.5px] text-[#8f8574] whitespace-nowrap">
+              {t("chat_usage_today")
+                .replace("[USED]", String(usage.requestCount))
+                .replace("[LIMIT]", String(usage.requestLimit))}
+              {" · "}
+              {t("chat_usage_tokens")
+                .replace("[USED]", formatTokenCount(usage.totalTokens))
+                .replace("[LIMIT]", formatTokenCount(usage.tokenLimit))}
+            </span>
+          )}
+          <button
+            onClick={handleClearChat}
+            disabled={isLoading || messages.length <= 1}
+            className="flex items-center gap-2 font-mono-ui text-[10.5px] font-semibold tracking-[1.5px] uppercase text-[#8f8574] border border-white/[.12] rounded-full px-3.5 py-1.5 transition hover:text-[#d9ac54] hover:border-[#d9ac54]/45 disabled:opacity-30 disabled:hover:text-[#8f8574] disabled:hover:border-white/[.12]"
+          >
+            ✕ {t("chat_clear_history")}
+          </button>
+        </div>
+      </div>
+
+      <div className="absolute inset-0 -z-10 bg-[#0f0d0a] pointer-events-none overflow-hidden">
+        <div
+          className="absolute -top-36 left-1/2 -translate-x-1/2 w-[520px] h-[340px]"
+          style={{
+            background:
+              "radial-gradient(50% 50% at 50% 50%, rgba(217,172,84,.1), transparent 70%)",
+          }}
+        />
+      </div>
+
+      <div className="relative flex-1 flex flex-col overflow-hidden">
+        {/* Desktop-only spacers: grow equally to push the (shrunk-to-fit)
+            message block + input down into the vertical center while the
+            conversation is empty; collapse back to 0 once it isn't, so the
+            block slides down to its normal top/bottom-pinned layout. Kept
+            out of mobile entirely - centering there would fight the
+            on-screen keyboard when the input is focused. */}
+        <div
+          aria-hidden="true"
+          className={`hidden sm:block shrink-0 transition-[flex-grow] duration-500 ease-in-out ${
+            isEmpty ? "sm:grow" : "sm:grow-0"
+          }`}
+        />
+
+        <div
+          ref={chatContainerRef}
+          className={`relative p-3 space-y-6 scrollbar-hide transition-[flex-grow] duration-500 ease-in-out ${
+            isEmpty
+              ? "flex flex-col justify-center flex-1 sm:flex-none overflow-y-auto sm:overflow-visible"
+              : "flex-1 overflow-y-auto"
+          }`}
+        >
+          <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl mx-auto space-y-6 pb-2">
+            {isHistoryLoading ? (
+              <div className="flex items-center justify-center pt-20">
+                <div className="flex gap-2">
+                  <div className="w-2 h-2 bg-[#d9ac54] rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-[#d9ac54] rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <div className="w-2 h-2 bg-[#d9ac54] rounded-full animate-bounce [animation-delay:0.4s]" />
+                </div>
+              </div>
+            ) : isEmpty ? (
+              <div className="flex flex-col items-center text-center gap-5 px-4 py-2">
+                <div className="w-16 h-16 rounded-full border border-[#d9ac54]/45 flex items-center justify-center">
+                  <img src={LogoImg} alt="" className="w-8 h-8 object-contain" />
+                </div>
+                <div className="flex flex-col gap-2 items-center">
+                  <span className="font-ui font-bold text-[26px] tracking-[5px] text-[#f2ead9]">
+                    LUMEN AI
+                  </span>
+                  <p className="max-w-sm text-sm leading-relaxed text-[#8f8574]">
+                    {messages[0]?.text}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2.5 justify-center max-w-xl">
+                  {suggestionChips.map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => handleSuggestionClick(chip)}
+                      className="px-[18px] py-2.5 border border-[#d9ac54]/30 rounded-full text-[12.5px] text-[#c9c0ac] transition hover:bg-[#d9ac54]/10 hover:text-[#f2ead9]"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              messages.map((msg, idx) => (
+                <div
+                  key={idx}
+                  className={`flex items-start gap-3.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                >
+                  {msg.role === "ai" && (
+                    <div className="w-[30px] h-[30px] rounded-full border border-[#d9ac54]/45 flex items-center justify-center shrink-0 mt-0.5">
+                      <img src={LogoImg} alt="" className="w-3.5 h-3.5 object-contain" />
+                    </div>
+                  )}
+                  <div
+                    className={`flex flex-col gap-3.5 max-w-[85%] ${msg.role === "user" ? "items-end" : "items-start"}`}
+                  >
+                    {msg.role === "user" ? (
+                      <div className="max-w-full px-[18px] py-3 bg-[rgba(217,172,84,.13)] border border-[rgba(217,172,84,.25)] rounded-2xl rounded-tr-sm text-[14px] leading-relaxed text-[#f2ead9]">
+                        <p className="whitespace-pre-wrap select-text cursor-text">
+                          {msg.text}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-[14px] leading-relaxed text-[#c9c0ac] whitespace-pre-wrap select-text cursor-text">
+                        {msg.text}
+                      </p>
+                    )}
+
+                    {msg.movies && msg.movies.length > 0 && (
+                      <div className="flex flex-col gap-3 w-full">
+                        {msg.movies.map((movie) => {
+                          const released = isReleased(movie);
+                          const added = addedIds.includes(movie.id);
+                          return (
+                            <div
+                              key={movie.id}
+                              className="flex gap-4 p-3.5 border border-[#d9ac54]/20 rounded-[10px] bg-[rgba(217,172,84,.04)] max-w-[520px] w-full"
+                            >
+                              <div
+                                className="w-[86px] h-[128px] rounded-[5px] bg-[#1c1a14] shrink-0 overflow-hidden cursor-pointer"
+                                onClick={() =>
+                                  navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
+                                }
+                              >
+                                {movie.posterUrl ? (
+                                  <img
+                                    src={movie.posterUrl}
+                                    alt={movie.title}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-[8px] text-[#f2ead9]/30">
+                                    {t("common_na")}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                                <div className="flex items-baseline gap-2.5 min-w-0">
+                                  <h4
+                                    className="font-bold text-[16px] text-[#f2ead9] truncate cursor-pointer"
+                                    onClick={() =>
+                                      navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
+                                    }
+                                  >
+                                    {movie.title}
+                                  </h4>
+                                  <span className="text-[12px] text-[#8f8574] shrink-0">
+                                    {movie.releaseYear}
+                                  </span>
+                                </div>
+                                {released && (
+                                  <div className="font-mono-ui text-[12px] font-semibold text-[#d9ac54]">
+                                    ★ {Number(movie.rating || 0).toFixed(1)}
+                                  </div>
+                                )}
+                                {movie.description && (
+                                  <p className="text-[12px] leading-snug text-[#8f8574] line-clamp-2">
+                                    {movie.description}
+                                  </p>
+                                )}
+                                <div className="flex flex-wrap gap-2 mt-auto pt-1.5">
+                                  {added ? (
+                                    <div className="flex items-center gap-1.5 px-[18px] py-2 border border-[#d9ac54]/45 rounded-full font-bold text-[10.5px] tracking-[1.5px] text-[#d9ac54] uppercase shrink-0 whitespace-nowrap">
+                                      ✓ {t("search_added_btn")}
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleAddFromChat(movie)}
+                                      className="px-[18px] py-2 bg-[#d9ac54] hover:bg-[#e8c377] rounded-full font-bold text-[10.5px] tracking-[1.5px] text-[#14110c] uppercase transition active:scale-95 shrink-0 whitespace-nowrap"
+                                    >
+                                      {t("chat_add_btn")}
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() =>
+                                      navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
+                                    }
+                                    className="px-[18px] py-2 border border-white/[.15] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] rounded-full font-semibold text-[10.5px] tracking-[1.5px] text-[#c9c0ac] uppercase transition shrink-0 whitespace-nowrap"
+                                  >
+                                    {t("details")}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {msg.reasoning && msg.reasoning.length > 0 && (
+                      <WhyThisHint reasoning={msg.reasoning} />
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+
+            {isLoading && (
+              <div className="flex items-start gap-3.5">
+                <div className="w-[30px] h-[30px] rounded-full border border-[#d9ac54]/45 flex items-center justify-center shrink-0">
+                  <img src={LogoImg} alt="" className="w-3.5 h-3.5 object-contain" />
+                </div>
+                <div className="flex gap-1.5 pt-2.5">
+                  <div className="w-1.5 h-1.5 bg-[#d9ac54] rounded-full animate-bounce" />
+                  <div className="w-1.5 h-1.5 bg-[#d9ac54] rounded-full animate-bounce [animation-delay:0.2s]" />
+                  <div className="w-1.5 h-1.5 bg-[#d9ac54] rounded-full animate-bounce [animation-delay:0.4s]" />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="shrink-0 px-3 pt-3 pb-2.5 z-40 border-t border-[rgba(217,172,84,.16)] sm:border-t-0">
+          <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl w-full mx-auto flex items-center gap-2">
+            <button
+              onClick={handleClearChat}
+              disabled={isLoading || messages.length <= 1}
+              title={t("chat_clear_title")}
+              className="sm:hidden shrink-0 w-10 h-10 text-[#8f8574] border border-white/[.12] rounded-full hover:text-red-400 hover:border-red-500/40 transition disabled:opacity-30 flex items-center justify-center"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                 />
               </svg>
@@ -618,7 +746,7 @@ export default function AiChat() {
 
             <form
               onSubmit={handleSend}
-              className="relative flex-grow flex items-center gap-2 glass-panel border border-[#c8963c]/30 rounded-full pl-4 pr-1.5 py-1.5 focus-within:border-[#c8963c] focus-within:shadow-[0_0_0_3px_rgba(200,150,60,0.15),0_0_24px_-6px_rgba(200,150,60,0.5)] transition-shadow"
+              className="relative flex-grow flex items-center gap-2 bg-white/[.03] border border-[#d9ac54]/30 rounded-full pl-5 pr-1.5 py-1.5 focus-within:border-[#d9ac54] transition-shadow"
             >
               <input
                 ref={inputRef}
@@ -641,12 +769,12 @@ export default function AiChat() {
                         )
                       : t("chat_placeholder")
                 }
-                className="w-full bg-transparent border-none text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:ring-0 transition disabled:opacity-50 text-sm"
+                className="w-full bg-transparent border-none text-[#f2ead9] placeholder-[#8f8574] focus:outline-none focus:ring-0 transition disabled:opacity-50 text-sm"
               />
               <button
                 type="submit"
                 disabled={isLoading || !input.trim() || cooldownTime > 0}
-                className="shrink-0 w-9 h-9 rounded-full btn-glass btn-glass-gold text-[#12100e] flex items-center justify-center font-black transition active:scale-95 disabled:cursor-not-allowed"
+                className="shrink-0 w-10 h-10 rounded-full bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] flex items-center justify-center font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {isLoading ? (
                   "…"
@@ -670,7 +798,7 @@ export default function AiChat() {
               </button>
             </form>
           </div>
-          <p className="text-center text-[9px] text-[#f0e6cc]/30 font-semibold mt-1.5 tracking-wide">
+          <p className="text-center text-[10px] text-[#645c4d] mt-2">
             {t("chat_disclaimer")}
           </p>
         </div>
@@ -684,7 +812,7 @@ export default function AiChat() {
       </div>
 
       {toastMessage && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap animate-fade-in">
+        <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-[#0f0d0a] border border-[#d9ac54]/50 text-[#d9ac54] px-4 py-3 rounded-xl shadow-2xl z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap animate-fade-in">
           {toastMessage}
         </div>
       )}

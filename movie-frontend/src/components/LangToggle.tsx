@@ -7,7 +7,7 @@ export default function LangToggle() {
     <button
       onClick={toggleLang}
       title={lang === "en" ? "Switch to Ukrainian" : "Перемкнути на англійську"}
-      className="flex items-center gap-1.5 text-[9px] sm:text-[10px] px-2 py-1 sm:px-2.5 sm:py-1.5 border border-[#c8963c]/30 text-[#c8963c]/70 rounded-lg hover:border-[#c8963c] hover:text-[#c8963c] hover:bg-[#c8963c]/10 transition font-black uppercase tracking-widest whitespace-nowrap shrink-0 active:scale-95"
+      className="flex items-center gap-1.5 text-[9px] sm:text-[10px] px-2 py-1 sm:px-2.5 sm:py-1.5 border border-[#d9ac54]/30 text-[#d9ac54]/70 rounded-lg hover:border-[#d9ac54] hover:text-[#d9ac54] hover:bg-[#d9ac54]/10 transition font-black uppercase tracking-widest whitespace-nowrap shrink-0 active:scale-95"
     >
       <svg
         className="w-3 h-3 sm:w-3.5 sm:h-3.5"

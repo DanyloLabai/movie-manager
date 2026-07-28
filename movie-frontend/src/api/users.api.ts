@@ -106,6 +106,11 @@ export async function getSearchHistory(
   return res.data;
 }
 
+export async function clearSearchHistory() {
+  const res = await api.delete(`/users/me/search-history`);
+  return res.data;
+}
+
 export type FriendLastWatched = {
   tmdbId: number;
   title: string;
@@ -136,5 +141,6 @@ export default {
   deleteAccount,
   getActivityHeatmap,
   getSearchHistory,
+  clearSearchHistory,
   getFriendsLastWatched,
 };

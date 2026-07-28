@@ -155,146 +155,138 @@ export default function ActivityHeatmap({
   };
 
   return (
-    <div className="relative mt-4">
-      <div className="p-4 lg:p-5 glass-panel rounded-2xl border border-[#c8963c]/20 shadow-xl">
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <div className="flex items-center gap-3">
-            <h3 className="text-xs lg:text-sm font-black text-[#f0e6cc] uppercase tracking-widest">
-              {t("activity_heatmap_title")}
-            </h3>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={onPrevYear}
-                className="w-5 h-5 flex items-center justify-center rounded-md text-[#f0e6cc]/50 hover:text-[#c8963c] hover:bg-[#c8963c]/10 transition"
+    <div className="relative">
+      <div className="flex items-center justify-between mb-3.5 flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <h3 className="font-mono-ui text-[11px] lg:text-[12px] font-semibold text-[#d9ac54] uppercase tracking-[3px]">
+            {t("activity_heatmap_title")} · {year}
+          </h3>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={onPrevYear}
+              className="w-5 h-5 flex items-center justify-center rounded-md text-[#8f8574] hover:text-[#d9ac54] hover:bg-[#d9ac54]/10 transition"
+            >
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg
-                  className="w-3 h-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2.5"
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-              <span className="text-[10px] lg:text-xs font-black text-[#c8963c] tabular-nums w-8 text-center">
-                {year}
-              </span>
-              <button
-                type="button"
-                onClick={onNextYear}
-                disabled={!canGoNext}
-                className="w-5 h-5 flex items-center justify-center rounded-md text-[#f0e6cc]/50 hover:text-[#c8963c] hover:bg-[#c8963c]/10 transition disabled:opacity-20 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={onNextYear}
+              disabled={!canGoNext}
+              className="w-5 h-5 flex items-center justify-center rounded-md text-[#8f8574] hover:text-[#d9ac54] hover:bg-[#d9ac54]/10 transition disabled:opacity-20 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+            >
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg
-                  className="w-3 h-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2.5"
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-[8px] lg:text-[9px] text-[#f0e6cc]/40 font-bold uppercase tracking-wide">
-            <span>{t("activity_legend_less")}</span>
-            {ACTIVITY_LEVEL_CLASSES.map((cls, i) => (
-              <span
-                key={i}
-                className={`w-2.5 h-2.5 lg:w-3 lg:h-3 rounded-sm ${cls}`}
-              />
-            ))}
-            <span>{t("activity_legend_more")}</span>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
           </div>
         </div>
+        <div className="flex items-center gap-1 font-ui text-[11px] text-[#8f8574]">
+          <span>{t("activity_legend_less")}</span>
+          {ACTIVITY_LEVEL_CLASSES.map((cls, i) => (
+            <span key={i} className={`w-2.5 h-2.5 rounded-sm ${cls}`} />
+          ))}
+          <span>{t("activity_legend_more")}</span>
+        </div>
+      </div>
 
-        {isLoading ? (
-          <div className="text-center py-6 text-[#c8963c] animate-pulse font-bold uppercase tracking-widest text-[10px]">
-            {t("profile_loading")}
-          </div>
-        ) : (
-          <div
-            className="overflow-x-auto pb-1"
-            onMouseLeave={() => setHovered(null)}
-          >
-            <div className="inline-flex gap-1.5">
-              {/* Weekday row labels (Mon/Wed/Fri), so the card isn't just
-                empty space to the left of the grid. */}
-              <div className="flex flex-col gap-1.5 shrink-0">
-                <div className={MONTH_ROW_H_CLASS} />
-                <div className={`flex flex-col ${GAP_CLASS}`}>
-                  {weekdayLabels.map((label, i) => (
-                    <div
-                      key={i}
-                      className={`${SQUARE_H_CLASS} flex items-center text-[8px] lg:text-[9px] text-[#f0e6cc]/40 font-bold whitespace-nowrap`}
-                    >
-                      {label}
-                    </div>
-                  ))}
-                </div>
+      {isLoading ? (
+        <div className="text-center py-6 text-[#d9ac54] animate-pulse font-semibold uppercase tracking-widest text-[10px] font-mono-ui">
+          {t("profile_loading")}
+        </div>
+      ) : (
+        <div
+          className="overflow-x-auto pb-1"
+          onMouseLeave={() => setHovered(null)}
+        >
+          <div className="inline-flex gap-1.5">
+            {/* Weekday row labels (Mon/Wed/Fri), so the card isn't just
+              empty space to the left of the grid. */}
+            <div className="flex flex-col gap-1.5 shrink-0">
+              <div className={MONTH_ROW_H_CLASS} />
+              <div className={`flex flex-col ${GAP_CLASS}`}>
+                {weekdayLabels.map((label, i) => (
+                  <div
+                    key={i}
+                    className={`${SQUARE_H_CLASS} flex items-center font-ui text-[9px] text-[#8f8574] font-medium whitespace-nowrap`}
+                  >
+                    {label}
+                  </div>
+                ))}
               </div>
+            </div>
 
-              <div className="inline-flex flex-col gap-1.5">
-                <div className={`flex ${GAP_CLASS} ${MONTH_ROW_H_CLASS}`}>
-                  {weeks.map((_, wi) => (
-                    <div
-                      key={wi}
-                      className={`shrink-0 text-[8px] lg:text-[9px] text-[#f0e6cc]/40 font-bold ${SQUARE_W_CLASS}`}
-                    >
-                      {monthLabels[wi]}
-                    </div>
-                  ))}
-                </div>
-                <div className={`flex ${GAP_CLASS}`}>
-                  {weeks.map((week, wi) => (
-                    <div key={wi} className={`flex flex-col ${GAP_CLASS}`}>
-                      {week.map((day) => (
-                        <div
-                          key={day.date}
-                          title={
-                            day.inYear ? `${day.date}: ${day.count}` : undefined
-                          }
-                          onMouseEnter={(e) => handleMouseEnter(e, day)}
-                          onMouseLeave={() => setHovered(null)}
-                          onClick={() => {
-                            if (!day.inYear || day.count === 0) return;
-                            // Touch devices fire a synthetic mouseenter right
-                            // before click, and never get a mouseleave to
-                            // clear it — without this the hover tooltip
-                            // stays stuck on top of the modal.
-                            setHovered(null);
-                            setSelectedDay(day);
-                          }}
-                          className={`rounded-sm transition-colors ${SQUARE_CLASS} ${
-                            day.inYear
-                              ? `${ACTIVITY_LEVEL_CLASSES[getActivityLevel(day.count)]} ${
-                                  day.count > 0
-                                    ? "cursor-pointer hover:ring-1 hover:ring-[#e8c070]"
-                                    : ""
-                                }`
-                              : "opacity-0"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  ))}
-                </div>
+            <div className="inline-flex flex-col gap-1.5">
+              <div className={`flex ${GAP_CLASS} ${MONTH_ROW_H_CLASS}`}>
+                {weeks.map((_, wi) => (
+                  <div
+                    key={wi}
+                    className={`shrink-0 font-ui text-[9px] text-[#8f8574] font-medium ${SQUARE_W_CLASS}`}
+                  >
+                    {monthLabels[wi]}
+                  </div>
+                ))}
+              </div>
+              <div className={`flex ${GAP_CLASS}`}>
+                {weeks.map((week, wi) => (
+                  <div key={wi} className={`flex flex-col ${GAP_CLASS}`}>
+                    {week.map((day) => (
+                      <div
+                        key={day.date}
+                        title={
+                          day.inYear ? `${day.date}: ${day.count}` : undefined
+                        }
+                        onMouseEnter={(e) => handleMouseEnter(e, day)}
+                        onMouseLeave={() => setHovered(null)}
+                        onClick={() => {
+                          if (!day.inYear || day.count === 0) return;
+                          // Touch devices fire a synthetic mouseenter right
+                          // before click, and never get a mouseleave to
+                          // clear it — without this the hover tooltip
+                          // stays stuck on top of the modal.
+                          setHovered(null);
+                          setSelectedDay(day);
+                        }}
+                        className={`rounded-sm transition-colors ${SQUARE_CLASS} ${
+                          day.inYear
+                            ? `${ACTIVITY_LEVEL_CLASSES[getActivityLevel(day.count)]} ${
+                                day.count > 0
+                                  ? "cursor-pointer hover:ring-1 hover:ring-[#e8c377]"
+                                  : ""
+                              }`
+                            : "opacity-0"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {hovered && (
         <ActivityDayTooltip day={hovered.day} style={hovered.style} />
