@@ -272,6 +272,9 @@ const translations = {
     password_cancel: "Cancel and go back",
     password_mismatch: "New passwords do not match.",
     password_success: "Password changed successfully! Redirecting to login...",
+    password_strength_weak: "weak",
+    password_strength_normal: "normal",
+    password_strength_strong: "strong",
 
     password_reset_title: "Reset Password",
     password_reset_subtitle: "Enter your email to get a reset link",
@@ -281,6 +284,7 @@ const translations = {
     password_reset_error: "Failed to send reset link.",
 
     password_new_title: "Create New Password",
+    password_new_subtitle: "Enter your new password below",
     password_new_save: "Save New Password",
     password_new_saving: "Saving...",
     password_new_mismatch: "Passwords do not match.",
@@ -732,6 +736,9 @@ const translations = {
     password_cancel: "Скасувати і повернутися",
     password_mismatch: "Нові паролі не збігаються.",
     password_success: "Пароль змінено успішно! Перенаправляємо на вхід...",
+    password_strength_weak: "слабкий",
+    password_strength_normal: "нормальний",
+    password_strength_strong: "надійний",
 
     password_reset_title: "Скинути пароль",
     password_reset_subtitle:
@@ -742,6 +749,7 @@ const translations = {
     password_reset_error: "Не вдалося надіслати посилання.",
 
     password_new_title: "Створи новий пароль",
+    password_new_subtitle: "Введи новий пароль нижче",
     password_new_save: "Зберегти новий пароль",
     password_new_saving: "Зберігаємо...",
     password_new_mismatch: "Паролі не збігаються.",
