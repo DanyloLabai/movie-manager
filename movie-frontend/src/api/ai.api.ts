@@ -48,4 +48,16 @@ export async function watchTogether(
   return res.data as { message?: string; movies?: MovieResult[] };
 }
 
-export default { getHistory, postHistory, aiSearch, watchTogether };
+export type AiUsage = {
+  requestCount: number;
+  totalTokens: number;
+  requestLimit: number;
+  tokenLimit: number;
+};
+
+export async function getUsage(): Promise<AiUsage> {
+  const res = await api.get("/ai/usage");
+  return res.data as AiUsage;
+}
+
+export default { getHistory, postHistory, aiSearch, watchTogether, getUsage };

@@ -52,23 +52,21 @@ export const MovieCarousel = ({
 
   return (
     <section>
-      <div className="relative flex justify-between items-center mb-4 pb-3">
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-[#c8963c]/50 via-[#c8963c]/10 to-transparent" />
-        <div className="flex items-center gap-2">
-          <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
-            {title}
-          </h2>
-          {badge && <span className={badgeClass}>{badge}</span>}
-        </div>
+      <div className="flex items-center gap-3.5 mb-4">
+        <span className="font-mono-ui text-[11px] sm:text-[11.5px] font-semibold tracking-[3px] text-[#d9ac54] uppercase whitespace-nowrap">
+          {title}
+        </span>
+        {badge && <span className={badgeClass}>{badge}</span>}
+        <div className="flex-1 h-px bg-[rgba(217,172,84,.14)]" />
 
         {!isLoading && movies?.length > 0 && (
-          <div className="flex gap-1 sm:gap-2">
+          <div className="flex gap-2 shrink-0">
             <button
               onClick={() => scroll("left")}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg btn-glass btn-glass-dark text-[#f0e6cc]/50 hover:text-[#c8963c] hover:shadow-[0_0_14px_-3px_rgba(200,150,60,0.6)] transition active:scale-95"
+              className="w-[26px] h-[26px] flex items-center justify-center rounded-full border border-white/[.15] text-[#8f8574] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] transition active:scale-95"
             >
               <svg
-                className="w-4 h-4"
+                className="w-3.5 h-3.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -83,10 +81,10 @@ export const MovieCarousel = ({
             </button>
             <button
               onClick={() => scroll("right")}
-              className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg btn-glass btn-glass-dark text-[#f0e6cc]/50 hover:text-[#c8963c] hover:shadow-[0_0_14px_-3px_rgba(200,150,60,0.6)] transition active:scale-95"
+              className="w-[26px] h-[26px] flex items-center justify-center rounded-full border border-white/[.15] text-[#8f8574] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] transition active:scale-95"
             >
               <svg
-                className="w-4 h-4"
+                className="w-3.5 h-3.5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -130,7 +128,7 @@ export const MovieCarousel = ({
         </div>
       ) : (
         emptyElement || (
-          <p className="text-[#f0e6cc]/50 text-center text-sm">
+          <p className="text-[#f2ead9]/50 text-center text-sm">
             {t("search_empty")}
           </p>
         )

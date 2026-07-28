@@ -24,15 +24,15 @@ export default function ActivityDayTooltip({
 
   return (
     <div style={style} className="pointer-events-none animate-fade-in">
-      <div className="bg-[#1a1714] border border-[#c8963c]/50 rounded-xl shadow-2xl p-2.5">
-        <p className="text-[9px] font-black text-[#c8963c] uppercase tracking-widest mb-1.5">
+      <div className="bg-[#0f0d0a] border border-[#d9ac54]/50 rounded-xl shadow-2xl p-2.5">
+        <p className="font-mono-ui text-[9px] font-semibold text-[#d9ac54] uppercase tracking-widest mb-1.5">
           {formatted} · {day.count}
         </p>
         <div className="flex flex-col gap-1">
           {visible.map((action, i) => (
             <div
               key={i}
-              className="flex items-center gap-1.5 text-[10px] text-[#f0e6cc]"
+              className="flex items-center gap-1.5 font-ui text-[10px] text-[#f2ead9]"
             >
               <span className="shrink-0">
                 {ACTIVITY_ACTION_ICONS[action.actionType]}
@@ -42,7 +42,7 @@ export default function ActivityDayTooltip({
           ))}
         </div>
         {remaining > 0 && (
-          <p className="text-[9px] text-[#f0e6cc]/50 mt-1 italic">
+          <p className="font-ui text-[9px] text-[#8f8574] mt-1 italic">
             {t("activity_and_more").replace("[X]", String(remaining))}
           </p>
         )}

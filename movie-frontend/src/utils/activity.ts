@@ -10,11 +10,11 @@ export interface HeatmapDay extends ActivityDay {
 // 5 shades from the card background up to the full accent color, used for
 // both the grid squares and the "Less ... More" legend.
 export const ACTIVITY_LEVEL_CLASSES = [
-  "bg-[#1a1714] border border-[#c8963c]/10",
-  "bg-[#c8963c]/25",
-  "bg-[#c8963c]/45",
-  "bg-[#c8963c]/70",
-  "bg-[#c8963c]",
+  "bg-white/[.045]",
+  "bg-[#3a2f1a]",
+  "bg-[#6b5426]",
+  "bg-[#a5822f]",
+  "bg-[#d9ac54]",
 ];
 
 export function getActivityLevel(count: number): number {

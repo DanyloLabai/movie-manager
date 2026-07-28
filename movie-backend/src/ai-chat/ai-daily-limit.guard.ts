@@ -9,8 +9,8 @@ import { ConfigService } from '@nestjs/config';
 import { AiUsageLogService } from './ai-usage-log.service';
 import { AuthenticatedRequest } from './ai-chat.controller';
 
-const DEFAULT_DAILY_REQUEST_LIMIT = 40;
-const DEFAULT_DAILY_TOKEN_LIMIT = 60000;
+export const DEFAULT_DAILY_REQUEST_LIMIT = 15;
+export const DEFAULT_DAILY_TOKEN_LIMIT = 60000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // Protects our shared Groq/Gemini API keys from being exhausted by a single

@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
 import * as usersApi from "../api/users.api";
-import LogoImg from "../assets/logo.png";
 
 import { useLang } from "../context/LanguageContext";
 import { MovieCarousel } from "../components/movie/MovieCarousel";
@@ -10,6 +9,7 @@ import { BecauseYouWatchedCarousel } from "../components/movie/BecauseYouWatched
 import { FriendActivityCarousel } from "../components/movie/FriendActivityCarousel";
 import { MovieCard } from "../components/movie/MovieCard";
 import NotificationBell from "../components/NotificationBell";
+import LogoIcon from "../components/LogoIcon";
 import { SearchFilterBar } from "../components/search/SearchFilterBar";
 import type { MovieResult } from "../types/movie.types";
 import type { SmartSearchFilters, BecauseYouWatchedResponse } from "../api/movies.api";
@@ -373,6 +373,16 @@ export default function Search() {
       .catch(() => {});
   };
 
+  const handleClearSearchHistory = async () => {
+    setSearchHistory([]);
+    try {
+      await usersApi.clearSearchHistory();
+      showToast(t("search_history_cleared"));
+    } catch {
+      fetchSearchHistory();
+    }
+  };
+
   useEffect(() => {
     fetchSearchHistory();
   }, []);
@@ -522,33 +532,24 @@ export default function Search() {
           id="load-more-trigger"
           className="h-20 mt-4 flex justify-center items-center"
         >
-          <div className="w-8 h-8 border-4 border-[#1a1714] border-t-[#c8963c] rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-4 border-[#14110d] border-t-[#d9ac54] rounded-full animate-spin"></div>
         </div>
       )}
     </>
   );
 
   return (
-    <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      <div className="sm:hidden sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
-        <header className="flex flex-row items-center justify-between gap-3 sm:gap-4 py-4 sm:py-5 px-4 sm:px-8 w-full">
+    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
+      <div className="sm:hidden sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] mb-6 pt-[env(safe-area-inset-top)]">
+        <header className="flex flex-row items-center justify-between gap-3 py-4 px-4 w-full">
           <Link
             to="/search"
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity shrink-0"
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0"
           >
-            <img
-              src={LogoImg}
-              alt="LUMEN Logo"
-              className="h-10 sm:h-12 w-auto object-contain"
-            />
-            <div className="flex flex-col justify-center">
-              <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-                LUMEN
-              </h1>
-              <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-                {t("app_tagline")}
-              </span>
-            </div>
+            <span className="font-ui font-bold text-[17px] tracking-[4px] text-[#d9ac54]">
+              LUMEN
+            </span>
+            <LogoIcon />
           </Link>
 
           <div className="flex items-center gap-2 shrink-0">
@@ -557,17 +558,17 @@ export default function Search() {
         </header>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12 sm:pt-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12 sm:pt-9">
         <form
           onSubmit={handleSearch}
-          className="relative max-w-2xl mx-auto mb-6 rounded-full transition-shadow focus-within:shadow-[0_0_0_3px_rgba(200,150,60,0.15),0_0_36px_-8px_rgba(200,150,60,0.55)]"
+          className="relative max-w-2xl mx-auto mb-4 rounded-full transition-shadow"
         >
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t("search_placeholder")}
-            className="w-full pl-6 pr-32 py-3.5 sm:py-4 glass-panel border border-[#c8963c]/30 rounded-full text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] shadow-inner transition text-sm sm:text-base font-medium tracking-wide"
+            className="w-full pl-6 pr-32 py-3.5 sm:py-4 bg-white/[.03] border border-[#d9ac54]/30 rounded-full text-[#f2ead9] placeholder-[#8f8574] focus:outline-none focus:border-[#d9ac54] transition text-sm sm:text-base font-medium tracking-wide"
           />
           <div className="absolute right-2 top-0 bottom-0 flex items-center gap-1">
             {searchQuery.trim() !== "" && (
@@ -577,8 +578,8 @@ export default function Search() {
                 title={t("search_filters_toggle")}
                 className={`w-8 h-8 flex items-center justify-center rounded-full transition ${
                   showFilters || hasActiveFilters
-                    ? "text-[#c8963c] bg-[#c8963c]/10"
-                    : "text-[#f0e6cc]/50 hover:text-[#c8963c]"
+                    ? "text-[#d9ac54] bg-[#d9ac54]/10"
+                    : "text-[#8f8574] hover:text-[#d9ac54]"
                 }`}
               >
                 <svg
@@ -600,7 +601,7 @@ export default function Search() {
               <button
                 type="button"
                 onClick={handleClearSearch}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-[#f0e6cc]/50 hover:text-[#c8963c] transition text-sm"
+                className="w-8 h-8 flex items-center justify-center rounded-full text-[#8f8574] hover:text-[#d9ac54] transition text-sm"
               >
                 ✕
               </button>
@@ -608,28 +609,9 @@ export default function Search() {
             <button
               type="submit"
               disabled={isSearching || !searchQuery.trim()}
-              className="px-4 sm:px-5 h-10 flex items-center gap-1.5 btn-glass btn-glass-gold text-[#12100e] rounded-full font-black transition active:scale-95 disabled:cursor-not-allowed text-xs sm:text-sm uppercase tracking-wider mr-1"
+              className="px-4 sm:px-6 h-10 flex items-center gap-1.5 bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] rounded-full font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 text-xs sm:text-sm uppercase tracking-[2px] mr-1"
             >
-              {isSearching ? (
-                "..."
-              ) : (
-                <>
-                  <svg
-                    className="w-4 h-4 shrink-0"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2.5"
-                      d="M21 21l-4.35-4.35m0 0a7 7 0 10-9.9-9.9 7 7 0 009.9 9.9z"
-                    />
-                  </svg>
-                  <span>{t("search_find")}</span>
-                </>
-              )}
+              {isSearching ? "..." : t("search_find")}
             </button>
           </div>
         </form>
@@ -638,8 +620,8 @@ export default function Search() {
           !isSearching &&
           results.length === 0 &&
           searchQuery.trim() === "" && (
-            <div className="max-w-2xl mx-auto mb-6 flex flex-wrap items-center justify-center gap-2">
-              <span className="text-[10px] font-bold text-[#f0e6cc]/40 uppercase tracking-widest mr-1">
+            <div className="max-w-2xl mx-auto mb-8 flex flex-wrap items-center justify-center gap-2">
+              <span className="font-mono-ui text-[10px] font-medium tracking-[2px] text-[#645c4d] uppercase mr-1">
                 {t("search_recent_label")}
               </span>
               {searchHistory.map((query) => (
@@ -647,11 +629,18 @@ export default function Search() {
                   key={query}
                   type="button"
                   onClick={() => handleSearch(query)}
-                  className="px-3 py-1.5 rounded-full text-xs font-semibold text-[#f0e6cc]/70 btn-glass btn-glass-dark hover:text-[#c8963c] hover:shadow-[0_0_14px_-3px_rgba(200,150,60,0.6)] transition"
+                  className="px-3.5 py-1.5 rounded-full text-[11.5px] text-[#c9c0ac] border border-white/[.12] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] transition"
                 >
                   {query}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={handleClearSearchHistory}
+                className="ml-1 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider text-[#d9ac54] border border-[#d9ac54]/50 hover:bg-[#d9ac54]/10 hover:border-[#d9ac54] transition"
+              >
+                ✕ {t("search_clear_recent")}
+              </button>
             </div>
           )}
 
@@ -668,7 +657,7 @@ export default function Search() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-10">
                 <Link
                   to="/top100/movie"
-                  className="relative group overflow-hidden rounded-2xl aspect-[16/9] border border-[#c8963c]/30 shadow-xl bg-[#1a1714] transition-all duration-300 hover:border-[#c8963c]/70 hover:scale-[1.01] hover:shadow-[0_0_40px_-10px_rgba(200,150,60,0.55)]"
+                  className="relative group overflow-hidden rounded-[10px] aspect-[16/9] bg-[#14110d] transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgba(217,172,84,.5)]"
                 >
                   {trending[0]?.posterUrl && (
                     <img
@@ -678,23 +667,26 @@ export default function Search() {
                       className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-55 group-hover:scale-105 transition-all duration-700"
                     />
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#12100e] via-[#12100e]/70 to-transparent" />
-                  <div className="relative z-10 flex flex-col items-start gap-1 sm:gap-2 h-full justify-end p-4 sm:p-6">
-                    <span className="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-1 rounded backdrop-blur-sm border border-[#c8963c]/30 uppercase tracking-widest">
-                      {t("search_collection_tag")}
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0f0d0a] via-[#0f0d0a]/40 to-transparent" />
+                  <div className="relative z-10 flex flex-col items-start gap-2 h-full justify-end p-5 sm:p-8">
+                    <span className="font-mono-ui text-[9px] sm:text-[9.5px] font-semibold tracking-[2.5px] text-[#d9ac54] border border-[#d9ac54]/45 rounded-full px-3 py-1">
+                      {t("search_collection_tag").toUpperCase()}
                     </span>
-                    <h3 className="text-[#f0e6cc] font-black uppercase tracking-wide text-base sm:text-2xl drop-shadow-lg leading-tight">
+                    <h3 className="text-[#f2ead9] font-bold text-xl sm:text-3xl leading-none -tracking-[.3px]">
                       {t("top100_movies")}
                     </h3>
-                    <p className="text-[#f0e6cc]/60 text-[10px] sm:text-sm font-semibold">
+                    <p className="text-[#8f8574] text-[11px] sm:text-[12.5px] font-medium">
                       {t("search_all_time")}
                     </p>
                   </div>
+                  <span className="absolute right-5 sm:right-6 bottom-5 sm:bottom-6 text-lg sm:text-xl font-semibold text-[#d9ac54] z-10">
+                    →
+                  </span>
                 </Link>
 
                 <Link
                   to="/top100/tv"
-                  className="relative group overflow-hidden rounded-2xl aspect-[16/9] border border-[#c8963c]/30 shadow-xl bg-[#1a1714] transition-all duration-300 hover:border-[#c8963c]/70 hover:scale-[1.01] hover:shadow-[0_0_40px_-10px_rgba(200,150,60,0.55)]"
+                  className="relative group overflow-hidden rounded-[10px] aspect-[16/9] bg-[#14110d] transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgba(217,172,84,.5)]"
                 >
                   {upcoming[0]?.posterUrl && (
                     <img
@@ -704,33 +696,36 @@ export default function Search() {
                       className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-55 group-hover:scale-105 transition-all duration-700"
                     />
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#12100e] via-[#12100e]/70 to-transparent" />
-                  <div className="relative z-10 flex flex-col items-start gap-1 sm:gap-2 h-full justify-end p-4 sm:p-6">
-                    <span className="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-1 rounded backdrop-blur-sm border border-[#c8963c]/30 uppercase tracking-widest">
-                      {t("search_curated_tag")}
+                  <div className="absolute inset-0 bg-gradient-to-r from-[#0f0d0a] via-[#0f0d0a]/40 to-transparent" />
+                  <div className="relative z-10 flex flex-col items-start gap-2 h-full justify-end p-5 sm:p-8">
+                    <span className="font-mono-ui text-[9px] sm:text-[9.5px] font-semibold tracking-[2.5px] text-[#d9ac54] border border-[#d9ac54]/45 rounded-full px-3 py-1">
+                      {t("search_curated_tag").toUpperCase()}
                     </span>
-                    <h3 className="text-[#f0e6cc] font-black uppercase tracking-wide text-base sm:text-2xl drop-shadow-lg leading-tight">
+                    <h3 className="text-[#f2ead9] font-bold text-xl sm:text-3xl leading-none -tracking-[.3px]">
                       {t("top100_tv")}
                     </h3>
-                    <p className="text-[#f0e6cc]/60 text-[10px] sm:text-sm font-semibold">
+                    <p className="text-[#8f8574] text-[11px] sm:text-[12.5px] font-medium">
                       {t("search_highest_rated")}
                     </p>
                   </div>
+                  <span className="absolute right-5 sm:right-6 bottom-5 sm:bottom-6 text-lg sm:text-xl font-semibold text-[#d9ac54] z-10">
+                    →
+                  </span>
                 </Link>
               </div>
             )}
           {results.length > 0 ? (
             <>
               <div className="relative flex justify-between items-center mb-6 pb-3">
-                <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-[#c8963c]/50 via-[#c8963c]/10 to-transparent" />
-                <h2 className="text-xs sm:text-sm font-black text-[#c8963c] uppercase tracking-widest">
+                <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-[#d9ac54]/50 via-[#d9ac54]/10 to-transparent" />
+                <h2 className="text-xs sm:text-sm font-black text-[#d9ac54] uppercase tracking-widest">
                   {similarToTitle
                     ? `${t("search_similar_to")} "${similarToTitle}"`
                     : t("search_results")}
                 </h2>
                 <button
                   onClick={handleClearSearch}
-                  className="text-[10px] sm:text-xs font-bold text-[#f0e6cc]/60 hover:text-[#c8963c] transition uppercase tracking-wider"
+                  className="text-[10px] sm:text-xs font-bold text-[#f2ead9]/60 hover:text-[#d9ac54] transition uppercase tracking-wider"
                 >
                   {t("common_go_back")}
                 </button>
@@ -739,13 +734,13 @@ export default function Search() {
             </>
           ) : searchQuery.trim() !== "" ? (
             !isSearching && (
-              <div className="text-center mt-10 border border-[#c8963c]/20 glass-panel p-10 rounded-3xl max-w-sm mx-auto shadow-2xl">
-                <p className="text-[#f0e6cc]/60 text-lg mb-6 font-semibold">
+              <div className="text-center mt-10 border border-[#d9ac54]/20 glass-panel p-10 rounded-3xl max-w-sm mx-auto shadow-2xl">
+                <p className="text-[#f2ead9]/60 text-lg mb-6 font-semibold">
                   {t("search_empty")}
                 </p>
                 <button
                   onClick={handleClearSearch}
-                  className="text-sm font-bold text-[#c8963c] hover:text-[#e8c070] transition uppercase tracking-widest"
+                  className="text-sm font-bold text-[#d9ac54] hover:text-[#e8c377] transition uppercase tracking-widest"
                 >
                   {t("common_go_back")}
                 </button>
@@ -756,7 +751,7 @@ export default function Search() {
               <MovieCarousel
                 title={t("search_trending")}
                 badge={t("search_hot")}
-                badgeClass="bg-red-500/20 text-red-500 text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/30"
+                badgeClass="font-mono-ui text-[8.5px] font-bold tracking-[1.5px] text-[#e0554d] border border-[#e0554d]/45 rounded-full px-2 py-1"
                 movies={trending}
                 isLoading={isLoadingHome && trending.length === 0}
                 fallback={
@@ -765,7 +760,7 @@ export default function Search() {
                       {[0, 0.1, 0.2].map((delay, i) => (
                         <div
                           key={i}
-                          className="w-2.5 h-2.5 bg-[#c8963c] rounded-full animate-bounce"
+                          className="w-2.5 h-2.5 bg-[#d9ac54] rounded-full animate-bounce"
                           style={{ animationDelay: `${delay}s` }}
                         />
                       ))}
@@ -773,7 +768,7 @@ export default function Search() {
                   </div>
                 }
                 emptyElement={
-                  <p className="text-[#f0e6cc]/50 text-center text-sm">
+                  <p className="text-[#f2ead9]/50 text-center text-sm">
                     {t("search_failed_trends")}
                   </p>
                 }
@@ -786,17 +781,15 @@ export default function Search() {
                 onFindSimilar={handleFindSimilar}
               />
 
-              <FriendActivityCarousel items={friendsActivity} />
-
               <MovieCarousel
                 title={t("search_coming_soon")}
                 badge={t("search_new")}
-                badgeClass="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30"
+                badgeClass="font-mono-ui text-[8.5px] font-bold tracking-[1.5px] text-[#d9ac54] border border-[#d9ac54]/45 rounded-full px-2 py-1"
                 movies={upcoming.slice(0, 10)}
                 isLoading={isLoadingHome && upcoming.length === 0}
                 fallback={
                   <div className="flex justify-center items-center h-24">
-                    <p className="text-[#f0e6cc]/50 animate-pulse text-xs sm:text-sm font-semibold uppercase tracking-widest">
+                    <p className="text-[#f2ead9]/50 animate-pulse text-xs sm:text-sm font-semibold uppercase tracking-widest">
                       {t("search_failed_trends")}
                     </p>
                   </div>
@@ -810,55 +803,76 @@ export default function Search() {
                 onFindSimilar={handleFindSimilar}
               />
 
-              <MovieCarousel
-                title={t("chat_recommended")}
-                badge="AI"
-                badgeClass="bg-[#c8963c]/20 text-[#c8963c] text-[8px] sm:text-[10px] font-bold px-2 py-0.5 rounded border border-[#c8963c]/30"
-                movies={visibleRecommendations}
-                isLoading={isLoadingHome && recommendations.length === 0}
-                fallback={
-                  <div className="flex justify-center items-center h-24">
-                    <p className="text-[#f0e6cc]/50 animate-pulse text-xs sm:text-sm font-semibold uppercase tracking-widest">
-                      {t("search_ai_curating")}
-                    </p>
-                  </div>
-                }
-                emptyElement={
-                  <div className="text-center p-8 bg-[#1a1714] rounded-2xl border border-[#c8963c]/30 border-dashed">
-                    <p className="text-[#f0e6cc]/60 text-sm font-medium">
-                      {t("search_ai_empty")}
-                    </p>
-                  </div>
-                }
-                favoriteIds={favoriteIds}
-                addedIds={addedIds}
-                watchedIds={watchedIds}
-                onToggleFavorite={handleToggleFavorite}
-                onAdd={handleAdd}
-                onRemove={handleRemove}
-                onFindSimilar={handleFindSimilar}
-              />
+              <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+                <div className="flex-[2.2] min-w-0">
+                  <MovieCarousel
+                    title={t("chat_recommended")}
+                    badge="AI"
+                    badgeClass="font-mono-ui text-[8.5px] font-bold tracking-[1.5px] text-[#d9ac54] border border-[#d9ac54]/45 rounded-full px-2 py-1"
+                    movies={visibleRecommendations}
+                    isLoading={isLoadingHome && recommendations.length === 0}
+                    fallback={
+                      <div className="flex justify-center items-center h-24">
+                        <p className="text-[#f2ead9]/50 animate-pulse text-xs sm:text-sm font-semibold uppercase tracking-widest">
+                          {t("search_ai_curating")}
+                        </p>
+                      </div>
+                    }
+                    emptyElement={
+                      <div className="text-center p-8 border border-[#d9ac54]/20 rounded-[10px] border-dashed">
+                        <p className="text-[#f2ead9]/60 text-sm font-medium">
+                          {t("search_ai_empty")}
+                        </p>
+                      </div>
+                    }
+                    favoriteIds={favoriteIds}
+                    addedIds={addedIds}
+                    watchedIds={watchedIds}
+                    onToggleFavorite={handleToggleFavorite}
+                    onAdd={handleAdd}
+                    onRemove={handleRemove}
+                    onFindSimilar={handleFindSimilar}
+                  />
 
-              {becauseYouWatched && visibleBecauseYouWatched.length > 0 && (
-                <BecauseYouWatchedCarousel
-                  basedOnMovie={becauseYouWatched.basedOnMovie}
-                  similarMovies={visibleBecauseYouWatched}
-                  favoriteIds={favoriteIds}
-                  addedIds={addedIds}
-                  watchedIds={watchedIds}
-                  onToggleFavorite={handleToggleFavorite}
-                  onAdd={handleAdd}
-                  onRemove={handleRemove}
-                  onFindSimilar={handleFindSimilar}
-                />
-              )}
+                  {becauseYouWatched && visibleBecauseYouWatched.length > 0 && (
+                    <div className="mt-12">
+                      <BecauseYouWatchedCarousel
+                        basedOnMovie={becauseYouWatched.basedOnMovie}
+                        similarMovies={visibleBecauseYouWatched}
+                        favoriteIds={favoriteIds}
+                        addedIds={addedIds}
+                        watchedIds={watchedIds}
+                        onToggleFavorite={handleToggleFavorite}
+                        onAdd={handleAdd}
+                        onRemove={handleRemove}
+                        onFindSimilar={handleFindSimilar}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {friendsActivity.length > 0 && (
+                  <>
+                    <div className="hidden lg:block w-px bg-[rgba(217,172,84,.16)]" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3.5 mb-4">
+                        <span className="font-mono-ui text-[11px] sm:text-[11.5px] font-semibold tracking-[3px] text-[#d9ac54] uppercase whitespace-nowrap">
+                          {t("search_friends_activity")}
+                        </span>
+                        <div className="flex-1 h-px bg-[rgba(217,172,84,.14)]" />
+                      </div>
+                      <FriendActivityCarousel items={friendsActivity} />
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </main>
       </div>
 
       {toastMessage && (
-        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] uppercase tracking-widest px-6 py-4 rounded-xl shadow-2xl flex items-center justify-center z-50 animate-fade-in">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 bg-[#14110d] border border-[#d9ac54]/50 text-[#d9ac54] uppercase tracking-widest px-6 py-4 rounded-xl shadow-2xl flex items-center justify-center z-50 animate-fade-in">
           <span className="font-bold text-[10px] sm:text-xs text-center">
             {toastMessage}
           </span>

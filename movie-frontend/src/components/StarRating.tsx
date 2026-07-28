@@ -59,9 +59,9 @@ export default function StarRating({
               style={{ fontSize }}
               className="relative flex-1 min-w-0 flex items-center justify-center leading-none transition-all active:scale-125 disabled:opacity-50 disabled:pointer-events-none"
             >
-              <span className="text-[#f0e6cc]/20">★</span>
+              <span className="text-[#3d372c]">★</span>
               <span
-                className="absolute inset-0 flex items-center justify-center text-[#c8963c]"
+                className="absolute inset-0 flex items-center justify-center text-[#d9ac54]"
                 style={{ clipPath: `inset(0 ${100 - fillPercent}% 0 0)` }}
               >
                 ★

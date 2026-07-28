@@ -374,6 +374,7 @@ describe('UsersService', () => {
       const result = await service.getPublicProfile(1, 2);
 
       expect(result.isFriend).toBe(true);
+      expect(result.requestPending).toBe(false);
       expect(result.watchedCount).toBe(42);
     });
 
@@ -381,10 +382,24 @@ describe('UsersService', () => {
       const targetUser = buildUser({ id: 1, friends: [] });
       mockUsersRepository.findOne.mockResolvedValue(targetUser);
       mockMoviesService.getProfileData.mockResolvedValue({});
+      mockFriendRequestRepository.findOne.mockResolvedValueOnce(null);
 
       const result = await service.getPublicProfile(1, 99);
 
       expect(result.isFriend).toBe(false);
+      expect(result.requestPending).toBe(false);
+    });
+
+    it('should return requestPending = true when a request was already sent', async () => {
+      const targetUser = buildUser({ id: 1, friends: [] });
+      mockUsersRepository.findOne.mockResolvedValue(targetUser);
+      mockMoviesService.getProfileData.mockResolvedValue({});
+      mockFriendRequestRepository.findOne.mockResolvedValueOnce({ id: 5 });
+
+      const result = await service.getPublicProfile(1, 99);
+
+      expect(result.isFriend).toBe(false);
+      expect(result.requestPending).toBe(true);
     });
 
     it('should throw NotFoundException when target profile does not exist', async () => {
