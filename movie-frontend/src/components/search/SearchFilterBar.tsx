@@ -20,12 +20,12 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
   };
 
   const numberInputClass =
-    "w-20 px-3 py-2 bg-[#1a1714] border border-[#c8963c]/30 rounded-lg text-[#f0e6cc] placeholder-[#f0e6cc]/30 focus:outline-none focus:border-[#c8963c] text-sm";
+    "w-20 px-3 py-2 bg-[#14110d] border border-[#d9ac54]/30 rounded-lg text-[#f2ead9] placeholder-[#f2ead9]/30 focus:outline-none focus:border-[#d9ac54] text-sm";
 
   return (
-    <div className="flex flex-wrap items-center gap-4 sm:gap-6 mb-6 p-4 bg-[#1a1714]/60 border border-[#c8963c]/20 rounded-2xl">
+    <div className="flex flex-wrap items-center gap-4 sm:gap-6 mb-6 p-4 bg-[#14110d]/60 border border-[#d9ac54]/20 rounded-2xl">
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-bold text-[#f0e6cc]/50 uppercase tracking-widest">
+        <span className="text-[10px] font-bold text-[#f2ead9]/50 uppercase tracking-widest">
           {t("filter_genre")}
         </span>
         <select
@@ -36,7 +36,7 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
               e.target.value ? Number(e.target.value) : undefined,
             )
           }
-          className="px-3 py-2 bg-[#1a1714] border border-[#c8963c]/30 rounded-lg text-[#f0e6cc] focus:outline-none focus:border-[#c8963c] text-sm"
+          className="px-3 py-2 bg-[#14110d] border border-[#d9ac54]/30 rounded-lg text-[#f2ead9] focus:outline-none focus:border-[#d9ac54] text-sm"
         >
           <option value="">{t("filter_any_genre")}</option>
           {TMDB_GENRES.map((genre) => (
@@ -48,7 +48,7 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-bold text-[#f0e6cc]/50 uppercase tracking-widest">
+        <span className="text-[10px] font-bold text-[#f2ead9]/50 uppercase tracking-widest">
           {t("filter_year")}
         </span>
         <div className="flex items-center gap-2">
@@ -65,7 +65,7 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
             }
             className={numberInputClass}
           />
-          <span className="text-[#f0e6cc]/30">–</span>
+          <span className="text-[#f2ead9]/30">–</span>
           <input
             type="number"
             inputMode="numeric"
@@ -83,7 +83,7 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-bold text-[#f0e6cc]/50 uppercase tracking-widest">
+        <span className="text-[10px] font-bold text-[#f2ead9]/50 uppercase tracking-widest">
           {t("filter_min_rating")}
         </span>
         <div className="flex items-center gap-1.5">
@@ -92,8 +92,8 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
             onClick={() => setFilter("minRating", undefined)}
             className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition ${
               filters.minRating === undefined
-                ? "btn-glass btn-glass-gold text-[#12100e]"
-                : "border border-[#c8963c]/30 text-[#f0e6cc]/60 hover:border-[#c8963c]"
+                ? "btn-glass btn-glass-gold text-[#0f0d0a]"
+                : "border border-[#d9ac54]/30 text-[#f2ead9]/60 hover:border-[#d9ac54]"
             }`}
           >
             {t("filter_any_rating")}
@@ -105,8 +105,8 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
               onClick={() => setFilter("minRating", tier)}
               className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider transition ${
                 filters.minRating === tier
-                  ? "btn-glass btn-glass-gold text-[#12100e]"
-                  : "border border-[#c8963c]/30 text-[#f0e6cc]/60 hover:border-[#c8963c]"
+                  ? "btn-glass btn-glass-gold text-[#0f0d0a]"
+                  : "border border-[#d9ac54]/30 text-[#f2ead9]/60 hover:border-[#d9ac54]"
               }`}
             >
               {tier}+
@@ -116,7 +116,7 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-bold text-[#f0e6cc]/50 uppercase tracking-widest">
+        <span className="text-[10px] font-bold text-[#f2ead9]/50 uppercase tracking-widest">
           {t("filter_runtime")}
         </span>
         <div className="flex items-center gap-2">
@@ -133,7 +133,7 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
             }
             className={numberInputClass}
           />
-          <span className="text-[#f0e6cc]/30">–</span>
+          <span className="text-[#f2ead9]/30">–</span>
           <input
             type="number"
             inputMode="numeric"
@@ -158,15 +158,15 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
           className="peer sr-only"
         />
         <span
-          className={`w-4 h-4 rounded border flex items-center justify-center transition peer-focus-visible:ring-2 peer-focus-visible:ring-[#c8963c]/50 ${
+          className={`w-4 h-4 rounded border flex items-center justify-center transition peer-focus-visible:ring-2 peer-focus-visible:ring-[#d9ac54]/50 ${
             filters.excludeWatched
-              ? "bg-[#c8963c] border-[#c8963c]"
-              : "bg-[#1a1714] border-[#c8963c]/30 hover:border-[#c8963c]"
+              ? "bg-[#d9ac54] border-[#d9ac54]"
+              : "bg-[#14110d] border-[#d9ac54]/30 hover:border-[#d9ac54]"
           }`}
         >
           {filters.excludeWatched && (
             <svg
-              className="w-3 h-3 text-[#12100e]"
+              className="w-3 h-3 text-[#0f0d0a]"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -180,7 +180,7 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
             </svg>
           )}
         </span>
-        <span className="text-xs font-bold text-[#f0e6cc]/70 uppercase tracking-wider">
+        <span className="text-xs font-bold text-[#f2ead9]/70 uppercase tracking-wider">
           {t("filter_hide_watched")}
         </span>
       </label>

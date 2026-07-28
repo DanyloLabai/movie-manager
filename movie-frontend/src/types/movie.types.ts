@@ -41,6 +41,7 @@ export interface ProfileData {
   watchedIds?: number[];
   inPlansIds?: number[];
   avatarUrl?: string | null;
+  memberSince?: string;
   watchedCount?: number;
   totalCount?: number;
   stats?: {

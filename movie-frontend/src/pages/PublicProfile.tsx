@@ -1,15 +1,28 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import * as usersApi from "../api/users.api";
 import * as aiApi from "../api/ai.api";
 import * as moviesApi from "../api/movies.api";
-import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import { getUserRank, getAchievementsList } from "../utils/achievements";
-import AchievementTooltip from "../components/AchievementTooltip";
-import RatingDistributionChart from "../components/RatingDistributionChart";
-import type { MovieResult } from "../types/movie.types";
+import ProfileHero from "../components/profile/ProfileHero";
+import ProfileSection from "../components/profile/ProfileSection";
+import ProfileStatsStrip from "../components/profile/ProfileStatsStrip";
+import ProfileFavoritesPanel from "../components/profile/ProfileFavoritesPanel";
+import ProfileWrappedPanel from "../components/profile/ProfileWrappedPanel";
+import ProfileChartsPanel from "../components/profile/ProfileChartsPanel";
+import LogoIcon from "../components/LogoIcon";
+import type { MovieResult, WatchlistItem } from "../types/movie.types";
+
+type PublicMovieRef = {
+  id: number;
+  tmdbId: number;
+  title: string;
+  posterUrl?: string | null;
+  mediaType: string;
+  isWatched?: boolean;
+  rating?: number | null;
+};
 
 type PublicProfileData = {
   id: number;
@@ -17,38 +30,16 @@ type PublicProfileData = {
   avatarUrl?: string | null;
   watchedCount?: number;
   totalCount?: number;
-  favorites?: Array<{
-    id: number;
-    tmdbId: number;
-    title: string;
-    posterUrl?: string | null;
-    mediaType: string;
-    isWatched?: boolean;
-    rating?: number | null;
-  }>;
-  recent?: Array<{
-    id: number;
-    tmdbId: number;
-    title: string;
-    posterUrl?: string | null;
-    mediaType: string;
-    isWatched?: boolean;
-    rating?: number | null;
-  }>;
+  favorites?: PublicMovieRef[];
+  recent?: PublicMovieRef[];
   isFriend?: boolean;
+  requestPending?: boolean;
   stats?: {
     genreDistribution?: Array<{ name: string; value: number }>;
     ratingDistribution?: Array<{ name: string; value: number }>;
     totalMinutes?: number;
     topGenre?: string;
-    topRated?: Array<{
-      id: number;
-      tmdbId: number;
-      title: string;
-      posterUrl?: string | null;
-      mediaType: string;
-      rating?: number;
-    }>;
+    topRated?: PublicMovieRef[];
     averageRating?: string | number;
     moviesCount?: number;
     tvCount?: number;
@@ -74,30 +65,23 @@ type TasteCompatibility = {
   }>;
 };
 
-const CHART_COLORS = ["#c8963c", "#9a732a", "#e8c070", "#5c4519", "#3a2b0f"];
+const isReleased = () => true; // public refs carry no release date — treat everything as released
 
-interface ChartTooltipProps {
-  active?: boolean;
-  payload?: Array<{
-    name: string;
-    value: number;
-    payload?: Record<string, unknown>;
-  }>;
+function toWatchlistItem(
+  m: PublicMovieRef,
+  defaults: { isFavorite: boolean; isWatched: boolean },
+): WatchlistItem {
+  return {
+    id: m.id,
+    tmdbId: m.tmdbId,
+    title: m.title,
+    posterUrl: m.posterUrl,
+    mediaType: m.mediaType,
+    rating: m.rating,
+    isFavorite: defaults.isFavorite,
+    isWatched: m.isWatched ?? defaults.isWatched,
+  };
 }
-
-const CustomTooltip = ({ active, payload }: ChartTooltipProps) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-[#1a1714] border border-[#c8963c]/50 p-2 rounded-xl shadow-xl z-50">
-        <p className="text-[#f0e6cc] font-bold text-[10px] uppercase tracking-widest whitespace-nowrap">
-          {payload[0].name}:{" "}
-          <span className="text-[#c8963c]">{payload[0].value}</span>
-        </p>
-      </div>
-    );
-  }
-  return null;
-};
 
 export default function PublicProfile() {
   const { t } = useLang();
@@ -130,9 +114,7 @@ export default function PublicProfile() {
   useEffect(() => {
     const fetchPublicProfile = async () => {
       try {
-        const data = await (
-          await import("../api/users.api")
-        ).getPublicProfile(id as string);
+        const data = await usersApi.getPublicProfile(id as string);
         setProfileData(data);
       } catch {
         setError(true);
@@ -200,24 +182,45 @@ export default function PublicProfile() {
     }
   };
 
+  const handleShare = async () => {
+    const url = window.location.href;
+    const nav = navigator as Navigator & {
+      share?: (data: { title?: string; url?: string }) => Promise<void>;
+    };
+    if (nav.share) {
+      try {
+        await nav.share({ title: profileData?.username, url });
+      } catch {
+        // user cancelled the native share sheet
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast(t("profile_link_copied"));
+    } catch {
+      showToast(t("profile_link_copied"));
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-[100dvh] bg-[#12100e] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-[#1a1714] border-t-[#c8963c] rounded-full animate-spin" />
+      <div className="min-h-[100dvh] bg-[#0f0d0a] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#14110d] border-t-[#d9ac54] rounded-full animate-spin" />
       </div>
     );
   }
 
   if (error || !profileData) {
     return (
-      <div className="min-h-[100dvh] bg-[#12100e] flex flex-col items-center justify-center text-center p-4">
-        <h1 className="text-5xl font-black text-[#c8963c] mb-3">404</h1>
-        <p className="text-[#f0e6cc]/60 mb-6 text-base font-medium">
+      <div className="min-h-[100dvh] bg-[#0f0d0a] flex flex-col items-center justify-center text-center p-4 font-ui">
+        <h1 className="text-5xl font-bold text-[#d9ac54] mb-3">404</h1>
+        <p className="text-[#8f8574] mb-6 text-base font-medium">
           {t("profile_not_found")}
         </p>
         <Link
           to="/search"
-          className="px-6 py-3 btn-glass btn-glass-gold text-[#12100e] font-black uppercase tracking-widest rounded-xl transition text-sm"
+          className="px-6 py-3 bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] font-bold uppercase tracking-widest rounded-full transition text-sm"
         >
           {t("profile_go_home")}
         </Link>
@@ -232,8 +235,8 @@ export default function PublicProfile() {
 
   const hasStats = Boolean(
     profileData?.stats &&
-    profileData.stats.genreDistribution &&
-    profileData.stats.genreDistribution.length > 0,
+      profileData.stats.genreDistribution &&
+      profileData.stats.genreDistribution.length > 0,
   );
 
   const achievementsList = getAchievementsList(
@@ -241,108 +244,101 @@ export default function PublicProfile() {
     t,
   );
 
+  const favorites = (profileData.favorites || []).map((m) =>
+    toWatchlistItem(m, { isFavorite: true, isWatched: true }),
+  );
+  const watchedRecent = (profileData.recent || [])
+    .filter((m) => m.isWatched)
+    .map((m) => toWatchlistItem(m, { isFavorite: false, isWatched: true }));
+  const topRated = (profileData.stats?.topRated || []).map((m) =>
+    toWatchlistItem(m, { isFavorite: false, isWatched: true }),
+  );
+
   const displayedMovies =
-    activeTab === "favorites"
-      ? profileData?.favorites || []
-      : profileData?.recent?.filter((m) => m.isWatched) || [];
+    activeTab === "favorites" ? favorites : watchedRecent;
+
+  const friendActionSlot = (
+    <>
+      {profileData.isFriend ? (
+        <div className="flex items-center justify-center gap-2 px-5 py-2.5 border border-[#d9ac54]/45 rounded-full font-ui font-semibold text-[11px] md:text-[12px] tracking-[1.5px] text-[#d9ac54] uppercase">
+          ✓ {t("profile_friends")}
+        </div>
+      ) : requestSent || profileData.requestPending ? (
+        <div className="flex items-center justify-center px-5 py-2.5 border border-white/[.15] rounded-full font-ui font-semibold text-[11px] md:text-[12px] tracking-[1.5px] text-[#8f8574] uppercase">
+          {t("profile_request_sent")}
+        </div>
+      ) : (
+        <button
+          onClick={handleAddFriend}
+          className="flex items-center justify-center px-5 py-2.5 bg-[#d9ac54] hover:bg-[#e8c377] rounded-full font-ui font-bold text-[11px] md:text-[12px] tracking-[1.5px] text-[#14110c] uppercase transition"
+        >
+          {t("profile_add_friend")}
+        </button>
+      )}
+      <button
+        onClick={handleShare}
+        className="flex items-center justify-center px-5 py-2.5 border border-white/[.18] rounded-full font-ui font-semibold text-[11px] md:text-[12px] tracking-[1.5px] text-[#c9c0ac] uppercase transition hover:border-[#d9ac54]/45 hover:text-[#d9ac54]"
+      >
+        {t("profile_share")}
+      </button>
+    </>
+  );
 
   return (
-    <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] selection:bg-[#c8963c] selection:text-[#12100e]">
-      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 pt-[env(safe-area-inset-top)]">
-        <header className="flex justify-between items-center px-4 sm:px-8 py-4 w-full">
+    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
+      <div className="sm:hidden sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] mb-6 pt-[env(safe-area-inset-top)]">
+        <header className="flex flex-row items-center justify-between gap-3 py-4 px-4 w-full">
           <Link
             to="/search"
-            className="flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0"
           >
-            <img
-              src={LogoImg}
-              alt="LUMEN™ Logo"
-              className="h-10 sm:h-12 w-auto object-contain"
-            />
-
-            <div className="flex flex-col justify-center">
-              <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-                LUMEN
-              </h1>
-              <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-                {t("app_tagline")}
-              </span>
-            </div>
+            <span className="font-ui font-bold text-[17px] tracking-[4px] text-[#d9ac54]">
+              LUMEN
+            </span>
+            <LogoIcon />
           </Link>
           <Link
             to="/watchlist"
-            className="text-[10px] sm:text-sm font-bold text-[#f0e6cc]/50 hover:text-[#c8963c] uppercase tracking-widest transition flex items-center gap-1.5 shrink-0"
+            className="font-mono-ui text-[10px] font-semibold tracking-[1.5px] text-[#8f8574] hover:text-[#d9ac54] transition uppercase"
           >
-            <svg
-              className="w-3 h-3 sm:w-4 sm:h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.5}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            {t("watchlist_title")}
+            ‹ {t("watchlist_title")}
           </Link>
         </header>
       </div>
 
-      <div className="px-3 py-6 space-y-4 max-w-3xl mx-auto">
-        <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
+      <div className="max-w-6xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12 sm:pt-9">
+        <div className="hidden sm:flex justify-end mb-3">
+          <Link
+            to="/watchlist"
+            className="font-mono-ui text-[10.5px] font-semibold tracking-[2px] text-[#8f8574] hover:text-[#d9ac54] transition uppercase"
+          >
+            ‹ {t("watchlist_title")}
+          </Link>
+        </div>
 
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-[#12100e] border-2 border-[#c8963c]/50 rounded-full flex items-center justify-center text-2xl font-black text-[#c8963c] shrink-0 overflow-hidden glow-gold-sm">
-              {profileData.avatarUrl ? (
-                <img
-                  src={profileData.avatarUrl}
-                  alt={profileData.username}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                profileData.username.charAt(0)
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-black text-[#f0e6cc] tracking-tight truncate">
-                {profileData.username}
-              </h2>
-              <p className="text-[10px] text-[#c8963c] font-bold uppercase tracking-[0.15em]">
-                {userRank}
-              </p>
-            </div>
-            <div className="shrink-0">
-              {profileData.isFriend ? (
-                <div className="px-3 py-1.5 bg-[#c8963c]/10 text-[#c8963c] rounded-full font-black uppercase text-[9px] flex items-center gap-1 border border-[#c8963c]/30">
-                  <span>✓</span> {t("profile_friends")}
-                </div>
-              ) : requestSent ? (
-                <div className="px-3 py-1.5 bg-[#f0e6cc]/5 text-[#f0e6cc]/40 rounded-full font-black uppercase text-[9px] border border-[#f0e6cc]/10">
-                  {t("profile_request_sent")}
-                </div>
-              ) : (
-                <button
-                  onClick={handleAddFriend}
-                  className="px-3 py-1.5 btn-glass btn-glass-gold text-[#12100e] rounded-full font-black uppercase text-[9px] transition active:scale-95"
-                >
-                  {t("profile_add_friend")}
-                </button>
-              )}
-            </div>
-          </div>
+        <div className="mb-6">
+          <ProfileHero
+            username={profileData.username}
+            avatarUrl={profileData.avatarUrl ?? null}
+            rank={userRank}
+            recent={[]}
+            friendsCount={0}
+            userId={profileData.id}
+            onOpenFriends={() => {}}
+            onShowToast={showToast}
+            rightSlot={friendActionSlot}
+          />
+        </div>
 
-          {profileData.isFriend && compat && compat.score !== null && (
+        {profileData.isFriend && compat && compat.score !== null && (
+          <ProfileSection>
             <button
               onClick={() => setIsCompatModalOpen(true)}
-              className="w-full flex items-center justify-between gap-3 p-3 mb-4 btn-glass btn-glass-dark rounded-xl transition"
+              className="w-full flex items-center justify-between gap-3 px-5 py-4 border border-[#d9ac54]/25 rounded-[10px] hover:border-[#d9ac54]/50 transition"
             >
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <svg
-                  className="w-5 h-5 text-[#c8963c]"
+                  className="w-4 h-4 text-[#d9ac54]"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -354,390 +350,124 @@ export default function PublicProfile() {
                     d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
                   />
                 </svg>
-                <span className="text-[10px] font-black uppercase tracking-widest text-[#f0e6cc]/70">
+                <span className="font-mono-ui text-[10.5px] font-semibold tracking-[2px] text-[#8f8574] uppercase">
                   {t("compat_title")}
                 </span>
               </div>
-              <span className="text-lg font-black text-[#c8963c]">
+              <span className="text-lg font-bold text-[#d9ac54]">
                 {Math.round(Math.max(0, Math.min(1, compat.score)) * 100)}%
               </span>
             </button>
-          )}
-
-        </div>
-
-        {/* Overview + Achievements bento */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="md:col-span-2 glass-panel border border-[#c8963c]/20 rounded-2xl p-4 sm:p-6">
-            <h3 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
-              {t("profile_overview")}
-            </h3>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              <div className="bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3 text-center">
-                <div className="text-xl sm:text-2xl font-black text-[#c8963c]">
-                  {watchedCount}
-                </div>
-                <div className="text-[8px] sm:text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
-                  {t("watchlist_watched")}
-                </div>
-              </div>
-              <div className="bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3 text-center">
-                <div className="text-xl sm:text-2xl font-black text-[#c8963c]">
-                  {profileData?.stats?.averageRating || "0.0"}
-                </div>
-                <div className="text-[8px] sm:text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
-                  {t("stats_avg")}
-                </div>
-              </div>
-              <div className="bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-3 text-center">
-                <div className="text-xl sm:text-2xl font-black text-[#c8963c]">
-                  {favoritesCount}
-                </div>
-                <div className="text-[8px] sm:text-[9px] text-[#f0e6cc]/40 uppercase font-bold tracking-widest">
-                  {t("watchlist_favorites")}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-panel border border-[#c8963c]/20 rounded-2xl p-4 sm:p-6">
-            <h3 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
-              {t("profile_achievements")}
-            </h3>
-            {achievementsList.some((a) => a.isUnlocked) ? (
-              <div className="flex flex-col gap-2 max-h-[220px] overflow-y-auto scrollbar-hide">
-                {achievementsList
-                  .filter((a) => a.isUnlocked)
-                  .map((ach) => (
-                    <div
-                      key={ach.id}
-                      className="flex items-center gap-3 bg-[#12100e] border border-[#c8963c]/10 p-2.5 rounded-lg"
-                    >
-                      <svg
-                        className="w-5 h-5 text-[#c8963c] shrink-0"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={1.5}
-                          d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35"
-                        />
-                      </svg>
-                      <span className="text-xs font-bold text-[#f0e6cc] truncate">
-                        {ach.text}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-1.5">
-                {achievementsList.map((ach) => (
-                  <AchievementTooltip key={ach.id} achievement={ach} />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Completion Rate */}
-        {hasStats && (
-          <div className="bg-[#1a1714] border border-[#c8963c]/10 rounded-xl p-3">
-            <div className="flex justify-between items-center mb-1.5 px-0.5">
-              <span className="text-[9px] font-black uppercase tracking-widest text-[#f0e6cc]/50">
-                {t("profile_completion")}
-              </span>
-              <span className="text-[#c8963c] font-black text-xs">
-                {profileData?.stats?.completionRate || 0}%
-              </span>
-            </div>
-            <div className="w-full h-2 bg-[#12100e] rounded-full overflow-hidden border border-[#c8963c]/10">
-              <div
-                className="h-full bg-gradient-to-r from-[#9a732a] to-[#c8963c] transition-all duration-1000 ease-out"
-                style={{ width: `${profileData?.stats?.completionRate || 0}%` }}
-              />
-            </div>
-          </div>
+          </ProfileSection>
         )}
 
-        {/* Movie Wrapped */}
-        {hasStats && (
-          <div className="p-4 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20 shadow-xl">
-            <h3 className="text-[10px] font-black text-[#c8963c] uppercase tracking-[0.25em] mb-4 flex items-center gap-2">
-              <span className="w-6 h-[1px] bg-[#c8963c]/30" />{" "}
-              {t("stats_wrapped").replace("[username]", profileData.username)}
-            </h3>
+        <ProfileSection>
+          <ProfileStatsStrip
+            stats={[
+              { value: watchedCount, label: t("watchlist_watched") },
+              {
+                value: profileData?.stats?.averageRating || "0.0",
+                label: t("stats_avg"),
+              },
+              { value: favoritesCount, label: t("watchlist_favorites") },
+            ]}
+            watchedCount={watchedCount}
+            completionRate={profileData?.stats?.completionRate || 0}
+            totalCount={totalCount}
+          />
+        </ProfileSection>
 
-            <div className="grid grid-cols-2 gap-2 mb-3">
-              <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
-                <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black mb-1">
-                  {t("stats_time_spent")}
-                </p>
-                <p className="text-base font-black text-[#f0e6cc]">
-                  {Math.floor((profileData?.stats?.totalMinutes || 0) / 60)}h{" "}
-                  {(profileData?.stats?.totalMinutes || 0) % 60}m
-                </p>
-              </div>
-              <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
-                <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black mb-1">
-                  {t("stats_top_genre")}
-                </p>
-                <p className="text-base font-black text-[#c8963c] truncate">
-                  {profileData?.stats?.topGenre || t("common_na")}
-                </p>
-              </div>
-              <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
-                <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black mb-1">
-                  {t("stats_avg")}
-                </p>
-                <p className="text-base font-black text-[#f0e6cc]">
-                  {profileData?.stats?.averageRating || "0.0"}
-                </p>
-              </div>
-              <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl">
-                <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black mb-1">
-                  {t("stats_fav_decade")}
-                </p>
-                <p className="text-base font-black text-[#f0e6cc]">
-                  {profileData?.stats?.favoriteDecade || t("common_na")}
-                </p>
-              </div>
-            </div>
+        <ProfileSection noBorder={!hasStats}>
+          <ProfileFavoritesPanel
+            favorites={favorites}
+            achievements={achievementsList}
+            friends={[]}
+            friendsCount={0}
+            isReleased={isReleased}
+            onToggleFavorite={() => {}}
+            onOpenFriends={() => {}}
+            showFriends={false}
+            readOnly
+          />
+        </ProfileSection>
 
-            {/* Longest Marathon */}
-            {(profileData?.stats?.longestMovie?.runtime ?? 0) > 0 && (
-              <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl mb-2 flex items-center gap-3">
-                <svg
-                  className="w-5 h-5 text-[#c8963c] shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <div className="min-w-0">
-                  <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black">
-                    {t("stats_marathon")}
-                  </p>
-                  <p className="text-xs font-bold text-[#c8963c] truncate">
-                    {profileData?.stats?.longestMovie?.title}
-                  </p>
-                  <p className="text-[9px] text-[#f0e6cc]/60">
-                    {profileData?.stats?.longestMovie?.runtime} {t("stats_min")}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Top Actor */}
-            {profileData.stats?.topActor && (
-              <div className="bg-[#12100e] border border-[#c8963c]/10 p-3 rounded-xl mb-4 flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full overflow-hidden shrink-0 border border-[#c8963c]/30">
-                  {profileData?.stats?.topActor?.profileUrl ? (
-                    <img
-                      src={profileData?.stats?.topActor?.profileUrl}
-                      alt="Actor"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[#1a1714] flex items-center justify-center text-[#c8963c]/60">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[8px] text-[#f0e6cc]/40 uppercase font-black">
-                    {t("stats_actor")}
-                  </p>
-                  <p className="text-xs font-bold text-[#c8963c] truncate">
-                    {profileData?.stats?.topActor?.name}
-                  </p>
-                  <p className="text-[9px] text-[#f0e6cc]/60">
-                    {t("stats_actor_count").replace(
-                      "[X]",
-                      (profileData?.stats?.topActor?.count ?? 0).toString(),
-                    )}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 gap-3">
-              <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 h-[180px]">
-                <p className="text-[8px] text-[#f0e6cc]/50 uppercase font-bold mb-1 text-center">
-                  {t("stats_genres")}
-                </p>
-                <div className="h-full w-full relative -mt-2">
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none flex-col mt-2 z-0">
-                    <span className="text-[#c8963c] text-lg font-black">
-                      {profileData?.stats?.genreDistribution?.length || 0}
-                    </span>
-                  </div>
-
-                  <div className="relative z-10 w-full h-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={profileData?.stats?.genreDistribution || []}
-                          innerRadius="55%"
-                          outerRadius="80%"
-                          paddingAngle={4}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {(profileData?.stats?.genreDistribution || []).map(
-                            (_, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={CHART_COLORS[index % CHART_COLORS.length]}
-                              />
-                            ),
-                          )}
-                        </Pie>
-                        <Tooltip
-                          content={<CustomTooltip />}
-                          cursor={{ fill: "transparent" }}
-                          wrapperStyle={{ zIndex: 9999 }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-
-              {profileData?.stats?.ratingDistribution && (
-                <RatingDistributionChart
-                  data={profileData.stats.ratingDistribution}
-                  averageRating={profileData.stats.averageRating}
-                />
-              )}
-            </div>
-
-            {/* Top 3 */}
-            {(profileData?.stats?.topRated?.length ?? 0) > 0 && (
-              <div className="mt-5 pt-4 border-t border-[#c8963c]/10">
-                <h4 className="text-[9px] text-[#c8963c] font-black uppercase tracking-[0.3em] mb-3 text-center">
-                  {t("stats_top3")}
-                </h4>
-                <div className="flex flex-col gap-2">
-                  {profileData?.stats?.topRated?.map((item, index: number) => (
-                    <Link
-                      to={`/movie/${item.tmdbId}?type=${item.mediaType}`}
-                      key={item.id}
-                      className="relative group bg-[#12100e] border border-[#c8963c]/10 rounded-xl p-2.5 flex items-center gap-3 hover:border-[#c8963c]/40 transition"
-                    >
-                      <div className="absolute -top-1.5 -left-1.5 w-5 h-5 bg-[#c8963c] text-[#12100e] rounded-full flex items-center justify-center font-black text-[8px] z-10">
-                        #{index + 1}
-                      </div>
-                      <div className="w-8 h-11 shrink-0 rounded-md overflow-hidden border border-[#c8963c]/10 bg-[#1a1714]">
-                        {item.posterUrl ? (
-                          <img
-                            src={item.posterUrl}
-                            alt=""
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-[#1a1714]" />
-                        )}
-                      </div>
-                      <div className="flex flex-col min-w-0">
-                        <h5 className="text-[#f0e6cc] font-bold text-[11px] truncate group-hover:text-[#c8963c] transition-colors">
-                          {item.title}
-                        </h5>
-                        <p className="text-[#c8963c] text-[10px] font-black mt-0.5">
-                          ★ {item.rating}/10
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+        {hasStats && profileData?.stats && (
+          <ProfileSection>
+            <ProfileWrappedPanel
+              username={profileData.username}
+              stats={profileData.stats}
+            />
+          </ProfileSection>
         )}
 
-        {/* Tab switcher */}
-        <div className="flex justify-center pt-2">
-          <div className="flex bg-[#1a1714] rounded-full p-1 border border-[#c8963c]/20 shadow-xl">
-            <button
-              onClick={() => setActiveTab("favorites")}
-              className={`px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition ${
-                activeTab === "favorites"
-                  ? "btn-glass btn-glass-gold text-[#12100e]"
-                  : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
-              }`}
-            >
-              {t("watchlist_favorites")}
-            </button>
-            <button
-              onClick={() => setActiveTab("watched")}
-              className={`px-5 py-2 rounded-full font-black text-[10px] uppercase tracking-widest transition ${
-                activeTab === "watched"
-                  ? "btn-glass btn-glass-gold text-[#12100e]"
-                  : "text-[#f0e6cc]/40 hover:text-[#c8963c]"
-              }`}
-            >
-              {t("watchlist_watched")}
-            </button>
-          </div>
-        </div>
+        {hasStats && profileData?.stats && (
+          <ProfileSection noBorder>
+            <ProfileChartsPanel
+              genreDistribution={profileData.stats.genreDistribution || []}
+              ratingDistribution={profileData.stats.ratingDistribution || []}
+              averageRating={profileData.stats.averageRating || "0.0"}
+              topRated={topRated}
+            />
+          </ProfileSection>
+        )}
 
-        {/* Movie grid */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 pb-8">
-          {displayedMovies?.length > 0 ? (
-            displayedMovies.map((movie) => (
-              <Link
-                to={`/movie/${movie.tmdbId}?type=${movie.mediaType || "movie"}`}
-                key={movie.id}
-                className="group flex flex-col bg-[#1a1714] border border-[#c8963c]/10 rounded-xl overflow-hidden hover:border-[#c8963c]/50 hover:glow-gold-sm hover:scale-[1.03] transition-all duration-300 shadow relative"
+        <div className="pt-8">
+          <div className="flex items-center gap-1 mb-6 border-b border-[rgba(217,172,84,.16)]">
+            {(["favorites", "watched"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`relative px-4 py-3 font-ui font-semibold text-[11.5px] uppercase tracking-[2px] transition-colors ${
+                  activeTab === tab
+                    ? "text-[#d9ac54]"
+                    : "text-[#8f8574] hover:text-[#c9c0ac]"
+                }`}
               >
-                <div className="aspect-[2/3] relative overflow-hidden bg-[#12100e]">
-                  {movie.posterUrl ? (
-                    <img
-                      src={movie.posterUrl}
-                      alt={movie.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full text-[8px] text-[#f0e6cc]/20 uppercase font-black">
-                      {t("common_na")}
-                    </div>
-                  )}
-                  {(movie.rating ?? 0) > 0 && (
-                    <div className="absolute top-1 right-1 bg-[#12100e]/90 backdrop-blur-md px-1.5 py-0.5 rounded-md border border-[#c8963c]/30 text-[#c8963c] text-[8px] font-black">
-                      ★ {movie.rating}
-                    </div>
-                  )}
-                </div>
-                <div className="p-1.5">
-                  <h4 className="text-[9px] font-bold text-[#f0e6cc] truncate group-hover:text-[#c8963c] transition uppercase tracking-tight">
+                {tab === "favorites"
+                  ? t("watchlist_favorites")
+                  : t("watchlist_watched")}
+                {activeTab === tab && (
+                  <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-[#d9ac54]" />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {displayedMovies.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-[18px] gap-y-[26px]">
+              {displayedMovies.map((movie) => (
+                <Link
+                  to={`/movie/${movie.tmdbId}?type=${movie.mediaType || "movie"}`}
+                  key={movie.id}
+                  className="group flex flex-col gap-[9px]"
+                >
+                  <div className="relative w-full aspect-[2/3] rounded-[6px] overflow-hidden bg-[#0f0d0a]">
+                    {movie.posterUrl ? (
+                      <img
+                        src={movie.posterUrl}
+                        alt={movie.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center w-full h-full text-[9px] text-[#f2ead9]/30">
+                        {t("common_na")}
+                      </div>
+                    )}
+                    {(movie.rating ?? 0) > 0 && (
+                      <div className="absolute top-1.5 right-1.5 bg-[rgba(15,13,10,.75)] px-1.5 py-0.5 rounded-md text-[#d9ac54] text-[10px] font-mono-ui font-bold">
+                        ★ {movie.rating}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[13px] font-semibold text-[#f2ead9] truncate group-hover:text-[#d9ac54] transition">
                     {movie.title}
-                  </h4>
-                </div>
-              </Link>
-            ))
+                  </span>
+                </Link>
+              ))}
+            </div>
           ) : (
-            <div className="col-span-full py-12 text-center bg-[#1a1714] rounded-2xl border border-[#c8963c]/10 border-dashed">
-              <p className="text-[#f0e6cc]/30 uppercase tracking-widest font-black text-xs italic">
+            <div className="text-center py-12 border border-[rgba(217,172,84,.2)] border-dashed rounded-[10px]">
+              <p className="text-[#8f8574] text-sm italic">
                 {t("watchlist_empty")}
               </p>
             </div>
@@ -751,12 +481,12 @@ export default function PublicProfile() {
           onClick={() => setIsCompatModalOpen(false)}
         >
           <div
-            className="w-full max-w-md max-h-[85vh] overflow-y-auto p-5 bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl shadow-2xl relative animate-modal-in"
+            className="w-full max-w-md max-h-[85vh] overflow-y-auto p-5 bg-[#14110d] border border-[#d9ac54]/25 rounded-2xl shadow-2xl relative animate-modal-in font-ui"
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setIsCompatModalOpen(false)}
-              className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
+              className="absolute top-4 right-4 text-[#8f8574] hover:text-[#d9ac54] transition p-1"
             >
               <svg
                 className="w-5 h-5"
@@ -773,17 +503,17 @@ export default function PublicProfile() {
               </svg>
             </button>
 
-            <h2 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest text-center mb-1">
+            <h2 className="text-lg font-bold text-[#f2ead9] uppercase tracking-widest text-center mb-1">
               {t("compat_title")}
             </h2>
-            <p className="text-center text-4xl font-black text-[#c8963c] mb-4">
+            <p className="text-center text-4xl font-bold text-[#d9ac54] mb-4">
               {compat.score !== null
                 ? `${Math.round(Math.max(0, Math.min(1, compat.score)) * 100)}%`
                 : "—"}
             </p>
 
-            <div className="bg-[#12100e] border border-[#c8963c]/20 rounded-xl p-3 mb-4">
-              <p className="text-[9px] font-black uppercase tracking-widest text-[#f0e6cc]/50 mb-2">
+            <div className="border border-[#d9ac54]/20 rounded-xl p-3 mb-4">
+              <p className="font-mono-ui text-[9px] font-semibold tracking-[1.5px] text-[#8f8574] uppercase mb-2">
                 {t("compat_common_watched").replace(
                   "{count}",
                   String(compat.commonWatchedCount),
@@ -794,7 +524,7 @@ export default function PublicProfile() {
                   {compat.commonWatched.map((m) => (
                     <div
                       key={m.tmdbId}
-                      className="w-12 aspect-[2/3] rounded-lg overflow-hidden shrink-0 border border-[#c8963c]/20 bg-[#1a1714]"
+                      className="w-12 aspect-[2/3] rounded-md overflow-hidden shrink-0 bg-[#0f0d0a]"
                       title={m.title}
                     >
                       {m.posterUrl ? (
@@ -804,7 +534,7 @@ export default function PublicProfile() {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f0e6cc]/30 p-1 text-center">
+                        <div className="w-full h-full flex items-center justify-center text-[7px] text-[#f2ead9]/30 p-1 text-center">
                           {m.title}
                         </div>
                       )}
@@ -818,14 +548,14 @@ export default function PublicProfile() {
               <button
                 onClick={handleGenerateWatchTogether}
                 disabled={isGenerating}
-                className="w-full py-3 btn-glass btn-glass-gold text-[#12100e] font-black uppercase tracking-widest rounded-xl transition active:scale-95 disabled:opacity-50 text-xs"
+                className="w-full py-3 bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] font-bold uppercase tracking-widest rounded-full transition active:scale-95 disabled:opacity-50 text-xs"
               >
                 {isGenerating ? t("compat_generating") : t("compat_generate")}
               </button>
             ) : (
               <div>
                 {watchTogetherResult.message && (
-                  <p className="text-sm text-[#f0e6cc] mb-3">
+                  <p className="text-sm text-[#f2ead9] mb-3">
                     {watchTogetherResult.message}
                   </p>
                 )}
@@ -833,13 +563,13 @@ export default function PublicProfile() {
                   {(watchTogetherResult.movies || []).map((movie) => (
                     <div
                       key={movie.id}
-                      className="flex items-center gap-2.5 bg-[#12100e] p-2 rounded-xl border border-[#c8963c]/20"
+                      className="flex items-center gap-2.5 p-2 rounded-xl border border-[#d9ac54]/20"
                     >
                       <Link
                         to={`/movie/${movie.id}?type=${movie.mediaType}`}
                         className="flex items-center gap-2.5 flex-1 min-w-0"
                       >
-                        <div className="w-9 h-12 bg-[#1a1714] rounded-md overflow-hidden shrink-0 border border-[#c8963c]/20">
+                        <div className="w-9 h-12 bg-[#0f0d0a] rounded-md overflow-hidden shrink-0">
                           {movie.posterUrl ? (
                             <img
                               src={movie.posterUrl}
@@ -848,18 +578,18 @@ export default function PublicProfile() {
                             />
                           ) : null}
                         </div>
-                        <span className="font-bold text-[#f0e6cc] text-xs truncate">
+                        <span className="font-semibold text-[#f2ead9] text-xs truncate">
                           {movie.title}
                         </span>
                       </Link>
                       {addedIds.includes(movie.id) ? (
-                        <span className="shrink-0 text-[9px] text-[#c8963c] px-2 font-bold">
+                        <span className="shrink-0 text-[9px] text-[#d9ac54] px-2 font-bold">
                           ✓
                         </span>
                       ) : (
                         <button
                           onClick={() => handleAddFromCompat(movie)}
-                          className="shrink-0 text-[9px] btn-glass btn-glass-dark text-[#c8963c] px-2.5 py-1 rounded-lg font-bold transition active:scale-95"
+                          className="shrink-0 text-[9px] border border-[#d9ac54]/40 text-[#d9ac54] px-2.5 py-1 rounded-full font-bold transition active:scale-95 hover:bg-[#d9ac54]/10"
                         >
                           {t("chat_add_btn")}
                         </button>
@@ -870,7 +600,7 @@ export default function PublicProfile() {
                 <button
                   onClick={handleGenerateWatchTogether}
                   disabled={isGenerating}
-                  className="w-full mt-3 py-2.5 btn-glass btn-glass-dark text-[#c8963c] font-black uppercase tracking-widest rounded-xl transition active:scale-95 disabled:opacity-50 text-[10px]"
+                  className="w-full mt-3 py-2.5 border border-[#d9ac54]/40 hover:border-[#d9ac54] text-[#d9ac54] font-bold uppercase tracking-widest rounded-full transition active:scale-95 disabled:opacity-50 text-[10px]"
                 >
                   {isGenerating ? t("compat_generating") : t("compat_regenerate")}
                 </button>
@@ -881,7 +611,7 @@ export default function PublicProfile() {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] z-50 shadow-2xl text-center animate-fade-in">
+        <div className="fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 bg-[#14110d] border border-[#d9ac54]/50 text-[#d9ac54] px-4 py-3 rounded-full font-bold uppercase tracking-widest text-[10px] z-50 shadow-2xl text-center animate-fade-in">
           {toastMessage}
         </div>
       )}

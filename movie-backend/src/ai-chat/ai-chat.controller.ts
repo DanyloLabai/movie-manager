@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { ConfigService } from '@nestjs/config';
 import {
   ApiTags,
   ApiOperation,
@@ -18,8 +19,15 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AiChatService } from './ai-chat.service';
-import { AiDailyLimitGuard } from './ai-daily-limit.guard';
+import {
+  AiDailyLimitGuard,
+  DEFAULT_DAILY_REQUEST_LIMIT,
+  DEFAULT_DAILY_TOKEN_LIMIT,
+} from './ai-daily-limit.guard';
+import { AiUsageLogService } from './ai-usage-log.service';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -36,7 +44,45 @@ export interface AuthenticatedRequest extends Request {
 @ApiTags('AI Chat')
 @Controller('api/ai')
 export class AiChatController {
-  constructor(private readonly aiChatService: AiChatService) {}
+  private readonly requestLimit: number;
+  private readonly tokenLimit: number;
+
+  constructor(
+    private readonly aiChatService: AiChatService,
+    private readonly aiUsageLogService: AiUsageLogService,
+    private readonly configService: ConfigService,
+  ) {
+    this.requestLimit = Number(
+      this.configService.get<string>('AI_DAILY_REQUEST_LIMIT') ??
+        DEFAULT_DAILY_REQUEST_LIMIT,
+    );
+    this.tokenLimit = Number(
+      this.configService.get<string>('AI_DAILY_TOKEN_LIMIT') ??
+        DEFAULT_DAILY_TOKEN_LIMIT,
+    );
+  }
+
+  @Get('usage')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get current user AI usage',
+    description:
+      "Get the current user's AI request/token usage for the rolling 24h window, plus the daily limits (requires authentication)",
+  })
+  @ApiResponse({ status: 200, description: 'User AI usage stats' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getUsage(@Req() req: AuthenticatedRequest) {
+    const userId = req.user.userId;
+    const since = new Date(Date.now() - ONE_DAY_MS);
+    const { requestCount, totalTokens } =
+      await this.aiUsageLogService.getUserUsageSince(userId, since);
+    return {
+      requestCount,
+      totalTokens,
+      requestLimit: this.requestLimit,
+      tokenLimit: this.tokenLimit,
+    };
+  }
 
   @Post('search')
   @Throttle({ default: { limit: 10, ttl: 60000 } })

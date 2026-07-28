@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import { useAuth } from "../context/AuthContext";
 import LangToggle from "../components/LangToggle";
+import LogoIcon from "../components/LogoIcon";
 import * as usersApi from "../api/users.api";
 import * as moviesApi from "../api/movies.api";
 import {
@@ -142,35 +142,26 @@ export default function Settings() {
     selectedFile !== null || username.trim() !== currentUsername;
 
   return (
-    <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative selection:bg-[#c8963c] selection:text-[#12100e]">
-      <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
+    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative selection:bg-[#d9ac54] selection:text-[#14110c]">
+      <div className="sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex items-center justify-between py-4 px-4 sm:px-12 w-full">
           <Link
             to="/search"
-            className="sm:hidden flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
+            className="sm:hidden flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0"
           >
-            <img
-              src={LogoImg}
-              alt="LUMEN™ Logo"
-              className="h-9 sm:h-12 w-auto object-contain"
-            />
-            <div className="flex flex-col justify-center">
-              <h1 className="text-xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-                LUMEN
-              </h1>
-              <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-                {t("app_tagline")}
-              </span>
-            </div>
+            <span className="font-ui font-bold text-[17px] tracking-[4px] text-[#d9ac54]">
+              LUMEN
+            </span>
+            <LogoIcon />
           </Link>
 
-          <h1 className="hidden sm:block text-xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
+          <h1 className="hidden sm:block font-mono-ui text-[12px] font-semibold tracking-[3px] text-[#d9ac54] uppercase">
             {t("nav_settings")}
           </h1>
 
           <button
             onClick={() => navigate(-1)}
-            className="text-[10px] sm:text-xs font-bold text-[#f0e6cc]/60 hover:text-[#c8963c] transition uppercase tracking-wider shrink-0"
+            className="text-[10px] sm:text-xs font-bold text-[#8f8574] hover:text-[#d9ac54] transition uppercase tracking-wider shrink-0"
           >
             &lt; {t("common_back").toUpperCase()}
           </button>
@@ -178,8 +169,8 @@ export default function Settings() {
       </div>
 
       <main className="max-w-2xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12">
-        <div className="text-center mb-6 pb-4 border-b border-[#c8963c]/20">
-          <h2 className="text-xl sm:text-2xl font-black text-[#c8963c] uppercase tracking-widest drop-shadow-md">
+        <div className="text-center mb-6 pb-4 border-b border-[rgba(217,172,84,.16)]">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#f2ead9] tracking-tight">
             {t("nav_settings")}
           </h2>
         </div>
@@ -187,9 +178,9 @@ export default function Settings() {
         {/* Avatar + username */}
         <form
           onSubmit={handleSaveProfile}
-          className="p-4 bg-[#1a1714] border border-[#c8963c]/20 rounded-2xl mb-4"
+          className="pb-6 mb-6 border-b border-[rgba(217,172,84,.16)]"
         >
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-[#c8963c] mb-4">
+          <h3 className="font-mono-ui text-[10.5px] font-semibold uppercase tracking-[2.5px] text-[#d9ac54] mb-4">
             {t("edit_profile")}
           </h3>
 
@@ -212,16 +203,16 @@ export default function Settings() {
                       : `${previewUrl}${previewUrl.includes("?") ? "&" : "?"}t=${new Date().getTime()}`
                   }
                   alt="Preview"
-                  className="w-20 h-20 rounded-full object-cover border-4 border-[#12100e] group-hover:border-[#c8963c] transition shadow-lg"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-[#d9ac54]/45 group-hover:border-[#d9ac54] transition"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-2xl font-black text-[#12100e] border-4 border-[#12100e] group-hover:border-[#c8963c] transition shadow-lg">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#d9ac54] to-[#a87c2e] flex items-center justify-center text-2xl font-black text-[#14110c] border-2 border-[#d9ac54]/45 group-hover:border-[#d9ac54] transition">
                   {(username || "?").charAt(0).toUpperCase()}
                 </div>
               )}
-              <div className="absolute inset-0 bg-[#12100e]/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+              <div className="absolute inset-0 bg-[#0f0d0a]/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
                 <svg
-                  className="w-6 h-6 text-[#c8963c]"
+                  className="w-6 h-6 text-[#d9ac54]"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -248,20 +239,20 @@ export default function Settings() {
               ref={fileInputRef}
               onChange={handleFileChange}
             />
-            <p className="text-[9px] text-[#f0e6cc]/50 mt-2 font-semibold uppercase tracking-wider">
+            <p className="text-[9px] text-[#8f8574] mt-2 font-semibold uppercase tracking-wider">
               {t("edit_image")}
             </p>
           </div>
 
           <div className="mb-4">
-            <label className="block text-[10px] font-bold text-[#c8963c] uppercase tracking-wider ml-1 mb-1.5">
+            <label className="block text-[10px] font-bold text-[#d9ac54] uppercase tracking-wider ml-1 mb-1.5">
               {t("register_username")}
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-4 py-3 text-[#f0e6cc] bg-[#12100e] border border-[#c8963c]/30 rounded-xl focus:outline-none focus:border-[#c8963c] transition text-sm"
+              className="w-full px-4 py-3 text-[#f2ead9] bg-white/[.03] border border-[#d9ac54]/30 rounded-xl focus:outline-none focus:border-[#d9ac54] transition text-sm"
               minLength={3}
               maxLength={20}
               required
@@ -271,26 +262,29 @@ export default function Settings() {
           <button
             type="submit"
             disabled={isSaving || !username.trim() || !hasChanges}
-            className="w-full py-3 font-black text-[#12100e] uppercase tracking-widest transition btn-glass btn-glass-gold active:scale-[0.98] disabled:cursor-not-allowed text-sm"
+            className="w-full py-3 rounded-full font-bold text-[#14110c] uppercase tracking-widest transition bg-[#d9ac54] hover:bg-[#e8c377] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 text-sm"
           >
             {isSaving ? t("edit_saving") : t("edit_save")}
           </button>
         </form>
 
-        <div className="flex items-center justify-between px-4 py-4 mb-4 bg-[#1a1714] border border-[#c8963c]/20 rounded-xl">
-          <span className="text-sm font-bold text-[#f0e6cc]">
+        <h3 className="font-mono-ui text-[10.5px] font-semibold uppercase tracking-[2.5px] text-[#d9ac54] mb-1">
+          {t("settings_preferences")}
+        </h3>
+        <div className="flex items-center justify-between py-4 border-b border-[rgba(217,172,84,.16)]">
+          <span className="text-sm font-semibold text-[#f2ead9]">
             {t("settings_language")}
           </span>
           <LangToggle />
         </div>
 
         {pushSupported && (
-          <div className="flex items-center justify-between px-4 py-4 mb-4 bg-[#1a1714] border border-[#c8963c]/20 rounded-xl">
+          <div className="flex items-center justify-between py-4 border-b border-[rgba(217,172,84,.16)]">
             <div>
-              <span className="text-sm font-bold text-[#f0e6cc] block">
+              <span className="text-sm font-semibold text-[#f2ead9] block">
                 {t("settings_push")}
               </span>
-              <span className="text-[10px] text-[#f0e6cc]/40">
+              <span className="text-[10px] text-[#8f8574]">
                 {t("settings_push_hint")}
               </span>
             </div>
@@ -299,11 +293,11 @@ export default function Settings() {
               disabled={pushBusy}
               type="button"
               className={`relative w-11 h-6 rounded-full transition disabled:opacity-50 shrink-0 appearance-none p-0 border-0 overflow-hidden outline-none ${
-                pushEnabled ? "bg-[#c8963c]" : "bg-[#12100e] ring-1 ring-inset ring-[#c8963c]/30"
+                pushEnabled ? "bg-[#d9ac54]" : "bg-white/[.08] ring-1 ring-inset ring-[#d9ac54]/30"
               }`}
             >
               <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-[#f0e6cc] transition-transform ${
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-[#f2ead9] transition-transform ${
                   pushEnabled ? "translate-x-5" : "translate-x-0"
                 }`}
               />
@@ -311,34 +305,37 @@ export default function Settings() {
           </div>
         )}
 
-        <div className="space-y-2 mb-6">
+        <h3 className="font-mono-ui text-[10.5px] font-semibold uppercase tracking-[2.5px] text-[#d9ac54] mt-6 mb-1">
+          {t("settings_account")}
+        </h3>
+        <div className="mb-6">
           <Link
             to="/change-password"
-            className="flex items-center justify-between px-4 py-4 bg-[#1a1714] border border-[#c8963c]/20 rounded-xl hover:border-[#c8963c]/50 transition"
+            className="flex items-center justify-between py-4 border-b border-[rgba(217,172,84,.16)] hover:pl-1.5 transition-[padding]"
           >
-            <span className="text-sm font-bold text-[#f0e6cc]">
+            <span className="text-sm font-semibold text-[#f2ead9]">
               {t("settings_change_password")}
             </span>
-            <span className="text-[#f0e6cc]/40">&gt;</span>
+            <span className="text-[#645c4d]">&gt;</span>
           </Link>
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-between px-4 py-4 btn-glass btn-glass-dark !border-red-900/30 rounded-xl hover:!border-red-500/50 transition text-left"
+            className="w-full flex items-center justify-between py-4 hover:pl-1.5 transition-[padding] text-left"
           >
-            <span className="text-sm font-bold text-red-500/80">
+            <span className="text-sm font-semibold text-red-400/80">
               {t("nav_logout")}
             </span>
-            <span className="text-red-500/40">&gt;</span>
+            <span className="text-red-400/40">&gt;</span>
           </button>
         </div>
 
         {/* Danger zone */}
-        <div className="p-4 bg-red-900/5 border border-red-900/30 rounded-2xl">
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-red-500/80 mb-2">
+        <div className="p-4 bg-red-900/5 border border-red-500/30 rounded-2xl">
+          <h3 className="font-mono-ui text-[10.5px] font-semibold uppercase tracking-[2.5px] text-red-400/80 mb-2">
             {t("settings_danger_zone")}
           </h3>
-          <p className="text-xs text-[#f0e6cc]/50 mb-3">
+          <p className="text-xs text-[#8f8574] mb-3">
             {t("settings_delete_hint")}
           </p>
           <button
@@ -356,13 +353,13 @@ export default function Settings() {
           onClick={() => !isDeleting && setIsDeleteModalOpen(false)}
         >
           <div
-            className="w-full max-w-md p-5 bg-[#1a1714] border border-red-900/40 rounded-3xl shadow-2xl relative animate-modal-in"
+            className="w-full max-w-md p-5 bg-[#14110d] border border-red-900/40 rounded-3xl shadow-2xl relative animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-lg font-black text-red-500 uppercase tracking-widest text-center mb-3">
               {t("settings_delete_confirm_title")}
             </h2>
-            <p className="text-sm text-[#f0e6cc]/70 text-center mb-5">
+            <p className="text-sm text-[#f2ead9]/70 text-center mb-5">
               {t("settings_delete_confirm_text")}
             </p>
 
@@ -376,7 +373,7 @@ export default function Settings() {
               <button
                 onClick={() => setIsDeleteModalOpen(false)}
                 disabled={isDeleting}
-                className="flex-1 py-3 font-black text-[#f0e6cc] uppercase tracking-widest transition btn-glass btn-glass-dark active:scale-[0.98] disabled:opacity-50 text-xs"
+                className="flex-1 py-3 font-black text-[#f2ead9] uppercase tracking-widest transition btn-glass btn-glass-dark active:scale-[0.98] disabled:opacity-50 text-xs"
               >
                 {t("settings_delete_cancel")}
               </button>
@@ -395,7 +392,7 @@ export default function Settings() {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-24 sm:bottom-6 left-1/2 -translate-x-1/2 bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-4 py-3 rounded-xl shadow-2xl z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap animate-fade-in">
+        <div className="fixed bottom-24 sm:bottom-6 left-1/2 -translate-x-1/2 bg-[#14110d] border border-[#d9ac54]/50 text-[#d9ac54] px-4 py-3 rounded-xl shadow-2xl z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap animate-fade-in">
           {toastMessage}
         </div>
       )}

@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import LogoImg from "../../assets/logo.png";
 import { useLang } from "../../context/LanguageContext";
+import { getUserRank } from "../../utils/achievements";
+import * as moviesApi from "../../api/movies.api";
 import NotificationBell from "../NotificationBell";
 import { NAV_ICONS } from "../navIcons";
 
@@ -8,10 +11,10 @@ export const SIDEBAR_WIDTH_CLASS = "sm:w-60";
 export const SIDEBAR_PADDING_CLASS = "sm:pl-60";
 
 const navItemClass = (isActive: boolean) =>
-  `flex items-center gap-4 px-6 py-3 border-l-4 text-sm font-bold uppercase tracking-wide transition-all ${
+  `flex items-center gap-3.5 px-6 py-3 font-ui text-[12px] font-semibold tracking-[2px] uppercase transition-all border-l-2 ${
     isActive
-      ? "text-[#c8963c] bg-gradient-to-r from-[#c8963c]/20 to-transparent border-[#c8963c]"
-      : "text-[#f0e6cc]/60 border-transparent hover:text-[#c8963c] hover:bg-[#c8963c]/10"
+      ? "text-[#f2ead9] border-[#d9ac54] bg-[linear-gradient(90deg,rgba(217,172,84,.12),transparent)]"
+      : "text-[#8f8574] border-transparent hover:text-[#c9c0ac] hover:bg-white/[.02]"
   }`;
 
 const SidebarLink = ({
@@ -19,60 +22,104 @@ const SidebarLink = ({
   isActive,
   icon,
   label,
+  badge,
 }: {
   to: string;
   isActive: boolean;
   icon: React.ReactNode;
   label: string;
+  badge?: React.ReactNode;
 }) => (
   <Link to={to} className={navItemClass(isActive)}>
-    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg
+      className={`w-4 h-4 shrink-0 ${isActive ? "text-[#d9ac54]" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
       {icon}
     </svg>
-    {label}
+    <span className="flex-1">{label}</span>
+    {badge}
   </Link>
 );
+
+interface SidebarProfile {
+  username: string;
+  avatarUrl: string | null;
+  watchedCount: number;
+  totalCount: number;
+}
 
 export default function Sidebar() {
   const { t } = useLang();
   const location = useLocation();
+  const [profile, setProfile] = useState<SidebarProfile | null>(null);
+
+  useEffect(() => {
+    moviesApi
+      .getProfile()
+      .then((data) =>
+        setProfile({
+          username: data.username || "",
+          avatarUrl: data.avatarUrl ?? null,
+          watchedCount: data.watchedCount || 0,
+          totalCount: data.totalCount || 0,
+        }),
+      )
+      .catch(() => {});
+  }, []);
 
   const tabs = [
     { key: "ai-chat", to: "/ai-chat", label: t("nav_ai_chat"), icon: NAV_ICONS.chat },
     { key: "search", to: "/search", label: t("nav_search"), icon: NAV_ICONS.search },
-    { key: "quiz", to: "/quiz", label: t("nav_quiz"), icon: NAV_ICONS.quiz },
+    {
+      key: "quiz",
+      to: "/quiz",
+      label: t("nav_quiz"),
+      icon: NAV_ICONS.quiz,
+      badge: (
+        <span className="font-mono-ui text-[8.5px] font-semibold tracking-[1px] text-[#d9ac54] border border-[#d9ac54]/40 rounded-full px-[7px] py-[2px]">
+          {t("nav_badge_new")}
+        </span>
+      ),
+    },
     { key: "watchlist", to: "/watchlist", label: t("nav_profile"), icon: NAV_ICONS.profile },
   ];
 
+  const goalYear = new Date().getFullYear();
+  const goalPct =
+    profile && profile.totalCount > 0
+      ? Math.min(100, Math.round((profile.watchedCount / profile.totalCount) * 100))
+      : 0;
+
   return (
     <aside
-      className={`hidden sm:flex ${SIDEBAR_WIDTH_CLASS} fixed left-0 top-0 bottom-0 z-40 flex-col glass-panel pt-[env(safe-area-inset-top)]`}
+      className={`hidden sm:flex ${SIDEBAR_WIDTH_CLASS} fixed left-0 top-0 bottom-0 z-40 flex-col bg-[#0f0d0a] border-r border-[rgba(217,172,84,.16)] pt-[env(safe-area-inset-top)]`}
     >
-      <div className="absolute right-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-[#c8963c]/40 to-transparent" />
-
       <Link
         to="/search"
-        className="flex flex-col items-center gap-3 px-6 pt-8 pb-6 border-b border-[#c8963c]/20 hover:opacity-90 transition-opacity shrink-0"
+        className="flex flex-col gap-1 px-6 pt-7 pb-6 border-b border-[rgba(217,172,84,.16)] hover:opacity-90 transition-opacity shrink-0"
       >
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-2xl font-black text-[#c8963c] tracking-widest uppercase leading-none drop-shadow-[0_0_10px_rgba(244,189,95,0.5)]">
+        <div className="flex items-center gap-2">
+          <span className="font-ui font-bold text-[21px] tracking-[5px] text-[#d9ac54]">
             LUMEN
-          </h1>
+          </span>
           <div className="relative shrink-0">
-            <div className="absolute inset-0 bg-[#c8963c]/30 blur-xl rounded-full" />
+            <div className="absolute inset-0 bg-[#d9ac54]/25 blur-md rounded-full" />
             <img
               src={LogoImg}
-              alt="LUMEN Logo"
-              className="relative h-9 w-auto object-contain drop-shadow-[0_0_10px_rgba(244,189,95,0.5)]"
+              alt=""
+              className="relative w-7 h-7 object-contain"
             />
           </div>
         </div>
-        <span className="text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.4em] block">
-          {t("app_tagline")}
+        <span className="font-mono-ui text-[8.5px] tracking-[3.5px] text-[#645c4d]">
+          {t("app_tagline").toUpperCase()}
         </span>
       </Link>
 
-      <nav className="flex-1 flex flex-col gap-1 pt-4 overflow-y-auto scrollbar-hide">
+      <nav className="flex-1 flex flex-col gap-0.5 pt-4 overflow-y-auto scrollbar-hide">
         {tabs.map((tab) => (
           <SidebarLink
             key={tab.key}
@@ -80,19 +127,76 @@ export default function Sidebar() {
             isActive={location.pathname.startsWith(tab.to)}
             icon={tab.icon}
             label={tab.label}
+            badge={tab.badge}
           />
         ))}
 
         <NotificationBell variant="row" />
       </nav>
 
-      <div className="pb-4 shrink-0">
-        <SidebarLink
-          to="/settings"
-          isActive={location.pathname.startsWith("/settings")}
-          icon={NAV_ICONS.settings}
-          label={t("nav_settings")}
-        />
+      <div className="px-6 py-4 border-t border-[rgba(217,172,84,.16)] flex flex-col gap-3.5 shrink-0">
+        {profile && profile.totalCount > 0 && (
+          <div className="flex flex-col gap-[7px]">
+            <div className="flex items-center justify-between">
+              <span className="font-mono-ui text-[8.5px] tracking-[2px] text-[#645c4d] uppercase">
+                {t("sidebar_goal_label")} {goalYear}
+              </span>
+              <span className="font-ui font-semibold text-[10.5px] text-[#d9ac54]">
+                {profile.watchedCount}/{profile.totalCount}
+              </span>
+            </div>
+            <div className="h-[3px] bg-white/[.08] rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${goalPct}%`,
+                  background: "linear-gradient(90deg, #a87c2e, #d9ac54)",
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center gap-2.5 -mx-2 px-2 py-1.5 rounded-lg transition hover:bg-white/[.03]">
+          <Link
+            to="/watchlist"
+            className="flex items-center gap-2.5 min-w-0 flex-1"
+          >
+            <div
+              className="w-[34px] h-[34px] rounded-full flex items-center justify-center font-ui font-bold text-[13px] text-[#14110c] overflow-hidden shrink-0"
+              style={{
+                background: "radial-gradient(circle at 35% 30%, #e8c377, #a87c2e)",
+              }}
+            >
+              {profile?.avatarUrl ? (
+                <img
+                  src={profile.avatarUrl}
+                  alt={profile.username}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                (profile?.username || "?").charAt(0).toUpperCase()
+              )}
+            </div>
+            <div className="flex flex-col min-w-0 flex-1">
+              <span className="font-ui font-semibold text-[12.5px] text-[#f2ead9] truncate">
+                {profile?.username || ""}
+              </span>
+              <span className="font-mono-ui text-[9.5px] tracking-[1px] text-[#8f8574] uppercase truncate">
+                {getUserRank(profile?.watchedCount || 0, t)}
+              </span>
+            </div>
+          </Link>
+          <Link
+            to="/settings"
+            className="shrink-0 text-[#645c4d] hover:text-[#c9c0ac] transition"
+            title={t("nav_settings")}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {NAV_ICONS.settings}
+            </svg>
+          </Link>
+        </div>
       </div>
     </aside>
   );
