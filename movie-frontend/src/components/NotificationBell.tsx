@@ -52,16 +52,28 @@ export default function NotificationBell({
     return (
       <Link
         to="/notifications"
-        className={`flex items-center gap-4 px-6 py-3 border-l-4 text-sm font-bold uppercase tracking-wide transition-all ${
+        className={`flex items-center gap-3.5 px-6 py-3 font-ui text-[12px] font-semibold tracking-[2px] uppercase transition-all border-l-2 ${
           isActive
-            ? "text-[#c8963c] bg-gradient-to-r from-[#c8963c]/20 to-transparent border-[#c8963c]"
-            : "text-[#f0e6cc]/60 border-transparent hover:text-[#c8963c] hover:bg-[#c8963c]/10"
+            ? "text-[#f2ead9] border-[#d9ac54] bg-[linear-gradient(90deg,rgba(217,172,84,.12),transparent)]"
+            : "text-[#8f8574] border-transparent hover:text-[#c9c0ac] hover:bg-white/[.02]"
         }`}
       >
-        {icon}
+        <svg
+          className={`w-4 h-4 shrink-0 ${isActive ? "text-[#d9ac54]" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+          />
+        </svg>
         <span className="flex-1">{t("notif_bell_title")}</span>
         {count > 0 && (
-          <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-red-500 text-white text-[9px] font-black rounded-full leading-none shadow-[0_0_10px_-1px_rgba(239,68,68,0.8)]">
+          <span className="min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-[#d9ac54] text-[#14110c] font-ui text-[10px] font-bold rounded-full leading-none">
             {count > 9 ? "9+" : count}
           </span>
         )}

@@ -35,30 +35,40 @@ textarea {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #c8963c #1a1714;
+  scrollbar-color: rgba(217, 172, 84, 0.45) rgba(255, 255, 255, 0.05);
+}
+
+button,
+a {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(217, 172, 84, 0.6);
+  outline-offset: 2px;
 }
 
 *::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 5px;
+  height: 5px;
 }
 
 *::-webkit-scrollbar-track {
-  background: #1a1714;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 *::-webkit-scrollbar-thumb {
-  background-color: #c8963c;
+  background-color: rgba(217, 172, 84, 0.45);
   border-radius: 8px;
-  border: 2px solid #1a1714;
 }
 
 *::-webkit-scrollbar-thumb:hover {
-  background-color: #e8c070;
+  background-color: #d9ac54;
 }
 
 *::-webkit-scrollbar-corner {
-  background: #1a1714;
+  background: transparent;
 }
 
 input[type="number"] {
@@ -132,6 +142,19 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @layer components {
+  /* Marquee redesign type stack — Manrope backstops Archivo's thin Cyrillic
+     coverage so UA copy never silently falls back to the browser serif. */
+  .font-ui {
+    font-family:
+      "Archivo",
+      "Manrope",
+      sans-serif;
+  }
+
+  .font-mono-ui {
+    font-family: "JetBrains Mono", monospace;
+  }
+
   .glass-panel {
     background: rgba(26, 23, 20, 0.6);
     backdrop-filter: blur(20px);
@@ -317,10 +340,10 @@ input[type="number"]::-webkit-inner-spin-button {
       linear-gradient(to bottom, #12100e 0%, rgba(18, 16, 14, 0) 16%),
       radial-gradient(
         circle at 50% 30%,
-        rgba(200, 150, 60, 0.16) 0%,
-        rgba(200, 150, 60, 0) 42%
+        rgba(200, 150, 60, 0.07) 0%,
+        rgba(200, 150, 60, 0) 40%
       ),
-      radial-gradient(circle at 50% 30%, #2a2013 0%, #17130d 50%, #12100e 100%);
+      radial-gradient(circle at 50% 30%, #1c170e 0%, #14110c 50%, #12100e 100%);
   }
 
   .ai-chat-background::before {

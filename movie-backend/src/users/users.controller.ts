@@ -265,6 +265,20 @@ export class UsersController {
     return this.usersService.getSearchHistory(userId, parsedLimit);
   }
 
+  @Delete('me/search-history')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Clear search history',
+    description:
+      "Delete all of the current user's recent search queries (requires authentication)",
+  })
+  @ApiResponse({ status: 200, description: 'Search history cleared' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async clearMySearchHistory(@Req() req) {
+    const userId = req.user.userId;
+    return this.usersService.clearSearchHistory(userId);
+  }
+
   @Delete('friends/:id')
   @ApiBearerAuth()
   @ApiOperation({

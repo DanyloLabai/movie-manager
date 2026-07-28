@@ -157,9 +157,18 @@ export class UsersService {
     const isFriend =
       user.friends?.some((friend) => friend.id === currentUserId) || false;
 
+    const requestPending = isFriend
+      ? false
+      : Boolean(
+          await this.friendRequestRepository.findOne({
+            where: { fromUser: { id: currentUserId }, toUser: { id: targetUserId } },
+          }),
+        );
+
     return {
       ...profileStats,
       isFriend,
+      requestPending,
     };
   }
 
@@ -373,6 +382,11 @@ export class UsersService {
 
   async getSearchHistory(userId: number, limit: number) {
     return this.searchHistoryService.getRecentQueries(userId, limit);
+  }
+
+  async clearSearchHistory(userId: number) {
+    await this.searchHistoryService.clearHistory(userId);
+    return { message: 'Search history cleared' };
   }
 
   async getTasteCompatibility(currentUserId: number, targetUserId: number) {

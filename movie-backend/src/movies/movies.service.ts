@@ -984,6 +984,7 @@ export class MoviesService {
       id: user?.id,
       username: user?.username,
       avatarUrl: user?.avatarUrl,
+      memberSince: user?.createdAt,
       favorites,
       recent,
       watchedIds: watchedItems.map((item) => item.tmdbId),

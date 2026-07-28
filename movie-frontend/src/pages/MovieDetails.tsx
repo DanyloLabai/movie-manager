@@ -6,9 +6,9 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
-import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import StarRating from "../components/StarRating";
+import LogoIcon from "../components/LogoIcon";
 import type {
   MovieDetails as MovieDetailsType,
   RecommendedMovie as RecommendedMovieType,
@@ -38,6 +38,55 @@ const normalizeProviders = (
   if (Array.isArray(raw)) return { flatrate: raw };
   return raw as WatchProvidersDataType;
 };
+
+function SectionHeader({
+  label,
+  onScrollLeft,
+  onScrollRight,
+  canScrollLeft = true,
+  canScrollRight = true,
+}: {
+  label: string;
+  onScrollLeft?: () => void;
+  onScrollRight?: () => void;
+  canScrollLeft?: boolean;
+  canScrollRight?: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-3.5 mb-4">
+      <span className="font-mono-ui text-[11px] sm:text-[11.5px] font-semibold tracking-[3px] text-[#d9ac54] uppercase whitespace-nowrap">
+        {label}
+      </span>
+      <div className="flex-1 h-px bg-[rgba(217,172,84,.14)]" />
+      {(onScrollLeft || onScrollRight) && (
+        <div className="flex gap-2 shrink-0">
+          {onScrollLeft && (
+            <button
+              onClick={onScrollLeft}
+              disabled={!canScrollLeft}
+              className="w-[26px] h-[26px] flex items-center justify-center rounded-full border border-white/[.15] text-[#8f8574] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] transition active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+          {onScrollRight && (
+            <button
+              onClick={onScrollRight}
+              disabled={!canScrollRight}
+              className="w-[26px] h-[26px] flex items-center justify-center rounded-full border border-white/[.15] text-[#8f8574] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] transition active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function MovieDetails() {
   const { t } = useLang();
@@ -200,17 +249,6 @@ export default function MovieDetails() {
     }
   };
 
-  const handleMarkWatched = async () => {
-    if (!movie) return;
-    try {
-      await moviesApi.markWatched(movie.id);
-      showToast(t("movie_marked_watched"));
-      fetchData(movie.id);
-    } catch {
-      showToast(t("movie_error"));
-    }
-  };
-
   const handleToggleFavorite = async () => {
     if (!movie || !status) return;
     try {
@@ -219,6 +257,17 @@ export default function MovieDetails() {
       showToast(t("movie_fav_updated"));
     } catch {
       showToast(t("movie_failed"));
+    }
+  };
+
+  const handleMarkWatched = async () => {
+    if (!movie) return;
+    try {
+      await moviesApi.markWatched(movie.id);
+      showToast(t("movie_marked_watched"));
+      fetchData(movie.id);
+    } catch {
+      showToast(t("movie_error"));
     }
   };
 
@@ -294,17 +343,29 @@ export default function MovieDetails() {
     return new Date(dateStr) <= new Date();
   };
 
+  const openWatchedModal = () => {
+    setPendingAction(status ? "update_watched" : "new_watched");
+    setModalRating(status?.rating || 0);
+    setIsRatingModalOpen(true);
+  };
+
+  const goBack = () => {
+    const fromTab = searchParams.get("fromTab");
+    if (fromTab) navigate(`/watchlist?tab=${fromTab}`);
+    else navigate(-1);
+  };
+
   if (isLoading)
     return (
-      <div className="min-h-screen bg-[#12100e] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-[#c8963c] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#0f0d0a] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#14110d] border-t-[#d9ac54] rounded-full animate-spin" />
       </div>
     );
 
   if (!movie)
     return (
-      <div className="min-h-screen bg-[#12100e] text-[#f0e6cc] flex items-center justify-center">
-        <Link to="/search" className="text-[#c8963c] font-bold hover:underline">
+      <div className="min-h-screen bg-[#0f0d0a] text-[#f2ead9] flex items-center justify-center font-ui">
+        <Link to="/search" className="text-[#d9ac54] font-bold hover:underline">
           {t("movie_not_found")}
         </Link>
       </div>
@@ -316,6 +377,8 @@ export default function MovieDetails() {
   const providers = normalizeProviders(movie.watchProviders);
   const hasProviders =
     providers && (providers.flatrate || providers.rent || providers.buy);
+  const firstProvider =
+    providers?.flatrate?.[0] || providers?.rent?.[0] || providers?.buy?.[0];
 
   const releaseYear = movie.releaseDate?.split("-")[0] ?? t("common_na");
   const releaseDateFormatted = movie.releaseDate
@@ -327,58 +390,29 @@ export default function MovieDetails() {
     : t("common_na");
 
   return (
-    <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative pb-24 overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
-      <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5 pt-[env(safe-area-inset-top,12px)]">
-        <Link
-          to="/search"
-          className="sm:hidden flex items-center gap-3 sm:gap-4 hover:opacity-80 transition-opacity shrink-0"
-        >
-          <img
-            src={LogoImg}
-            alt="LUMEN™ Logo"
-            className="h-10 sm:h-12 w-auto object-contain"
-          />
-          <div className="flex flex-col justify-center">
-            <h1 className="text-2xl sm:text-3xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-              LUMEN
-            </h1>
-            <span className="text-[7px] sm:text-[8px] text-[#f0e6cc]/70 font-medium uppercase leading-none whitespace-nowrap tracking-[0.5em] sm:tracking-[0.6em] mt-1 block text-justify w-full">
-              {t("app_tagline")}
-            </span>
-          </div>
-        </Link>
-
-        <h1 className="hidden sm:block text-xl font-black text-[#c8963c] tracking-widest uppercase leading-none">
-          {mediaType === "tv" ? t("common_tv") : t("common_movie")}
-        </h1>
-
-        <button
-          onClick={() => {
-            const fromTab = searchParams.get("fromTab");
-            if (fromTab) navigate(`/watchlist?tab=${fromTab}`);
-            else navigate(-1);
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full glass-panel border border-[#c8963c]/20 text-xs font-black uppercase text-[#f0e6cc]/60 hover:text-[#c8963c] hover:border-[#c8963c]/50 transition active:scale-95"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative pb-24 overscroll-none selection:bg-[#d9ac54] selection:text-[#0f0d0a]">
+      <div className="sm:hidden sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] pt-[env(safe-area-inset-top)]">
+        <header className="flex flex-row items-center justify-between gap-3 py-4 px-4 w-full">
+          <Link
+            to="/search"
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2.5}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          {t("common_back")}
-        </button>
-      </header>
+            <span className="font-ui font-bold text-[17px] tracking-[4px] text-[#d9ac54]">
+              LUMEN
+            </span>
+            <LogoIcon />
+          </Link>
+          <button
+            onClick={goBack}
+            className="font-mono-ui text-[10px] font-semibold tracking-[1.5px] text-[#8f8574] hover:text-[#d9ac54] transition uppercase"
+          >
+            ‹ {t("common_back")}
+          </button>
+        </header>
+      </div>
 
-      {/* Backdrop — heavily blurred ambient atmosphere, not a sharp photo */}
-      <div className="relative w-full h-[45vh] sm:h-[65vh] bg-[#1a1714] overflow-hidden">
+      {/* Backdrop — heavily blurred ambient atmosphere */}
+      <div className="relative w-full h-[280px] sm:h-[420px] bg-[#14110d] overflow-hidden">
         {backdropUrl && (
           <>
             <img
@@ -387,41 +421,47 @@ export default function MovieDetails() {
               aria-hidden="true"
               className="w-full h-full object-cover scale-105 blur-sm opacity-70"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#12100e] via-[#12100e]/80 to-transparent" />
-            <div className="hidden sm:block absolute inset-0 bg-gradient-to-r from-[#12100e] via-[#12100e]/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0f0d0a] via-[#0f0d0a]/80 to-transparent" />
+            <div className="hidden sm:block absolute inset-0 bg-gradient-to-r from-[#0f0d0a]/75 via-[#0f0d0a]/30 to-transparent" />
           </>
         )}
+        <button
+          onClick={goBack}
+          className="hidden sm:block absolute top-6 left-14 font-mono-ui text-[10.5px] font-semibold tracking-[2px] text-[#8f8574] hover:text-[#d9ac54] transition uppercase"
+        >
+          ‹ {t("common_back")}
+        </button>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-28 sm:-mt-36 relative z-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-14 relative z-10">
         {/* Mobile header */}
-        <div className="flex gap-4 sm:gap-6 items-end mb-6 sm:mb-0 sm:hidden">
+        <div className="flex gap-4 items-end mb-6 -mt-16 sm:hidden">
           <div className="flex-shrink-0 w-28">
             {posterUrl ? (
               <img
                 src={posterUrl}
                 alt={movie.title}
-                className="w-full rounded-2xl shadow-2xl border border-[#c8963c]/30"
+                className="w-full rounded-[8px] shadow-2xl"
               />
             ) : (
-              <div className="w-full aspect-[2/3] rounded-2xl bg-[#1a1714] border border-[#c8963c]/20" />
+              <div className="w-full aspect-[2/3] rounded-[8px] bg-[#14110d]" />
             )}
           </div>
           <div className="flex-1 min-w-0 pb-1">
-            <span className="inline-block mb-2 px-2 py-0.5 glass-panel border border-[#c8963c]/30 rounded-md text-[9px] text-[#f0e6cc]/60 font-black uppercase tracking-widest">
+            <span className="inline-block mb-2 px-2 py-0.5 border border-[#d9ac54]/45 rounded-full font-mono-ui text-[9px] text-[#d9ac54] font-semibold uppercase tracking-[2px]">
               {mediaType === "tv" ? t("common_tv") : t("common_movie")}
             </span>
-            <h1 className="text-xl font-black text-[#f0e6cc] tracking-tight leading-tight mb-2 line-clamp-3">
+            <h1 className="text-xl font-bold text-[#f2ead9] tracking-tight leading-tight mb-2 line-clamp-3">
               {movie.title}
             </h1>
-            <div className="flex flex-wrap gap-2 text-[10px] text-[#f0e6cc]/60 font-bold items-center">
-              <span className="text-[#f0e6cc]">{releaseYear}</span>
-              <span className="text-[#c8963c]/50">•</span>
+            <div className="flex flex-wrap gap-2 text-[10px] text-[#8f8574] font-semibold items-center">
+              <span className="text-[#f2ead9]">{releaseYear}</span>
+              <span className="text-[#645c4d]">•</span>
               <span>
                 {movie.runtime || "0"} {t("stats_min")}
               </span>
               {released && (
-                <span className="text-[#c8963c] px-2 py-0.5 glass-panel rounded-md border border-[#c8963c]/30 font-black">
+                <span className="font-mono-ui text-[#d9ac54] font-bold">
                   ★ {movie.voteAverage?.toFixed(1)}
                 </span>
               )}
@@ -430,7 +470,7 @@ export default function MovieDetails() {
               {movie.genres?.slice(0, 3).map((g) => (
                 <span
                   key={g.id}
-                  className="text-[9px] text-[#f0e6cc]/50 uppercase tracking-widest font-black"
+                  className="font-mono-ui text-[9px] text-[#8f8574] uppercase tracking-widest"
                 >
                   {g.name}
                 </span>
@@ -439,333 +479,213 @@ export default function MovieDetails() {
           </div>
         </div>
 
-        {/* Desktop layout */}
-        <div className="hidden sm:grid grid-cols-12 gap-8 lg:gap-12">
-          <div className="col-span-4 lg:col-span-3 flex flex-col gap-6">
-            <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-b from-[#c8963c]/20 to-[#9a732a]/20 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition duration-1000" />
-              {posterUrl ? (
-                <img
-                  src={posterUrl}
-                  alt={movie.title}
-                  className="relative w-full rounded-[2rem] shadow-2xl border border-[#c8963c]/30 bg-[#1a1714] transition-transform duration-500 group-hover:scale-[1.02]"
-                />
-              ) : (
-                <div className="w-full aspect-[2/3] rounded-[2rem] bg-[#1a1714] border border-[#c8963c]/20" />
+        {/* Desktop hero row */}
+        <div className="hidden sm:flex gap-9 items-end">
+          <div className="w-[240px] shrink-0 -mb-[72px] relative z-10">
+            {posterUrl ? (
+              <img
+                src={posterUrl}
+                alt={movie.title}
+                className="w-full rounded-[8px] shadow-2xl"
+              />
+            ) : (
+              <div className="w-full aspect-[2/3] rounded-[8px] bg-[#14110d]" />
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0 flex flex-col gap-3 pb-7">
+            <div className="flex items-center gap-4">
+              <h1 className="text-5xl font-bold text-[#f2ead9] tracking-tight leading-none -tracking-[.5px]">
+                {movie.title}
+              </h1>
+              <span className="font-mono-ui text-[9.5px] font-semibold tracking-[2px] text-[#d9ac54] border border-[#d9ac54]/45 rounded-full px-3 py-1.5 whitespace-nowrap">
+                {mediaType === "tv" ? t("common_tv") : t("common_movie")}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3.5 flex-wrap">
+              <span className="font-semibold text-[13px] text-[#f2ead9]">
+                {releaseDateFormatted}
+              </span>
+              <span className="text-[#645c4d]">·</span>
+              <span className="text-[13px] text-[#c9c0ac]">
+                {movie.runtime || "0"} {t("stats_min")}
+              </span>
+              {released && (
+                <>
+                  <span className="text-[#645c4d]">·</span>
+                  <span className="font-mono-ui font-bold text-[13px] text-[#d9ac54]">
+                    {t("movie_imdb")} {movie.voteAverage?.toFixed(1)}
+                  </span>
+                </>
+              )}
+              {movie.genres && movie.genres.length > 0 && (
+                <>
+                  <span className="text-[#645c4d]">·</span>
+                  <span className="font-mono-ui text-[11px] font-medium tracking-[1.5px] text-[#8f8574] uppercase">
+                    {movie.genres
+                      .slice(0, 3)
+                      .map((g) => g.name)
+                      .join(" · ")}
+                  </span>
+                </>
               )}
             </div>
 
-            <ActionPanel
-              status={status}
-              released={released}
-              onAddWatchlist={() => handleAddNewMovie(false)}
-              onWatched={() => {
-                setPendingAction("new_watched");
-                setModalRating(0);
-                setIsRatingModalOpen(true);
-              }}
-              onToggleFavorite={handleToggleFavorite}
-              onRate={handleRate}
-              onRemove={handleRemove}
-              mediaType={mediaType}
-              seasons={movie.seasons}
-              progressSeason={progressSeason}
-              progressEpisode={progressEpisode}
-              onProgressSeasonChange={(season) => {
-                setProgressSeason(season);
-                setProgressEpisode(1);
-              }}
-              onProgressEpisodeChange={setProgressEpisode}
-              onSaveProgress={handleSaveProgress}
-            />
-
-            {hasProviders && (
-              <WatchProvidersBlock
-                providers={providers!}
-                movieTitle={movie.title}
-              />
-            )}
-          </div>
-
-          <div className="col-span-8 lg:col-span-9 flex flex-col pt-32 md:pt-40">
-            <h1 className="text-4xl sm:text-6xl font-black text-[#f0e6cc] mb-4 tracking-tighter">
-              {movie.title}
-              <span className="ml-4 inline-block px-2.5 py-1 glass-panel border border-[#c8963c]/30 rounded-lg text-xs align-middle text-[#f0e6cc]/60 font-bold uppercase tracking-widest">
-                {mediaType === "tv"
-                  ? t("common_tv").toUpperCase()
-                  : t("common_movie").toUpperCase()}
-              </span>
-            </h1>
-
-            <div className="flex flex-col gap-3 mb-8">
-              <div className="flex flex-wrap gap-4 text-xs sm:text-sm text-[#f0e6cc]/60 items-center font-bold">
-                <span className="text-[#f0e6cc]">{releaseDateFormatted}</span>
-                <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
-                <span>
-                  {movie.runtime || "0"} {t("stats_min")}
-                </span>
-                {released && (
-                  <>
-                    <span className="w-1.5 h-1.5 bg-[#c8963c]/50 rounded-full" />
-                    <span className="text-[#c8963c] px-2 py-1 glass-panel rounded-lg border border-[#c8963c]/30 tracking-tighter font-black">
-                      {t("movie_imdb")} {movie.voteAverage?.toFixed(1)}
-                    </span>
-                  </>
-                )}
-                {movie.trailerUrl && (
-                  <button
-                    onClick={() =>
-                      document
-                        .getElementById("trailer-section")
-                        ?.scrollIntoView({ behavior: "smooth", block: "start" })
-                    }
-                    className="flex items-center gap-1.5 px-3 py-1 btn-glass btn-glass-gold text-[#12100e] rounded-lg font-black uppercase tracking-wider transition active:scale-95"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                    {t("movie_trailer")}
-                  </button>
-                )}
-                <div className="flex gap-2">
-                  {movie.genres?.slice(0, 3).map((g) => (
-                    <span
-                      key={g.id}
-                      className="text-[10px] text-[#f0e6cc]/50 uppercase tracking-widest"
-                    >
-                      {g.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {movie.productionCountries &&
-                movie.productionCountries.length > 0 && (
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#f0e6cc]/70">
-                    <svg
-                      className="w-4 h-4 shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <title>{t("movie_production_countries")}</title>
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span>{movie.productionCountries.join(", ")}</span>
-                  </div>
-                )}
-            </div>
-
-            <p className="text-[#f0e6cc]/80 text-base sm:text-lg leading-relaxed mb-12 max-w-4xl font-medium">
+            <p className="text-[14.5px] leading-relaxed text-[#c9c0ac] max-w-[640px]">
               {movie.overview}
             </p>
 
-            {movie.cast && movie.cast.length > 0 && (
-              <CastBlock cast={movie.cast} />
-            )}
-            {movie.trailerUrl && <TrailerBlock trailerUrl={movie.trailerUrl} />}
-          </div>
-        </div>
-
-        {/* Mobile content */}
-        <div className="sm:hidden mt-4 flex flex-col gap-4">
-          {movie.productionCountries &&
-            movie.productionCountries.length > 0 && (
-              <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#f0e6cc]/70 bg-[#1a1714] border border-[#c8963c]/20 px-3 py-1.5 rounded-lg w-fit">
-                <svg
-                  className="w-4 h-4 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              {released && (
+                <button
+                  onClick={openWatchedModal}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-[11.5px] tracking-[1.5px] uppercase transition active:scale-95 ${
+                    status?.isWatched
+                      ? "bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c]"
+                      : "border border-white/[.18] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] text-[#c9c0ac]"
+                  }`}
                 >
-                  <title>{t("movie_production_countries")}</title>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span>{movie.productionCountries.join(", ")}</span>
-              </div>
-            )}
-
-          <p className="text-[#f0e6cc]/80 text-sm leading-relaxed font-medium">
-            {movie.overview}
-          </p>
-
-          <div className="glass-panel border border-[#c8963c]/20 p-4 rounded-3xl shadow-xl">
-            {!status ? (
-              <div className="flex gap-3">
+                  ✓ {t("watchlist_watched")}
+                </button>
+              )}
+              {!status && (
                 <button
                   onClick={() => handleAddNewMovie(false)}
-                  className={`py-3 btn-glass btn-glass-dark text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider transition active:scale-95 ${released ? "flex-1" : "w-full"}`}
+                  className="flex items-center gap-2 px-6 py-3 border border-white/[.18] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] rounded-full font-semibold text-[11.5px] tracking-[1.5px] text-[#c9c0ac] uppercase transition active:scale-95"
                 >
                   + {t("search_add")}
                 </button>
-                {released && (
-                  <button
-                    onClick={() => {
-                      setPendingAction("new_watched");
-                      setModalRating(0);
-                      setIsRatingModalOpen(true);
-                    }}
-                    className="flex-1 py-3 btn-glass btn-glass-gold text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider transition active:scale-95"
-                  >
-                    ✓ {t("watchlist_watched")}
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
-                      status.isWatched
-                        ? "text-[#c8963c] bg-[#c8963c]/10 border-[#c8963c]/30"
-                        : "text-[#f0e6cc]/60 bg-[#12100e] border-[#c8963c]/20"
-                    }`}
-                  >
-                    {status.isWatched
-                      ? `✓ ${t("watchlist_watched")}`
-                      : t("movie_planned")}
-                  </span>
-
-                  {released ? (
-                    <button
-                      onClick={handleToggleFavorite}
-                      className={`p-2.5 rounded-xl btn-glass btn-glass-dark transition active:scale-90 ${
-                        status.isFavorite
-                          ? "!border-red-500/40 text-red-500"
-                          : "text-[#f0e6cc]/30 hover:text-red-500"
-                      }`}
-                    >
-                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                      </svg>
-                    </button>
-                  ) : (
-                    <div
-                      className="p-2.5 rounded-xl bg-[#12100e] text-[#c8963c] border border-[#c8963c]/20"
-                      title={t("common_unreleased")}
-                    >
-                      <svg
-                        className="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                  )}
+              )}
+              {released ? (
+                <button
+                  onClick={handleToggleFavorite}
+                  disabled={!status}
+                  className={`w-[44px] h-[44px] rounded-full border flex items-center justify-center text-[15px] transition active:scale-90 disabled:opacity-30 ${
+                    status?.isFavorite
+                      ? "border-[#e0554d]/60 text-[#e0554d] bg-[#e0554d]/10"
+                      : "border-[#d9ac54]/45 text-[#e0554d] hover:bg-[#d9ac54]/10"
+                  }`}
+                >
+                  ♥
+                </button>
+              ) : (
+                <div
+                  className="w-[44px] h-[44px] rounded-full border border-[#d9ac54]/20 flex items-center justify-center text-[#d9ac54]"
+                  title={t("common_unreleased")}
+                >
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                 </div>
-
-                {released && (
-                  <div>
-                    <p className="text-[9px] font-black text-[#f0e6cc]/50 mb-2 uppercase tracking-widest">
-                      {t("movie_your_rating")}
-                    </p>
-                    <StarRating
-                      size="lg"
-                      value={status.rating || 0}
-                      onRate={handleRate}
-                    />
+              )}
+              {movie.trailerUrl && (
+                <button
+                  onClick={() =>
+                    document
+                      .getElementById("trailer-section")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                  }
+                  className="flex items-center gap-2 px-6 py-3 border border-white/[.18] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] rounded-full font-semibold text-[11.5px] tracking-[1.5px] text-[#c9c0ac] uppercase transition active:scale-95"
+                >
+                  ▶ {t("movie_trailer")}
+                </button>
+              )}
+              {released && status?.isWatched && (
+                <div className="flex items-center gap-2.5 ml-4">
+                  <span className="font-mono-ui text-[10px] font-medium tracking-[2px] text-[#8f8574] uppercase">
+                    {t("movie_your_rating")}
+                  </span>
+                  <div className="w-[130px]">
+                    <StarRating size="sm" value={status.rating || 0} onRate={handleRate} />
                   </div>
-                )}
+                  <span className="font-semibold text-[13px] text-[#f2ead9]">
+                    {status.rating || 0}/10
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
-                {mediaType === "tv" &&
-                  movie.seasons &&
-                  movie.seasons.length > 0 && (
-                    <div>
-                      <p className="text-[9px] font-black text-[#f0e6cc]/50 mb-2 uppercase tracking-widest">
-                        {t("movie_episode_progress")}
-                      </p>
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <select
-                            value={progressSeason}
-                            onChange={(e) => {
-                              setProgressSeason(Number(e.target.value));
-                              setProgressEpisode(1);
-                            }}
-                            className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c] truncate"
-                          >
-                            {movie.seasons.map((s) => (
-                              <option
-                                key={s.seasonNumber}
-                                value={s.seasonNumber}
-                              >
-                                {s.name ||
-                                  `${t("movie_season")} ${s.seasonNumber}`}
-                              </option>
-                            ))}
-                          </select>
-                          <select
-                            value={progressEpisode}
-                            onChange={(e) =>
-                              setProgressEpisode(Number(e.target.value))
-                            }
-                            className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-xs focus:outline-none focus:border-[#c8963c] truncate"
-                          >
-                            {Array.from(
-                              {
-                                length:
-                                  movie.seasons.find(
-                                    (s) => s.seasonNumber === progressSeason,
-                                  )?.episodeCount || 1,
-                              },
-                              (_, i) => i + 1,
-                            ).map((ep) => (
-                              <option key={ep} value={ep}>
-                                {t("movie_episode")} {ep}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <button
-                          onClick={handleSaveProgress}
-                          disabled={
-                            progressSeason === status.currentSeason &&
-                            progressEpisode === status.currentEpisode
-                          }
-                          className="w-full py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[10px] uppercase tracking-wide hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
-                        >
-                          {t("movie_save")}
-                        </button>
-                      </div>
-                      {status.currentSeason && status.currentEpisode && (
-                        <p className="text-[9px] text-[#c8963c]/70 mt-1.5">
-                          {t("movie_currently_watching")} S
-                          {status.currentSeason}E{status.currentEpisode}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
+        {/* Info strip beside poster overhang (desktop) */}
+        {(hasProviders || (movie.productionCountries && movie.productionCountries.length > 0) || status) && (
+          <div className="hidden sm:flex gap-9 mt-6">
+            <div className="w-[240px] shrink-0" />
+            <div className="flex-1 flex items-center gap-9 py-6 border-b border-[rgba(217,172,84,.16)]">
+              {firstProvider && (
+                <div className="flex items-center gap-2.5">
+                  <span className="font-mono-ui text-[10px] font-medium tracking-[2px] text-[#8f8574] uppercase">
+                    {t("movie_where_to_watch")}
+                  </span>
+                  <img
+                    src={`https://image.tmdb.org/t/p/w92${firstProvider.logo_path}`}
+                    alt={firstProvider.provider_name}
+                    className="w-[30px] h-[30px] rounded-lg"
+                  />
+                  <span className="text-[12px] text-[#c9c0ac]">
+                    {firstProvider.provider_name}
+                  </span>
+                </div>
+              )}
+              {movie.productionCountries && movie.productionCountries.length > 0 && (
+                <>
+                  {firstProvider && <div className="w-px h-6 bg-[rgba(217,172,84,.16)]" />}
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-mono-ui text-[10px] font-medium tracking-[2px] text-[#8f8574] uppercase">
+                      {t("movie_production_countries")}
+                    </span>
+                    <span className="text-[12px] text-[#c9c0ac]">
+                      {movie.productionCountries.join(", ")}
+                    </span>
+                  </div>
+                </>
+              )}
+              {status?.isWatched && (
                 <button
                   onClick={handleRemove}
-                  className="w-full py-2 btn-glass btn-glass-dark !border-red-500/30 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:!bg-red-900/30 hover:!border-red-500/70 transition active:scale-95"
+                  className="ml-auto font-semibold text-[10.5px] tracking-[1.5px] text-[#e0554d] uppercase opacity-70 hover:opacity-100 transition"
                 >
-                  {t("watchlist_remove")}
+                  {t("watchlist_remove")} {t("watchlist_watched").toUpperCase()}
                 </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Mobile content */}
+        <div className="sm:hidden mt-4 flex flex-col gap-5">
+          {movie.productionCountries &&
+            movie.productionCountries.length > 0 && (
+              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#8f8574]">
+                <span>{t("movie_production_countries")}:</span>
+                <span className="text-[#c9c0ac]">{movie.productionCountries.join(", ")}</span>
               </div>
             )}
-          </div>
+
+          <p className="text-[#c9c0ac] text-sm leading-relaxed">
+            {movie.overview}
+          </p>
+
+          <ActionPanel
+            status={status}
+            released={released}
+            onAddWatchlist={() => handleAddNewMovie(false)}
+            onWatched={openWatchedModal}
+            onToggleFavorite={handleToggleFavorite}
+            onRate={handleRate}
+            onRemove={handleRemove}
+            mediaType={mediaType}
+            seasons={movie.seasons}
+            progressSeason={progressSeason}
+            progressEpisode={progressEpisode}
+            onProgressSeasonChange={(season) => {
+              setProgressSeason(season);
+              setProgressEpisode(1);
+            }}
+            onProgressEpisodeChange={setProgressEpisode}
+            onSaveProgress={handleSaveProgress}
+          />
 
           {movie.cast && movie.cast.length > 0 && (
             <CastBlock cast={movie.cast} />
@@ -780,13 +700,8 @@ export default function MovieDetails() {
 
           {movie.trailerUrl && (
             <div className="mt-2">
-              <div className="flex items-center gap-3 mb-3">
-                <h3 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest italic">
-                  {t("movie_trailer")}
-                </h3>
-                <div className="h-px flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent" />
-              </div>
-              <div className="relative aspect-video rounded-2xl overflow-hidden border border-[#c8963c]/30 bg-[#12100e] shadow-xl">
+              <SectionHeader label={t("movie_trailer")} />
+              <div className="relative aspect-video rounded-[10px] overflow-hidden bg-[#0f0d0a]">
                 <iframe
                   src={`${movie.trailerUrl}?rel=0&showinfo=0&modestbranding=1&autoplay=0`}
                   title="Trailer"
@@ -797,78 +712,41 @@ export default function MovieDetails() {
             </div>
           )}
         </div>
+
+        {/* Desktop: cast + trailer */}
+        <div className="hidden sm:block mt-11">
+          {movie.cast && movie.cast.length > 0 && (
+            <CastBlock cast={movie.cast} />
+          )}
+          {movie.trailerUrl && (
+            <div className="mt-10">
+              <TrailerBlock trailerUrl={movie.trailerUrl} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Friends who watched this */}
       {friendsWatched.length > 0 && (
-        <div className="mt-10 sm:mt-16 max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="mt-10 max-w-7xl mx-auto px-4 sm:px-14">
           <FriendsWatchedBlock friends={friendsWatched} />
         </div>
       )}
 
       {/* Recommendations */}
       {recommendations.length > 0 && (
-        <div className="mt-10 sm:mt-20 max-w-7xl mx-auto">
-          <div className="flex items-center justify-between px-4 sm:px-6 mb-4 sm:mb-8">
-            <div className="flex items-center gap-4">
-              <h3 className="text-lg sm:text-2xl font-black text-[#f0e6cc] uppercase tracking-tighter italic">
-                {t("movie_more_like_this")}
-              </h3>
-              <div className="hidden sm:block h-[1px] w-24 bg-[#c8963c]/20" />
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => scrollSlider("left")}
-                disabled={!canScrollLeft}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-90 ${
-                  canScrollLeft
-                    ? "btn-glass btn-glass-dark text-[#c8963c]"
-                    : "bg-[#12100e] border border-[#c8963c]/10 text-[#f0e6cc]/20 cursor-not-allowed"
-                }`}
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={() => scrollSlider("right")}
-                disabled={!canScrollRight}
-                className={`w-9 h-9 rounded-xl flex items-center justify-center transition active:scale-90 ${
-                  canScrollRight
-                    ? "btn-glass btn-glass-dark text-[#c8963c]"
-                    : "bg-[#12100e] border border-[#c8963c]/10 text-[#f0e6cc]/20 cursor-not-allowed"
-                }`}
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
+        <div className="mt-10 max-w-7xl mx-auto px-4 sm:px-14">
+          <SectionHeader
+            label={t("movie_more_like_this")}
+            onScrollLeft={() => scrollSlider("left")}
+            onScrollRight={() => scrollSlider("right")}
+            canScrollLeft={canScrollLeft}
+            canScrollRight={canScrollRight}
+          />
 
           <div
             ref={sliderRef}
-            className="flex gap-3 sm:gap-4 overflow-x-auto scrollbar-hide px-4 sm:px-6 pb-4 snap-x snap-mandatory"
+            className="flex gap-[18px] overflow-x-auto scrollbar-hide pb-4 snap-x snap-mandatory"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
             onScroll={checkScroll}
           >
@@ -876,9 +754,9 @@ export default function MovieDetails() {
               <Link
                 key={m.id}
                 to={`/movie/${m.id}?type=${mediaType}`}
-                className="group flex-shrink-0 w-36 sm:w-44 snap-start bg-[#1a1714] rounded-2xl sm:rounded-[2rem] overflow-hidden border border-[#c8963c]/20 hover:border-[#c8963c]/70 transition-all duration-300 hover:-translate-y-1 shadow-lg"
+                className="group flex-shrink-0 w-[130px] sm:w-[140px] snap-start flex flex-col gap-2"
               >
-                <div className="aspect-[2/3] relative overflow-hidden">
+                <div className="relative aspect-[2/3] rounded-[6px] overflow-hidden bg-[#0f0d0a]">
                   {m.posterUrl ? (
                     <img
                       src={m.posterUrl}
@@ -886,19 +764,17 @@ export default function MovieDetails() {
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="w-full h-full bg-[#12100e] flex items-center justify-center text-[9px] text-[#f0e6cc]/30 font-bold uppercase tracking-widest">
+                    <div className="w-full h-full flex items-center justify-center text-[9px] text-[#f2ead9]/30">
                       {t("common_na")}
                     </div>
                   )}
                 </div>
-                <div className="p-3 sm:p-4">
-                  <h4 className="text-[10px] sm:text-xs font-bold text-[#f0e6cc] truncate group-hover:text-[#c8963c] transition-colors uppercase tracking-tight">
-                    {m.title}
-                  </h4>
-                  <p className="text-[8px] sm:text-[9px] text-[#f0e6cc]/50 mt-0.5 font-black uppercase tracking-widest">
-                    {m.releaseYear}
-                  </p>
-                </div>
+                <h4 className="text-[12.5px] font-semibold text-[#f2ead9] truncate group-hover:text-[#d9ac54] transition-colors">
+                  {m.title}
+                </h4>
+                <p className="font-mono-ui text-[10px] text-[#8f8574] -mt-1">
+                  {m.releaseYear}
+                </p>
               </Link>
             ))}
           </div>
@@ -909,13 +785,12 @@ export default function MovieDetails() {
       {isRatingModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div
-            className="bg-[#1a1714] border border-[#c8963c]/30 rounded-3xl p-6 w-full max-w-sm shadow-2xl relative overflow-hidden animate-modal-in"
+            className="bg-[#14110d] border border-[#d9ac54]/25 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative animate-modal-in font-ui"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#c8963c] to-[#9a732a]" />
             <button
               onClick={closeRatingModal}
-              className="absolute top-4 right-4 text-[#f0e6cc]/50 hover:text-[#c8963c] transition p-1"
+              className="absolute top-4 right-4 text-[#8f8574] hover:text-[#d9ac54] transition p-1"
             >
               <svg
                 className="w-5 h-5"
@@ -932,10 +807,10 @@ export default function MovieDetails() {
               </svg>
             </button>
             <div className="text-center">
-              <h3 className="text-lg font-black text-[#c8963c] mb-1 uppercase tracking-wide">
+              <h3 className="text-lg font-bold text-[#f2ead9] mb-1">
                 {t("movie_how_was_it")}
               </h3>
-              <p className="text-sm text-[#f0e6cc]/60 mb-6">
+              <p className="text-sm text-[#8f8574] mb-6">
                 {t("movie_rate_desc")} "{movie?.title}"
               </p>
               <div className="mb-6">
@@ -948,13 +823,13 @@ export default function MovieDetails() {
               <div className="flex gap-2">
                 <button
                   onClick={closeRatingModal}
-                  className="flex-1 py-3 font-black text-[#f0e6cc] uppercase tracking-widest transition btn-glass btn-glass-dark active:scale-[0.98] text-xs"
+                  className="flex-1 py-3 font-bold text-[#f2ead9] uppercase tracking-widest transition border border-white/[.15] hover:border-[#d9ac54]/45 rounded-full active:scale-[0.98] text-xs"
                 >
                   {t("movie_rating_cancel")}
                 </button>
                 <button
                   onClick={handleModalConfirm}
-                  className="flex-1 py-3 font-black text-[#12100e] uppercase tracking-widest transition btn-glass btn-glass-gold active:scale-[0.98] text-xs"
+                  className="flex-1 py-3 font-bold text-[#14110c] uppercase tracking-widest transition bg-[#d9ac54] hover:bg-[#e8c377] rounded-full active:scale-[0.98] text-xs"
                 >
                   {t("movie_rating_ok")}
                 </button>
@@ -965,8 +840,8 @@ export default function MovieDetails() {
       )}
 
       {toastMessage && (
-        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 sm:w-auto bg-[#1a1714] border border-[#c8963c]/50 text-[#c8963c] px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 z-[60] backdrop-blur-md animate-fade-in">
-          <div className="w-1.5 h-1.5 bg-[#c8963c] rounded-full animate-pulse flex-shrink-0" />
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-10 sm:w-auto bg-[#14110d] border border-[#d9ac54]/50 text-[#d9ac54] px-5 py-3.5 rounded-full shadow-2xl flex items-center gap-3 z-[60] backdrop-blur-md animate-fade-in">
+          <div className="w-1.5 h-1.5 bg-[#d9ac54] rounded-full animate-pulse flex-shrink-0" />
           <span className="font-bold text-[10px] uppercase tracking-[0.2em]">
             {toastMessage}
           </span>
@@ -1009,45 +884,46 @@ function ActionPanel({
 }) {
   const { t } = useLang();
   return (
-    <div className="glass-panel border border-[#c8963c]/20 p-6 rounded-[2rem] shadow-2xl">
+    <div>
       {!status ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex gap-3">
           <button
             onClick={onAddWatchlist}
-            className="w-full py-3.5 btn-glass btn-glass-dark text-[#c8963c] rounded-2xl font-black text-[11px] uppercase tracking-wider transition active:scale-95"
+            className={`py-3 border border-white/[.18] text-[#c9c0ac] rounded-full font-bold text-[11px] uppercase tracking-wider transition active:scale-95 ${released ? "flex-1" : "w-full"}`}
           >
-            {t("search_add")}
+            + {t("search_add")}
           </button>
           {released && (
             <button
               onClick={onWatched}
-              className="w-full py-3.5 btn-glass btn-glass-gold text-[#12100e] rounded-2xl font-black text-[11px] uppercase tracking-wider transition active:scale-95"
+              className="flex-1 py-3 bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] rounded-full font-bold text-[11px] uppercase tracking-wider transition active:scale-95"
             >
-              {t("watchlist_watched")}
+              ✓ {t("watchlist_watched")}
             </button>
           )}
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <span
-              className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border ${
+              className={`px-3.5 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
                 status.isWatched
-                  ? "text-[#c8963c] bg-[#c8963c]/10 border-[#c8963c]/30"
-                  : "text-[#f0e6cc]/60 bg-[#12100e] border-[#c8963c]/20"
+                  ? "text-[#d9ac54] bg-[#d9ac54]/10 border-[#d9ac54]/30"
+                  : "text-[#8f8574] border-white/[.15]"
               }`}
             >
               {status.isWatched
-                ? t("watchlist_watched")
-                : t("movie_planned").replace("⋯ ", "")}
+                ? `✓ ${t("watchlist_watched")}`
+                : t("movie_planned")}
             </span>
+
             {released ? (
               <button
                 onClick={onToggleFavorite}
-                className={`p-2.5 rounded-xl btn-glass btn-glass-dark transition ${
+                className={`w-10 h-10 rounded-full border flex items-center justify-center transition active:scale-90 ${
                   status.isFavorite
-                    ? "!border-red-500/40 text-red-500"
-                    : "text-[#f0e6cc]/30 hover:text-red-500"
+                    ? "border-[#e0554d]/50 text-[#e0554d]"
+                    : "border-white/[.15] text-[#8f8574] hover:text-[#e0554d]"
                 }`}
               >
                 <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
@@ -1056,11 +932,11 @@ function ActionPanel({
               </button>
             ) : (
               <div
-                className="p-2.5 rounded-xl bg-[#12100e] text-[#c8963c] border border-[#c8963c]/20"
+                className="w-10 h-10 rounded-full border border-white/[.12] text-[#d9ac54] flex items-center justify-center"
                 title={t("common_unreleased")}
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -1076,10 +952,10 @@ function ActionPanel({
             )}
           </div>
 
-          {released && (
-            <div className="pt-4 border-t border-[#c8963c]/20">
-              <p className="text-[11px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
-                {t("movie_rate_this")}
+          {released && status.isWatched && (
+            <div className="pt-4 border-t border-[rgba(217,172,84,.16)]">
+              <p className="font-mono-ui text-[10px] font-medium text-[#8f8574] mb-3 uppercase tracking-widest">
+                {t("movie_your_rating")}
               </p>
               <StarRating
                 size="lg"
@@ -1090,8 +966,8 @@ function ActionPanel({
           )}
 
           {mediaType === "tv" && seasons && seasons.length > 0 && (
-            <div className="pt-4 border-t border-[#c8963c]/20">
-              <p className="text-[11px] font-black text-[#f0e6cc]/50 mb-3 uppercase tracking-widest">
+            <div className="pt-4 border-t border-[rgba(217,172,84,.16)]">
+              <p className="font-mono-ui text-[10px] font-medium text-[#8f8574] mb-3 uppercase tracking-widest">
                 {t("movie_episode_progress")}
               </p>
               <div className="flex flex-col gap-1.5">
@@ -1101,7 +977,7 @@ function ActionPanel({
                     onChange={(e) =>
                       onProgressSeasonChange(Number(e.target.value))
                     }
-                    className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-[13px] focus:outline-none focus:border-[#c8963c] truncate"
+                    className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-white/[.03] border border-[#d9ac54]/30 rounded-lg text-[#f2ead9] text-[13px] focus:outline-none focus:border-[#d9ac54] truncate"
                   >
                     {seasons.map((s) => (
                       <option key={s.seasonNumber} value={s.seasonNumber}>
@@ -1114,7 +990,7 @@ function ActionPanel({
                     onChange={(e) =>
                       onProgressEpisodeChange(Number(e.target.value))
                     }
-                    className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-[#12100e] border border-[#c8963c]/30 rounded-xl text-[#f0e6cc] text-[13px] focus:outline-none focus:border-[#c8963c] truncate"
+                    className="flex-1 min-w-0 pl-2 pr-5 py-2 bg-white/[.03] border border-[#d9ac54]/30 rounded-lg text-[#f2ead9] text-[13px] focus:outline-none focus:border-[#d9ac54] truncate"
                   >
                     {Array.from(
                       {
@@ -1136,13 +1012,13 @@ function ActionPanel({
                     progressSeason === status.currentSeason &&
                     progressEpisode === status.currentEpisode
                   }
-                  className="w-full py-2 bg-[#c8963c] text-[#12100e] rounded-xl font-black text-[11px] uppercase tracking-wide hover:bg-[#e8c070] transition active:scale-95 disabled:bg-[#2a241f] disabled:text-[#c8963c]/30"
+                  className="w-full py-2 bg-[#d9ac54] text-[#14110c] rounded-full font-bold text-[11px] uppercase tracking-wide hover:bg-[#e8c377] transition active:scale-95 disabled:opacity-30"
                 >
                   {t("movie_save")}
                 </button>
               </div>
               {status.currentSeason && status.currentEpisode && (
-                <p className="text-[10px] text-[#c8963c]/70 mt-1.5">
+                <p className="text-[10px] text-[#d9ac54]/70 mt-1.5">
                   {t("movie_currently_watching")} S{status.currentSeason}E
                   {status.currentEpisode}
                 </p>
@@ -1152,7 +1028,7 @@ function ActionPanel({
 
           <button
             onClick={onRemove}
-            className="w-full py-2.5 btn-glass btn-glass-dark !border-red-500/30 text-red-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:!bg-red-900/30 hover:!border-red-500/70 transition active:scale-95"
+            className="w-full py-2.5 border border-[#e0554d]/30 text-[#e0554d] rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-[#e0554d]/10 hover:border-[#e0554d]/60 transition active:scale-95"
           >
             {t("watchlist_remove")}
           </button>
@@ -1165,23 +1041,15 @@ function ActionPanel({
 function TrailerBlock({ trailerUrl }: { trailerUrl: string }) {
   const { t } = useLang();
   return (
-    <div id="trailer-section" className="w-full max-w-2xl mt-8 scroll-mt-24">
-      <div className="flex items-center gap-4 mb-6">
-        <h3 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest italic">
-          {t("movie_trailer")}
-        </h3>
-        <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent" />
-      </div>
-      <div className="relative group">
-        <div className="absolute -inset-1 bg-[#c8963c]/10 rounded-[2rem] blur-xl opacity-0 group-hover:opacity-100 transition duration-700" />
-        <div className="relative aspect-video rounded-[2rem] overflow-hidden border border-[#c8963c]/30 bg-[#12100e] shadow-2xl transition-transform duration-500 group-hover:scale-[1.01]">
-          <iframe
-            src={`${trailerUrl}?rel=0&showinfo=0&modestbranding=1&autoplay=0`}
-            title="Trailer"
-            className="absolute inset-0 w-full h-full"
-            allowFullScreen
-          />
-        </div>
+    <div id="trailer-section" className="w-full max-w-[720px] scroll-mt-24">
+      <SectionHeader label={t("movie_trailer")} />
+      <div className="relative aspect-video rounded-[10px] overflow-hidden bg-[#0f0d0a] transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgba(217,172,84,.5)]">
+        <iframe
+          src={`${trailerUrl}?rel=0&showinfo=0&modestbranding=1&autoplay=0`}
+          title="Trailer"
+          className="absolute inset-0 w-full h-full"
+          allowFullScreen
+        />
       </div>
     </div>
   );
@@ -1223,7 +1091,7 @@ function WatchProvidersBlock({
     if (!list || list.length === 0) return null;
     return (
       <div className="mb-4 last:mb-0">
-        <h4 className="text-[9px] font-black text-[#c8963c]/70 uppercase tracking-[0.2em] mb-2">
+        <h4 className="font-mono-ui text-[9px] font-semibold text-[#8f8574] uppercase tracking-[0.2em] mb-2">
           {title}
         </h4>
         <div className="flex flex-wrap gap-2">
@@ -1239,7 +1107,7 @@ function WatchProvidersBlock({
               <img
                 src={`https://image.tmdb.org/t/p/w92${p.logo_path}`}
                 alt={p.provider_name}
-                className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl shadow-md border border-[#c8963c]/20"
+                className="w-9 h-9 rounded-lg"
               />
             </a>
           ))}
@@ -1249,20 +1117,20 @@ function WatchProvidersBlock({
   };
 
   return (
-    <div className="glass-panel border border-[#c8963c]/20 p-5 rounded-[2rem] shadow-xl w-full mt-6">
-      <h3 className="text-xs font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
+    <div className="pt-5 border-t border-[rgba(217,172,84,.16)]">
+      <h3 className="font-mono-ui text-[10px] font-semibold text-[#d9ac54] uppercase tracking-[2px] mb-4">
         {t("movie_where_to_watch")}
       </h3>
       {renderProviderList(t("movie_stream"), providers.flatrate)}
       {renderProviderList(t("movie_rent"), providers.rent)}
       {renderProviderList(t("movie_buy"), providers.buy)}
       {providers.link && (
-        <div className="mt-2 pt-3 border-t border-[#c8963c]/10 text-center">
+        <div className="mt-2 pt-3 border-t border-[rgba(217,172,84,.12)] text-center">
           <a
             href={providers.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-[8px] text-[#f0e6cc]/40 hover:text-[#c8963c] transition-colors uppercase tracking-widest font-bold"
+            className="text-[9px] text-[#645c4d] hover:text-[#d9ac54] transition-colors uppercase tracking-widest font-semibold"
           >
             {t("movie_powered_by")} JustWatch &rarr;
           </a>
@@ -1275,18 +1143,16 @@ function WatchProvidersBlock({
 function FriendsWatchedBlock({ friends }: { friends: FriendWatchedType[] }) {
   const { t } = useLang();
   return (
-    <div className="glass-panel border border-[#c8963c]/20 p-4 sm:p-5 rounded-[2rem] shadow-xl">
-      <h3 className="text-xs sm:text-sm font-black text-[#f0e6cc] uppercase tracking-widest mb-4">
-        {t("movie_friends_watched")}
-      </h3>
+    <div>
+      <SectionHeader label={t("movie_friends_watched")} />
       <div className="flex flex-wrap gap-3">
         {friends.map((friend) => (
           <Link
             key={friend.id}
             to={`/user/${friend.id}`}
-            className="flex items-center gap-2.5 bg-[#12100e] border border-[#c8963c]/20 rounded-2xl pl-2 pr-3 py-2 hover:border-[#c8963c]/60 transition"
+            className="flex items-center gap-2.5 border border-[rgba(217,172,84,.2)] rounded-full pl-2 pr-3.5 py-2 hover:border-[#d9ac54]/50 transition"
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#c8963c] to-[#9a732a] flex items-center justify-center text-xs font-black text-[#12100e] overflow-hidden shrink-0">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#d9ac54] to-[#a87c2e] flex items-center justify-center text-xs font-bold text-[#14110c] overflow-hidden shrink-0">
               {friend.avatarUrl ? (
                 <img
                   src={friend.avatarUrl}
@@ -1297,11 +1163,11 @@ function FriendsWatchedBlock({ friends }: { friends: FriendWatchedType[] }) {
                 friend.username[0].toUpperCase()
               )}
             </div>
-            <span className="text-xs font-bold text-[#f0e6cc] truncate max-w-[120px]">
+            <span className="text-xs font-semibold text-[#f2ead9] truncate max-w-[120px]">
               {friend.username}
             </span>
             {friend.rating ? (
-              <span className="text-[10px] font-black text-[#c8963c] shrink-0">
+              <span className="font-mono-ui text-[10px] font-bold text-[#d9ac54] shrink-0">
                 ★ {friend.rating}
               </span>
             ) : null}
@@ -1329,42 +1195,25 @@ function CastBlock({ cast }: { cast: CastMemberType[] }) {
   };
 
   return (
-    <div className="w-full max-w-4xl mb-12">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4 flex-grow">
-          <h3 className="text-lg font-black text-[#f0e6cc] uppercase tracking-widest italic">
-            {t("movie_top_cast")}
-          </h3>
-          <div className="h-[1px] flex-grow bg-gradient-to-r from-[#c8963c]/30 to-transparent max-w-[200px]" />
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => scroll("left")}
-            className="w-7 h-7 rounded-full btn-glass btn-glass-dark text-[#c8963c] flex items-center justify-center active:scale-95 transition-all"
-          >
-            &larr;
-          </button>
-          <button
-            onClick={() => scroll("right")}
-            className="w-7 h-7 rounded-full btn-glass btn-glass-dark text-[#c8963c] flex items-center justify-center active:scale-95 transition-all"
-          >
-            &rarr;
-          </button>
-        </div>
-      </div>
+    <div className="w-full">
+      <SectionHeader
+        label={t("movie_top_cast")}
+        onScrollLeft={() => scroll("left")}
+        onScrollRight={() => scroll("right")}
+      />
 
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scrollbar-hide snap-x pb-4"
+        className="flex gap-[26px] overflow-x-auto scrollbar-hide snap-x pb-4"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {cast.map((actor) => (
           <Link
             key={actor.id}
             to={`/actor/${actor.id}`}
-            className="flex-shrink-0 w-20 sm:w-24 snap-start group block cursor-pointer text-center"
+            className="flex-shrink-0 w-[88px] sm:w-[112px] snap-start group block cursor-pointer text-center flex flex-col items-center gap-2"
           >
-            <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto rounded-full overflow-hidden bg-[#1a1714] border-2 border-[#c8963c]/20 mb-2 shadow-md group-hover:border-[#c8963c] glow-gold-sm group-hover:scale-105 transition-all duration-300">
+            <div className="w-[70px] h-[70px] sm:w-[88px] sm:h-[88px] rounded-full overflow-hidden bg-[#14110d] transition-shadow duration-200 group-hover:shadow-[0_0_0_2px_#d9ac54]">
               {actor.profile_path ? (
                 <img
                   src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
@@ -1372,7 +1221,7 @@ function CastBlock({ cast }: { cast: CastMemberType[] }) {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-[#f0e6cc]/20">
+                <div className="w-full h-full flex flex-col items-center justify-center text-[#f2ead9]/20">
                   <svg
                     className="w-8 h-8"
                     fill="currentColor"
@@ -1383,11 +1232,11 @@ function CastBlock({ cast }: { cast: CastMemberType[] }) {
                 </div>
               )}
             </div>
-            <p className="text-[10px] sm:text-xs font-bold text-[#f0e6cc] leading-tight truncate group-hover:text-[#c8963c] transition-colors">
+            <p className="text-[11px] sm:text-xs font-semibold text-[#f2ead9] leading-tight truncate group-hover:text-[#d9ac54] transition-colors">
               {actor.name}
             </p>
             <p
-              className="text-[9px] text-[#c8963c]/70 truncate mt-0.5"
+              className="text-[10px] sm:text-[10.5px] text-[#8f8574] truncate -mt-1"
               title={actor.character}
             >
               {actor.character}
