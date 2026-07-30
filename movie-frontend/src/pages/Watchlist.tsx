@@ -475,7 +475,7 @@ export default function Watchlist() {
           />
         </div>
 
-        <div className="flex items-center gap-1 mb-8 border-b border-[rgba(217,172,84,.16)] overflow-x-auto scrollbar-hide">
+        <div className="flex items-center gap-1 mb-8 border-b border-[rgba(217,172,84,.16)] overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide">
           {(["profile", "watchlist", "watched"] as const).map((tab) => {
             const watchedCount = profileData?.watchedCount ?? null;
             const watchlistCount =
