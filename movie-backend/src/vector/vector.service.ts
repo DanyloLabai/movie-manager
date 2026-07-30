@@ -23,6 +23,11 @@ export interface MovieSearchFilters {
   excludeWatched?: boolean;
 }
 
+export interface DiscoveryCandidate {
+  tmdbId: number;
+  title: string;
+}
+
 @Injectable()
 export class VectorService implements OnModuleInit {
   private pool: Pool;
@@ -51,9 +56,6 @@ export class VectorService implements OnModuleInit {
         process.env.NODE_ENV === 'production'
           ? { rejectUnauthorized: false }
           : undefined,
-      // Conservative cap so this pool plus TypeORM's (see app.module.ts) stay
-      // within a managed/serverless Postgres plan's total connection limit.
-      // Tune to whatever the DB plan actually allows.
       max: 5,
     });
 
@@ -456,5 +458,83 @@ export class VectorService implements OnModuleInit {
       this.logger.error(`Memory retrieval failed: ${(error as Error).message}`);
       return [];
     }
+  }
+
+  // Swipe discovery feed — "personalized" half. Averages the embeddings of
+  // the user's liked movies into a single centroid vector (same AVG(embedding)
+  // trick already proven in computeTasteCompatibility) and ranks the pool
+  // against it in one query, rather than N similarity lookups.
+  async searchPersonalizedForUser(
+    likedTmdbIds: number[],
+    excludeTmdbIds: number[],
+    k: number,
+  ): Promise<DiscoveryCandidate[]> {
+    if (likedTmdbIds.length === 0) return [];
+
+    const result = await this.pool.query(
+      `WITH centroid AS (
+         SELECT AVG(embedding) AS v
+         FROM movie_embeddings
+         WHERE (metadata->>'tmdbId')::int = ANY($1::int[])
+       )
+       SELECT movie_embeddings.metadata
+       FROM movie_embeddings, centroid
+       WHERE media_type = 'movie'
+         AND NOT (metadata->>'tmdbId')::int = ANY($2::int[])
+         AND centroid.v IS NOT NULL
+       ORDER BY movie_embeddings.embedding <=> centroid.v
+       LIMIT $3`,
+      [likedTmdbIds, excludeTmdbIds, k],
+    );
+
+    return this.rowsToCandidates(result.rows);
+  }
+
+  // Swipe discovery feed — "diverse/exploratory" half. Biases away from the
+  // genres the user already gravitates towards (rather than picking fully
+  // at random) while still enforcing a quality floor.
+  async searchDiverseForUser(
+    familiarGenreIds: number[],
+    excludeTmdbIds: number[],
+    minRating: number,
+    k: number,
+  ): Promise<DiscoveryCandidate[]> {
+    const conditions = [
+      `media_type = 'movie'`,
+      `NOT (metadata->>'tmdbId')::int = ANY($1::int[])`,
+      `vote_average >= $2`,
+    ];
+    const params: unknown[] = [excludeTmdbIds, minRating];
+
+    if (familiarGenreIds.length > 0) {
+      conditions.push(`NOT (genre_ids && $3::int[])`);
+      params.push(familiarGenreIds);
+    }
+
+    params.push(k);
+    const limitParamIndex = params.length;
+
+    const result = await this.pool.query(
+      `SELECT metadata
+       FROM movie_embeddings
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY RANDOM()
+       LIMIT $${limitParamIndex}`,
+      params,
+    );
+
+    return this.rowsToCandidates(result.rows);
+  }
+
+  private rowsToCandidates(
+    rows: Array<{ metadata: unknown }>,
+  ): DiscoveryCandidate[] {
+    return rows.map((row) => {
+      const metadata: MovieEmbeddingMetadata =
+        typeof row.metadata === 'string'
+          ? (JSON.parse(row.metadata) as MovieEmbeddingMetadata)
+          : (row.metadata as MovieEmbeddingMetadata);
+      return { tmdbId: Number(metadata.tmdbId), title: metadata.title };
+    });
   }
 }

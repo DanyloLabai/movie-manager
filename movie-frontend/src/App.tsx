@@ -23,6 +23,7 @@ import Top100 from "./pages/Top100";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import Admin from "./pages/Admin";
+import Discover from "./pages/Discover";
 import { ApiNotification } from "./components/ApiNotification";
 import BottomNav from "./components/BottomNav";
 import Sidebar, { SIDEBAR_PADDING_CLASS } from "./components/layout/Sidebar";
@@ -93,6 +94,15 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Watchlist />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/discover"
+          element={
+            <ProtectedRoute>
+              <Discover />
             </ProtectedRoute>
           }
         />
