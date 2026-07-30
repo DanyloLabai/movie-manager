@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
 import * as usersApi from "../api/users.api";
+import * as swipeApi from "../api/swipe.api";
+import type { SwipeStatus } from "../api/swipe.api";
 
 import { useLang } from "../context/LanguageContext";
 import { MovieCarousel } from "../components/movie/MovieCarousel";
@@ -12,7 +14,10 @@ import NotificationBell from "../components/NotificationBell";
 import LogoIcon from "../components/LogoIcon";
 import { SearchFilterBar } from "../components/search/SearchFilterBar";
 import type { MovieResult } from "../types/movie.types";
-import type { SmartSearchFilters, BecauseYouWatchedResponse } from "../api/movies.api";
+import type {
+  SmartSearchFilters,
+  BecauseYouWatchedResponse,
+} from "../api/movies.api";
 import type { FriendLastWatched } from "../api/users.api";
 
 type ProfileResponse = {
@@ -61,6 +66,20 @@ const isReleased = (movie: MovieResult) => {
     return parseInt(movie.releaseYear, 10) <= new Date().getFullYear();
   return true;
 };
+
+// Mini swipe-deck glyph (two overlapping rotated card outlines) used on the
+// Discover entry pill/promo strip — matches the handoff's hand-drawn icon
+// rather than a generic stroke SVG, since that's how the mockup builds it.
+function DiscoverStackIcon({ small = false }: { small?: boolean }) {
+  return (
+    <span
+      className={`relative shrink-0 ${small ? "w-[18px] h-[22px]" : "w-[22px] h-[26px]"}`}
+    >
+      <span className="absolute inset-0 rounded border-[1.5px] border-[#d9ac54]/45 -rotate-[10deg] -translate-x-[3px]" />
+      <span className="absolute inset-0 rounded border-[1.5px] border-[#d9ac54] bg-[#14110d] rotate-[6deg] translate-x-[2px]" />
+    </span>
+  );
+}
 
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState(() => {
@@ -183,6 +202,7 @@ export default function Search() {
   });
   const [similarToTitle, setSimilarToTitle] = useState<string | null>(null);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [swipeStatus, setSwipeStatus] = useState<SwipeStatus | null>(null);
   const { t } = useLang();
   const navigate = useNavigate();
   const location = useLocation();
@@ -192,15 +212,19 @@ export default function Search() {
   const handleFindSimilar = (movie: MovieResult) => {
     navigate("/search", {
       state: {
-        similarTo: { tmdbId: movie.id, mediaType: movie.mediaType, title: movie.title },
+        similarTo: {
+          tmdbId: movie.id,
+          mediaType: movie.mediaType,
+          title: movie.title,
+        },
       },
     });
   };
 
   useEffect(() => {
-    const state = location.state as
-      | { similarTo?: { tmdbId: number; mediaType: string; title: string } }
-      | null;
+    const state = location.state as {
+      similarTo?: { tmdbId: number; mediaType: string; title: string };
+    } | null;
     if (!state?.similarTo) return;
 
     const { tmdbId, title } = state.similarTo;
@@ -253,6 +277,13 @@ export default function Search() {
       })
       .catch(() => {});
   }, [addedIds.length]);
+
+  useEffect(() => {
+    swipeApi
+      .getSwipeStatus()
+      .then(setSwipeStatus)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setVisibleCount(20);
@@ -508,7 +539,6 @@ export default function Search() {
     }
   };
 
-
   const renderMovieGrid = (movies: MovieResult[]) => (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
@@ -559,62 +589,112 @@ export default function Search() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12 sm:pt-9">
-        <form
-          onSubmit={handleSearch}
-          className="relative max-w-2xl mx-auto mb-4 rounded-full transition-shadow"
-        >
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("search_placeholder")}
-            className="w-full pl-6 pr-32 py-3.5 sm:py-4 bg-white/[.03] border border-[#d9ac54]/30 rounded-full text-[#f2ead9] placeholder-[#8f8574] focus:outline-none focus:border-[#d9ac54] transition text-sm sm:text-base font-medium tracking-wide"
-          />
-          <div className="absolute right-2 top-0 bottom-0 flex items-center gap-1">
-            {searchQuery.trim() !== "" && (
-              <button
-                type="button"
-                onClick={() => setShowFilters((prev) => !prev)}
-                title={t("search_filters_toggle")}
-                className={`w-8 h-8 flex items-center justify-center rounded-full transition ${
-                  showFilters || hasActiveFilters
-                    ? "text-[#d9ac54] bg-[#d9ac54]/10"
-                    : "text-[#8f8574] hover:text-[#d9ac54]"
-                }`}
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+        <div className="flex items-center gap-2 max-w-2xl mx-auto mb-4">
+          <form
+            onSubmit={handleSearch}
+            className="relative flex-1 rounded-full transition-shadow"
+          >
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t("search_placeholder")}
+              className="w-full pl-6 pr-32 py-3.5 sm:py-4 bg-white/[.03] border border-[#d9ac54]/30 rounded-full text-[#f2ead9] placeholder-[#8f8574] focus:outline-none focus:border-[#d9ac54] transition text-sm sm:text-base font-medium tracking-wide"
+            />
+            <div className="absolute right-2 top-0 bottom-0 flex items-center gap-1">
+              {searchQuery.trim() !== "" && (
+                <button
+                  type="button"
+                  onClick={() => setShowFilters((prev) => !prev)}
+                  title={t("search_filters_toggle")}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full transition ${
+                    showFilters || hasActiveFilters
+                      ? "text-[#d9ac54] bg-[#d9ac54]/10"
+                      : "text-[#8f8574] hover:text-[#d9ac54]"
+                  }`}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M3.792 4.5h16.416a1 1 0 01.809 1.588l-6.383 8.628a1.5 1.5 0 00-.29.89v4.394a.75.75 0 01-1.08.68l-3.048-1.39a1.5 1.5 0 01-.82-1.28v-2.404a1.5 1.5 0 00-.29-.89L2.983 6.088A1 1 0 013.792 4.5z"
-                  />
-                </svg>
-              </button>
-            )}
-            {searchQuery && (
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3.792 4.5h16.416a1 1 0 01.809 1.588l-6.383 8.628a1.5 1.5 0 00-.29.89v4.394a.75.75 0 01-1.08.68l-3.048-1.39a1.5 1.5 0 01-.82-1.28v-2.404a1.5 1.5 0 00-.29-.89L2.983 6.088A1 1 0 013.792 4.5z"
+                    />
+                  </svg>
+                </button>
+              )}
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-[#8f8574] hover:text-[#d9ac54] transition text-sm"
+                >
+                  ✕
+                </button>
+              )}
               <button
-                type="button"
-                onClick={handleClearSearch}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-[#8f8574] hover:text-[#d9ac54] transition text-sm"
+                type="submit"
+                disabled={isSearching || !searchQuery.trim()}
+                className="px-4 sm:px-6 h-10 flex items-center gap-1.5 bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] rounded-full font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 text-xs sm:text-sm uppercase tracking-[2px] mr-1"
               >
-                ✕
+                {isSearching ? "..." : t("search_find")}
               </button>
+            </div>
+          </form>
+          <Link
+            to="/discover"
+            title={t("nav_discover")}
+            className="relative shrink-0 w-11 h-11 sm:w-auto sm:h-12 sm:pl-3.5 sm:pr-5 rounded-full border border-[#d9ac54]/45 hover:bg-[#d9ac54]/10 flex items-center justify-center sm:justify-start gap-2.5 transition"
+          >
+            <DiscoverStackIcon />
+            <span className="hidden sm:flex flex-col gap-0.5 leading-none">
+              <span className="font-bold text-[11px] tracking-[2px] text-[#d9ac54] uppercase">
+                {t("discover_entry_label")}
+              </span>
+              {swipeStatus && (
+                <span className="font-mono-ui text-[8.5px] tracking-[1px] text-[#8f8574] uppercase">
+                  {swipeStatus.dailyLimit - swipeStatus.remainingToday} /{" "}
+                  {swipeStatus.dailyLimit} {t("discover_today")}
+                </span>
+              )}
+            </span>
+            {!!swipeStatus?.remainingToday && (
+              <span className="sm:hidden absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-[#d9ac54] ring-2 ring-[#0f0d0a] flex items-center justify-center text-[9px] font-bold text-[#14110c]">
+                {swipeStatus.remainingToday}
+              </span>
             )}
-            <button
-              type="submit"
-              disabled={isSearching || !searchQuery.trim()}
-              className="px-4 sm:px-6 h-10 flex items-center gap-1.5 bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] rounded-full font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 text-xs sm:text-sm uppercase tracking-[2px] mr-1"
-            >
-              {isSearching ? "..." : t("search_find")}
-            </button>
-          </div>
-        </form>
+            {!!swipeStatus?.remainingToday && (
+              <span className="hidden sm:block absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#d9ac54] ring-2 ring-[#0f0d0a]" />
+            )}
+          </Link>
+        </div>
+
+        {swipeStatus?.showPromo && (
+          <Link
+            to="/discover"
+            className="max-w-2xl mx-auto mb-8 flex items-center gap-3.5 px-5 py-3.5 rounded-xl border border-[#d9ac54]/20 hover:border-[#d9ac54]/45 bg-[radial-gradient(120%_120%_at_0%_0%,rgba(217,172,84,.07),transparent)] transition"
+          >
+            <DiscoverStackIcon />
+            <span className="flex-1 min-w-0 flex flex-col gap-0.5">
+              <span className="font-semibold text-[13px] text-[#f2ead9]">
+                {t("discover_promo_title")}
+              </span>
+              <span className="text-[11.5px] text-[#8f8574] truncate">
+                {t("discover_promo_swipe")} — {swipeStatus.remainingToday}{" "}
+                {t("discover_promo_of")} {swipeStatus.dailyLimit}{" "}
+                {t("discover_promo_remaining")}
+              </span>
+            </span>
+            <span className="shrink-0 font-bold text-[11px] tracking-[2px] text-[#d9ac54] uppercase">
+              {t("discover_entry_label")} →
+            </span>
+          </Link>
+        )}
 
         {searchHistory.length > 0 &&
           !isSearching &&
