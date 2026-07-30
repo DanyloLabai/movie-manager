@@ -20,7 +20,8 @@ const GEMINI_EMBED_URL =
 const TARGET_POOL_SIZE = 2500;
 const MIN_VOTE_COUNT = 100; // quality floor so the pool isn't full of obscure/junk titles
 const TMDB_REQUEST_DELAY_MS = 250;
-const GEMINI_REQUEST_DELAY_MS = 200;
+const GEMINI_REQUEST_DELAY_MS = 400;
+const GEMINI_MAX_RETRIES = 5;
 const MOVIES_PER_PAGE = 20; // fixed by the TMDB /discover endpoint
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -49,16 +50,30 @@ async function fetchDiscoverPage(tmdbToken, page) {
   return data.results || [];
 }
 
-async function embed(text, geminiApiKey) {
-  const res = await axios.post(
-    `${GEMINI_EMBED_URL}?key=${geminiApiKey}`,
-    {
-      model: 'models/gemini-embedding-2',
-      content: { parts: [{ text }] },
-    },
-    { headers: { 'Content-Type': 'application/json' } },
-  );
-  return res.data.embedding.values;
+async function embed(text, geminiApiKey, attempt = 1) {
+  try {
+    const res = await axios.post(
+      `${GEMINI_EMBED_URL}?key=${geminiApiKey}`,
+      {
+        model: 'models/gemini-embedding-2',
+        content: { parts: [{ text }] },
+      },
+      { headers: { 'Content-Type': 'application/json' } },
+    );
+    return res.data.embedding.values;
+  } catch (err) {
+    const status = err.response?.status;
+    if (status === 429 && attempt < GEMINI_MAX_RETRIES) {
+      const retryAfterHeader = Number(err.response?.headers?.['retry-after']);
+      const backoffMs =
+        Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+          ? retryAfterHeader * 1000
+          : Math.min(30000, 1000 * 2 ** attempt); // 2s, 4s, 8s, 16s, capped at 30s
+      await sleep(backoffMs);
+      return embed(text, geminiApiKey, attempt + 1);
+    }
+    throw err;
+  }
 }
 
 async function run() {
