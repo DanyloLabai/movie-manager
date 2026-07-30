@@ -312,6 +312,7 @@ const translations = {
     verify_message: "Your email has been verified. You can now log in.",
     verify_error: "Error",
     verify_error_msg: "The link is invalid or has expired.",
+    verify_loading: "Verifying your email…",
 
     // Edit profile
     edit_profile: "Edit Profile",
@@ -794,6 +795,7 @@ const translations = {
     verify_message: "Твоя пошта підтверджена. Тепер ти можеш увійти.",
     verify_error: "Помилка",
     verify_error_msg: "Посилання невірне або закінчилося.",
+    verify_loading: "Перевіряємо твою пошту…",
 
     // Edit profile
     edit_profile: "Редагувати профіль",
