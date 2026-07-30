@@ -16,6 +16,7 @@ import { PushModule } from './push/push.module';
 import { AdminModule } from './admin/admin.module';
 import { QuizModule } from './quiz/quiz.module';
 import { HealthModule } from './health/health.module';
+import { SwipeModule } from './swipe/swipe.module';
 
 @Module({
   imports: [
@@ -62,9 +63,6 @@ import { HealthModule } from './health/health.module';
             process.env.NODE_ENV === 'production'
               ? { rejectUnauthorized: false }
               : false,
-          // Explicit cap so this pool plus VectorService's own pg.Pool (see
-          // vector.service.ts) stay within a managed/serverless Postgres
-          // plan's total connection limit. Tune to whatever the plan allows.
           extra: { max: 10 },
         };
       },
@@ -86,6 +84,7 @@ import { HealthModule } from './health/health.module';
     AdminModule,
     QuizModule,
     HealthModule,
+    SwipeModule,
   ],
   providers: [
     {
