@@ -441,7 +441,7 @@ export default function Watchlist() {
 
   return (
     <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
-      <div className="sm:hidden sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] mb-6 pt-[env(safe-area-inset-top)]">
+      <div className="sm:hidden sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] pt-[env(safe-area-inset-top)]">
         <header className="flex flex-row items-center justify-between gap-3 py-4 px-4 w-full">
           <Link
             to="/search"
