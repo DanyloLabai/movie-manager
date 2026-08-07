@@ -330,7 +330,8 @@ export default function DailyQuiz() {
                   <img
                     src={posterUrl}
                     alt=""
-                    className="w-full h-full object-cover transition-[filter] duration-500"
+                    draggable={false}
+                    className="w-full h-full object-cover transition-[filter] duration-500 select-none [-webkit-user-drag:none]"
                     style={{ filter: `blur(${blurPx}px)` }}
                   />
                 ) : (
