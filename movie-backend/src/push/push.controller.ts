@@ -29,7 +29,9 @@ export class PushController {
 
   @Post('subscribe')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Register a push subscription for the current user' })
+  @ApiOperation({
+    summary: 'Register a push subscription for the current user',
+  })
   @ApiResponse({ status: 201, description: 'Subscription saved' })
   async subscribe(
     @Req() req: RequestWithUser,

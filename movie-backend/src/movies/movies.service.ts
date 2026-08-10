@@ -339,7 +339,7 @@ export class MoviesService {
           try {
             const details = await this.getMovieDetails(
               item.id,
-              item.media_type as 'movie' | 'tv',
+              item.media_type,
             );
             return { item, runtime: details.runtime ?? null };
           } catch {
@@ -1323,7 +1323,7 @@ export class MoviesService {
     if (cached) return cached;
 
     try {
-      let userItems = await this.watchlistRepo.find({
+      const userItems = await this.watchlistRepo.find({
         where: { user: { id: userId }, isFavorite: true },
         take: 30,
       });
@@ -1605,10 +1605,11 @@ export class MoviesService {
           .filter((media: TmdbMultiSearchResultDto) => media.poster_path)
           .map((media: TmdbMultiSearchResultDto) => ({
             id: media.id,
-            title: (media.title || media.name || 'Unknown Title') as string,
-            originalTitle: (media.original_title ||
+            title: media.title || media.name || 'Unknown Title',
+            originalTitle:
+              media.original_title ||
               media.original_name ||
-              'Unknown Original Title') as string,
+              'Unknown Original Title',
             description: media.overview || '',
             releaseYear:
               (media.release_date || media.first_air_date || '').split(

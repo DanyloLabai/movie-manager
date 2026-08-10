@@ -33,15 +33,23 @@ const FALLBACK_HINTS_EN = (pool: QuizMoviePool): string[] => [
     ? `Released in ${pool.releaseYear}.`
     : 'A well-known feature film.',
   "One of the most talked-about films of its year — that's all you're getting for free.",
-  pool.cast?.[0] ? `Stars ${pool.cast[0].name}.` : 'Features a well-known cast.',
-  pool.director ? `Directed by ${pool.director}.` : 'Directed by an acclaimed filmmaker.',
+  pool.cast?.[0]
+    ? `Stars ${pool.cast[0].name}.`
+    : 'Features a well-known cast.',
+  pool.director
+    ? `Directed by ${pool.director}.`
+    : 'Directed by an acclaimed filmmaker.',
   `The title starts with "${pool.title.charAt(0).toUpperCase()}".`,
 ];
 
 const FALLBACK_HINTS_UK = (pool: QuizMoviePool): string[] => [
-  pool.releaseYear ? `Вийшов у ${pool.releaseYear} році.` : 'Відомий повнометражний фільм.',
+  pool.releaseYear
+    ? `Вийшов у ${pool.releaseYear} році.`
+    : 'Відомий повнометражний фільм.',
   'Один із найобговорюваніших фільмів свого року — і це все, що ти отримуєш безкоштовно.',
-  pool.cast?.[0] ? `У головній ролі ${pool.cast[0].name}.` : 'У фільмі знялись відомі актори.',
+  pool.cast?.[0]
+    ? `У головній ролі ${pool.cast[0].name}.`
+    : 'У фільмі знялись відомі актори.',
   pool.director ? `Режисер — ${pool.director}.` : 'Знятий відомим режисером.',
   `Назва починається на "${pool.title.charAt(0).toUpperCase()}".`,
 ];

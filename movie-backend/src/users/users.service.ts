@@ -161,7 +161,10 @@ export class UsersService {
       ? false
       : Boolean(
           await this.friendRequestRepository.findOne({
-            where: { fromUser: { id: currentUserId }, toUser: { id: targetUserId } },
+            where: {
+              fromUser: { id: currentUserId },
+              toUser: { id: targetUserId },
+            },
           }),
         );
 

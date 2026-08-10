@@ -180,7 +180,8 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get incoming friend requests',
-    description: 'Get pending friend requests sent to the current user (requires authentication)',
+    description:
+      'Get pending friend requests sent to the current user (requires authentication)',
   })
   @ApiResponse({ status: 200, description: 'List of pending friend requests' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -193,7 +194,8 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Accept a friend request',
-    description: 'Accept a pending incoming friend request (requires authentication)',
+    description:
+      'Accept a pending incoming friend request (requires authentication)',
   })
   @ApiParam({ name: 'id', type: 'number', description: 'Friend request ID' })
   @ApiResponse({ status: 201, description: 'Friend request accepted' })
@@ -211,7 +213,8 @@ export class UsersController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Decline a friend request',
-    description: 'Decline a pending incoming friend request (requires authentication)',
+    description:
+      'Decline a pending incoming friend request (requires authentication)',
   })
   @ApiParam({ name: 'id', type: 'number', description: 'Friend request ID' })
   @ApiResponse({ status: 201, description: 'Friend request declined' })

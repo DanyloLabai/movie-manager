@@ -1,4 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  ManyToOne,
+} from 'typeorm';
 import { User } from './users.entity';
 
 // Only pending requests are ever stored — accepting or declining resolves

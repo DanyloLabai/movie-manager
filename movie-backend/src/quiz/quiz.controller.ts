@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import {
   ApiBearerAuth,
   ApiOperation,
@@ -39,17 +40,34 @@ export class QuizController {
     return this.quizService.getToday(req.user.userId, resolveLanguage(lang));
   }
 
+  @Get('poster')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Get today's quiz poster, blurred server-side",
+    description:
+      'Returns the poster image already blurred on the server according to your hint progress, so the sharp original never reaches the browser before the quiz is solved or failed.',
+  })
+  @ApiResponse({ status: 200, description: 'JPEG poster image' })
+  async getPosterImage(@Req() req: RequestWithUser, @Res() res: Response) {
+    const { buffer, contentType } = await this.quizService.getPosterImage(
+      req.user.userId,
+    );
+    res.set({
+      'Content-Type': contentType,
+      'Cache-Control': 'private, max-age=120',
+    });
+    res.send(buffer);
+  }
+
   @Post('hint')
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Buy the next hint',
-    description: "Reveals today's next hint, deducting its cost from the score.",
+    description:
+      "Reveals today's next hint, deducting its cost from the score.",
   })
   @ApiResponse({ status: 200, description: 'Updated quiz state' })
-  async buyHint(
-    @Req() req: RequestWithUser,
-    @Body() body: { lang?: string },
-  ) {
+  async buyHint(@Req() req: RequestWithUser, @Body() body: { lang?: string }) {
     return this.quizService.buyHint(
       req.user.userId,
       resolveLanguage(body?.lang),
@@ -79,7 +97,7 @@ export class QuizController {
   @ApiOperation({
     summary: 'Get the quiz leaderboard among you and your friends',
     description:
-      'Ranks you and your friends by total lifetime quiz score, plus each of your statuses on today\'s quiz.',
+      "Ranks you and your friends by total lifetime quiz score, plus each of your statuses on today's quiz.",
   })
   @ApiResponse({ status: 200, description: 'Leaderboard entries' })
   async getFriendsLeaderboard(@Req() req: RequestWithUser) {

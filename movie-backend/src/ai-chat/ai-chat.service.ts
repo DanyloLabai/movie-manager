@@ -135,7 +135,7 @@ export class AiChatService {
 
     const systemPrompt = this.buildSystemPrompt(userContextData);
     const formattedMessages = messages.map((m) => ({
-      role: m.role as 'user' | 'assistant',
+      role: m.role,
       content: m.content,
     }));
 
@@ -310,10 +310,7 @@ export class AiChatService {
     for (const rawTitle of titles.slice(0, MAX_RESULTS)) {
       if (foundMoviesMap.size >= MAX_RESULTS) break;
       const { title, year } = this.parseTitleYear(rawTitle);
-      const mediaData = await this.moviesService.findMovieByTitle(
-        title,
-        year,
-      );
+      const mediaData = await this.moviesService.findMovieByTitle(title, year);
       if (mediaData) {
         this.processFoundMovie(
           mediaData,
@@ -371,9 +368,12 @@ export class AiChatService {
     if (foundMoviesMap.size === 0) {
       const fallbackQuery = titles[0] || concepts[0];
       if (fallbackQuery) {
-        this.logger.log(`Falling back to plain TMDB search for "${fallbackQuery}"`);
+        this.logger.log(
+          `Falling back to plain TMDB search for "${fallbackQuery}"`,
+        );
         try {
-          const tmdbResults = await this.moviesService.searchMovies(fallbackQuery);
+          const tmdbResults =
+            await this.moviesService.searchMovies(fallbackQuery);
           for (const movie of tmdbResults.slice(0, 10)) {
             if (foundMoviesMap.size >= MAX_RESULTS) break;
             this.processFoundMovie(

@@ -116,27 +116,22 @@ export class AchievementsService {
   ) {}
 
   async checkAndNotify(userId: number): Promise<void> {
-    const [
-      totalCount,
-      watchedCount,
-      favoritesCount,
-      unlocked,
-      solvedQuizzes,
-    ] = await Promise.all([
-      this.watchlistRepo.count({ where: { user: { id: userId } } }),
-      this.watchlistRepo.count({
-        where: { user: { id: userId }, isWatched: true },
-      }),
-      this.watchlistRepo.count({
-        where: { user: { id: userId }, isFavorite: true },
-      }),
-      this.userAchievementRepo.find({ where: { user: { id: userId } } }),
-      this.quizAttemptRepo.find({
-        where: { userId, isSolved: true },
-        select: ['quizDate', 'score'],
-        order: { quizDate: 'ASC' },
-      }),
-    ]);
+    const [totalCount, watchedCount, favoritesCount, unlocked, solvedQuizzes] =
+      await Promise.all([
+        this.watchlistRepo.count({ where: { user: { id: userId } } }),
+        this.watchlistRepo.count({
+          where: { user: { id: userId }, isWatched: true },
+        }),
+        this.watchlistRepo.count({
+          where: { user: { id: userId }, isFavorite: true },
+        }),
+        this.userAchievementRepo.find({ where: { user: { id: userId } } }),
+        this.quizAttemptRepo.find({
+          where: { userId, isSolved: true },
+          select: ['quizDate', 'score'],
+          order: { quizDate: 'ASC' },
+        }),
+      ]);
 
     const unlockedIds = new Set(unlocked.map((u) => u.achievementId));
     const counts: AchievementCounts = {
@@ -144,8 +139,9 @@ export class AchievementsService {
       watchedCount,
       favoritesCount,
       quizSolvedCount: solvedQuizzes.length,
-      quizPerfectCount: solvedQuizzes.filter((q) => q.score === PERFECT_QUIZ_SCORE)
-        .length,
+      quizPerfectCount: solvedQuizzes.filter(
+        (q) => q.score === PERFECT_QUIZ_SCORE,
+      ).length,
       quizCurrentStreak: this.computeCurrentStreak(
         solvedQuizzes.map((q) => q.quizDate),
       ),
@@ -194,7 +190,9 @@ export class AchievementsService {
     }
 
     const today = new Date().toISOString().slice(0, 10);
-    const yesterday = new Date(Date.now() - MS_PER_DAY).toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - MS_PER_DAY)
+      .toISOString()
+      .slice(0, 10);
     const lastSolved = sortedDates[sortedDates.length - 1];
     return lastSolved === today || lastSolved === yesterday ? run : 0;
   }
