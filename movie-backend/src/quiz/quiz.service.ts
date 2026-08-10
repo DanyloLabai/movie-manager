@@ -1,10 +1,17 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { HttpService } from '@nestjs/axios';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
+import { firstValueFrom } from 'rxjs';
+import sharp from 'sharp';
 import { In, Repository } from 'typeorm';
 import { DailyMovieQuiz, QuizLanguage } from './daily-movie-quiz.entity';
 import { QuizMoviePool } from './quiz-movie-pool.entity';
@@ -24,6 +31,13 @@ const FREE_HINTS = 1;
 const HINT_COSTS = [10, 15, 20, 25];
 const WRONG_GUESS_PENALTY = 5;
 const MAX_GUESSES = 5;
+
+/** Server-side blur applied to the poster while the quiz is unsolved, so the
+ * sharp original never reaches the client — mirrors the hint-based easing
+ * the UI shows (blur eases as hints unlock), but baked into the pixels. */
+const MAX_BLUR_SIGMA = 28;
+const MIN_BLUR_SIGMA = 9;
+const POSTER_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 export interface QuizAnswer {
   title: string;
@@ -48,9 +62,9 @@ export interface QuizStateDto {
   maxGuesses: number;
   isSolved: boolean;
   isFailed: boolean;
-  /** Poster of today's movie, always present — the client blurs it and
-   * reduces the blur as hints get revealed. Showing it doesn't leak the
-   * answer (title/tmdbId), which stay hidden in `answer` until done. */
+  /** Raw poster URL — null while the quiz is unsolved (fetch the
+   * server-blurred version from GET /quiz/poster instead); populated once
+   * `isDone`, alongside `answer`. */
   posterUrl: string | null;
   streak: QuizStreak;
   answer?: QuizAnswer;
@@ -96,6 +110,8 @@ export class QuizService {
     private readonly quizHintsService: QuizHintsService,
     private readonly usersService: UsersService,
     private readonly achievementsService: AchievementsService,
+    private readonly httpService: HttpService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async getToday(userId: number, lang: QuizLanguage): Promise<QuizStateDto> {
@@ -323,7 +339,9 @@ export class QuizService {
       maxGuesses: MAX_GUESSES,
       isSolved: attempt?.isSolved ?? false,
       isFailed: attempt?.isFailed ?? false,
-      posterUrl: this.buildPosterUrl(quiz.pool),
+      // Raw poster URL only once the quiz is done — otherwise it would leak
+      // the sharp original via the JSON payload, bypassing GET /quiz/poster.
+      posterUrl: isDone ? this.buildPosterUrl(quiz.pool) : null,
       streak,
       ...(isDone && { answer: this.buildAnswer(quiz.pool) }),
     };
@@ -340,6 +358,67 @@ export class QuizService {
 
   private buildPosterUrl(pool: QuizMoviePool): string | null {
     return pool.posterPath ? `${POSTER_BASE_URL}${pool.posterPath}` : null;
+  }
+
+  /** Serves today's poster pre-blurred server-side so the sharp original
+   * never reaches the client until the quiz is solved/failed — CSS-only
+   * blur can be undone by opening the raw image URL from devtools. */
+  async getPosterImage(
+    userId: number,
+  ): Promise<{ buffer: Buffer; contentType: string }> {
+    const quiz = await this.getOrCreateTodayQuiz();
+    const attempt = await this.attemptRepo.findOne({
+      where: { userId, quizDate: quiz.date },
+    });
+    const isDone = !!attempt && (attempt.isSolved || attempt.isFailed);
+    const hintsRevealed = attempt?.hintsRevealed ?? FREE_HINTS;
+    const sigma = isDone
+      ? 0
+      : Math.max(
+          MAX_BLUR_SIGMA * (1 - hintsRevealed / TOTAL_HINTS),
+          MIN_BLUR_SIGMA,
+        );
+
+    return this.fetchBlurredPoster(quiz.pool, sigma);
+  }
+
+  private async fetchBlurredPoster(
+    pool: QuizMoviePool,
+    sigma: number,
+  ): Promise<{ buffer: Buffer; contentType: string }> {
+    if (!pool.posterPath) {
+      throw new NotFoundException('No poster available for this quiz.');
+    }
+
+    const contentType = 'image/jpeg';
+    const cacheKey = `quiz_poster_v1:${pool.tmdbId}:${sigma}`;
+    const cached = await this.cacheManager.get<string>(cacheKey);
+    if (cached) {
+      return { buffer: Buffer.from(cached, 'base64'), contentType };
+    }
+
+    const { data } = await firstValueFrom(
+      this.httpService.get<ArrayBuffer>(
+        `${POSTER_BASE_URL}${pool.posterPath}`,
+        { responseType: 'arraybuffer' },
+      ),
+    );
+
+    const processed = await (
+      sigma > 0
+        ? sharp(Buffer.from(data)).blur(sigma)
+        : sharp(Buffer.from(data))
+    )
+      .jpeg({ quality: 70 })
+      .toBuffer();
+
+    await this.cacheManager.set(
+      cacheKey,
+      processed.toString('base64'),
+      POSTER_CACHE_TTL,
+    );
+
+    return { buffer: processed, contentType };
   }
 
   /** Idempotent: returns today's quiz, creating it (and claiming a pool movie) on first call of the day. */

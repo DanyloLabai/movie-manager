@@ -18,11 +18,11 @@ const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const GEMINI_EMBED_URL =
   'https://generativelanguage.googleapis.com/v1/models/gemini-embedding-2:embedContent';
 const TARGET_POOL_SIZE = 2500;
-const MIN_VOTE_COUNT = 100; // quality floor so the pool isn't full of obscure/junk titles
+const MIN_VOTE_COUNT = 100;
 const TMDB_REQUEST_DELAY_MS = 250;
 const GEMINI_REQUEST_DELAY_MS = 400;
 const GEMINI_MAX_RETRIES = 5;
-const MOVIES_PER_PAGE = 20; // fixed by the TMDB /discover endpoint
+const MOVIES_PER_PAGE = 20;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -125,7 +125,9 @@ async function run() {
       try {
         results = await fetchDiscoverPage(tmdbToken, page);
       } catch (err) {
-        console.warn(`  Page ${page}: failed to fetch (${err.message}) — skipping page.`);
+        console.warn(
+          `  Page ${page}: failed to fetch (${err.message}) — skipping page.`,
+        );
         await sleep(TMDB_REQUEST_DELAY_MS);
         continue;
       }
@@ -181,11 +183,15 @@ async function run() {
           );
           inserted++;
           if (inserted % 50 === 0) {
-            console.log(`  ...${inserted} inserted so far (page ${page}/${totalPages})`);
+            console.log(
+              `  ...${inserted} inserted so far (page ${page}/${totalPages})`,
+            );
           }
         } catch (err) {
           skippedError++;
-          console.warn(`  Failed for tmdbId ${movie.id} (${movie.title}): ${err.message}`);
+          console.warn(
+            `  Failed for tmdbId ${movie.id} (${movie.title}): ${err.message}`,
+          );
         }
       }
     }

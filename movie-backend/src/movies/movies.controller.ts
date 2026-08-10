@@ -103,7 +103,8 @@ export class MoviesController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Mark all notifications as read',
-    description: 'Mark all of the current user\'s notifications as read (requires authentication)',
+    description:
+      "Mark all of the current user's notifications as read (requires authentication)",
   })
   @ApiResponse({ status: 200, description: 'All notifications marked as read' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
@@ -141,7 +142,8 @@ export class MoviesController {
   @ApiQuery({
     name: 'skipHistory',
     required: false,
-    description: 'Skip logging this query to the search history (used by the quiz autocomplete)',
+    description:
+      'Skip logging this query to the search history (used by the quiz autocomplete)',
   })
   @ApiResponse({
     status: 200,
@@ -423,5 +425,4 @@ export class MoviesController {
   async getActorDetails(@Param('id', ParseIntPipe) id: number) {
     return this.moviesService.getActorDetails(id);
   }
-
 }

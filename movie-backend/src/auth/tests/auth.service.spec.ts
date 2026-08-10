@@ -252,9 +252,9 @@ describe('AuthService', () => {
     it('should throw UnauthorizedException if user not found', async () => {
       mockUsersRepository.findOne.mockResolvedValue(null);
 
-      await expect(
-        service.changePassword(mockUser.id!, dto),
-      ).rejects.toThrow(UnauthorizedException);
+      await expect(service.changePassword(mockUser.id!, dto)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('should throw BadRequestException if old password is incorrect', async () => {
@@ -262,9 +262,9 @@ describe('AuthService', () => {
       bcrypt.compare.mockResolvedValue(false);
       mockUsersRepository.findOne.mockResolvedValue({ ...mockUser });
 
-      await expect(
-        service.changePassword(mockUser.id!, dto),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.changePassword(mockUser.id!, dto)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 

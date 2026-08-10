@@ -120,8 +120,7 @@ export class AiUsageLogService {
     return {
       totalRequests,
       failoverRequests,
-      failoverRate:
-        totalRequests > 0 ? failoverRequests / totalRequests : 0,
+      failoverRate: totalRequests > 0 ? failoverRequests / totalRequests : 0,
       byProvider: providerCounts,
     };
   }

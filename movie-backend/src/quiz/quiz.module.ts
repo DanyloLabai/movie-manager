@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { HttpModule } from '@nestjs/axios';
 import { QuizMoviePool } from './quiz-movie-pool.entity';
 import { DailyMovieQuiz } from './daily-movie-quiz.entity';
 import { QuizAttempt } from './quiz-attempt.entity';
@@ -14,6 +15,7 @@ import { AchievementsModule } from '../achievements/achievements.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([QuizMoviePool, DailyMovieQuiz, QuizAttempt]),
+    HttpModule,
     UsersModule,
     NotificationsModule,
     AchievementsModule,

@@ -10,8 +10,6 @@ import type { MovieResult } from "../types/movie.types";
 import type { QuizState, QuizLeaderboardEntry } from "../api/quiz.api";
 
 const TOTAL_HINTS = 5;
-const MAX_BLUR_PX = 12;
-const MIN_BLUR_PX = 4;
 
 const ICONS = {
   check: (
@@ -88,6 +86,7 @@ export default function DailyQuiz() {
   const [leaderboard, setLeaderboard] = useState<QuizLeaderboardEntry[]>([]);
   const [watchlistAdded, setWatchlistAdded] = useState(false);
   const [countdownMs, setCountdownMs] = useState(() => msUntilNextUtcMidnight());
+  const [posterBlobUrl, setPosterBlobUrl] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isDone = !!quiz && (quiz.isSolved || quiz.isFailed);
@@ -97,6 +96,41 @@ export default function DailyQuiz() {
     const id = setInterval(() => setCountdownMs(msUntilNextUtcMidnight()), 1000);
     return () => clearInterval(id);
   }, [isDone]);
+
+  // While unsolved, the poster is fetched pre-blurred from the server (the
+  // sharp original never reaches the browser) — refetched as hints unlock.
+  useEffect(() => {
+    if (!quiz || isDone) return;
+    let cancelled = false;
+    quizApi
+      .getPosterImage()
+      .then((blob) => {
+        if (cancelled) return;
+        const url = URL.createObjectURL(blob);
+        setPosterBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return url;
+        });
+      })
+      .catch(() => {
+        /* poster stays hidden if the fetch fails */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quiz?.date, quiz?.hintsRevealed, isDone]);
+
+  // Revoke the object URL only on final unmount — the setter above already
+  // revokes the previous one each time a new poster blob is fetched.
+  useEffect(() => {
+    return () => {
+      setPosterBlobUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return prev;
+      });
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -241,18 +275,12 @@ export default function DailyQuiz() {
     }
   }, [quiz, showToast, t]);
 
-  const blurPx = !quiz
-    ? MAX_BLUR_PX
-    : isDone
-      ? 0
-      : Math.max(
-          MAX_BLUR_PX * (1 - quiz.hintsRevealed / TOTAL_HINTS),
-          MIN_BLUR_PX,
-        );
-
   const revealedHints = quiz?.hints ?? [];
   const lockedHintCount = Math.max(TOTAL_HINTS - revealedHints.length, 0);
-  const posterUrl = isDone ? quiz?.answer?.posterUrl : quiz?.posterUrl;
+  // Solved/failed: the real poster (already revealed in the JSON answer).
+  // Otherwise: the server-blurred poster fetched via getPosterImage above —
+  // never the raw TMDB URL, which would let devtools reveal the answer.
+  const posterUrl = isDone ? quiz?.answer?.posterUrl : posterBlobUrl;
 
   return (
     <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
@@ -331,8 +359,7 @@ export default function DailyQuiz() {
                     src={posterUrl}
                     alt=""
                     draggable={false}
-                    className="w-full h-full object-cover transition-[filter] duration-500 select-none [-webkit-user-drag:none]"
-                    style={{ filter: `blur(${blurPx}px)` }}
+                    className="w-full h-full object-cover transition-opacity duration-500 select-none [-webkit-user-drag:none]"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">

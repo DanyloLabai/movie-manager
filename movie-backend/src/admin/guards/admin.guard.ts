@@ -23,9 +23,7 @@ export class AdminGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context
-      .switchToHttp()
-      .getRequest<RequestWithUser>();
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
 
     const user = await this.usersRepo.findOne({
       where: { id: request.user.userId },

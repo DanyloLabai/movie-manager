@@ -59,6 +59,13 @@ export async function getTodayQuiz(lang: QuizLanguage): Promise<QuizState> {
   return res.data as QuizState;
 }
 
+/** Fetches today's poster, already blurred server-side according to hint
+ * progress — never the sharp original while the quiz is unsolved. */
+export async function getPosterImage(): Promise<Blob> {
+  const res = await api.get("/quiz/poster", { responseType: "blob" });
+  return res.data as Blob;
+}
+
 export async function buyHint(lang: QuizLanguage): Promise<QuizState> {
   const res = await api.post("/quiz/hint", { lang });
   return res.data as QuizState;
