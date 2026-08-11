@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { apiEventBus } from "../api/index";
 import * as usersApi from "../api/users.api";
 import * as moviesApi from "../api/movies.api";
 import type { FriendRequest } from "../api/users.api";
@@ -97,6 +98,7 @@ export default function Notifications() {
     try {
       await usersApi.acceptFriendRequest(id);
       setRequests((prev) => prev.filter((r) => r.id !== id));
+      apiEventBus.dispatchEvent(new CustomEvent("notifications:updated"));
     } catch {
       // empty
     } finally {
@@ -109,6 +111,7 @@ export default function Notifications() {
     try {
       await usersApi.declineFriendRequest(id);
       setRequests((prev) => prev.filter((r) => r.id !== id));
+      apiEventBus.dispatchEvent(new CustomEvent("notifications:updated"));
     } catch {
       // empty
     } finally {
@@ -122,6 +125,7 @@ export default function Notifications() {
       setNotifications((prev) =>
         prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)),
       );
+      apiEventBus.dispatchEvent(new CustomEvent("notifications:updated"));
     }
     if (n.url) {
       navigate(n.url);
@@ -174,6 +178,7 @@ export default function Notifications() {
     try {
       await moviesApi.markAllNotificationsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      apiEventBus.dispatchEvent(new CustomEvent("notifications:updated"));
     } catch {
       // empty
     }

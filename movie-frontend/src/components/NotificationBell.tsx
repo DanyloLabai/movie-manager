@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { apiEventBus } from "../api/index";
 import * as usersApi from "../api/users.api";
 import * as moviesApi from "../api/movies.api";
 import { useLang } from "../context/LanguageContext";
@@ -33,7 +34,11 @@ export default function NotificationBell({
 
     fetchCount();
     const interval = setInterval(fetchCount, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    apiEventBus.addEventListener("notifications:updated", fetchCount);
+    return () => {
+      clearInterval(interval);
+      apiEventBus.removeEventListener("notifications:updated", fetchCount);
+    };
   }, []);
 
   const icon = (
