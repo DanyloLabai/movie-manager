@@ -13,15 +13,58 @@ interface ProfileHeroProps {
   userId?: number;
   onOpenFriends: () => void;
   onShowToast: (message: string) => void;
-  /** Compact 180px variant used atop the Watchlist/Watched tabs (no share pill, no last-watched line). */
   compact?: boolean;
-  /** Replaces the default FRIENDS/SHARE pill row — used on the public profile for the add-friend control. */
   rightSlot?: ReactNode;
 }
 
 function getLastWatched(recent: WatchlistItem[]) {
   const item = recent.find((r) => r.isWatched && r.updatedAt);
   return item ? { title: item.title, updatedAt: item.updatedAt! } : null;
+}
+
+function FriendsPill({
+  className = "",
+  friendsCount,
+  friendsLabel,
+  onOpenFriends,
+}: {
+  className?: string;
+  friendsCount: number;
+  friendsLabel: string;
+  onOpenFriends: () => void;
+}) {
+  return (
+    <button
+      onClick={onOpenFriends}
+      className={`flex items-center justify-center gap-2 px-5 py-2.5 md:py-2.5 border border-[#d9ac54]/45 rounded-full transition hover:bg-[#d9ac54]/10 ${className}`}
+    >
+      <span className="font-ui font-bold text-[14px] md:text-[15px] text-[#f2ead9]">
+        {friendsCount}
+      </span>
+      <span className="font-ui font-semibold text-[11px] md:text-[12px] tracking-[1.5px] text-[#d9ac54] uppercase">
+        {friendsLabel}
+      </span>
+    </button>
+  );
+}
+
+function SharePill({
+  className = "",
+  shareLabel,
+  onShare,
+}: {
+  className?: string;
+  shareLabel: string;
+  onShare: () => void;
+}) {
+  return (
+    <button
+      onClick={onShare}
+      className={`flex items-center justify-center px-5 py-2.5 border border-white/[.18] rounded-full font-ui font-semibold text-[11px] md:text-[12px] tracking-[1.5px] text-[#c9c0ac] uppercase transition hover:border-[#d9ac54]/45 hover:text-[#d9ac54] ${className}`}
+    >
+      {shareLabel}
+    </button>
+  );
 }
 
 export default function ProfileHero({
@@ -54,7 +97,7 @@ export default function ProfileHero({
       try {
         await nav.share({ title: username, url });
       } catch {
-        // user cancelled the native share sheet — nothing to do
+        // empty
       }
       return;
     }
@@ -65,29 +108,6 @@ export default function ProfileHero({
       onShowToast(t("profile_link_copied"));
     }
   };
-
-  const FriendsPill = ({ className = "" }: { className?: string }) => (
-    <button
-      onClick={onOpenFriends}
-      className={`flex items-center justify-center gap-2 px-5 py-2.5 md:py-2.5 border border-[#d9ac54]/45 rounded-full transition hover:bg-[#d9ac54]/10 ${className}`}
-    >
-      <span className="font-ui font-bold text-[14px] md:text-[15px] text-[#f2ead9]">
-        {friendsCount}
-      </span>
-      <span className="font-ui font-semibold text-[11px] md:text-[12px] tracking-[1.5px] text-[#d9ac54] uppercase">
-        {t("profile_friends")}
-      </span>
-    </button>
-  );
-
-  const SharePill = ({ className = "" }: { className?: string }) => (
-    <button
-      onClick={handleShare}
-      className={`flex items-center justify-center px-5 py-2.5 border border-white/[.18] rounded-full font-ui font-semibold text-[11px] md:text-[12px] tracking-[1.5px] text-[#c9c0ac] uppercase transition hover:border-[#d9ac54]/45 hover:text-[#d9ac54] ${className}`}
-    >
-      {t("profile_share")}
-    </button>
-  );
 
   if (compact) {
     return (
@@ -145,7 +165,14 @@ export default function ProfileHero({
               </div>
             </div>
 
-            {rightSlot ?? <FriendsPill className="shrink-0" />}
+            {rightSlot ?? (
+              <FriendsPill
+                className="shrink-0"
+                friendsCount={friendsCount}
+                friendsLabel={t("profile_friends")}
+                onOpenFriends={onOpenFriends}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -238,8 +265,12 @@ export default function ProfileHero({
           <div className="hidden md:flex items-center gap-2.5 shrink-0 pb-0.5">
             {rightSlot ?? (
               <>
-                <FriendsPill />
-                <SharePill />
+                <FriendsPill
+                  friendsCount={friendsCount}
+                  friendsLabel={t("profile_friends")}
+                  onOpenFriends={onOpenFriends}
+                />
+                <SharePill shareLabel={t("profile_share")} onShare={handleShare} />
               </>
             )}
           </div>
@@ -249,8 +280,17 @@ export default function ProfileHero({
       <div className="md:hidden flex gap-2.5 px-5 pt-3.5">
         {rightSlot ?? (
           <>
-            <FriendsPill className="flex-1" />
-            <SharePill className="flex-1" />
+            <FriendsPill
+              className="flex-1"
+              friendsCount={friendsCount}
+              friendsLabel={t("profile_friends")}
+              onOpenFriends={onOpenFriends}
+            />
+            <SharePill
+              className="flex-1"
+              shareLabel={t("profile_share")}
+              onShare={handleShare}
+            />
           </>
         )}
       </div>

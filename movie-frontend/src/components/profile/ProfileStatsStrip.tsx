@@ -17,15 +17,8 @@ const Divider = () => (
   <div className="w-px bg-[rgba(217,172,84,.16)] mx-8 shrink-0" />
 );
 
-export default function ProfileStatsStrip({
-  stats,
-  watchedCount,
-  completionRate,
-  totalCount,
-}: ProfileStatsStripProps) {
-  const { t } = useLang();
-
-  const Stat = ({ value, label }: { value: string | number; label: string }) => (
+function Stat({ value, label }: { value: string | number; label: string }) {
+  return (
     <div className="flex-1 flex flex-col gap-0.5 min-w-0">
       <span className="text-[34px] leading-none font-bold text-[#f2ead9] truncate">
         {value}
@@ -35,12 +28,24 @@ export default function ProfileStatsStrip({
       </span>
     </div>
   );
+}
 
-  const CompletionBar = () => (
+function CompletionBar({
+  completionLabel,
+  completionRate,
+  watchedCount,
+  totalCount,
+}: {
+  completionLabel: string;
+  completionRate: number;
+  watchedCount: number;
+  totalCount: number;
+}) {
+  return (
     <>
       <div className="flex justify-between items-baseline">
         <span className="font-mono-ui text-[10px] font-medium tracking-[2px] text-[#8f8574] uppercase">
-          {t("profile_completion")}
+          {completionLabel}
         </span>
         <span className="font-bold text-[15px] text-[#d9ac54]">
           {completionRate}% · {watchedCount}/{totalCount}
@@ -57,12 +62,19 @@ export default function ProfileStatsStrip({
       </div>
     </>
   );
+}
 
+export default function ProfileStatsStrip({
+  stats,
+  watchedCount,
+  completionRate,
+  totalCount,
+}: ProfileStatsStripProps) {
+  const { t } = useLang();
   const mobileStats = stats.slice(0, 3);
 
   return (
     <div className="font-ui">
-      {/* Desktop */}
       <div className="hidden md:flex items-stretch">
         {stats.map((s, i) => (
           <Fragment key={s.label}>
@@ -72,11 +84,15 @@ export default function ProfileStatsStrip({
         ))}
         <Divider />
         <div className="flex-[2] flex flex-col gap-2 justify-center min-w-0">
-          <CompletionBar />
+          <CompletionBar
+            completionLabel={t("profile_completion")}
+            completionRate={completionRate}
+            watchedCount={watchedCount}
+            totalCount={totalCount}
+          />
         </div>
       </div>
 
-      {/* Mobile */}
       <div className="md:hidden">
         <div className="grid grid-cols-3">
           {mobileStats.map((s, i) => (
@@ -98,7 +114,12 @@ export default function ProfileStatsStrip({
           ))}
         </div>
         <div className="flex flex-col gap-2 mt-4">
-          <CompletionBar />
+          <CompletionBar
+            completionLabel={t("profile_completion")}
+            completionRate={completionRate}
+            watchedCount={watchedCount}
+            totalCount={totalCount}
+          />
         </div>
       </div>
     </div>

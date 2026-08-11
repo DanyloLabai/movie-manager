@@ -9,19 +9,18 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
 import { of } from 'rxjs';
+import * as bcrypt from 'bcryptjs';
+import { Resend } from 'resend';
 import { AuthService } from '../auth.service';
 import { User } from '../../users/users.entity';
 
-// Mock bcrypt before imports take effect
 jest.mock('bcryptjs', () => ({
   hash: jest.fn().mockResolvedValue('hashed_password'),
   compare: jest.fn().mockResolvedValue(true),
   genSalt: jest.fn().mockResolvedValue('salt'),
 }));
 
-// Mock resend module
 jest.mock('resend', () => ({
   Resend: jest.fn().mockImplementation(() => ({
     emails: {
@@ -29,6 +28,9 @@ jest.mock('resend', () => ({
     },
   })),
 }));
+
+const mockedBcrypt = jest.mocked(bcrypt);
+const MockedResend = jest.mocked(Resend);
 
 const mockUser: Partial<User> = {
   id: 1,
@@ -69,8 +71,6 @@ const mockConfigService = {
 
 describe('AuthService', () => {
   let service: AuthService;
-  let usersRepository: jest.Mocked<Repository<User>>;
-  let jwtService: jest.Mocked<JwtService>;
 
   beforeAll(() => {
     jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -92,16 +92,11 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    usersRepository = module.get(getRepositoryToken(User));
-    jwtService = module.get(JwtService);
 
     jest.clearAllMocks();
 
-    // Default: captcha always passes
     mockHttpService.post.mockReturnValue(of({ data: { success: true } }));
   });
-
-  // ─── signUp ───────────────────────────────────────────────────────────────
 
   describe('signUp', () => {
     const signUpDto = {
@@ -144,13 +139,15 @@ describe('AuthService', () => {
       mockUsersRepository.create.mockReturnValue(createdUser);
       mockUsersRepository.save.mockResolvedValue(createdUser);
 
-      // Force email failure by importing the mocked Resend and making it reject
-      const { Resend } = require('resend');
-      Resend.mockImplementationOnce(() => ({
-        emails: { send: jest.fn().mockRejectedValue(new Error('SMTP error')) },
-      }));
+      MockedResend.mockImplementationOnce(
+        () =>
+          ({
+            emails: {
+              send: jest.fn().mockRejectedValue(new Error('SMTP error')),
+            },
+          }) as unknown as Resend,
+      );
 
-      // Re-create service with failing email
       const failModule = await Test.createTestingModule({
         providers: [
           AuthService,
@@ -170,8 +167,6 @@ describe('AuthService', () => {
     });
   });
 
-  // ─── signIn ───────────────────────────────────────────────────────────────
-
   describe('signIn', () => {
     const signInDto = {
       email: 'test@example.com',
@@ -179,15 +174,14 @@ describe('AuthService', () => {
     };
 
     it('should return access_token and user on valid credentials', async () => {
-      const bcrypt = require('bcryptjs');
-      bcrypt.compare.mockResolvedValue(true);
+      mockedBcrypt.compare.mockResolvedValue(true as never);
       mockUsersRepository.findOne.mockResolvedValue(mockUser);
 
       const result = await service.signIn(signInDto);
 
       expect(result.access_token).toBe('mock-jwt-token');
       expect(result.user.email).toBe('test@example.com');
-      expect(jwtService.signAsync).toHaveBeenCalledWith({
+      expect(mockJwtService.signAsync).toHaveBeenCalledWith({
         sub: mockUser.id,
         username: mockUser.username,
         email: mockUser.email,
@@ -203,8 +197,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException if password does not match', async () => {
-      const bcrypt = require('bcryptjs');
-      bcrypt.compare.mockResolvedValue(false);
+      mockedBcrypt.compare.mockResolvedValue(false as never);
       mockUsersRepository.findOne.mockResolvedValue(mockUser);
 
       await expect(service.signIn(signInDto)).rejects.toThrow(
@@ -213,8 +206,7 @@ describe('AuthService', () => {
     });
 
     it('should throw UnauthorizedException if email is not verified', async () => {
-      const bcrypt = require('bcryptjs');
-      bcrypt.compare.mockResolvedValue(true);
+      mockedBcrypt.compare.mockResolvedValue(true as never);
       const unverifiedUser = { ...mockUser, isVerified: false };
       mockUsersRepository.findOne.mockResolvedValue(unverifiedUser);
 
@@ -224,8 +216,6 @@ describe('AuthService', () => {
     });
   });
 
-  // ─── changePassword ───────────────────────────────────────────────────────
-
   describe('changePassword', () => {
     const dto = {
       oldPassword: 'OldPass1!',
@@ -233,9 +223,8 @@ describe('AuthService', () => {
     };
 
     it('should update password successfully', async () => {
-      const bcrypt = require('bcryptjs');
-      bcrypt.compare.mockResolvedValue(true);
-      bcrypt.hash.mockResolvedValue('newHashedPassword');
+      mockedBcrypt.compare.mockResolvedValue(true as never);
+      mockedBcrypt.hash.mockResolvedValue('newHashedPassword' as never);
       mockUsersRepository.findOne.mockResolvedValue({ ...mockUser });
       mockUsersRepository.save.mockResolvedValue({});
 
@@ -258,8 +247,7 @@ describe('AuthService', () => {
     });
 
     it('should throw BadRequestException if old password is incorrect', async () => {
-      const bcrypt = require('bcryptjs');
-      bcrypt.compare.mockResolvedValue(false);
+      mockedBcrypt.compare.mockResolvedValue(false as never);
       mockUsersRepository.findOne.mockResolvedValue({ ...mockUser });
 
       await expect(service.changePassword(mockUser.id!, dto)).rejects.toThrow(
@@ -267,8 +255,6 @@ describe('AuthService', () => {
       );
     });
   });
-
-  // ─── verifyEmail ──────────────────────────────────────────────────────────
 
   describe('verifyEmail', () => {
     it('should verify user email and clear token', async () => {
@@ -302,8 +288,6 @@ describe('AuthService', () => {
     });
   });
 
-  // ─── forgotPassword ───────────────────────────────────────────────────────
-
   describe('forgotPassword', () => {
     it('should return generic message if user does not exist (privacy)', async () => {
       mockUsersRepository.findOne.mockResolvedValue(null);
@@ -322,17 +306,16 @@ describe('AuthService', () => {
 
       expect(result.message).toContain('If this email exists');
       expect(mockUsersRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({ resetToken: expect.any(String) }),
+        expect.objectContaining({
+          resetToken: expect.any(String) as string,
+        }),
       );
     });
   });
 
-  // ─── resetPassword ────────────────────────────────────────────────────────
-
   describe('resetPassword', () => {
     it('should reset password for valid token', async () => {
-      const bcrypt = require('bcryptjs');
-      bcrypt.hash.mockResolvedValue('hashedNewPass');
+      mockedBcrypt.hash.mockResolvedValue('hashedNewPass' as never);
       const userWithToken = {
         ...mockUser,
         resetToken: 'valid-reset-token',
@@ -364,8 +347,6 @@ describe('AuthService', () => {
       ).rejects.toThrow(BadRequestException);
     });
   });
-
-  // ─── resendVerificationEmail ──────────────────────────────────────────────
 
   describe('resendVerificationEmail', () => {
     it('should return generic message if user does not exist (privacy)', async () => {
@@ -400,7 +381,9 @@ describe('AuthService', () => {
 
       expect(result.message).toContain('If this email exists');
       expect(mockUsersRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({ verificationToken: expect.any(String) }),
+        expect.objectContaining({
+          verificationToken: expect.any(String) as string,
+        }),
       );
     });
   });

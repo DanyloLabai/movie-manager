@@ -17,7 +17,6 @@ import {
   ApiBearerAuth,
   ApiParam,
 } from '@nestjs/swagger';
-import { Request } from 'express';
 import { AiChatService } from './ai-chat.service';
 import {
   AiDailyLimitGuard,
@@ -25,21 +24,10 @@ import {
   DEFAULT_DAILY_TOKEN_LIMIT,
 } from './ai-daily-limit.guard';
 import { AiUsageLogService } from './ai-usage-log.service';
-import { MovieResultDto } from '../movies/dto/movie-result.dto';
+import type { ChatMessage } from './interfaces/chat-message.interface';
+import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
-export interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  movies?: MovieResultDto[];
-}
-
-export interface AuthenticatedRequest extends Request {
-  user: {
-    userId: number;
-  };
-}
 
 @ApiTags('AI Chat')
 @Controller('api/ai')

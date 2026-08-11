@@ -31,13 +31,6 @@ export default function Discover() {
   const { t } = useLang();
   const navigate = useNavigate();
 
-  // `feed` is the queue of not-yet-acted-on cards, front-to-back — the
-  // current card is always feed[0], and acting on it removes it from the
-  // front rather than walking an index over a fixed-size array. That keeps
-  // "queue is empty" and "today's quota is used up" as two separate facts:
-  // exhausting this batch just means fetching the next one, which may still
-  // have quota left even if this particular batch came back smaller than
-  // requested (e.g. a TMDB hiccup during hydration).
   const [feed, setFeed] = useState<SwipeCard[] | null>(null);
   const [dailyLimit, setDailyLimit] = useState(0);
   const [remainingToday, setRemainingToday] = useState(0);
@@ -54,13 +47,14 @@ export default function Discover() {
   const [ratingCard, setRatingCard] = useState<SwipeCard | null>(null);
   const [ratingValue, setRatingValue] = useState(0);
 
-  // Fetches (or re-fetches) the queue. Used both for the initial load and,
-  // mid-session, whenever the local queue runs dry — the server is the only
-  // source of truth for whether the daily quota is actually exhausted.
   const loadFeed = useCallback(async () => {
     setLoadError(false);
     try {
       const res = await swipeApi.getSwipeFeed();
+      if (res.movies.length === 0 && res.remainingToday > 0) {
+        setLoadError(true);
+        return;
+      }
       setDailyLimit(res.dailyLimit);
       setRemainingToday(res.remainingToday);
       setResetAt(res.resetAt);
@@ -92,14 +86,6 @@ export default function Discover() {
     action: SwipeActionType,
     rating?: number,
   ) {
-    // Fire-and-forget: this POST can legitimately resolve *after* the
-    // loadFeed() call advance() triggers below (it does more work — writing
-    // to the watchlist, rating, etc. — than a plain feed GET). If it also
-    // wrote remainingToday/dailyLimit here, whichever of the two responses
-    // landed last would win, which could silently un-clobber the
-    // authoritative "done for today" state with a stale number. loadFeed()
-    // is the single source of truth for those two values; this call only
-    // needs to record the action.
     swipeApi
       .submitSwipeAction({
         tmdbId: card.id,
@@ -109,9 +95,7 @@ export default function Discover() {
         action,
         rating,
       })
-      .catch(() => {
-        // Non-fatal: the next feed load will reconcile the real state.
-      });
+      .catch(() => {});
   }
 
   function advance() {
@@ -122,8 +106,6 @@ export default function Discover() {
     setFeed((prev) => {
       const rest = prev ? prev.slice(1) : prev;
       if (rest && rest.length === 0) {
-        // Queue exhausted, but that doesn't mean the daily quota is —
-        // fetch the next chunk and let it decide.
         loadFeed();
       }
       return rest;

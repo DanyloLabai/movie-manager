@@ -6,7 +6,7 @@ import { SearchHistory } from '../search-history.entity';
 const mockSearchHistoryRepo = {
   findOne: jest.fn(),
   find: jest.fn(),
-  create: jest.fn((data) => data),
+  create: jest.fn((data: Partial<SearchHistory>) => data),
   save: jest.fn(),
 };
 
@@ -39,7 +39,10 @@ describe('SearchHistoryService', () => {
 
     it('inserts a new row when there is no recent duplicate', async () => {
       mockSearchHistoryRepo.findOne.mockResolvedValue(null);
-      const created = { queryText: 'batman', user: { id: 1 } };
+      const created = {
+        queryText: 'batman',
+        user: { id: 1 } as SearchHistory['user'],
+      };
       mockSearchHistoryRepo.create.mockReturnValue(created);
 
       await service.logSearch(1, ' batman ');
@@ -66,7 +69,9 @@ describe('SearchHistoryService', () => {
       expect(mockSearchHistoryRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ id: 5 }),
       );
-      const savedArg = mockSearchHistoryRepo.save.mock.calls[0][0];
+      const saveCalls = mockSearchHistoryRepo.save.mock
+        .calls as unknown as SearchHistory[][];
+      const savedArg = saveCalls[0][0];
       expect(savedArg.createdAt.getTime()).toBeGreaterThan(
         originalCreatedAt.getTime(),
       );

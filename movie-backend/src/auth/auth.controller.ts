@@ -43,12 +43,12 @@ interface AuthenticatedRequest extends Request {
 }
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
-const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
 const refreshCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion -- false positive: without this, the object literal widens sameSite to `string`, which fails CookieOptions typing (verified via tsc).
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as
     | 'none'
     | 'lax',

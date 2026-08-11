@@ -134,7 +134,6 @@ export default function ProfileChartsPanel({
 
   return (
     <div className="font-ui">
-      {/* Desktop */}
       <div className="hidden md:flex gap-12">
         <div className="flex-1 flex flex-col gap-[18px] min-w-0">
           <span className="font-mono-ui text-[12px] font-semibold tracking-[3px] text-[#d9ac54] uppercase">
@@ -157,7 +156,6 @@ export default function ProfileChartsPanel({
         </div>
       </div>
 
-      {/* Mobile */}
       <div className="md:hidden flex flex-col gap-5">
         <div className="flex flex-col gap-3 pb-5 -mx-5 px-5 border-b border-[rgba(217,172,84,.16)]">
           <span className="font-mono-ui text-[11px] font-semibold tracking-[2.5px] text-[#d9ac54] uppercase">

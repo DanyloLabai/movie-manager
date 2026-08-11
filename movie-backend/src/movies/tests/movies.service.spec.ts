@@ -140,8 +140,6 @@ describe('MoviesService', () => {
     mockCacheManager.get.mockResolvedValue(null);
   });
 
-  // ─── addToWatchlist ──────────────────────────────────────────────────────
-
   describe('addToWatchlist', () => {
     it('should add a new item to the watchlist', async () => {
       mockWatchlistRepo.findOne.mockResolvedValue(null);
@@ -186,8 +184,6 @@ describe('MoviesService', () => {
     });
   });
 
-  // ─── getWatchlist ─────────────────────────────────────────────────────────
-
   describe('getWatchlist', () => {
     it('should return only unwatched items for the user', async () => {
       const items = [mockWatchlistItem({ isWatched: false })];
@@ -211,8 +207,6 @@ describe('MoviesService', () => {
     });
   });
 
-  // ─── getWatchedMovies ─────────────────────────────────────────────────────
-
   describe('getWatchedMovies', () => {
     it('should return only watched items', async () => {
       const watched = [mockWatchlistItem({ isWatched: true })];
@@ -227,8 +221,6 @@ describe('MoviesService', () => {
       });
     });
   });
-
-  // ─── markAsWatched ────────────────────────────────────────────────────────
 
   describe('markAsWatched', () => {
     it('should mark item as watched and save', async () => {
@@ -254,13 +246,13 @@ describe('MoviesService', () => {
     });
   });
 
-  // ─── rateMovie ────────────────────────────────────────────────────────────
-
   describe('rateMovie', () => {
     it('should set rating and mark as watched', async () => {
       const item = mockWatchlistItem({ isWatched: false, rating: null });
       mockWatchlistRepo.findOne.mockResolvedValue(item);
-      mockWatchlistRepo.save.mockImplementation((saved) => saved);
+      mockWatchlistRepo.save.mockImplementation(
+        (saved: WatchlistItem) => saved,
+      );
 
       const result = await service.rateMovie(1, 550, 8);
 
@@ -271,7 +263,9 @@ describe('MoviesService', () => {
     it('should store a valid half-star value as-is', async () => {
       const item = mockWatchlistItem({ isWatched: false, rating: null });
       mockWatchlistRepo.findOne.mockResolvedValue(item);
-      mockWatchlistRepo.save.mockImplementation((saved) => saved);
+      mockWatchlistRepo.save.mockImplementation(
+        (saved: WatchlistItem) => saved,
+      );
 
       const result = await service.rateMovie(1, 550, 8.5);
 
@@ -281,7 +275,9 @@ describe('MoviesService', () => {
     it('should round a value with an invalid step to the nearest 0.5', async () => {
       const item = mockWatchlistItem({ isWatched: false, rating: null });
       mockWatchlistRepo.findOne.mockResolvedValue(item);
-      mockWatchlistRepo.save.mockImplementation((saved) => saved);
+      mockWatchlistRepo.save.mockImplementation(
+        (saved: WatchlistItem) => saved,
+      );
 
       const result = await service.rateMovie(1, 550, 7.3);
 
@@ -291,7 +287,9 @@ describe('MoviesService', () => {
     it('should clamp a negative rating to 0', async () => {
       const item = mockWatchlistItem({ isWatched: false, rating: null });
       mockWatchlistRepo.findOne.mockResolvedValue(item);
-      mockWatchlistRepo.save.mockImplementation((saved) => saved);
+      mockWatchlistRepo.save.mockImplementation(
+        (saved: WatchlistItem) => saved,
+      );
 
       const result = await service.rateMovie(1, 550, -3);
 
@@ -301,7 +299,9 @@ describe('MoviesService', () => {
     it('should clamp a rating above the max to 10', async () => {
       const item = mockWatchlistItem({ isWatched: false, rating: null });
       mockWatchlistRepo.findOne.mockResolvedValue(item);
-      mockWatchlistRepo.save.mockImplementation((saved) => saved);
+      mockWatchlistRepo.save.mockImplementation(
+        (saved: WatchlistItem) => saved,
+      );
 
       const result = await service.rateMovie(1, 550, 25);
 
@@ -328,8 +328,6 @@ describe('MoviesService', () => {
       );
     });
   });
-
-  // ─── toggleFavorite ───────────────────────────────────────────────────────
 
   describe('toggleFavorite', () => {
     it('should toggle isFavorite from false to true', async () => {
@@ -361,8 +359,6 @@ describe('MoviesService', () => {
     });
   });
 
-  // ─── getMovieUserStatus ───────────────────────────────────────────────────
-
   describe('getMovieUserStatus', () => {
     it('should return the watchlist item when it exists', async () => {
       const item = mockWatchlistItem();
@@ -381,8 +377,6 @@ describe('MoviesService', () => {
       expect(result).toBeNull();
     });
   });
-
-  // ─── removeFromWatchlist ──────────────────────────────────────────────────
 
   describe('removeFromWatchlist', () => {
     it('should remove item and return success message', async () => {
@@ -408,8 +402,6 @@ describe('MoviesService', () => {
       );
     });
   });
-
-  // ─── searchMovies (cache) ─────────────────────────────────────────────────
 
   describe('searchMovies', () => {
     const mockTmdbResponse = {

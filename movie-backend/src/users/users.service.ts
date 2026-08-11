@@ -105,7 +105,7 @@ export class UsersService {
           ],
         },
         (error, result) => {
-          if (error) return reject(error);
+          if (error) return reject(new Error(error.message));
           if (!result) return reject(new Error('Cloudinary upload failed'));
           resolve(result as unknown as CloudinaryUploadResponseDto);
         },
@@ -223,8 +223,6 @@ export class UsersService {
       throw new BadRequestException('You are already friends');
     }
 
-    // If the other person already sent us a request, accept it instead of
-    // creating a duplicate — this is a mutual match.
     const incoming = await this.friendRequestRepository.findOne({
       where: { fromUser: { id: friendId }, toUser: { id: currentUserId } },
     });
@@ -352,7 +350,7 @@ export class UsersService {
     }));
   }
 
-  async getFriends(userId: number) {
+  async getFriends(userId: number): Promise<FriendDto[]> {
     const user = await this.usersRepository.findOne({
       where: { id: userId },
       relations: ['friends'],
@@ -428,9 +426,6 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // The self-referential `friends` many-to-many join table doesn't cascade
-    // on delete (TypeORM's @JoinTable FKs default to no action), so it has
-    // to be cleared explicitly before removing the user row.
     await this.usersRepository.manager.query(
       `DELETE FROM user_friends WHERE "userId" = $1 OR "friendId" = $1`,
       [userId],

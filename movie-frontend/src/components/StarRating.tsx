@@ -9,9 +9,6 @@ interface StarRatingProps {
   disabled?: boolean;
 }
 
-// Font size is driven by container width (cqw) so the 10-star row always
-// fits its parent, whether that's a ~140px watchlist card or a wide modal —
-// fixed pixel sizes overflowed narrow containers like the ActionPanel sidebar.
 const SIZE_STYLE: Record<"sm" | "lg", string> = {
   sm: "clamp(0.65rem, 7.5cqw, 1.125rem)",
   lg: "clamp(0.85rem, 8.5cqw, 1.875rem)",

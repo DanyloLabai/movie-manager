@@ -12,9 +12,6 @@ interface RequestWithUser extends Request {
   user: { userId: number };
 }
 
-// Runs after the global JwtAuthGuard, so req.user is already populated.
-// Looks isAdmin up fresh from the DB each request (no isAdmin claim in the
-// JWT) so revoking admin access doesn't require the user to log out.
 @Injectable()
 export class AdminGuard implements CanActivate {
   constructor(

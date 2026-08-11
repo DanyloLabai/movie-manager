@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 interface ProfileSectionProps {
   children: ReactNode;
-  /** Omit the bottom hairline for the last section in the stack. */
   noBorder?: boolean;
 }
 

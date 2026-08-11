@@ -65,7 +65,7 @@ type TasteCompatibility = {
   }>;
 };
 
-const isReleased = () => true; // public refs carry no release date — treat everything as released
+const isReleased = () => true;
 
 function toWatchlistItem(
   m: PublicMovieRef,
@@ -191,7 +191,7 @@ export default function PublicProfile() {
       try {
         await nav.share({ title: profileData?.username, url });
       } catch {
-        // user cancelled the native share sheet
+        // empty
       }
       return;
     }

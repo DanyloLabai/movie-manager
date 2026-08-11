@@ -24,17 +24,8 @@ interface Message {
 }
 
 const MOBILE_BREAKPOINT_PX = 640;
-// Height of the nav bar's own content (icon + label + vertical padding),
-// not counting the safe-area inset it adds on top of that via
-// pb-[env(safe-area-inset-bottom)].
 const BOTTOM_NAV_CONTENT_PX = 60;
 
-// In an installed PWA (standalone display mode) the app draws edge-to-edge,
-// so env(safe-area-inset-bottom) resolves to the real home-indicator/gesture
-// inset. In a regular mobile browser tab that space is already occupied by
-// the browser own chrome, so the inset is 0 there, which is why this bug
-// only showed up in the installed app. Measure it instead of assuming 0, so
-// the reserved space always matches what the nav bar actually renders at.
 let cachedSafeAreaInsetBottomPx: number | null = null;
 const getSafeAreaInsetBottomPx = () => {
   if (cachedSafeAreaInsetBottomPx !== null) return cachedSafeAreaInsetBottomPx;
@@ -52,9 +43,6 @@ if (typeof window !== "undefined") {
   });
 }
 
-// No reserve while the input is focused: the bottom nav hides itself so the
-// keyboard doesn't fight it for space, and the chat should sit as close to
-// the keyboard as the visual viewport already allows.
 const getBottomReserve = (isInputFocused: boolean) =>
   window.innerWidth < MOBILE_BREAKPOINT_PX && !isInputFocused
     ? BOTTOM_NAV_CONTENT_PX + getSafeAreaInsetBottomPx()
@@ -150,9 +138,6 @@ export default function AiChat() {
   };
 
   const [messages, setMessages] = useState<Message[]>([getWelcomeMessage()]);
-  // Only the initial welcome message present - no user turn sent yet.
-  // Matches the threshold already used elsewhere (clear-chat button) to
-  // mean "nothing to a real conversation yet".
   const isEmpty = messages.length <= 1;
 
   useEffect(() => {
@@ -543,12 +528,6 @@ export default function AiChat() {
       </div>
 
       <div className="relative flex-1 flex flex-col overflow-hidden">
-        {/* Desktop-only spacers: grow equally to push the (shrunk-to-fit)
-            message block + input down into the vertical center while the
-            conversation is empty; collapse back to 0 once it isn't, so the
-            block slides down to its normal top/bottom-pinned layout. Kept
-            out of mobile entirely - centering there would fight the
-            on-screen keyboard when the input is focused. */}
         <div
           aria-hidden="true"
           className={`hidden sm:block shrink-0 transition-[flex-grow] duration-500 ease-in-out ${

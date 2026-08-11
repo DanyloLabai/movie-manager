@@ -1,7 +1,5 @@
 import * as pushApi from "../api/push.api";
 
-// VAPID public keys are delivered base64url-encoded (TMDB/web-push convention);
-// PushManager.subscribe needs them as a raw Uint8Array.
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding)

@@ -8,7 +8,6 @@ import { QuizMoviePool } from './quiz-movie-pool.entity';
 import { QuizHint, QuizHintsByLanguage } from './daily-movie-quiz.entity';
 
 const HINT_COUNT = 5;
-/** Must support structured outputs (json_schema) — see console.groq.com/docs/structured-outputs#supported-models */
 const GROQ_HINTS_MODEL = 'openai/gpt-oss-120b';
 const GEMINI_HINTS_MODEL = 'gemini-flash-latest';
 

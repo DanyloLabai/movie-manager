@@ -179,7 +179,6 @@ export class AchievementsService {
     }
   }
 
-  /** Streak of consecutive-day solves ending today or yesterday, given ascending-sorted solved dates. */
   private computeCurrentStreak(sortedDates: string[]): number {
     if (sortedDates.length === 0) return 0;
 
