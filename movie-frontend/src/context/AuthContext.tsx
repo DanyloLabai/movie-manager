@@ -74,7 +74,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  // Initialize from localStorage on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
@@ -86,7 +85,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           type: "INIT_FROM_STORAGE",
           payload: { user, token },
         });
-        // Set default header for future requests
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       } catch (error) {
         console.error("Failed to parse user from storage:", error);
@@ -116,10 +114,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    // Best-effort: revoke the refresh token cookie server-side.
-    api.post("/auth/logout").catch(() => {
-      // Ignore errors - we clear local state regardless.
-    });
+    api.post("/auth/logout").catch(() => {});
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     delete api.defaults.headers.common["Authorization"];

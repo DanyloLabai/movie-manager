@@ -411,7 +411,6 @@ export default function MovieDetails() {
         </header>
       </div>
 
-      {/* Backdrop — heavily blurred ambient atmosphere */}
       <div className="relative w-full h-[280px] sm:h-[420px] bg-[#14110d] overflow-hidden">
         {backdropUrl && (
           <>
@@ -434,7 +433,6 @@ export default function MovieDetails() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-14 relative z-10">
-        {/* Mobile header */}
         <div className="flex gap-4 items-end mb-6 -mt-16 sm:hidden">
           <div className="flex-shrink-0 w-28">
             {posterUrl ? (
@@ -479,7 +477,6 @@ export default function MovieDetails() {
           </div>
         </div>
 
-        {/* Desktop hero row */}
         <div className="hidden sm:flex gap-9 items-end">
           <div className="w-[240px] shrink-0 -mb-[72px] relative z-10">
             {posterUrl ? (
@@ -608,7 +605,6 @@ export default function MovieDetails() {
           </div>
         </div>
 
-        {/* Info strip beside poster overhang (desktop) */}
         {(hasProviders || (movie.productionCountries && movie.productionCountries.length > 0) || status) && (
           <div className="hidden sm:flex gap-9 mt-6">
             <div className="w-[240px] shrink-0" />
@@ -653,7 +649,6 @@ export default function MovieDetails() {
           </div>
         )}
 
-        {/* Mobile content */}
         <div className="sm:hidden mt-4 flex flex-col gap-5">
           {movie.productionCountries &&
             movie.productionCountries.length > 0 && (
@@ -713,7 +708,6 @@ export default function MovieDetails() {
           )}
         </div>
 
-        {/* Desktop: cast + trailer */}
         <div className="hidden sm:block mt-11">
           {movie.cast && movie.cast.length > 0 && (
             <CastBlock cast={movie.cast} />
@@ -726,14 +720,12 @@ export default function MovieDetails() {
         </div>
       </div>
 
-      {/* Friends who watched this */}
       {friendsWatched.length > 0 && (
         <div className="mt-10 max-w-7xl mx-auto px-4 sm:px-14">
           <FriendsWatchedBlock friends={friendsWatched} />
         </div>
       )}
 
-      {/* Recommendations */}
       {recommendations.length > 0 && (
         <div className="mt-10 max-w-7xl mx-auto px-4 sm:px-14">
           <SectionHeader
@@ -781,7 +773,6 @@ export default function MovieDetails() {
         </div>
       )}
 
-      {/* Rating modal */}
       {isRatingModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div

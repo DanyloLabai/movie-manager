@@ -12,9 +12,7 @@ interface ProfileFavoritesPanelProps {
   isReleased: (item: WatchlistItem) => boolean;
   onToggleFavorite: (tmdbId: number) => void;
   onOpenFriends: () => void;
-  /** Hide the friends avatar row — used on the public profile, where a visitor's friend list isn't available. */
   showFriends?: boolean;
-  /** Disable the favorite-toggle heart — used on the public profile, since a visitor can't edit someone else's favorites. */
   readOnly?: boolean;
 }
 
@@ -241,7 +239,6 @@ export default function ProfileFavoritesPanel({
 
   return (
     <div className="font-ui">
-      {/* Desktop */}
       <div className="hidden md:flex gap-10">
         <div className="flex-[1.4] flex flex-col gap-4 min-w-0">
           <span className="font-mono-ui text-[12px] font-semibold tracking-[3px] text-[#d9ac54] uppercase">
@@ -271,7 +268,6 @@ export default function ProfileFavoritesPanel({
         </div>
       </div>
 
-      {/* Mobile */}
       <div className="md:hidden flex flex-col">
         <div className="flex flex-col gap-3 pb-5 -mx-5 px-5 border-b border-[rgba(217,172,84,.16)]">
           <span className="font-mono-ui text-[11px] font-semibold tracking-[2.5px] text-[#d9ac54] uppercase">

@@ -67,9 +67,6 @@ const isReleased = (movie: MovieResult) => {
   return true;
 };
 
-// Mini swipe-deck glyph (two overlapping rotated card outlines) used on the
-// Discover entry pill/promo strip — matches the handoff's hand-drawn icon
-// rather than a generic stroke SVG, since that's how the mockup builds it.
 function DiscoverStackIcon({ small = false }: { small?: boolean }) {
   return (
     <span

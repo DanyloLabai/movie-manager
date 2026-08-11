@@ -6,8 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { Response } from 'express';
-import { HttpErrorResponseDto } from '../dto/http-error-response.dto';
+import { Request, Response } from 'express';
 
 @Catch(HttpException)
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -26,7 +25,11 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const responseObj = exceptionResponse as Record<string, unknown>;
       if (responseObj && 'message' in responseObj) {
         const msg = responseObj.message;
-        message = Array.isArray(msg) ? msg : (msg as any) || message;
+        if (Array.isArray(msg)) {
+          message = msg as string[];
+        } else if (typeof msg === 'string' && msg) {
+          message = msg;
+        }
       }
       if (responseObj && 'error' in responseObj) {
         errors = (responseObj.error as string) || null;
@@ -35,7 +38,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = exceptionResponse;
     }
 
-    if (status === HttpStatus.TOO_MANY_REQUESTS) {
+    if (Number(status) === Number(HttpStatus.TOO_MANY_REQUESTS)) {
       message = 'Too many requests. Please wait a moment and try again.';
     }
 
@@ -46,9 +49,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
     };
 
-    if (status >= 500 || status === HttpStatus.TOO_MANY_REQUESTS) {
+    if (
+      status >= 500 ||
+      Number(status) === Number(HttpStatus.TOO_MANY_REQUESTS)
+    ) {
       this.logger.error(
-        `[${status}] ${message} - ${host.switchToHttp().getRequest().url}`,
+        `[${status}] ${errorResponse.message} - ${host.switchToHttp().getRequest<Request>().url}`,
         exception.stack,
       );
     }

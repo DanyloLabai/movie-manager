@@ -8,18 +8,9 @@ import { PushService } from '../push/push.service';
 
 export interface NotifyInput {
   type: NotificationType;
-  // Primary text shown in the in-app notifications list (e.g. movie title,
-  // achievement name).
   title: string;
-  // Secondary text shown in the list, and the push notification body.
   body: string;
-  // Push notification title, if it should read differently than `title`
-  // (e.g. "🏆 Achievement unlocked!" while the list shows the achievement
-  // name). Defaults to `title`.
   pushTitle?: string;
-  // Push notification body, if it should read differently than `body` (e.g.
-  // including the achievement name, which the list already shows as its
-  // title so `body` alone can stay clean). Defaults to `body`.
   pushBody?: string;
   tmdbId?: number | null;
   posterUrl?: string | null;
@@ -27,8 +18,6 @@ export interface NotifyInput {
   url?: string | null;
 }
 
-// Notifications older than this are pruned by the daily cleanup job — the
-// list is meant to be a recent activity feed, not a permanent log.
 const RETENTION_DAYS = 30;
 
 @Injectable()

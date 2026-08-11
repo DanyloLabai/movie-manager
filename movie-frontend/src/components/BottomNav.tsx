@@ -11,9 +11,9 @@ const VISIBLE_ROUTES = [
   "/settings",
 ];
 
-const MOBILE_BREAKPOINT_PX = 640; // Tailwind `sm`
+const MOBILE_BREAKPOINT_PX = 640;
 const SWIPE_MIN_DISTANCE_PX = 60;
-const SWIPE_MAX_VERTICAL_RATIO = 0.5; // vertical drift must stay well under the horizontal distance
+const SWIPE_MAX_VERTICAL_RATIO = 0.5;
 
 export default function BottomNav() {
   const { t } = useLang();
@@ -24,13 +24,6 @@ export default function BottomNav() {
     null,
   );
 
-  // Hide while the on-screen keyboard is open, so the bar never sits on top
-  // of (or rides up together with) a page's own input. We can't rely on
-  // visualViewport resize alone: that event lags behind focus by however
-  // long the keyboard takes to animate in, which is exactly the window
-  // where the bar would otherwise cover the focused input. Hiding on
-  // focus/focusin is immediate; the visualViewport check is what keeps the
-  // bar hidden until the keyboard has actually finished closing again.
   useEffect(() => {
     const vv = window.visualViewport;
     const isTextInput = (el: Element | null) =>
@@ -39,11 +32,6 @@ export default function BottomNav() {
         el.tagName === "TEXTAREA" ||
         (el as HTMLElement).isContentEditable);
 
-    // Tracks whether a text input was actually focused. The viewport-ratio
-    // check below is only trusted once that's happened — otherwise a
-    // shrunken visualViewport right after navigation (browser chrome/URL
-    // bar not yet settled, common in PWA/standalone mode) is mistaken for
-    // an open keyboard and hides the bar until something recalculates it.
     let wasFocused = false;
 
     const update = () => {
@@ -84,10 +72,6 @@ export default function BottomNav() {
 
   const isVisible = VISIBLE_ROUTES.some((r) => location.pathname.startsWith(r));
 
-  // Swipe left/right between the tab pages, mirroring the bottom nav order.
-  // Ignored while typing, and ignored when the swipe starts inside a
-  // horizontally-scrolling carousel or a text field, so it doesn't fight
-  // those gestures.
   useEffect(() => {
     if (!isVisible || isKeyboardOpen) return;
 

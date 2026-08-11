@@ -8,7 +8,11 @@ import {
 } from 'typeorm';
 import { User } from '../users/users.entity';
 
-export type ActivityType = 'watched' | 'rated' | 'added_watchlist' | 'favorited';
+export type ActivityType =
+  | 'watched'
+  | 'rated'
+  | 'added_watchlist'
+  | 'favorited';
 
 @Entity('activity')
 @Index('IDX_activity_userId_createdAt', ['user', 'createdAt'])

@@ -88,9 +88,6 @@ export default function Watchlist() {
       .catch(() => {});
   }, []);
 
-  // The compact hero (Watchlist/Watched tabs) needs username/avatar too, but
-  // fetchProfile() below is gated to the profile tab to own its own loading
-  // spinner — so grab the header fields once up front when landing elsewhere.
   useEffect(() => {
     if (activeTab === "profile") return;
     moviesApi

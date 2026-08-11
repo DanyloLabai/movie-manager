@@ -56,7 +56,7 @@ export default function Notifications() {
         (notifs?.length || 0) === NOTIFICATIONS_PAGE_SIZE,
       );
     } catch {
-      // ignore — page just shows empty state
+      // empty
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +79,7 @@ export default function Notifications() {
         (notifs?.length || 0) === NOTIFICATIONS_PAGE_SIZE,
       );
     } catch {
-      // ignore — user can retry
+      // empty
     } finally {
       setIsLoadingMoreNotifications(false);
     }
@@ -98,7 +98,7 @@ export default function Notifications() {
       await usersApi.acceptFriendRequest(id);
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch {
-      // leave it in the list; user can retry
+      // empty
     } finally {
       setProcessingId(null);
     }
@@ -110,7 +110,7 @@ export default function Notifications() {
       await usersApi.declineFriendRequest(id);
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch {
-      // leave it in the list; user can retry
+      // empty
     } finally {
       setProcessingId(null);
     }
@@ -175,7 +175,7 @@ export default function Notifications() {
       await moviesApi.markAllNotificationsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch {
-      // ignore
+      // empty
     }
   };
 

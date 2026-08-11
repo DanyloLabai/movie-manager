@@ -19,8 +19,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Refresh token lives in an httpOnly cookie, so it's only ever exchanged
-// via /auth/refresh (withCredentials sends the cookie automatically).
 let refreshPromise: Promise<string | null> | null = null;
 
 async function refreshAccessToken(): Promise<string | null> {

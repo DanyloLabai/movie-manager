@@ -17,7 +17,9 @@ export class QuizSchedulerService {
     this.logger.log('Generating daily movie quiz...');
     try {
       const quiz = await this.quizService.getOrCreateTodayQuiz();
-      this.logger.log(`Daily quiz ready for ${quiz.date} (poolId=${quiz.poolId}).`);
+      this.logger.log(
+        `Daily quiz ready for ${quiz.date} (poolId=${quiz.poolId}).`,
+      );
       await this.notifyPastPlayers();
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -45,7 +47,9 @@ export class QuizSchedulerService {
       }
     }
     if (userIds.length > 0) {
-      this.logger.log(`Sent daily quiz reminders to ${userIds.length} player(s).`);
+      this.logger.log(
+        `Sent daily quiz reminders to ${userIds.length} player(s).`,
+      );
     }
   }
 }

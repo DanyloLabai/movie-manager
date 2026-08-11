@@ -46,6 +46,7 @@ import {
 import { ActivityService } from 'src/activity/activity.service';
 import { SearchHistoryService } from 'src/search-history/search-history.service';
 import { AchievementsService } from 'src/achievements/achievements.service';
+import { getErrorMessage } from '../common/utils/error.utils';
 
 @Injectable()
 export class MoviesService {
@@ -137,9 +138,6 @@ export class MoviesService {
       this.configService.get<number>('GENRE_DISTRIBUTION_LIMIT') || 5;
   }
 
-  /**
-   * Helper method to handle API requests with retry logic for 429 (rate limit) errors
-   */
   private async makeRequestWithRetry<T>(
     request: () => Promise<{ data: T }>,
     maxRetries: number = 3,
@@ -206,8 +204,10 @@ export class MoviesService {
     if (userId !== undefined && !options?.skipHistory) {
       this.searchHistoryService
         .logSearch(userId, query)
-        .catch((err) =>
-          this.logger.error(`Failed to log search history: ${err.message}`),
+        .catch((err: unknown) =>
+          this.logger.error(
+            `Failed to log search history: ${getErrorMessage(err)}`,
+          ),
         );
     }
 
@@ -252,8 +252,10 @@ export class MoviesService {
   ): Promise<MovieResultDto[]> {
     this.searchHistoryService
       .logSearch(userId, dto.query)
-      .catch((err) =>
-        this.logger.error(`Failed to log search history: ${err.message}`),
+      .catch((err: unknown) =>
+        this.logger.error(
+          `Failed to log search history: ${getErrorMessage(err)}`,
+        ),
       );
 
     const literalResults = await this.searchLiteralWithFilters(dto, userId);
@@ -339,7 +341,7 @@ export class MoviesService {
           try {
             const details = await this.getMovieDetails(
               item.id,
-              item.media_type as 'movie' | 'tv',
+              item.media_type,
             );
             return { item, runtime: details.runtime ?? null };
           } catch {
@@ -1046,19 +1048,21 @@ export class MoviesService {
         posterUrl,
         mediaType,
       })
-      .catch((err) =>
-        this.logger.error(`Failed to log activity: ${err.message}`),
+      .catch((err: unknown) =>
+        this.logger.error(`Failed to log activity: ${getErrorMessage(err)}`),
       );
 
     this.achievementsService
       .checkAndNotify(userId)
-      .catch((err) =>
-        this.logger.error(`Failed to check achievements: ${err.message}`),
+      .catch((err: unknown) =>
+        this.logger.error(
+          `Failed to check achievements: ${getErrorMessage(err)}`,
+        ),
       );
 
     this.getMovieDetails(tmdbId, mediaType)
       .then((details) => {
-        this.vectorService.addMovieToVectorStore({
+        return this.vectorService.addMovieToVectorStore({
           id: tmdbId,
           title: title,
           description: details.overview || '',
@@ -1071,19 +1075,15 @@ export class MoviesService {
           mediaType,
         });
       })
-      .catch((err) =>
+      .catch((err: unknown) =>
         this.logger.error(
-          `Failed to auto-index movie ${tmdbId} into vector store: ${err.message}`,
+          `Failed to auto-index movie ${tmdbId} into vector store: ${getErrorMessage(err)}`,
         ),
       );
 
     return savedItem;
   }
 
-  // `limit`/`offset` are optional so internal callers (AI chat context,
-  // taste compatibility, etc.) that need the full list can keep calling
-  // this without pagination args, while the HTTP endpoint always passes
-  // them to cap what's sent to the client.
   async getWatchlist(userId: number, limit?: number, offset = 0) {
     return this.watchlistRepo.find({
       where: { user: { id: userId }, isWatched: false },
@@ -1122,16 +1122,18 @@ export class MoviesService {
         posterUrl: item.posterUrl,
         mediaType: item.mediaType,
       })
-      .catch((err) =>
-        this.logger.error(`Failed to log activity: ${err.message}`),
+      .catch((err: unknown) =>
+        this.logger.error(`Failed to log activity: ${getErrorMessage(err)}`),
       );
 
     const savedItem = await this.watchlistRepo.save(item);
 
     this.achievementsService
       .checkAndNotify(userId)
-      .catch((err) =>
-        this.logger.error(`Failed to check achievements: ${err.message}`),
+      .catch((err: unknown) =>
+        this.logger.error(
+          `Failed to check achievements: ${getErrorMessage(err)}`,
+        ),
       );
 
     return savedItem;
@@ -1171,8 +1173,8 @@ export class MoviesService {
         mediaType: item.mediaType,
         rating: normalizedRating,
       })
-      .catch((err) =>
-        this.logger.error(`Failed to log activity: ${err.message}`),
+      .catch((err: unknown) =>
+        this.logger.error(`Failed to log activity: ${getErrorMessage(err)}`),
       );
 
     return this.watchlistRepo.save(item);
@@ -1223,8 +1225,8 @@ export class MoviesService {
           posterUrl: item.posterUrl,
           mediaType: item.mediaType,
         })
-        .catch((err) =>
-          this.logger.error(`Failed to log activity: ${err.message}`),
+        .catch((err: unknown) =>
+          this.logger.error(`Failed to log activity: ${getErrorMessage(err)}`),
         );
     }
 
@@ -1233,8 +1235,10 @@ export class MoviesService {
     if (item.isFavorite) {
       this.achievementsService
         .checkAndNotify(userId)
-        .catch((err) =>
-          this.logger.error(`Failed to check achievements: ${err.message}`),
+        .catch((err: unknown) =>
+          this.logger.error(
+            `Failed to check achievements: ${getErrorMessage(err)}`,
+          ),
         );
     }
 
@@ -1323,7 +1327,7 @@ export class MoviesService {
     if (cached) return cached;
 
     try {
-      let userItems = await this.watchlistRepo.find({
+      const userItems = await this.watchlistRepo.find({
         where: { user: { id: userId }, isFavorite: true },
         take: 30,
       });
@@ -1605,10 +1609,11 @@ export class MoviesService {
           .filter((media: TmdbMultiSearchResultDto) => media.poster_path)
           .map((media: TmdbMultiSearchResultDto) => ({
             id: media.id,
-            title: (media.title || media.name || 'Unknown Title') as string,
-            originalTitle: (media.original_title ||
+            title: media.title || media.name || 'Unknown Title',
+            originalTitle:
+              media.original_title ||
               media.original_name ||
-              'Unknown Original Title') as string,
+              'Unknown Original Title',
             description: media.overview || '',
             releaseYear:
               (media.release_date || media.first_air_date || '').split(

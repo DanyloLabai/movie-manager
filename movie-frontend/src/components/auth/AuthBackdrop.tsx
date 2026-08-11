@@ -11,7 +11,6 @@ function pickRandom<T>(arr: T[], n: number): T[] {
   return out;
 }
 
-/** Blurred, desaturated movie-poster collage used behind the unauthenticated auth screens. */
 export default function AuthBackdrop() {
   const [images, setImages] = useState<string[]>([]);
 

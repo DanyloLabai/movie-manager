@@ -9,10 +9,7 @@ import {
 import { User } from '../users/users.entity';
 
 @Entity('user_achievements')
-@Unique('UQ_user_achievements_userId_achievementId', [
-  'user',
-  'achievementId',
-])
+@Unique('UQ_user_achievements_userId_achievementId', ['user', 'achievementId'])
 export class UserAchievement {
   @PrimaryGeneratedColumn()
   id: number;

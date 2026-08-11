@@ -19,7 +19,6 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 const STARTING_SCORE = 100;
 const TOTAL_HINTS = 5;
-/** Hint 1 is free/auto-revealed; these are the costs for hints 2-5. */
 const FREE_HINTS = 1;
 const HINT_COSTS = [10, 15, 20, 25];
 const WRONG_GUESS_PENALTY = 5;
@@ -48,9 +47,6 @@ export interface QuizStateDto {
   maxGuesses: number;
   isSolved: boolean;
   isFailed: boolean;
-  /** Poster of today's movie, always present — the client blurs it and
-   * reduces the blur as hints get revealed. Showing it doesn't leak the
-   * answer (title/tmdbId), which stay hidden in `answer` until done. */
   posterUrl: string | null;
   streak: QuizStreak;
   answer?: QuizAnswer;
@@ -177,7 +173,6 @@ export class QuizService {
     };
   }
 
-  /** Current and best consecutive-day streaks of *solved* quizzes for a user. */
   async getStreak(userId: number): Promise<QuizStreak> {
     const rows = await this.attemptRepo.find({
       where: { userId, isSolved: true },
@@ -342,7 +337,6 @@ export class QuizService {
     return pool.posterPath ? `${POSTER_BASE_URL}${pool.posterPath}` : null;
   }
 
-  /** Idempotent: returns today's quiz, creating it (and claiming a pool movie) on first call of the day. */
   async getOrCreateTodayQuiz(): Promise<DailyMovieQuiz> {
     const today = this.todayDateString();
     const existing = await this.dailyQuizRepo.findOne({
@@ -364,9 +358,6 @@ export class QuizService {
       quiz.pool = pool;
       return quiz;
     } catch (error: unknown) {
-      // Unique violation on `date` means another process (e.g. concurrent
-      // request racing the cron job) already created today's quiz first —
-      // release the pool movie we claimed and reuse the existing quiz.
       const raceExisting = await this.dailyQuizRepo.findOne({
         where: { date: today },
         relations: ['pool'],
@@ -417,7 +408,6 @@ export class QuizService {
     });
   }
 
-  /** userIds who have ever submitted a guess — the audience for "quiz updated" reminders. */
   async getEverPlayedUserIds(): Promise<number[]> {
     const rows = await this.attemptRepo
       .createQueryBuilder('a')

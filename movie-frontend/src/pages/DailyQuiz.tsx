@@ -239,7 +239,6 @@ export default function DailyQuiz() {
           </div>
         ) : (
           <div className="lg:grid lg:grid-cols-12 lg:gap-10">
-            {/* Left column: poster + guess input */}
             <div className="lg:col-span-5">
               <div className="relative w-40 sm:w-48 lg:w-full aspect-[2/3] mx-auto mb-4 rounded-[10px] overflow-hidden bg-[#14110d]">
                 {posterUrl ? (
@@ -402,7 +401,6 @@ export default function DailyQuiz() {
               )}
             </div>
 
-            {/* Right column: hints + leaderboard */}
             <div className="lg:col-span-7 mt-8 lg:mt-0 flex flex-col gap-8">
               <div>
                 <div className="flex items-center gap-3.5 pb-3.5">
