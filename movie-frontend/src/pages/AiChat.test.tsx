@@ -46,7 +46,7 @@ describe("AiChat", () => {
       requestLimit: 20,
       tokenLimit: 10000,
     });
-    mockedGetProfile.mockReset().mockResolvedValue({});
+    mockedGetProfile.mockReset().mockResolvedValue({ favorites: [], recent: [] });
     mockedGetNotifications.mockReset().mockResolvedValue([]);
     mockedGetFriendRequests.mockReset().mockResolvedValue([]);
   });
