@@ -5,7 +5,6 @@ import LogoIcon from "../LogoIcon";
 interface AuthLayoutProps {
   title: string;
   subtitle: string;
-  /** Mono uppercase micro-label (login/register) vs. plain sentence case (reset). Defaults to mono. */
   subtitleMono?: boolean;
   icon?: ReactNode;
   children: ReactNode;

@@ -17,10 +17,6 @@ export interface TmdbCreditsDto {
   crew: TmdbCrewMemberDto[];
 }
 
-/**
- * Extra fields TMDB attaches when using `append_to_response=videos,watch/providers,credits`
- * on both movie and TV detail endpoints.
- */
 export interface TmdbAppendedFieldsDto {
   videos: TmdbVideosWrapperDto;
   'watch/providers': TmdbWatchProvidersWrapperDto;

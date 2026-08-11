@@ -5,7 +5,6 @@ type Lang = "en" | "uk";
 
 const translations = {
   en: {
-    // Nav
     nav_ai_chat: "AI Chat",
     nav_search: "Search",
     nav_profile: "Profile",
@@ -69,7 +68,6 @@ const translations = {
     settings_delete_error: "Failed to delete account. Please try again.",
     edit_profile_updated: "Profile updated successfully!",
 
-    // AI Chat page
     chat_header_title: "Lumen AI",
     chat_welcome:
       "Hi! I'm your movie expert. Ask me about any movie, or describe a plot you can't remember.",
@@ -109,14 +107,12 @@ const translations = {
     chat_movie: "Movie",
     chat_why_this: "Why this?",
 
-    // Quick prompts
     quick_watchlist: "From my watchlist",
     quick_inception: "Similar to Inception",
     quick_anime: "Anime for beginners",
     quick_new: "New movies 2024",
     quick_short: "Short series for tonight",
 
-    // Search page
     because_you_watched: "Because you watched",
     search_placeholder: "Enter movie title...",
     search_btn: "Search",
@@ -166,14 +162,12 @@ const translations = {
     search_friends_activity: "Friends' Latest Watches",
     search_friends_activity_empty: "No friend activity yet.",
 
-    // Ranks
     rank_film_legend: "Film Legend",
     rank_cinema_curator: "Cinema Curator",
     rank_cinephile: "Cinephile",
     rank_movie_enthusiast: "Movie Enthusiast",
     rank_cinema_guest: "Cinema Guest",
 
-    // Achievements
     achievement_first_blood_text: "First Blood",
     achievement_first_blood_req: "Add 1 movie to watchlist or mark as watched",
     achievement_critic_text: "Critic",
@@ -200,7 +194,6 @@ const translations = {
     achievement_quiz_veteran_text: "Quiz Veteran",
     achievement_quiz_veteran_req: "Solve 50 daily quizzes total",
 
-    // Watchlist / Profile page
     watchlist_title: "My Profile",
     watchlist_favorites: "Favorites",
     watchlist_planned: "Watchlist",
@@ -227,7 +220,6 @@ const translations = {
     watchlist_sort_rating: "Sort: rating",
     watchlist_search_placeholder: "search in list",
 
-    // Login page
     login_welcome: "Welcome to Lumen",
     login_subtitle: "Log in to your tracker",
     login_email: "Email Address",
@@ -242,7 +234,6 @@ const translations = {
     login_sending: "Sending...",
     login_resend_error: "Failed to send. Please try again.",
 
-    // Register page
     register_welcome: "Join Us",
     register_subtitle: "Create your tracking profile",
     register_username: "Username",
@@ -260,7 +251,6 @@ const translations = {
     register_error: "Registration error. Please try again!",
     register_captcha_error: "Please confirm that you are not a robot.",
 
-    // Password reset pages
     password_security: "Security Settings",
     password_subtitle: "Update your account password",
     password_current: "Current Password",
@@ -290,13 +280,11 @@ const translations = {
     password_new_mismatch: "Passwords do not match.",
     password_new_invalid: "Invalid token",
 
-    // Email verification
     verify_success: "Success!",
     verify_message: "Your email has been verified. You can now log in.",
     verify_error: "Error",
     verify_error_msg: "The link is invalid or has expired.",
 
-    // Edit profile
     edit_profile: "Edit Profile",
     edit_save: "Save Changes",
     edit_saving: "Saving...",
@@ -305,7 +293,6 @@ const translations = {
     edit_error:
       "An error occurred while updating your profile. Please try again.",
 
-    // Public profile
     profile_not_found: "Profile not found.",
     profile_404: "404",
     profile_go_home: "Return Home",
@@ -319,7 +306,6 @@ const translations = {
     profile_last_watched: "last watched:",
     profile_link_copied: "Profile link copied!",
 
-    // Movie/Content
     movie_not_found: "Movie not found. Back to Search",
     movie_imdb: "IMDB:",
     movie_watched: "✓ Watched",
@@ -342,7 +328,6 @@ const translations = {
     movie_progress_saved: "Progress saved!",
     movie_currently_watching: "Currently watching",
 
-    // Actor details
     actor_page_title: "Actor",
     actor_not_found: "Actor not found.",
     actor_read_more: "Read More...",
@@ -352,7 +337,6 @@ const translations = {
     actor_born: "Born",
     actor_from: "From",
 
-    // Top 100
     top100_movies: "Top 100 Movies",
     top100_tv: "Top 100 TV Shows",
     top100_added: "Added to list",
@@ -361,7 +345,6 @@ const translations = {
     top100_remove_error: "Error removing item",
     top100_fav_error: "Failed to favorite",
 
-    // Watchlist stats
     stats_wrapped: "[username]'s Wrapped",
     stats_time_spent: "Time Spent",
     stats_top_genre: "Top Genre",
@@ -389,7 +372,6 @@ const translations = {
     added: "Added:",
     watched: "Watched",
 
-    // Movie details specific
     movie_production_countries: "Production Countries",
     movie_trailer: "Trailer",
     movie_where_to_watch: "Where to Watch",
@@ -453,7 +435,6 @@ const translations = {
     notif_view: "View",
     movie_friends_watched: "Friends who watched this",
 
-    // Common UI
     common_na: "N/A",
     common_go_back: "← Go Back",
     common_back: "Back",
@@ -463,7 +444,6 @@ const translations = {
     common_load_more: "Load more",
     common_loading_more: "Loading...",
 
-    // Discover (swipe feed)
     nav_discover: "Discover",
     discover_title: "Discover",
     discover_subtitle: "Matched to your taste",
@@ -497,7 +477,6 @@ const translations = {
     discover_promo_remaining: "left",
   },
   uk: {
-    // Nav
     nav_ai_chat: "AI Чат",
     nav_search: "Пошук",
     nav_profile: "Профіль",
@@ -562,7 +541,6 @@ const translations = {
     settings_delete_error: "Не вдалося видалити акаунт. Спробуй ще раз.",
     edit_profile_updated: "Профіль успішно оновлено!",
 
-    // AI Chat page
     chat_header_title: "Lumen AI",
     chat_welcome:
       "Привіт! Я твій кіно-експерт. Запитай про будь-який фільм або опиши сюжет, який не можеш згадати.",
@@ -602,14 +580,12 @@ const translations = {
     chat_movie: "Фільм",
     chat_why_this: "Чому саме це?",
 
-    // Quick prompts
     quick_watchlist: "З мого списку",
     quick_inception: "Схоже на Inception",
     quick_anime: "Аніме для початківців",
     quick_new: "Нові фільми 2024",
     quick_short: "Короткий серіал на вечір",
 
-    // Search page
     because_you_watched: "Тому що ви дивились",
     search_placeholder: "Введіть назву фільму...",
     search_btn: "Пошук",
@@ -660,14 +636,12 @@ const translations = {
     search_friends_activity: "Останні перегляди друзів",
     search_friends_activity_empty: "Поки немає активності друзів.",
 
-    // Ranks
     rank_film_legend: "Легенда кіно",
     rank_cinema_curator: "Кінокуратор",
     rank_cinephile: "Кінофіл",
     rank_movie_enthusiast: "Кіноентузіаст",
     rank_cinema_guest: "Гість кінозалу",
 
-    // Achievements
     achievement_first_blood_text: "Перша кров",
     achievement_first_blood_req:
       "Додай 1 фільм до списку перегляду або познач переглянутим",
@@ -697,7 +671,6 @@ const translations = {
     achievement_quiz_veteran_text: "Ветеран квізу",
     achievement_quiz_veteran_req: "Вгадай 50 денних квізів загалом",
 
-    // Watchlist / Profile page
     watchlist_title: "Мій профіль",
     watchlist_favorites: "Улюблені",
     watchlist_planned: "Список перегляду",
@@ -724,7 +697,6 @@ const translations = {
     watchlist_sort_rating: "Сортувати: оцінка",
     watchlist_search_placeholder: "пошук у списку",
 
-    // Login page
     login_welcome: "Ласкаво просимо в Lumen",
     login_subtitle: "Увійди у свій обліковий запис",
     login_email: "Адреса електронної пошти",
@@ -739,7 +711,6 @@ const translations = {
     login_sending: "Надсилаємо...",
     login_resend_error: "Не вдалося надіслати. Спробуй ще раз.",
 
-    // Register page
     register_welcome: "Приєднуйся",
     register_subtitle: "Створи свій профіль",
     register_username: "Ім'я користувача",
@@ -757,7 +728,6 @@ const translations = {
     register_error: "Помилка реєстрації. Спробуй знову!",
     register_captcha_error: "Підтвердь, що ти не робот.",
 
-    // Password reset pages
     password_security: "Параметри безпеки",
     password_subtitle: "Оновити свій пароль",
     password_current: "Поточний пароль",
@@ -788,13 +758,11 @@ const translations = {
     password_new_mismatch: "Паролі не збігаються.",
     password_new_invalid: "Невірний токен",
 
-    // Email verification
     verify_success: "Успіх!",
     verify_message: "Твоя пошта підтверджена. Тепер ти можеш увійти.",
     verify_error: "Помилка",
     verify_error_msg: "Посилання невірне або закінчилося.",
 
-    // Edit profile
     edit_profile: "Редагувати профіль",
     edit_save: "Зберегти зміни",
     edit_saving: "Зберігаємо...",
@@ -802,7 +770,6 @@ const translations = {
     edit_username_taken: "Це ім'я користувача вже займає інший користувач!",
     edit_error: "Помилка при оновленні профілю. Спробуй знову.",
 
-    // Public profile
     profile_not_found: "Профіль не знайдено.",
     profile_404: "404",
     profile_go_home: "Повернутися на головну",
@@ -816,7 +783,6 @@ const translations = {
     profile_last_watched: "востаннє переглянуто:",
     profile_link_copied: "Посилання на профіль скопійовано!",
 
-    // Movie/Content
     movie_not_found: "Фільм не знайдено. Повернутися до пошуку",
     movie_imdb: "IMDB:",
     movie_watched: "✓ Переглянуто",
@@ -839,7 +805,6 @@ const translations = {
     movie_progress_saved: "Прогрес збережено!",
     movie_currently_watching: "Зараз дивишся",
 
-    // Actor details
     actor_page_title: "Актор",
     actor_not_found: "Актор не знайдено.",
     actor_read_more: "Показати більше...",
@@ -849,7 +814,6 @@ const translations = {
     actor_born: "Народився/народилась",
     actor_from: "Звідси",
 
-    // Top 100
     top100_movies: "Топ 100 фільмів",
     top100_tv: "Топ 100 серіалів",
     top100_added: "Додано до списку",
@@ -858,7 +822,6 @@ const translations = {
     top100_remove_error: "Помилка видалення",
     top100_fav_error: "Не вдалося додати до улюблених",
 
-    // Watchlist stats
     stats_wrapped: "Кінотека [username]",
     stats_time_spent: "Часу витрачено",
     stats_top_genre: "Топ жанр",
@@ -886,7 +849,6 @@ const translations = {
     added: "Додано:",
     watched: "Переглянуто",
 
-    // Movie details specific
     movie_production_countries: "Країни виробництва",
     movie_trailer: "Трейлер",
     movie_where_to_watch: "Де подивитися",
@@ -952,7 +914,6 @@ const translations = {
     profile_friend_added: "Додано до друзів!",
     profile_friend_error: "Помилка при додаванні друга.",
 
-    // Common UI
     common_na: "N/A",
     common_go_back: "← Повернутися",
     common_back: "Назад",
@@ -962,7 +923,6 @@ const translations = {
     common_load_more: "Завантажити ще",
     common_loading_more: "Завантаження...",
 
-    // Discover (swipe feed)
     nav_discover: "Дискавер",
     discover_title: "DISCOVER",
     discover_subtitle: "Підібрано під твій смак",

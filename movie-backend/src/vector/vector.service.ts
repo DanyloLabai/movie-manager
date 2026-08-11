@@ -2,9 +2,15 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { Pool } from 'pg';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { embed } from 'ai';
 import { GenreDto } from '../movies/dto/genre.dto';
+import {
+  MovieTextMetadataRow,
+  MovieTextMetadataDistanceRow,
+  MovieMetadataRow,
+  TasteCompatibilityRow,
+  UserFactSimilarityRow,
+  GeminiEmbedResponse,
+} from './types/vector-row.types';
 
 export interface MovieEmbeddingMetadata {
   tmdbId: number;
@@ -79,7 +85,7 @@ export class VectorService implements OnModuleInit {
       const err = await res.text();
       throw new Error(`Gemini embed ${res.status}: ${err}`);
     }
-    const data = await res.json();
+    const data = (await res.json()) as GeminiEmbedResponse;
     return data.embedding.values;
   }
   async addMovieToVectorStore(movie: {
@@ -140,8 +146,6 @@ export class VectorService implements OnModuleInit {
       const embedding = await this.embed(fact);
       const metadata = { userId, type: 'preference' };
 
-      // Replace near-duplicate/contradicting facts instead of accumulating
-      // both, e.g. "hates horror" followed later by "loves horror".
       await this.pool.query(
         `DELETE FROM user_memory_embeddings
          WHERE metadata->>'userId' = $1
@@ -166,8 +170,6 @@ export class VectorService implements OnModuleInit {
     }
   }
 
-  // Runs off-peak, after the other daily cron jobs (movies.service's 9am
-  // release check, watched-reminder's 10am job).
   @Cron('0 4 * * *')
   async consolidateDuplicatePreferences() {
     this.logger.log('Running daily preference deduplication...');
@@ -202,11 +204,6 @@ export class VectorService implements OnModuleInit {
     }
   }
 
-  // Plain pairwise comparison via pgvector's `<=>` operator, O(n^2) pairs
-  // per user — no clustering library. Fine at this scale: a single user's
-  // preference count stays in the tens, not thousands. Re-running this is
-  // safe: once near-duplicates are merged, no pair remains under the
-  // threshold, so a second run finds nothing to delete.
   private async consolidateUserPreferences(userId: string): Promise<number> {
     const { rows: pairs } = await this.pool.query<{
       idA: string;
@@ -253,7 +250,7 @@ export class VectorService implements OnModuleInit {
   ): Promise<Array<{ pageContent: string; metadata: MovieEmbeddingMetadata }>> {
     const embedding = await this.embed(query);
 
-    const result = await this.pool.query(
+    const result = await this.pool.query<MovieTextMetadataRow>(
       `SELECT text, metadata
        FROM movie_embeddings
        ORDER BY embedding <=> $1::vector
@@ -330,7 +327,7 @@ export class VectorService implements OnModuleInit {
     const embedding = await this.embed(query);
     const { clause, params } = this.buildFilterClause(filters, userId, 3);
 
-    const result = await this.pool.query(
+    const result = await this.pool.query<MovieTextMetadataDistanceRow>(
       `SELECT text, metadata, embedding <=> $1::vector AS distance
        FROM movie_embeddings
        ${clause}
@@ -365,7 +362,7 @@ export class VectorService implements OnModuleInit {
       ? `${clause} AND metadata->>'tmdbId' != $1`
       : `WHERE metadata->>'tmdbId' != $1`;
 
-    const result = await this.pool.query(
+    const result = await this.pool.query<MovieTextMetadataRow>(
       `WITH target AS (
          SELECT embedding FROM movie_embeddings
          WHERE metadata->>'tmdbId' = $1
@@ -396,7 +393,7 @@ export class VectorService implements OnModuleInit {
     if (tmdbIdsA.length === 0 || tmdbIdsB.length === 0) return null;
 
     try {
-      const result = await this.pool.query(
+      const result = await this.pool.query<TasteCompatibilityRow>(
         `WITH vec_a AS (
            SELECT AVG(embedding) AS v, COUNT(*) AS n
            FROM movie_embeddings
@@ -441,7 +438,7 @@ export class VectorService implements OnModuleInit {
     try {
       const embedding = await this.embed(query);
 
-      const result = await this.pool.query(
+      const result = await this.pool.query<UserFactSimilarityRow>(
         `SELECT text, 1 - (embedding <=> $2::vector) AS similarity
          FROM user_memory_embeddings
          WHERE metadata->>'userId' = $1 AND metadata->>'type' = 'preference'
@@ -451,7 +448,7 @@ export class VectorService implements OnModuleInit {
       );
 
       return result.rows.map((row) => ({
-        preferenceText: row.text as string,
+        preferenceText: row.text,
         similarityScore: Number(row.similarity),
       }));
     } catch (error) {
@@ -460,10 +457,6 @@ export class VectorService implements OnModuleInit {
     }
   }
 
-  // Swipe discovery feed — "personalized" half. Averages the embeddings of
-  // the user's liked movies into a single centroid vector (same AVG(embedding)
-  // trick already proven in computeTasteCompatibility) and ranks the pool
-  // against it in one query, rather than N similarity lookups.
   async searchPersonalizedForUser(
     likedTmdbIds: number[],
     excludeTmdbIds: number[],
@@ -471,7 +464,7 @@ export class VectorService implements OnModuleInit {
   ): Promise<DiscoveryCandidate[]> {
     if (likedTmdbIds.length === 0) return [];
 
-    const result = await this.pool.query(
+    const result = await this.pool.query<MovieMetadataRow>(
       `WITH centroid AS (
          SELECT AVG(embedding) AS v
          FROM movie_embeddings
@@ -490,9 +483,6 @@ export class VectorService implements OnModuleInit {
     return this.rowsToCandidates(result.rows);
   }
 
-  // Swipe discovery feed — "diverse/exploratory" half. Biases away from the
-  // genres the user already gravitates towards (rather than picking fully
-  // at random) while still enforcing a quality floor.
   async searchDiverseForUser(
     familiarGenreIds: number[],
     excludeTmdbIds: number[],
@@ -514,7 +504,7 @@ export class VectorService implements OnModuleInit {
     params.push(k);
     const limitParamIndex = params.length;
 
-    const result = await this.pool.query(
+    const result = await this.pool.query<MovieMetadataRow>(
       `SELECT metadata
        FROM movie_embeddings
        WHERE ${conditions.join(' AND ')}

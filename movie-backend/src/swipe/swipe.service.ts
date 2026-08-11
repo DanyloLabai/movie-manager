@@ -21,8 +21,6 @@ export class SwipeService {
   private readonly DIVERSE_MIN_RATING = 6.0;
   private readonly FAMILIAR_GENRE_TOP_N = 3;
   private readonly HOOK_MAX_LENGTH = 140;
-  // The search-page promo strip introduces the feature to new users; once
-  // they've actually tried it a few times it just becomes clutter.
   private readonly PROMO_HIDE_AFTER_USES = 3;
 
   constructor(
@@ -65,9 +63,6 @@ export class SwipeService {
     return { count, resetAt };
   }
 
-  // Cheap status check for surfaces outside the feed itself (e.g. the
-  // search-page entry button/promo strip) — reuses the same rolling-24h
-  // usage query as getFeed but never runs the vector/TMDB hydration work.
   async getStatus(userId: number): Promise<{
     remainingToday: number;
     dailyLimit: number;

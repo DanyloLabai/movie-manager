@@ -13,9 +13,7 @@ interface ProfileHeroProps {
   userId?: number;
   onOpenFriends: () => void;
   onShowToast: (message: string) => void;
-  /** Compact 180px variant used atop the Watchlist/Watched tabs (no share pill, no last-watched line). */
   compact?: boolean;
-  /** Replaces the default FRIENDS/SHARE pill row — used on the public profile for the add-friend control. */
   rightSlot?: ReactNode;
 }
 
@@ -54,7 +52,7 @@ export default function ProfileHero({
       try {
         await nav.share({ title: username, url });
       } catch {
-        // user cancelled the native share sheet — nothing to do
+        // empty
       }
       return;
     }

@@ -7,8 +7,6 @@ export interface HeatmapDay extends ActivityDay {
   inYear: boolean;
 }
 
-// 5 shades from the card background up to the full accent color, used for
-// both the grid squares and the "Less ... More" legend.
 export const ACTIVITY_LEVEL_CLASSES = [
   "bg-white/[.045]",
   "bg-[#3a2f1a]",

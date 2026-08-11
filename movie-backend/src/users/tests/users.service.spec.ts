@@ -15,7 +15,6 @@ import { VectorService } from '../../vector/vector.service';
 import { SearchHistoryService } from '../../search-history/search-history.service';
 import { NotificationsService } from '../../notifications/notifications.service';
 
-// Mock cloudinary
 jest.mock('cloudinary', () => ({
   v2: {
     config: jest.fn(),
@@ -25,7 +24,6 @@ jest.mock('cloudinary', () => ({
   },
 }));
 
-// Mock streamifier
 jest.mock('streamifier', () => ({
   createReadStream: jest.fn().mockReturnValue({
     pipe: jest.fn(),
@@ -77,7 +75,7 @@ const mockSearchHistoryService = {
 const mockFriendRequestRepository = {
   findOne: jest.fn(),
   find: jest.fn(),
-  create: jest.fn((data) => data),
+  create: jest.fn((data: Partial<FriendRequest>) => data),
   save: jest.fn(),
   remove: jest.fn(),
 };
@@ -118,8 +116,6 @@ describe('UsersService', () => {
     jest.clearAllMocks();
   });
 
-  // ─── updateUserProfile ────────────────────────────────────────────────────
-
   describe('updateUserProfile', () => {
     it('should update username successfully', async () => {
       const user = buildUser();
@@ -155,8 +151,8 @@ describe('UsersService', () => {
       const otherUser = buildUser({ id: 2, username: 'taken' });
 
       mockUsersRepository.findOne
-        .mockResolvedValueOnce(currentUser) // get current user
-        .mockResolvedValueOnce(otherUser); // check existing username
+        .mockResolvedValueOnce(currentUser)
+        .mockResolvedValueOnce(otherUser);
 
       await expect(service.updateUserProfile(1, 'taken')).rejects.toThrow(
         ConflictException,
@@ -168,7 +164,6 @@ describe('UsersService', () => {
       mockUsersRepository.findOne.mockResolvedValue(user);
       mockUsersRepository.save.mockResolvedValue(user);
 
-      // Same username (case-insensitive) should not throw
       const result = await service.updateUserProfile(1, 'testuser');
 
       expect(result.username).toBe('TestUser');
@@ -179,14 +174,11 @@ describe('UsersService', () => {
       mockUsersRepository.findOne.mockResolvedValue(user);
       mockUsersRepository.save.mockResolvedValue(user);
 
-      await service.updateUserProfile(1, 'myuser'); // lowercase match → skip conflict check
+      await service.updateUserProfile(1, 'myuser');
 
-      // Only called once (to get current user), not a second time for conflict
       expect(mockUsersRepository.findOne).toHaveBeenCalledTimes(1);
     });
   });
-
-  // ─── getFriends ───────────────────────────────────────────────────────────
 
   describe('getFriends', () => {
     it('should return friend list with id, username, and avatarUrl', async () => {
@@ -223,8 +215,6 @@ describe('UsersService', () => {
     });
   });
 
-  // ─── addFriend ────────────────────────────────────────────────────────────
-
   describe('addFriend', () => {
     it('should create a pending friend request when neither side has requested yet', async () => {
       const user1 = buildUser({ id: 1, friends: [] });
@@ -234,8 +224,8 @@ describe('UsersService', () => {
         .mockResolvedValueOnce(user1)
         .mockResolvedValueOnce(user2);
       mockFriendRequestRepository.findOne
-        .mockResolvedValueOnce(null) // no incoming request from user2
-        .mockResolvedValueOnce(null); // no request already sent
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null);
 
       const result = await service.addFriend(1, 2);
 
@@ -252,9 +242,6 @@ describe('UsersService', () => {
       mockUsersRepository.findOne
         .mockResolvedValueOnce(user1)
         .mockResolvedValueOnce(user2)
-        // makeFriends re-fetches both users (with `friends` loaded) before
-        // mutating, so it doesn't wipe out existing friendships when the
-        // caller didn't load that relation itself.
         .mockResolvedValueOnce(user1)
         .mockResolvedValueOnce(user2);
       const incomingRequest = { id: 5, fromUser: user2, toUser: user1 };
@@ -273,11 +260,11 @@ describe('UsersService', () => {
       expect(mockUsersRepository.save).toHaveBeenCalledWith([
         expect.objectContaining({
           id: 1,
-          friends: expect.arrayContaining([user2]),
+          friends: expect.arrayContaining([user2]) as User[],
         }),
         expect.objectContaining({
           id: 2,
-          friends: expect.arrayContaining([user1]),
+          friends: expect.arrayContaining([user1]) as User[],
         }),
       ]);
     });
@@ -319,16 +306,14 @@ describe('UsersService', () => {
         .mockResolvedValueOnce(user1)
         .mockResolvedValueOnce(user2);
       mockFriendRequestRepository.findOne
-        .mockResolvedValueOnce(null) // no incoming request
-        .mockResolvedValueOnce({ id: 7 }); // already sent
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 7 });
 
       await expect(service.addFriend(1, 2)).rejects.toThrow(
         BadRequestException,
       );
     });
   });
-
-  // ─── removeFriend ─────────────────────────────────────────────────────────
 
   describe('removeFriend', () => {
     it('should remove friend from both sides', async () => {
@@ -359,8 +344,6 @@ describe('UsersService', () => {
       );
     });
   });
-
-  // ─── getPublicProfile ─────────────────────────────────────────────────────
 
   describe('getPublicProfile', () => {
     it('should return profile stats with isFriend = true when users are friends', async () => {

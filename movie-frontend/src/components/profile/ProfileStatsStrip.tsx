@@ -62,7 +62,6 @@ export default function ProfileStatsStrip({
 
   return (
     <div className="font-ui">
-      {/* Desktop */}
       <div className="hidden md:flex items-stretch">
         {stats.map((s, i) => (
           <Fragment key={s.label}>
@@ -76,7 +75,6 @@ export default function ProfileStatsStrip({
         </div>
       </div>
 
-      {/* Mobile */}
       <div className="md:hidden">
         <div className="grid grid-cols-3">
           {mobileStats.map((s, i) => (

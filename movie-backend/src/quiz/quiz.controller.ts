@@ -43,13 +43,11 @@ export class QuizController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Buy the next hint',
-    description: "Reveals today's next hint, deducting its cost from the score.",
+    description:
+      "Reveals today's next hint, deducting its cost from the score.",
   })
   @ApiResponse({ status: 200, description: 'Updated quiz state' })
-  async buyHint(
-    @Req() req: RequestWithUser,
-    @Body() body: { lang?: string },
-  ) {
+  async buyHint(@Req() req: RequestWithUser, @Body() body: { lang?: string }) {
     return this.quizService.buyHint(
       req.user.userId,
       resolveLanguage(body?.lang),
@@ -79,7 +77,7 @@ export class QuizController {
   @ApiOperation({
     summary: 'Get the quiz leaderboard among you and your friends',
     description:
-      'Ranks you and your friends by total lifetime quiz score, plus each of your statuses on today\'s quiz.',
+      "Ranks you and your friends by total lifetime quiz score, plus each of your statuses on today's quiz.",
   })
   @ApiResponse({ status: 200, description: 'Leaderboard entries' })
   async getFriendsLeaderboard(@Req() req: RequestWithUser) {

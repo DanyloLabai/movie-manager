@@ -17,6 +17,7 @@ import { ChatMessage } from './ai-chat.controller';
 import { VectorService } from '../vector/vector.service';
 import { createGroq } from '@ai-sdk/groq';
 import { AiUsageLogService } from './ai-usage-log.service';
+import { getErrorMessage } from '../common/utils/error.utils';
 
 const aiResponseSchema = z.object({
   message: z
@@ -121,10 +122,11 @@ export class AiChatService {
     };
 
     if (latestUserMessage) {
-      this.extractAndSaveUserFact(userId, latestUserMessage).catch((err) =>
-        this.logger.error(
-          `Background memory extraction failed: ${err.message}`,
-        ),
+      this.extractAndSaveUserFact(userId, latestUserMessage).catch(
+        (err: unknown) =>
+          this.logger.error(
+            `Background memory extraction failed: ${getErrorMessage(err)}`,
+          ),
       );
     }
 
@@ -135,7 +137,7 @@ export class AiChatService {
 
     const systemPrompt = this.buildSystemPrompt(userContextData);
     const formattedMessages = messages.map((m) => ({
-      role: m.role as 'user' | 'assistant',
+      role: m.role,
       content: m.content,
     }));
 
@@ -159,8 +161,8 @@ export class AiChatService {
           tokenCount,
           latencyMs: Date.now() - startedAt,
         })
-        .catch((err) =>
-          this.logger.warn(`AI usage logging failed: ${err.message}`),
+        .catch((err: unknown) =>
+          this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
         );
       return response;
     } catch (groqError: unknown) {
@@ -187,8 +189,10 @@ export class AiChatService {
             tokenCount,
             latencyMs: Date.now() - startedAt,
           })
-          .catch((err) =>
-            this.logger.warn(`AI usage logging failed: ${err.message}`),
+          .catch((err: unknown) =>
+            this.logger.warn(
+              `AI usage logging failed: ${getErrorMessage(err)}`,
+            ),
           );
         return response;
       } catch (geminiError: unknown) {
@@ -264,7 +268,7 @@ export class AiChatService {
       let upcomingMovies: MovieResultDto[] = [];
       try {
         upcomingMovies = await this.moviesService.getUpcomingMovies();
-      } catch (e) {
+      } catch {
         this.logger.warn('Failed to fetch upcoming movies for AI context');
       }
 
@@ -275,7 +279,7 @@ export class AiChatService {
         upcomingMovies: upcomingMovies.slice(0, 25),
         currentYear: new Date().getFullYear(),
       };
-    } catch (error: unknown) {
+    } catch {
       return {
         favorites: [],
         watchlistItems: [],
@@ -304,16 +308,10 @@ export class AiChatService {
     const rejected: string[] = [];
     const MAX_RESULTS = 8;
 
-    // Direct title lookups — the primary, reliable path. Used for both
-    // exact franchise asks (force) and vibe recommendations, since TMDB's
-    // search matches real titles far better than a vague concept phrase.
     for (const rawTitle of titles.slice(0, MAX_RESULTS)) {
       if (foundMoviesMap.size >= MAX_RESULTS) break;
       const { title, year } = this.parseTitleYear(rawTitle);
-      const mediaData = await this.moviesService.findMovieByTitle(
-        title,
-        year,
-      );
+      const mediaData = await this.moviesService.findMovieByTitle(title, year);
       if (mediaData) {
         this.processFoundMovie(
           mediaData,
@@ -329,8 +327,6 @@ export class AiChatService {
       }
     }
 
-    // Conceptual/semantic search — supplementary, mainly for vibe mode
-    // diversity beyond the titles the model already named.
     for (const concept of concepts.slice(0, 3)) {
       if (foundMoviesMap.size >= MAX_RESULTS) break;
       this.logger.log(`Performing Vector Search for concept: "${concept}"`);
@@ -365,15 +361,15 @@ export class AiChatService {
       }
     }
 
-    // Last-resort fallback: if the direct title lookups and vector search
-    // both came up empty, try a plain TMDB keyword search so the user still
-    // gets something instead of an empty reply.
     if (foundMoviesMap.size === 0) {
       const fallbackQuery = titles[0] || concepts[0];
       if (fallbackQuery) {
-        this.logger.log(`Falling back to plain TMDB search for "${fallbackQuery}"`);
+        this.logger.log(
+          `Falling back to plain TMDB search for "${fallbackQuery}"`,
+        );
         try {
-          const tmdbResults = await this.moviesService.searchMovies(fallbackQuery);
+          const tmdbResults =
+            await this.moviesService.searchMovies(fallbackQuery);
           for (const movie of tmdbResults.slice(0, 10)) {
             if (foundMoviesMap.size >= MAX_RESULTS) break;
             this.processFoundMovie(
@@ -642,8 +638,8 @@ RESPONSE TONE:
           tokenCount,
           latencyMs: Date.now() - startedAt,
         })
-        .catch((err) =>
-          this.logger.warn(`AI usage logging failed: ${err.message}`),
+        .catch((err: unknown) =>
+          this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
         );
       return response;
     } catch (groqError: unknown) {
@@ -664,8 +660,10 @@ RESPONSE TONE:
             tokenCount,
             latencyMs: Date.now() - startedAt,
           })
-          .catch((err) =>
-            this.logger.warn(`AI usage logging failed: ${err.message}`),
+          .catch((err: unknown) =>
+            this.logger.warn(
+              `AI usage logging failed: ${getErrorMessage(err)}`,
+            ),
           );
         return response;
       } catch (geminiError: unknown) {

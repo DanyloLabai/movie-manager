@@ -16,11 +16,6 @@ async function bootstrap() {
 
   app.use(helmet());
 
-  // Express auto-generates ETags for every JSON response, which makes
-  // browsers send conditional requests and can silently keep serving a
-  // stale cached body via 304s — confusing on top of our own explicit
-  // Redis caching (which already has real TTLs). Disable it so API
-  // responses are always fetched fresh; app-level caching stays in Redis.
   app.set('etag', false);
 
   app.use(cookieParser());
@@ -39,14 +34,11 @@ async function bootstrap() {
     }),
   );
 
-  // Register global exception filter
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  // Register global serializer interceptor to exclude sensitive fields
   const reflector = app.get(Reflector);
   app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
 
-  // Swagger configuration
   const config = new DocumentBuilder()
     .setTitle('Movie Manager API')
     .setDescription(
@@ -76,4 +68,7 @@ async function bootstrap() {
   );
 }
 
-bootstrap();
+bootstrap().catch((error: unknown) => {
+  console.error('Failed to start application:', error);
+  process.exit(1);
+});

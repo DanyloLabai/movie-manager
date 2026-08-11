@@ -9,8 +9,6 @@ export interface SearchHistoryItemDto {
   createdAt: Date;
 }
 
-// Re-searching the same thing within this window just bumps createdAt
-// instead of inserting a new row, so chips don't fill up with repeats.
 const RECENT_DUPLICATE_WINDOW_MS = 10 * 60 * 1000;
 const DEFAULT_LIMIT = 10;
 
@@ -52,8 +50,6 @@ export class SearchHistoryService {
     userId: number,
     limit = DEFAULT_LIMIT,
   ): Promise<SearchHistoryItemDto[]> {
-    // Pull extra rows before de-duping, since older, out-of-window
-    // duplicates (different casing included) can still share a query text.
     const entries = await this.searchHistoryRepo.find({
       where: { user: { id: userId } },
       order: { createdAt: 'DESC' },

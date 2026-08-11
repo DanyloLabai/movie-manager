@@ -45,8 +45,6 @@ export class AiUsageLogService {
     private aiUsageLogRepo: Repository<AiUsageLog>,
   ) {}
 
-  // Fire-and-forget: called after a chat request completes. Never throws —
-  // a logging failure must not affect the user-facing chat response.
   async logUsage(params: LogUsageParams): Promise<void> {
     try {
       const entry = this.aiUsageLogRepo.create({
@@ -120,8 +118,7 @@ export class AiUsageLogService {
     return {
       totalRequests,
       failoverRequests,
-      failoverRate:
-        totalRequests > 0 ? failoverRequests / totalRequests : 0,
+      failoverRate: totalRequests > 0 ? failoverRequests / totalRequests : 0,
       byProvider: providerCounts,
     };
   }

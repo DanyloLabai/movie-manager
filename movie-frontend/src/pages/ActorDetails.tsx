@@ -148,7 +148,6 @@ export default function ActorDetails() {
 
       <div className="px-4 sm:px-6 pt-6 max-w-3xl mx-auto">
         <div className="flex gap-4 sm:gap-6 mb-6">
-          {/* Avatar */}
           <div className="w-28 sm:w-36 shrink-0">
             <div className="relative group">
               <div className="aspect-[2/3] rounded-2xl overflow-hidden bg-[#1a1714] border border-[#c8963c]/30 shadow-xl">

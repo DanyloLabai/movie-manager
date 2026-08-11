@@ -12,9 +12,6 @@ interface RequestWithUser extends Request {
   user: { userId: number };
 }
 
-// Runs after the global JwtAuthGuard, so req.user is already populated.
-// Looks isAdmin up fresh from the DB each request (no isAdmin claim in the
-// JWT) so revoking admin access doesn't require the user to log out.
 @Injectable()
 export class AdminGuard implements CanActivate {
   constructor(
@@ -23,9 +20,7 @@ export class AdminGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context
-      .switchToHttp()
-      .getRequest<RequestWithUser>();
+    const request = context.switchToHttp().getRequest<RequestWithUser>();
 
     const user = await this.usersRepo.findOne({
       where: { id: request.user.userId },
