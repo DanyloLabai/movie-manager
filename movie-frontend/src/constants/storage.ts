@@ -13,4 +13,4 @@ export const STORAGE_KEYS = {
 } as const;
 
 export const CACHE_EXPIRATION_MS =
-  Number(import.meta.env.VITE_CACHE_EXPIRATION_MS) || 24 * 60 * 60 * 1000; // 24 hours
+  Number(import.meta.env.VITE_CACHE_EXPIRATION_MS) || 24 * 60 * 60 * 1000;

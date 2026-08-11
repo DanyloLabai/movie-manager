@@ -3,17 +3,15 @@ import { STORAGE_KEYS } from "./constants/storage";
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
-const RETRY_STATUS_CODES = [429, 503, 504]; // Rate limit, Service unavailable, Gateway timeout
+const RETRY_STATUS_CODES = [429, 503, 504];
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: true,
 });
 
-// Track retry attempts per request
 const retryCount = new Map<string, number>();
 
-// EventTarget for notifications
 export const apiEventBus = new EventTarget();
 
 api.interceptors.request.use(
@@ -31,7 +29,6 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => {
-    // Clear retry count on success
     if (response.config) {
       const key = `${response.config.method}:${response.config.url}`;
       retryCount.delete(key);
@@ -42,17 +39,14 @@ api.interceptors.response.use(
     const config = error.config;
 
     if (error.response?.status === 401) {
-      // Token expired or invalid
       localStorage.removeItem(STORAGE_KEYS.TOKEN);
       localStorage.removeItem(STORAGE_KEYS.USER);
       delete api.defaults.headers.common["Authorization"];
 
-      // Redirect to login
       window.location.href = "/login";
     }
 
     if (error.response?.status === 403) {
-      // Forbidden - insufficient permissions
       console.error("Access denied:", error.response.data);
     }
 
@@ -61,13 +55,12 @@ api.interceptors.response.use(
       RETRY_STATUS_CODES.includes(error.response.status) &&
       config
     ) {
-      // Rate limiting or service unavailable - retry with exponential backoff
       const key = `${config.method}:${config.url}`;
       const attempts = retryCount.get(key) || 0;
 
       if (attempts < MAX_RETRIES) {
         retryCount.set(key, attempts + 1);
-        const delay = RETRY_DELAY * Math.pow(2, attempts); // Exponential backoff: 1s, 2s, 4s
+        const delay = RETRY_DELAY * Math.pow(2, attempts);
 
         const statusCode = error.response.status;
         const statusText =
@@ -81,7 +74,6 @@ api.interceptors.response.use(
           `${statusText}. Retrying in ${delay}ms (attempt ${attempts + 1}/${MAX_RETRIES})`,
         );
 
-        // Emit retry event for UI notification
         apiEventBus.dispatchEvent(
           new CustomEvent("api:retry", {
             detail: {
@@ -96,7 +88,6 @@ api.interceptors.response.use(
         await new Promise((resolve) => setTimeout(resolve, delay));
         return api(config);
       } else {
-        // All retries failed
         retryCount.delete(key);
         const statusCode = error.response.status;
         const statusText =
@@ -108,7 +99,6 @@ api.interceptors.response.use(
 
         error.response.data.message = statusText;
 
-        // Emit failure event
         apiEventBus.dispatchEvent(
           new CustomEvent("api:maxRetriesExceeded", {
             detail: {

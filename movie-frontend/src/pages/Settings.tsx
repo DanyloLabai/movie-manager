@@ -175,7 +175,6 @@ export default function Settings() {
           </h2>
         </div>
 
-        {/* Avatar + username */}
         <form
           onSubmit={handleSaveProfile}
           className="pb-6 mb-6 border-b border-[rgba(217,172,84,.16)]"
@@ -330,7 +329,6 @@ export default function Settings() {
           </button>
         </div>
 
-        {/* Danger zone */}
         <div className="p-4 bg-red-900/5 border border-red-500/30 rounded-2xl">
           <h3 className="font-mono-ui text-[10.5px] font-semibold uppercase tracking-[2.5px] text-red-400/80 mb-2">
             {t("settings_danger_zone")}

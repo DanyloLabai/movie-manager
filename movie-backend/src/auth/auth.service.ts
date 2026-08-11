@@ -222,7 +222,6 @@ export class AuthService {
     );
 
     if (!refreshTokenMatches) {
-      // Possible token theft/reuse - revoke stored token defensively
       await this.usersRepository.update(
         { id: userId },
         { hashedRefreshToken: null },
@@ -261,7 +260,7 @@ export class AuthService {
 
     try {
       const { data } = await firstValueFrom(
-        this.httpService.post(
+        this.httpService.post<{ success: boolean }>(
           `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`,
         ),
       );
@@ -381,7 +380,7 @@ export class AuthService {
           </div>
         `,
       });
-    } catch (emailError) {
+    } catch {
       throw new InternalServerErrorException('Failed to send reset email.');
     }
 

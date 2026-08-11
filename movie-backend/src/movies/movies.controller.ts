@@ -45,7 +45,7 @@ export class MoviesController {
 
   constructor(
     private readonly moviesService: MoviesService,
-    private readonly vectorService: VectorService, // Додали VectorService
+    private readonly vectorService: VectorService,
   ) {}
 
   @Public()

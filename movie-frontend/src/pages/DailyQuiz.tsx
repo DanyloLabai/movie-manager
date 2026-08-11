@@ -351,7 +351,6 @@ export default function DailyQuiz() {
           </div>
         ) : (
           <div className="lg:grid lg:grid-cols-12 lg:gap-10">
-            {/* Left column: poster + guess input */}
             <div className="lg:col-span-5">
               <div className="relative w-40 sm:w-48 lg:w-full aspect-[2/3] mx-auto mb-4 rounded-[10px] overflow-hidden bg-[#14110d]">
                 {posterUrl ? (

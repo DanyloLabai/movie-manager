@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
 } from 'typeorm';
-import { User } from '../users/users.entity';
+import type { User } from '../users/users.entity';
 
 @Entity('watchlist')
 export class WatchlistItem {
@@ -55,6 +55,6 @@ export class WatchlistItem {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  @ManyToOne('User', { onDelete: 'CASCADE' })
   user: User;
 }

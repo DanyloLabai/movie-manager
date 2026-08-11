@@ -27,7 +27,7 @@ export default function NotificationBell({
         ).length;
         setCount((requests || []).length + unreadNotifs);
       } catch {
-        // silent — badge just stays at last known count
+        // empty
       }
     };
 

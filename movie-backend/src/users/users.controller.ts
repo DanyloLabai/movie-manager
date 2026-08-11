@@ -23,6 +23,7 @@ import {
   ApiConsumes,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 @ApiTags('Users')
 @Controller('api/users')
@@ -40,7 +41,7 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'Profile updated successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async updateProfile(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Body('username') newUsername: string,
     @UploadedFile() file?: Express.Multer.File,
   ) {
@@ -57,7 +58,7 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: 'Account deleted successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async deleteAccount(@Req() req) {
+  async deleteAccount(@Req() req: AuthenticatedRequest) {
     const userId = req.user.userId;
     return this.usersService.deleteAccount(userId);
   }
@@ -73,7 +74,7 @@ export class UsersController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'User not found' })
   async getPublicProfile(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('id', ParseIntPipe) targetUserId: number,
   ) {
     const currentUserId = req.user.userId;
@@ -91,7 +92,7 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'Taste compatibility data' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getTasteCompatibility(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('id', ParseIntPipe) targetUserId: number,
   ) {
     const currentUserId = req.user.userId;
@@ -107,7 +108,10 @@ export class UsersController {
   @ApiQuery({ name: 'query', required: true, description: 'Username query' })
   @ApiResponse({ status: 200, description: 'Matching users' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async searchUsers(@Req() req, @Query('query') query: string) {
+  async searchUsers(
+    @Req() req: AuthenticatedRequest,
+    @Query('query') query: string,
+  ) {
     const currentUserId = req.user.userId;
     return this.usersService.searchUsers(currentUserId, query);
   }
@@ -120,7 +124,7 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: 'List of user friends' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getFriends(@Req() req) {
+  async getFriends(@Req() req: AuthenticatedRequest) {
     const userId = req.user.userId;
     return this.usersService.getFriends(userId);
   }
@@ -139,7 +143,10 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: 'Friends activity feed' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getFriendsFeed(@Req() req, @Query('before') before?: string) {
+  async getFriendsFeed(
+    @Req() req: AuthenticatedRequest,
+    @Query('before') before?: string,
+  ) {
     const userId = req.user.userId;
     return this.usersService.getFriendsFeed(
       userId,
@@ -156,7 +163,7 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: "Friends' last-watched movies" })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getFriendsLastWatched(@Req() req) {
+  async getFriendsLastWatched(@Req() req: AuthenticatedRequest) {
     const userId = req.user.userId;
     return this.usersService.getFriendsLastWatched(userId);
   }
@@ -171,7 +178,10 @@ export class UsersController {
   @ApiResponse({ status: 201, description: 'Friend added successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async addFriend(@Req() req, @Param('id', ParseIntPipe) friendId: number) {
+  async addFriend(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) friendId: number,
+  ) {
     const currentUserId = req.user.userId;
     return this.usersService.addFriend(currentUserId, friendId);
   }
@@ -185,7 +195,7 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: 'List of pending friend requests' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getFriendRequests(@Req() req) {
+  async getFriendRequests(@Req() req: AuthenticatedRequest) {
     const userId = req.user.userId;
     return this.usersService.getFriendRequests(userId);
   }
@@ -202,7 +212,7 @@ export class UsersController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Friend request not found' })
   async acceptFriendRequest(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('id', ParseIntPipe) requestId: number,
   ) {
     const userId = req.user.userId;
@@ -221,7 +231,7 @@ export class UsersController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'Friend request not found' })
   async declineFriendRequest(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('id', ParseIntPipe) requestId: number,
   ) {
     const userId = req.user.userId;
@@ -242,7 +252,10 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: 'Daily activity buckets' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getMyActivity(@Req() req, @Query('year') year?: string) {
+  async getMyActivity(
+    @Req() req: AuthenticatedRequest,
+    @Query('year') year?: string,
+  ) {
     const userId = req.user.userId;
     const parsedYear = year ? parseInt(year, 10) : new Date().getFullYear();
     return this.usersService.getActivityHeatmap(userId, parsedYear);
@@ -262,7 +275,10 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: 'Recent search queries' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getMySearchHistory(@Req() req, @Query('limit') limit?: string) {
+  async getMySearchHistory(
+    @Req() req: AuthenticatedRequest,
+    @Query('limit') limit?: string,
+  ) {
     const userId = req.user.userId;
     const parsedLimit = limit ? parseInt(limit, 10) : 10;
     return this.usersService.getSearchHistory(userId, parsedLimit);
@@ -277,7 +293,7 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: 'Search history cleared' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async clearMySearchHistory(@Req() req) {
+  async clearMySearchHistory(@Req() req: AuthenticatedRequest) {
     const userId = req.user.userId;
     return this.usersService.clearSearchHistory(userId);
   }
@@ -292,7 +308,10 @@ export class UsersController {
   @ApiResponse({ status: 200, description: 'Friend removed successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async removeFriend(@Req() req, @Param('id', ParseIntPipe) friendId: number) {
+  async removeFriend(
+    @Req() req: AuthenticatedRequest,
+    @Param('id', ParseIntPipe) friendId: number,
+  ) {
     const currentUserId = req.user.userId;
     return this.usersService.removeFriend(currentUserId, friendId);
   }

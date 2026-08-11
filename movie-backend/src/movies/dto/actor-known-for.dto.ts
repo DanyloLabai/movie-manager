@@ -8,7 +8,7 @@ export class ActorKnownForDto {
   @ApiProperty({ nullable: true })
   posterUrl!: string | null;
   @ApiProperty()
-  mediaType!: 'movie' | 'tv' | string;
+  mediaType!: string;
   @ApiProperty()
   releaseYear!: string;
   @ApiProperty()

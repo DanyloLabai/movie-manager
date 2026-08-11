@@ -19,8 +19,6 @@ interface ActivityHeatmapProps {
   canGoNext?: boolean;
 }
 
-// Squares grow a bit at wider breakpoints so the grid doesn't look lost
-// inside the much wider desktop card.
 const SQUARE_W_CLASS = "w-[11px] sm:w-[13px] lg:w-[16px]";
 const SQUARE_H_CLASS = "h-[11px] sm:h-[13px] lg:h-[16px]";
 const SQUARE_CLASS = `${SQUARE_W_CLASS} ${SQUARE_H_CLASS}`;
@@ -29,8 +27,6 @@ const GAP_CLASS = "gap-[3px] sm:gap-[3px] lg:gap-[4px]";
 const TOOLTIP_WIDTH = 220;
 const TOOLTIP_HEIGHT_ESTIMATE = 150;
 
-// Reference week starting Sunday 1970-01-04, used purely to derive
-// localized weekday abbreviations for the Mon/Wed/Fri row labels.
 function getWeekdayLabels(lang: string): string[] {
   const dateLocale = lang === "uk" ? "uk-UA" : "en-US";
   const sunday = new Date(Date.UTC(1970, 0, 4));
@@ -56,7 +52,6 @@ function buildWeeks(
   const jan1 = new Date(Date.UTC(year, 0, 1));
   const dec31 = new Date(Date.UTC(year, 11, 31));
 
-  // Pad out to full weeks (Sun-Sat) so every column has 7 rows.
   const start = new Date(jan1);
   start.setUTCDate(start.getUTCDate() - start.getUTCDay());
   const end = new Date(dec31);
@@ -222,8 +217,6 @@ export default function ActivityHeatmap({
           onMouseLeave={() => setHovered(null)}
         >
           <div className="inline-flex gap-1.5">
-            {/* Weekday row labels (Mon/Wed/Fri), so the card isn't just
-              empty space to the left of the grid. */}
             <div className="flex flex-col gap-1.5 shrink-0">
               <div className={MONTH_ROW_H_CLASS} />
               <div className={`flex flex-col ${GAP_CLASS}`}>
@@ -262,10 +255,6 @@ export default function ActivityHeatmap({
                         onMouseLeave={() => setHovered(null)}
                         onClick={() => {
                           if (!day.inYear || day.count === 0) return;
-                          // Touch devices fire a synthetic mouseenter right
-                          // before click, and never get a mouseleave to
-                          // clear it — without this the hover tooltip
-                          // stays stuck on top of the modal.
                           setHovered(null);
                           setSelectedDay(day);
                         }}
