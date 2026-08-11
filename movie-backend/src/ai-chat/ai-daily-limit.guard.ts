@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AiUsageLogService } from './ai-usage-log.service';
-import { AuthenticatedRequest } from './ai-chat.controller';
+import { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
 
 export const DEFAULT_DAILY_REQUEST_LIMIT = 15;
 export const DEFAULT_DAILY_TOKEN_LIMIT = 60000;

@@ -91,25 +91,24 @@ function HeartBadge({
   );
 }
 
-export default function ProfileFavoritesPanel({
+function FavoritesList({
   favorites,
-  achievements,
-  friends,
-  friendsCount,
+  posterClass,
   isReleased,
   onToggleFavorite,
-  onOpenFriends,
-  showFriends = true,
-  readOnly = false,
-}: ProfileFavoritesPanelProps) {
-  const { t } = useLang();
-  const topFavorites = favorites.slice(0, 3);
-  const visibleFriends = friends.slice(0, 5);
-  const remainingFriends = Math.max(0, friendsCount - visibleFriends.length);
-
-  const FavoritesList = ({ posterClass }: { posterClass: string }) => (
+  readOnly,
+  naLabel,
+}: {
+  favorites: WatchlistItem[];
+  posterClass: string;
+  isReleased: (item: WatchlistItem) => boolean;
+  onToggleFavorite: (tmdbId: number) => void;
+  readOnly: boolean;
+  naLabel: string;
+}) {
+  return (
     <>
-      {topFavorites.map((fav) => {
+      {favorites.map((fav) => {
         const released = isReleased(fav);
         const year = fav.releaseDate ? fav.releaseDate.slice(0, 4) : null;
         return (
@@ -129,7 +128,7 @@ export default function ProfileFavoritesPanel({
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[9px] text-[#f2ead9]/40">
-                  {t("common_na")}
+                  {naLabel}
                 </div>
               )}
               <HeartBadge
@@ -150,8 +149,10 @@ export default function ProfileFavoritesPanel({
       })}
     </>
   );
+}
 
-  const AchievementsList = () => (
+function AchievementsList({ achievements }: { achievements: Achievement[] }) {
+  return (
     <div className="flex flex-col gap-3.5 max-h-[340px] overflow-y-auto scrollbar-hide pr-1">
       {achievements.map((a) => (
         <div
@@ -192,14 +193,30 @@ export default function ProfileFavoritesPanel({
       ))}
     </div>
   );
+}
 
-  const FriendsRow = () => (
+function FriendsRow({
+  friends,
+  friendsCount,
+  remainingFriends,
+  onOpenFriends,
+  friendsLabel,
+  viewAllLabel,
+}: {
+  friends: Friend[];
+  friendsCount: number;
+  remainingFriends: number;
+  onOpenFriends: () => void;
+  friendsLabel: string;
+  viewAllLabel: string;
+}) {
+  return (
     <div className="flex flex-col gap-2.5">
       <span className="font-mono-ui text-[12px] font-semibold tracking-[3px] text-[#d9ac54] uppercase">
-        {t("profile_friends")} · {friendsCount}
+        {friendsLabel} · {friendsCount}
       </span>
       <div className="flex items-center">
-        {visibleFriends.map((fr) => (
+        {friends.map((fr) => (
           <div
             key={fr.id}
             className="w-[34px] h-[34px] rounded-full flex items-center justify-center font-bold text-[13px] text-[#14110c] overflow-hidden shrink-0 -mr-2"
@@ -231,11 +248,28 @@ export default function ProfileFavoritesPanel({
           onClick={onOpenFriends}
           className="ml-4 font-semibold text-[11px] tracking-wide text-[#d9ac54] border-b border-[#d9ac54]/50 pb-0.5 hover:text-[#e8c377] transition"
         >
-          {t("profile_view_all")}
+          {viewAllLabel}
         </button>
       </div>
     </div>
   );
+}
+
+export default function ProfileFavoritesPanel({
+  favorites,
+  achievements,
+  friends,
+  friendsCount,
+  isReleased,
+  onToggleFavorite,
+  onOpenFriends,
+  showFriends = true,
+  readOnly = false,
+}: ProfileFavoritesPanelProps) {
+  const { t } = useLang();
+  const topFavorites = favorites.slice(0, 3);
+  const visibleFriends = friends.slice(0, 5);
+  const remainingFriends = Math.max(0, friendsCount - visibleFriends.length);
 
   return (
     <div className="font-ui">
@@ -250,7 +284,14 @@ export default function ProfileFavoritesPanel({
             </div>
           ) : (
             <div className="flex gap-[18px]">
-              <FavoritesList posterClass="w-[150px] h-[222px]" />
+              <FavoritesList
+                favorites={topFavorites}
+                posterClass="w-[150px] h-[222px]"
+                isReleased={isReleased}
+                onToggleFavorite={onToggleFavorite}
+                readOnly={readOnly}
+                naLabel={t("common_na")}
+              />
             </div>
           )}
         </div>
@@ -259,10 +300,17 @@ export default function ProfileFavoritesPanel({
           <span className="font-mono-ui text-[12px] font-semibold tracking-[3px] text-[#d9ac54] uppercase">
             {t("profile_achievements")}
           </span>
-          <AchievementsList />
+          <AchievementsList achievements={achievements} />
           {showFriends && (
             <div className="mt-1.5">
-              <FriendsRow />
+              <FriendsRow
+                friends={visibleFriends}
+                friendsCount={friendsCount}
+                remainingFriends={remainingFriends}
+                onOpenFriends={onOpenFriends}
+                friendsLabel={t("profile_friends")}
+                viewAllLabel={t("profile_view_all")}
+              />
             </div>
           )}
         </div>
@@ -279,7 +327,14 @@ export default function ProfileFavoritesPanel({
             </div>
           ) : (
             <div className="flex gap-3 overflow-x-auto pb-1">
-              <FavoritesList posterClass="w-[118px] h-[175px]" />
+              <FavoritesList
+                favorites={topFavorites}
+                posterClass="w-[118px] h-[175px]"
+                isReleased={isReleased}
+                onToggleFavorite={onToggleFavorite}
+                readOnly={readOnly}
+                naLabel={t("common_na")}
+              />
             </div>
           )}
         </div>
@@ -287,7 +342,7 @@ export default function ProfileFavoritesPanel({
           <span className="font-mono-ui text-[11px] font-semibold tracking-[2.5px] text-[#d9ac54] uppercase">
             {t("profile_achievements")}
           </span>
-          <AchievementsList />
+          <AchievementsList achievements={achievements} />
         </div>
       </div>
     </div>
