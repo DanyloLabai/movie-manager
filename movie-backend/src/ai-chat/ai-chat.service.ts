@@ -13,7 +13,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { MoviesService } from '../movies/movies.service';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
 import { WatchlistItem } from '../movies/watchlist-entity';
-import { ChatMessage } from './ai-chat.controller';
+import { ChatMessage } from './interfaces/chat-message.interface';
 import { VectorService } from '../vector/vector.service';
 import { createGroq } from '@ai-sdk/groq';
 import { AiUsageLogService } from './ai-usage-log.service';

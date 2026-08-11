@@ -9,7 +9,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
-import { WatchlistItem } from '../movies/watchlist-entity';
+import type { WatchlistItem } from '../movies/watchlist-entity';
 
 @Entity('users')
 export class User {
@@ -64,7 +64,7 @@ export class User {
   @Column({ type: 'timestamptz', nullable: true })
   lastReminderSentAt: Date | null;
 
-  @OneToMany(() => WatchlistItem, (watchlistItem) => watchlistItem.user)
+  @OneToMany('WatchlistItem', 'user')
   watchlist: WatchlistItem[];
 
   @ManyToMany(() => User)
