@@ -39,7 +39,12 @@ import {
 } from '../common/dto/auth-response.dto';
 
 interface AuthenticatedRequest extends Request {
-  user: { userId: number; username: string; refreshToken?: string | null };
+  user: {
+    userId: number;
+    username: string;
+    refreshToken?: string | null;
+    sessionId?: string;
+  };
 }
 
 const REFRESH_COOKIE_NAME = 'refresh_token';
@@ -126,9 +131,10 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: Response,
   ): Promise<RefreshResponseDto> {
-    const { userId, refreshToken } = req.user;
+    const { userId, refreshToken, sessionId } = req.user;
     const result = await this.authService.refreshTokens(
       userId,
+      sessionId ?? null,
       refreshToken ?? null,
     );
 
@@ -159,7 +165,9 @@ export class AuthController {
     @Req() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: Response,
   ): Promise<LogoutResponseDto> {
-    const result = await this.authService.logout(req.user.userId);
+    const refreshToken =
+      (req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined) ?? null;
+    const result = await this.authService.logout(req.user.userId, refreshToken);
     res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
     return result;
   }

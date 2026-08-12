@@ -1392,24 +1392,35 @@ export class MoviesService {
         - DO NOT recommend any movies from the exclusion list above
         - DO NOT recommend any Russian or Soviet movies/shows
         - Focus on quality, diverse recommendations
-        Return ONLY a raw JSON array of strings containing the titles. No markdown, no explanations, no backticks.
-        Example format: ["Title 1", "Title 2", "Title 3"]
+        Respond ONLY with a JSON object of the exact shape {"titles": ["Title 1", "Title 2", "Title 3"]}. No markdown, no explanations, no backticks.
       `;
 
       const chatCompletion = await this.groq.chat.completions.create({
         messages: [{ role: 'user', content: prompt }],
         model: 'llama-3.3-70b-versatile',
         temperature: 0.7,
+        response_format: { type: 'json_object' },
       });
 
       const aiResponseText =
-        chatCompletion.choices[0]?.message?.content || '[]';
+        chatCompletion.choices[0]?.message?.content || '{"titles":[]}';
       const cleanedText = aiResponseText
         .replace(/```json/gi, '')
         .replace(/```/g, '')
         .trim();
 
-      const recommendedTitles = JSON.parse(cleanedText) as string[];
+      let recommendedTitles: string[];
+      try {
+        const parsed: unknown = JSON.parse(cleanedText);
+        recommendedTitles = Array.isArray(parsed)
+          ? (parsed as string[])
+          : ((parsed as { titles?: string[] })?.titles ?? []);
+      } catch (parseError) {
+        this.logger.warn(
+          `Failed to parse AI recommendations JSON, raw response: ${aiResponseText}`,
+        );
+        throw parseError;
+      }
 
       const tmdbResults = await Promise.all(
         recommendedTitles.map((title) => this.findMovieByTitle(title)),

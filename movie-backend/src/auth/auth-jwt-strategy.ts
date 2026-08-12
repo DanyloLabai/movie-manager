@@ -8,6 +8,7 @@ export interface JwtPayload {
   sub: number;
   username: string;
   email?: string;
+  jti?: string;
   iat?: number;
   exp?: number;
 }
@@ -63,6 +64,7 @@ export class RefreshJwtStrategy extends PassportStrategy(
       userId: payload.sub,
       username: payload.username,
       refreshToken,
+      sessionId: payload.jti,
     };
   }
 }
