@@ -14,6 +14,7 @@ import * as bcrypt from 'bcryptjs';
 import { Resend } from 'resend';
 import { AuthService } from '../auth.service';
 import { User } from '../../users/users.entity';
+import { RefreshToken } from '../refresh-token.entity';
 
 jest.mock('bcryptjs', () => ({
   hash: jest.fn().mockResolvedValue('hashed_password'),
@@ -50,8 +51,16 @@ const mockUsersRepository = {
   update: jest.fn(),
 };
 
+const mockRefreshTokensRepository = {
+  findOne: jest.fn(),
+  create: jest.fn((entity: object) => entity),
+  save: jest.fn(),
+  delete: jest.fn(),
+};
+
 const mockJwtService = {
   signAsync: jest.fn().mockResolvedValue('mock-jwt-token'),
+  decode: jest.fn(),
 };
 
 const mockHttpService = {
@@ -85,6 +94,10 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: getRepositoryToken(User), useValue: mockUsersRepository },
+        {
+          provide: getRepositoryToken(RefreshToken),
+          useValue: mockRefreshTokensRepository,
+        },
         { provide: JwtService, useValue: mockJwtService },
         { provide: HttpService, useValue: mockHttpService },
         { provide: ConfigService, useValue: mockConfigService },
@@ -152,6 +165,10 @@ describe('AuthService', () => {
         providers: [
           AuthService,
           { provide: getRepositoryToken(User), useValue: mockUsersRepository },
+          {
+            provide: getRepositoryToken(RefreshToken),
+            useValue: mockRefreshTokensRepository,
+          },
           { provide: JwtService, useValue: mockJwtService },
           { provide: HttpService, useValue: mockHttpService },
           { provide: ConfigService, useValue: mockConfigService },
@@ -216,6 +233,97 @@ describe('AuthService', () => {
     });
   });
 
+  describe('refreshTokens', () => {
+    const sessionId = 'session-1';
+    const validSession = {
+      id: sessionId,
+      userId: mockUser.id,
+      hashedToken: 'hashed-refresh-token',
+      expiresAt: new Date(Date.now() + 60000),
+    };
+
+    it('should rotate the session and return new tokens on a valid refresh token', async () => {
+      mockRefreshTokensRepository.findOne.mockResolvedValue(validSession);
+      mockedBcrypt.compare.mockResolvedValue(true as never);
+      mockUsersRepository.findOne.mockResolvedValue(mockUser);
+
+      const result = await service.refreshTokens(
+        mockUser.id!,
+        sessionId,
+        'incoming-refresh-token',
+      );
+
+      expect(result.access_token).toBe('mock-jwt-token');
+      expect(mockRefreshTokensRepository.delete).toHaveBeenCalledWith({
+        id: sessionId,
+      });
+      expect(mockRefreshTokensRepository.save).toHaveBeenCalled();
+    });
+
+    it('should throw and revoke all sessions when the token does not match the stored hash (reuse/theft)', async () => {
+      mockRefreshTokensRepository.findOne.mockResolvedValue(validSession);
+      mockedBcrypt.compare.mockResolvedValue(false as never);
+
+      await expect(
+        service.refreshTokens(mockUser.id!, sessionId, 'stale-token'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(mockRefreshTokensRepository.delete).toHaveBeenCalledWith({
+        userId: mockUser.id,
+      });
+    });
+
+    it('should throw when the session does not exist', async () => {
+      mockRefreshTokensRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.refreshTokens(mockUser.id!, sessionId, 'some-token'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw when the session has expired', async () => {
+      mockRefreshTokensRepository.findOne.mockResolvedValue({
+        ...validSession,
+        expiresAt: new Date(Date.now() - 1000),
+      });
+
+      await expect(
+        service.refreshTokens(mockUser.id!, sessionId, 'some-token'),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw when sessionId or refresh token is missing', async () => {
+      await expect(
+        service.refreshTokens(mockUser.id!, null, 'some-token'),
+      ).rejects.toThrow(UnauthorizedException);
+
+      await expect(
+        service.refreshTokens(mockUser.id!, sessionId, null),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe('logout', () => {
+    it('should delete only the current session when the refresh token decodes a jti', async () => {
+      mockJwtService.decode.mockReturnValue({ jti: 'session-1' });
+
+      const result = await service.logout(mockUser.id!, 'a-refresh-token');
+
+      expect(result.message).toBe('Logged out successfully');
+      expect(mockRefreshTokensRepository.delete).toHaveBeenCalledWith({
+        id: 'session-1',
+        userId: mockUser.id,
+      });
+    });
+
+    it('should not touch the sessions table when no refresh token is provided', async () => {
+      const result = await service.logout(mockUser.id!, null);
+
+      expect(result.message).toBe('Logged out successfully');
+      expect(mockRefreshTokensRepository.delete).not.toHaveBeenCalled();
+    });
+  });
+
   describe('changePassword', () => {
     const dto = {
       oldPassword: 'OldPass1!',
@@ -232,10 +340,9 @@ describe('AuthService', () => {
 
       expect(result.message).toBe('Password updated successfully');
       expect(mockUsersRepository.save).toHaveBeenCalledTimes(1);
-      expect(mockUsersRepository.update).toHaveBeenCalledWith(
-        { id: mockUser.id },
-        { hashedRefreshToken: null },
-      );
+      expect(mockRefreshTokensRepository.delete).toHaveBeenCalledWith({
+        userId: mockUser.id,
+      });
     });
 
     it('should throw UnauthorizedException if user not found', async () => {
@@ -333,10 +440,9 @@ describe('AuthService', () => {
       expect(mockUsersRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ resetToken: null }),
       );
-      expect(mockUsersRepository.update).toHaveBeenCalledWith(
-        { id: mockUser.id },
-        { hashedRefreshToken: null },
-      );
+      expect(mockRefreshTokensRepository.delete).toHaveBeenCalledWith({
+        userId: mockUser.id,
+      });
     });
 
     it('should throw BadRequestException for invalid reset token', async () => {

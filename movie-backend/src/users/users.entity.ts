@@ -57,10 +57,6 @@ export class User {
   @Column({ type: 'timestamptz', nullable: true })
   resetTokenExpiresAt: Date | null;
 
-  @Exclude()
-  @Column({ type: 'varchar', nullable: true })
-  hashedRefreshToken: string | null;
-
   @Column({ type: 'timestamptz', nullable: true })
   lastReminderSentAt: Date | null;
 

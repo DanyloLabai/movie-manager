@@ -10,6 +10,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import { User } from '../users/users.entity';
+import { RefreshToken } from './refresh-token.entity';
 import { SignUpDto } from './dto/sign-up.dto';
 import { SignInDto } from './dto/sign-in.dto';
 import { JwtService } from '@nestjs/jwt';
@@ -21,6 +22,7 @@ import { Resend } from 'resend';
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
@@ -29,6 +31,8 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(RefreshToken)
+    private refreshTokensRepository: Repository<RefreshToken>,
     private jwtService: JwtService,
     private httpService: HttpService,
     private configService: ConfigService,
@@ -150,8 +154,9 @@ export class AuthService {
       );
     }
 
-    const { access_token, refresh_token } = await this.generateTokens(user);
-    await this.setCurrentRefreshToken(user.id, refresh_token);
+    const { access_token, refresh_token, sessionId } =
+      await this.generateTokens(user);
+    await this.storeRefreshToken(sessionId, user.id, refresh_token);
 
     return {
       access_token,
@@ -164,10 +169,13 @@ export class AuthService {
     };
   }
 
-  private async generateTokens(
-    user: User,
-  ): Promise<{ access_token: string; refresh_token: string }> {
-    const payload = {
+  private async generateTokens(user: User): Promise<{
+    access_token: string;
+    refresh_token: string;
+    sessionId: string;
+  }> {
+    const sessionId = crypto.randomUUID();
+    const basePayload = {
       sub: user.id,
       username: user.username,
       email: user.email,
@@ -178,59 +186,83 @@ export class AuthService {
       this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') || '30d';
 
     const [access_token, refresh_token] = await Promise.all([
-      this.jwtService.signAsync(payload),
-      this.jwtService.signAsync(payload, {
-        secret: refreshSecret,
-        expiresIn: refreshExpiresIn as unknown as number,
-      }),
+      this.jwtService.signAsync(basePayload),
+      this.jwtService.signAsync(
+        { ...basePayload, jti: sessionId },
+        {
+          secret: refreshSecret,
+          expiresIn: refreshExpiresIn as unknown as number,
+        },
+      ),
     ]);
 
-    return { access_token, refresh_token };
+    return { access_token, refresh_token, sessionId };
   }
 
-  private async setCurrentRefreshToken(
+  private async storeRefreshToken(
+    sessionId: string,
     userId: number,
     refreshToken: string,
   ): Promise<void> {
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-    await this.usersRepository.update({ id: userId }, { hashedRefreshToken });
+    const hashedToken = await bcrypt.hash(refreshToken, 10);
+    const refreshTokenEntity = this.refreshTokensRepository.create({
+      id: sessionId,
+      userId,
+      hashedToken,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
+    });
+    await this.refreshTokensRepository.save(refreshTokenEntity);
   }
 
   async refreshTokens(
     userId: number,
+    sessionId: string | null,
     incomingRefreshToken: string | null,
   ): Promise<{
     access_token: string;
     refresh_token: string;
     user: { id: number; username: string; email: string };
   }> {
-    if (!incomingRefreshToken) {
+    if (!incomingRefreshToken || !sessionId) {
       throw new UnauthorizedException('Refresh token missing');
+    }
+
+    const session = await this.refreshTokensRepository.findOne({
+      where: { id: sessionId, userId },
+    });
+
+    if (!session || session.expiresAt.getTime() < Date.now()) {
+      throw new UnauthorizedException('Access denied');
+    }
+
+    const refreshTokenMatches = await bcrypt.compare(
+      incomingRefreshToken,
+      session.hashedToken,
+    );
+
+    if (!refreshTokenMatches) {
+      // Reuse of an already-rotated refresh token indicates possible theft:
+      // revoke every session for this user, not just the current one.
+      await this.refreshTokensRepository.delete({ userId });
+      throw new UnauthorizedException('Access denied');
     }
 
     const user = await this.usersRepository.findOne({
       where: { id: userId },
     });
 
-    if (!user || !user.hashedRefreshToken) {
+    if (!user) {
       throw new UnauthorizedException('Access denied');
     }
 
-    const refreshTokenMatches = await bcrypt.compare(
-      incomingRefreshToken,
-      user.hashedRefreshToken,
-    );
+    await this.refreshTokensRepository.delete({ id: sessionId });
 
-    if (!refreshTokenMatches) {
-      await this.usersRepository.update(
-        { id: userId },
-        { hashedRefreshToken: null },
-      );
-      throw new UnauthorizedException('Access denied');
-    }
-
-    const { access_token, refresh_token } = await this.generateTokens(user);
-    await this.setCurrentRefreshToken(user.id, refresh_token);
+    const {
+      access_token,
+      refresh_token,
+      sessionId: newSessionId,
+    } = await this.generateTokens(user);
+    await this.storeRefreshToken(newSessionId, user.id, refresh_token);
 
     return {
       access_token,
@@ -243,16 +275,26 @@ export class AuthService {
     };
   }
 
-  async logout(userId: number): Promise<{ message: string }> {
-    await this.invalidateRefreshToken(userId);
+  async logout(
+    userId: number,
+    refreshToken?: string | null,
+  ): Promise<{ message: string }> {
+    if (refreshToken) {
+      const decoded = this.jwtService.decode<{ jti?: string } | null>(
+        refreshToken,
+      );
+      if (decoded?.jti) {
+        await this.refreshTokensRepository.delete({
+          id: decoded.jti,
+          userId,
+        });
+      }
+    }
     return { message: 'Logged out successfully' };
   }
 
   private async invalidateRefreshToken(userId: number): Promise<void> {
-    await this.usersRepository.update(
-      { id: userId },
-      { hashedRefreshToken: null },
-    );
+    await this.refreshTokensRepository.delete({ userId });
   }
 
   private async verifyCaptcha(token: string): Promise<boolean> {
