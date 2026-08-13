@@ -34,7 +34,11 @@ export interface QuizGuessResult extends QuizState {
   correct: boolean;
 }
 
-export type QuizTodayStatus = "solved" | "failed" | "in_progress" | "not_played";
+export type QuizTodayStatus =
+  | "solved"
+  | "failed"
+  | "in_progress"
+  | "not_played";
 
 export interface QuizLeaderboardEntry {
   id: number;
@@ -60,7 +64,7 @@ export async function getTodayQuiz(lang: QuizLanguage): Promise<QuizState> {
 }
 
 /** Fetches today's poster, already blurred server-side according to hint
- * progress — never the sharp original while the quiz is unsolved. */
+ * progress- never the sharp original while the quiz is unsolved. */
 export async function getPosterImage(): Promise<Blob> {
   const res = await api.get("/quiz/poster", { responseType: "blob" });
   return res.data as Blob;

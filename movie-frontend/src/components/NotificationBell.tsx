@@ -27,8 +27,8 @@ export default function NotificationBell({
           (n) => !n.isRead,
         ).length;
         setCount((requests || []).length + unreadNotifs);
-      } catch {
-        // empty
+      } catch (error) {
+        console.error("Failed to fetch notification count:", error);
       }
     };
 

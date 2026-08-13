@@ -85,7 +85,9 @@ export default function DailyQuiz() {
   const [isBuyingHint, setIsBuyingHint] = useState(false);
   const [leaderboard, setLeaderboard] = useState<QuizLeaderboardEntry[]>([]);
   const [watchlistAdded, setWatchlistAdded] = useState(false);
-  const [countdownMs, setCountdownMs] = useState(() => msUntilNextUtcMidnight());
+  const [countdownMs, setCountdownMs] = useState(() =>
+    msUntilNextUtcMidnight(),
+  );
   const [posterBlobUrl, setPosterBlobUrl] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -93,12 +95,15 @@ export default function DailyQuiz() {
 
   useEffect(() => {
     if (!isDone) return;
-    const id = setInterval(() => setCountdownMs(msUntilNextUtcMidnight()), 1000);
+    const id = setInterval(
+      () => setCountdownMs(msUntilNextUtcMidnight()),
+      1000,
+    );
     return () => clearInterval(id);
   }, [isDone]);
 
   // While unsolved, the poster is fetched pre-blurred from the server (the
-  // sharp original never reaches the browser) — refetched as hints unlock.
+  // sharp original never reaches the browser)- refetched as hints unlock.
   useEffect(() => {
     if (!quiz || isDone) return;
     let cancelled = false;
@@ -121,7 +126,7 @@ export default function DailyQuiz() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quiz?.date, quiz?.hintsRevealed, isDone]);
 
-  // Revoke the object URL only on final unmount — the setter above already
+  // Revoke the object URL only on final unmount- the setter above already
   // revokes the previous one each time a new poster blob is fetched.
   useEffect(() => {
     return () => {
@@ -253,11 +258,15 @@ export default function DailyQuiz() {
     if (!quiz) return;
     const title = quiz.answer?.title ?? "";
     const text = quiz.isSolved
-      ? `LUMEN Daily Quiz — guessed "${title}" in ${quiz.guesses.length}/${quiz.maxGuesses} · ${quiz.score} pts`
-      : `LUMEN Daily Quiz — ${title ? `didn't guess "${title}"` : "didn't guess it"} today`;
+      ? `LUMEN Daily Quiz- guessed "${title}" in ${quiz.guesses.length}/${quiz.maxGuesses} · ${quiz.score} pts`
+      : `LUMEN Daily Quiz- ${title ? `didn't guess "${title}"` : "didn't guess it"} today`;
     const url = `${window.location.origin}/quiz`;
     const nav = navigator as Navigator & {
-      share?: (data: { title?: string; text?: string; url?: string }) => Promise<void>;
+      share?: (data: {
+        title?: string;
+        text?: string;
+        url?: string;
+      }) => Promise<void>;
     };
     if (nav.share) {
       try {
@@ -268,7 +277,7 @@ export default function DailyQuiz() {
       return;
     }
     try {
-      await navigator.clipboard.writeText(`${text} — ${url}`);
+      await navigator.clipboard.writeText(`${text}- ${url}`);
       showToast(t("quiz_share_copied"));
     } catch {
       showToast(t("quiz_share_copied"));
@@ -278,7 +287,7 @@ export default function DailyQuiz() {
   const revealedHints = quiz?.hints ?? [];
   const lockedHintCount = Math.max(TOTAL_HINTS - revealedHints.length, 0);
   // Solved/failed: the real poster (already revealed in the JSON answer).
-  // Otherwise: the server-blurred poster fetched via getPosterImage above —
+  // Otherwise: the server-blurred poster fetched via getPosterImage above-
   // never the raw TMDB URL, which would let devtools reveal the answer.
   const posterUrl = isDone ? quiz?.answer?.posterUrl : posterBlobUrl;
 
@@ -362,7 +371,12 @@ export default function DailyQuiz() {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
-                    <svg className="w-12 h-12 text-[#d9ac54]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      className="w-12 h-12 text-[#d9ac54]/40"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       {ICONS.film}
                     </svg>
                   </div>
@@ -461,11 +475,12 @@ export default function DailyQuiz() {
                           )}
                           <span className="text-sm text-[#f2ead9] font-medium">
                             {movie.title}{" "}
-                            {movie.releaseYear && movie.releaseYear !== "N/A" && (
-                              <span className="text-[#f2ead9]/40">
-                                ({movie.releaseYear})
-                              </span>
-                            )}
+                            {movie.releaseYear &&
+                              movie.releaseYear !== "N/A" && (
+                                <span className="text-[#f2ead9]/40">
+                                  ({movie.releaseYear})
+                                </span>
+                              )}
                           </span>
                         </button>
                       ))}
@@ -481,7 +496,12 @@ export default function DailyQuiz() {
                 <div className="flex flex-col gap-0">
                   <div className="flex items-center gap-3.5 pb-[18px]">
                     <span className="flex items-center gap-1.5 font-mono-ui text-[11.5px] font-semibold tracking-[3px] text-[#d9ac54] uppercase">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         {quiz.isSolved ? ICONS.check : ICONS.cross}
                       </svg>
                       {quiz.isSolved
@@ -513,7 +533,12 @@ export default function DailyQuiz() {
                             : t("quiz_correct_answer_label")}
                         </span>
                         <span className="inline-flex items-center gap-2 px-[18px] py-2 border border-[#d9ac54]/45 rounded-full font-semibold text-[13px] text-[#f2ead9]">
-                          <svg className="w-3.5 h-3.5 text-[#d9ac54]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg
+                            className="w-3.5 h-3.5 text-[#d9ac54]"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
                             {ICONS.check}
                           </svg>
                           {quiz.answer.title}
@@ -575,7 +600,12 @@ export default function DailyQuiz() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2.5 mt-[22px] pt-[18px] border-t border-[rgba(217,172,84,.12)]">
-                    <svg className="w-3.5 h-3.5 text-[#d9ac54] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      className="w-3.5 h-3.5 text-[#d9ac54] shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       {ICONS.clock}
                     </svg>
                     <span className="text-[12.5px] text-[#8f8574]">
@@ -609,7 +639,8 @@ export default function DailyQuiz() {
                 </div>
                 {revealedHints.map((hint, i) => {
                   const isUnusedAfterFinish = isDone && i >= quiz.hintsRevealed;
-                  const isLast = i === revealedHints.length - 1 && lockedHintCount === 0;
+                  const isLast =
+                    i === revealedHints.length - 1 && lockedHintCount === 0;
                   return (
                     <div
                       key={i}
@@ -633,7 +664,12 @@ export default function DailyQuiz() {
                       #{revealedHints.length + i + 1}
                     </span>
                     <span className="flex items-center gap-1.5 text-[14.5px] text-[#8f8574]">
-                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg
+                        className="w-3.5 h-3.5 shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
                         {ICONS.lock}
                       </svg>
                       {t("quiz_hint_locked")}
@@ -719,7 +755,11 @@ export default function DailyQuiz() {
                         {rowContent}
                       </div>
                     ) : (
-                      <Link key={entry.id} to={`/user/${entry.id}`} className={rowClass}>
+                      <Link
+                        key={entry.id}
+                        to={`/user/${entry.id}`}
+                        className={rowClass}
+                      >
                         {rowContent}
                       </Link>
                     );

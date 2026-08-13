@@ -4,7 +4,8 @@
 
 ## Стек
 
-**Backend** — `movie-backend/`
+**Backend**- `movie-backend/`
+
 - NestJS 11 + TypeORM + PostgreSQL (з розширенням `pgvector`)
 - Redis (кешування через `@nestjs/cache-manager`)
 - JWT-автентифікація (access + refresh токени) через Passport
@@ -13,12 +14,14 @@
 - `@nestjs/schedule` для крон-задач, `@nestjs/throttler` для rate-limiting
 - Jest для юніт- та e2e-тестів
 
-**Frontend** — `movie-frontend/`
+**Frontend**- `movie-frontend/`
+
 - React 19 + TypeScript + Vite
 - React Router, Tailwind CSS, Recharts
 - Vitest + Testing Library
 
-**Інфраструктура** — `docker/`
+**Інфраструктура**- `docker/`
+
 - `docker-compose.yml`: `db` (pgvector), `redis`, `backend`, `frontend`, `caddy`
 - Caddy як reverse proxy й видача TLS-сертифікатів на власному домені
 - Секрети/URL передаються через `docker/.env` (див. `docker/.env.example`)
@@ -28,7 +31,7 @@
 - Пошук фільмів та акторів, деталі фільму/актора, Top100 підбірки
 - Watchlist (переглянуто / заплановано), статистика профілю, публічний профіль користувача
 - AI-чат із рекомендаціями фільмів (Lumen AI) та семантичний (векторний) пошук
-- Discover — свайп-механіка підбору фільмів
+- Discover- свайп-механіка підбору фільмів
 - Щоденний квіз (Daily Quiz) по фільмах
 - Досягнення (achievements) та стрічка активності (activity heatmap)
 - Push-сповіщення та email (верифікація пошти, скидання пароля)
@@ -48,7 +51,7 @@ npm run test            # юніт-тести
 npm run test:e2e        # e2e-тести
 ```
 
-Бекенд читає конфігурацію з `.env` у `movie-backend/` (`DATABASE_URL` або `DB_HOST/DB_USER/DB_PASSWORD/DB_NAME`, `REDIS_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, ключі AI-провайдерів, Cloudinary, Resend, VAPID тощо — повний список див. `docker/.env.example`).
+Бекенд читає конфігурацію з `.env` у `movie-backend/` (`DATABASE_URL` або `DB_HOST/DB_USER/DB_PASSWORD/DB_NAME`, `REDIS_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, ключі AI-провайдерів, Cloudinary, Resend, VAPID тощо- повний список див. `docker/.env.example`).
 
 ### Frontend
 
@@ -72,10 +75,10 @@ cp .env.example .env    # заповнити секрети, домени, кл�
 docker compose up -d --build
 ```
 
-- `DOMAIN` / `API_DOMAIN` — домени фронтенду й API; Caddy сам видає TLS-сертифікати.
+- `DOMAIN` / `API_DOMAIN`- домени фронтенду й API; Caddy сам видає TLS-сертифікати.
 - `backend` читає `DATABASE_URL` (зібраний з `DB_*`) і `REDIS_URL` (саме ці env-змінні, не `REDIS_HOST/REDIS_PORT`).
 - `frontend` збирається зі своїми `VITE_*` змінними на етапі `docker build` (вони вшиваються у статику).
-- Postgres і Redis не публікують портів назовні — доступні лише іншим контейнерам за назвою сервісу.
+- Postgres і Redis не публікують портів назовні- доступні лише іншим контейнерам за назвою сервісу.
 
 Крон-задачі (нагадування про watchlist тощо) виконуються всередині `backend`-процесу через `@nestjs/schedule`, тож контейнер має лишатися always-on.
 

@@ -32,7 +32,7 @@ export class PushService {
       webpush.setVapidDetails(subject!, this.publicKey, privateKey!);
     } else {
       this.logger.warn(
-        'VAPID keys not configured — push notifications are disabled.',
+        'VAPID keys not configured- push notifications are disabled.',
       );
     }
   }

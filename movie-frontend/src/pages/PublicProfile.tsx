@@ -191,7 +191,7 @@ export default function PublicProfile() {
       try {
         await nav.share({ title: profileData?.username, url });
       } catch {
-        // empty
+        // user cancelled the native share sheet
       }
       return;
     }

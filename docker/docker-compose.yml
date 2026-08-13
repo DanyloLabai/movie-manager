@@ -4,13 +4,13 @@ services:
     image: pgvector/pgvector:pg15
     container_name: movie_postgres
     restart: always
-    # Навмисно без env_file: .env — Postgres-контейнеру не потрібні секрети
+    # Навмисно без env_file: .env- Postgres-контейнеру не потрібні секрети
     # AI/JWT/тощо з .env, лише свої три змінні нижче.
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    # Навмисно без ports: — публікувати 5432 на хост на публічному VPS
+    # Навмисно без ports:- публікувати 5432 на хост на публічному VPS
     # означає відкрити Postgres усьому інтернету. Контейнери й так бачать
     # один одного через внутрішню docker-мережу за назвою сервісу ("db").
     volumes:
@@ -20,7 +20,7 @@ services:
     image: redis:7-alpine
     container_name: movie_redis
     restart: always
-    # Так само без ports: — те саме міркування, що і для db.
+    # Так само без ports:- те саме міркування, що і для db.
     command: redis-server --appendonly yes
     volumes:
       - redisdata:/data
@@ -32,13 +32,13 @@ services:
     container_name: movie_nestjs
     restart: always
     env_file: .env
-    # Без ports: — назовні бекенд віддає лише Caddy через reverse_proxy до backend:3000.
+    # Без ports:- назовні бекенд віддає лише Caddy через reverse_proxy до backend:3000.
     environment:
       - NODE_ENV=production
       - DB_HOST=db
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       # ВАЖЛИВО: додаток читає саме REDIS_URL (app.module.ts), а не
-      # REDIS_HOST/REDIS_PORT, які тут раніше не мали ефекту — без цього
+      # REDIS_HOST/REDIS_PORT, які тут раніше не мали ефекту- без цього
       # рядка кеш намагався б з'єднатись з "localhost" всередині контейнера
       # backend, де Redis не слухає.
       - REDIS_URL=redis://redis:6379
@@ -61,7 +61,7 @@ services:
         - VITE_RECAPTCHA_SITE_KEY=${VITE_RECAPTCHA_SITE_KEY}
     container_name: movie_react
     restart: always
-    # Без ports: — статику назовні віддає Caddy через reverse_proxy до frontend:80.
+    # Без ports:- статику назовні віддає Caddy через reverse_proxy до frontend:80.
     depends_on:
       - backend
 
@@ -69,7 +69,7 @@ services:
     image: caddy:2-alpine
     container_name: movie_caddy
     restart: always
-    # Без env_file: .env — Caddy потребує лише DOMAIN/API_DOMAIN, решта
+    # Без env_file: .env- Caddy потребує лише DOMAIN/API_DOMAIN, решта
     # секретів з .env йому не потрібна.
     environment:
       - DOMAIN=${DOMAIN}

@@ -45,6 +45,13 @@ export class QuizMoviePool {
   @Column({ type: 'timestamptz', nullable: true })
   usedAt: Date | null;
 
+  /** Set by scripts/clean-ru-in-movies.js for rows it couldn't hard-delete
+   * (already referenced by a past daily_movie_quiz). Excluded from pool
+   * selection and from the usedAt-reset that starts a new rotation cycle,
+   * so these never get picked again. */
+  @Column({ default: false })
+  excluded: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 }

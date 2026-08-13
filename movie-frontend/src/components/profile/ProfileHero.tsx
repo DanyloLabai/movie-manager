@@ -97,7 +97,7 @@ export default function ProfileHero({
       try {
         await nav.share({ title: username, url });
       } catch {
-        // empty
+        // user cancelled the native share sheet
       }
       return;
     }

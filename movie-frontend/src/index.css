@@ -165,13 +165,10 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @layer components {
-  /* Marquee redesign type stack — Manrope backstops Archivo's thin Cyrillic
+  /* Marquee redesign type stack- Manrope backstops Archivo's thin Cyrillic
      coverage so UA copy never silently falls back to the browser serif. */
   .font-ui {
-    font-family:
-      "Archivo",
-      "Manrope",
-      sans-serif;
+    font-family: "Archivo", "Manrope", sans-serif;
   }
 
   .font-mono-ui {
