@@ -56,8 +56,8 @@ export default function Notifications() {
       setHasMoreNotifications(
         (notifs?.length || 0) === NOTIFICATIONS_PAGE_SIZE,
       );
-    } catch {
-      // empty
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
     } finally {
       setIsLoading(false);
     }
@@ -79,8 +79,8 @@ export default function Notifications() {
       setHasMoreNotifications(
         (notifs?.length || 0) === NOTIFICATIONS_PAGE_SIZE,
       );
-    } catch {
-      // empty
+    } catch (error) {
+      console.error("Failed to load more notifications:", error);
     } finally {
       setIsLoadingMoreNotifications(false);
     }
@@ -99,8 +99,8 @@ export default function Notifications() {
       await usersApi.acceptFriendRequest(id);
       setRequests((prev) => prev.filter((r) => r.id !== id));
       apiEventBus.dispatchEvent(new CustomEvent("notifications:updated"));
-    } catch {
-      // empty
+    } catch (error) {
+      console.error("Failed to accept friend request:", error);
     } finally {
       setProcessingId(null);
     }
@@ -112,8 +112,8 @@ export default function Notifications() {
       await usersApi.declineFriendRequest(id);
       setRequests((prev) => prev.filter((r) => r.id !== id));
       apiEventBus.dispatchEvent(new CustomEvent("notifications:updated"));
-    } catch {
-      // empty
+    } catch (error) {
+      console.error("Failed to decline friend request:", error);
     } finally {
       setProcessingId(null);
     }
@@ -179,8 +179,8 @@ export default function Notifications() {
       await moviesApi.markAllNotificationsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       apiEventBus.dispatchEvent(new CustomEvent("notifications:updated"));
-    } catch {
-      // empty
+    } catch (error) {
+      console.error("Failed to mark all notifications as read:", error);
     }
   };
 

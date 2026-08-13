@@ -166,7 +166,7 @@ export class AchievementsService {
           title: achievement.name,
           body: achievement.requirement,
           pushTitle: '🏆 Achievement unlocked!',
-          pushBody: `${achievement.name} — ${achievement.requirement}`,
+          pushBody: `${achievement.name}- ${achievement.requirement}`,
           url: '/watchlist',
         });
       } catch (error: unknown) {

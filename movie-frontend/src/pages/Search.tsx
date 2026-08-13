@@ -682,7 +682,7 @@ export default function Search() {
                 {t("discover_promo_title")}
               </span>
               <span className="text-[11.5px] text-[#8f8574] truncate">
-                {t("discover_promo_swipe")} — {swipeStatus.remainingToday}{" "}
+                {t("discover_promo_swipe")}- {swipeStatus.remainingToday}{" "}
                 {t("discover_promo_of")} {swipeStatus.dailyLimit}{" "}
                 {t("discover_promo_remaining")}
               </span>

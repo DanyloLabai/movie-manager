@@ -32,7 +32,7 @@ export class QuizController {
   @ApiOperation({
     summary: "Get today's movie quiz",
     description:
-      "Returns today's quiz state — current score, hints revealed so far, guesses left.",
+      "Returns today's quiz state- current score, hints revealed so far, guesses left.",
   })
   @ApiQuery({ name: 'lang', required: false, enum: ['en', 'uk'] })
   @ApiResponse({ status: 200, description: "Today's quiz state" })

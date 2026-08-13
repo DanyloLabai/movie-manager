@@ -5,6 +5,8 @@
 // Usage: npm run seed:quiz
 //
 // Safe to re-run: existing rows (matched by imdbId) are left untouched.
+//
+// Russian- and Indian-origin titles are excluded (see lib/exclude-regions.js).
 
 require('dotenv').config();
 
@@ -13,6 +15,7 @@ const zlib = require('zlib');
 const readline = require('readline');
 const { Client } = require('pg');
 const axios = require('axios');
+const { isExcludedRegion } = require('./lib/exclude-regions');
 
 const BASICS_URL = 'https://datasets.imdbws.com/title.basics.tsv.gz';
 const RATINGS_URL = 'https://datasets.imdbws.com/title.ratings.tsv.gz';
@@ -109,6 +112,7 @@ async function enrichWithTmdb(candidate, tmdbToken) {
   });
   const movie = findRes.data?.movie_results?.[0];
   if (!movie) return null;
+  if (isExcludedRegion(movie)) return { excluded: true };
 
   const creditsRes = await axios.get(
     `${TMDB_BASE_URL}/movie/${movie.id}/credits`,
@@ -126,7 +130,9 @@ async function enrichWithTmdb(candidate, tmdbToken) {
     title: movie.title || candidate.title,
     releaseYear:
       candidate.year ??
-      (movie.release_date ? parseInt(movie.release_date.slice(0, 4), 10) : null),
+      (movie.release_date
+        ? parseInt(movie.release_date.slice(0, 4), 10)
+        : null),
     posterPath: movie.poster_path || null,
     genres: movie.genre_ids || [],
     overview: movie.overview || null,
@@ -163,16 +169,28 @@ async function run() {
 
   try {
     const top500 = await buildTopPool();
-    console.log(`Selected top ${top500.length} candidates. Enriching via TMDB...`);
+    console.log(
+      `Selected top ${top500.length} candidates. Enriching via TMDB...`,
+    );
 
     let inserted = 0;
     let skipped = 0;
+    let skippedRegion = 0;
     for (let i = 0; i < top500.length; i++) {
       const candidate = top500[i];
       try {
         const enriched = await enrichWithTmdb(candidate, tmdbToken);
+        if (enriched?.excluded) {
+          console.log(
+            `  [${i + 1}/${top500.length}] Excluded (RU/IN origin): ${candidate.title}`,
+          );
+          skippedRegion++;
+          continue;
+        }
         if (!enriched) {
-          console.warn(`  [${i + 1}/${top500.length}] No TMDB match for ${candidate.imdbId} (${candidate.title}) — skipped.`);
+          console.warn(
+            `  [${i + 1}/${top500.length}] No TMDB match for ${candidate.imdbId} (${candidate.title})- skipped.`,
+          );
           skipped++;
           continue;
         }
@@ -196,18 +214,26 @@ async function run() {
         );
         if (result.rowCount > 0) {
           inserted++;
-          console.log(`  [${i + 1}/${top500.length}] Added: ${enriched.title} (${enriched.releaseYear ?? '?'})`);
+          console.log(
+            `  [${i + 1}/${top500.length}] Added: ${enriched.title} (${enriched.releaseYear ?? '?'})`,
+          );
         } else {
-          console.log(`  [${i + 1}/${top500.length}] Already in pool: ${enriched.title}`);
+          console.log(
+            `  [${i + 1}/${top500.length}] Already in pool: ${enriched.title}`,
+          );
         }
       } catch (err) {
-        console.warn(`  [${i + 1}/${top500.length}] Failed for ${candidate.imdbId} (${candidate.title}): ${err.message}`);
+        console.warn(
+          `  [${i + 1}/${top500.length}] Failed for ${candidate.imdbId} (${candidate.title}): ${err.message}`,
+        );
         skipped++;
       }
       await sleep(TMDB_REQUEST_DELAY_MS);
     }
 
-    console.log(`Done. Inserted ${inserted} new movies, skipped ${skipped}.`);
+    console.log(
+      `Done. Inserted ${inserted} new movies, skipped ${skipped}, excluded (RU/IN) ${skippedRegion}.`,
+    );
   } finally {
     await client.end();
   }

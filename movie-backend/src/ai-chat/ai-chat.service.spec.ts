@@ -222,7 +222,7 @@ describe('AiChatService', () => {
         modelId: 'gemini-flash-latest',
       });
 
-      // Only the successful (failover) call is logged — the failed Groq attempt is not.
+      // Only the successful (failover) call is logged- the failed Groq attempt is not.
       expect(mockAiUsageLogService.logUsage).toHaveBeenCalledTimes(1);
       expect(mockAiUsageLogService.logUsage).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -260,7 +260,7 @@ describe('AiChatService', () => {
       expect(mockAiUsageLogService.logUsage).not.toHaveBeenCalled();
     });
 
-    // AiChatService does not itself enforce the daily request/token limit — that check
+    // AiChatService does not itself enforce the daily request/token limit- that check
     // lives entirely in AiDailyLimitGuard, which runs before this method is ever invoked.
     // What this service IS responsible for is feeding that guard accurate usage data, so
     // we verify the logUsage payload it produces on both the primary and failover paths.

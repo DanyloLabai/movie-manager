@@ -32,7 +32,7 @@ const WRONG_GUESS_PENALTY = 5;
 const MAX_GUESSES = 5;
 
 /** Server-side blur applied to the poster while the quiz is unsolved, so the
- * sharp original never reaches the client — mirrors the hint-based easing
+ * sharp original never reaches the client- mirrors the hint-based easing
  * the UI shows (blur eases as hints unlock), but baked into the pixels. */
 const MAX_BLUR_SIGMA = 28;
 const MIN_BLUR_SIGMA = 9;
@@ -61,7 +61,7 @@ export interface QuizStateDto {
   maxGuesses: number;
   isSolved: boolean;
   isFailed: boolean;
-  /** Raw poster URL — null while the quiz is unsolved (fetch the
+  /** Raw poster URL- null while the quiz is unsolved (fetch the
    * server-blurred version from GET /quiz/poster instead); populated once
    * `isDone`, alongside `answer`. */
   posterUrl: string | null;
@@ -337,7 +337,7 @@ export class QuizService {
       maxGuesses: MAX_GUESSES,
       isSolved: attempt?.isSolved ?? false,
       isFailed: attempt?.isFailed ?? false,
-      // Raw poster URL only once the quiz is done — otherwise it would leak
+      // Raw poster URL only once the quiz is done- otherwise it would leak
       // the sharp original via the JSON payload, bypassing GET /quiz/poster.
       posterUrl: isDone ? this.buildPosterUrl(quiz.pool) : null,
       streak,
@@ -359,7 +359,7 @@ export class QuizService {
   }
 
   /** Serves today's poster pre-blurred server-side so the sharp original
-   * never reaches the client until the quiz is solved/failed — CSS-only
+   * never reaches the client until the quiz is solved/failed- CSS-only
    * blur can be undone by opening the raw image URL from devtools. */
   async getPosterImage(
     userId: number,
@@ -458,6 +458,7 @@ export class QuizService {
       let pool = await manager
         .createQueryBuilder(QuizMoviePool, 'p')
         .where('p."usedAt" IS NULL')
+        .andWhere('p.excluded = false')
         .orderBy('RANDOM()')
         .limit(1)
         .setLock('pessimistic_write')
@@ -465,15 +466,17 @@ export class QuizService {
 
       if (!pool) {
         this.logger.log(
-          'Quiz movie pool exhausted — starting a new rotation cycle.',
+          'Quiz movie pool exhausted- starting a new rotation cycle.',
         );
         await manager
           .createQueryBuilder()
           .update(QuizMoviePool)
           .set({ usedAt: null })
+          .where('excluded = false')
           .execute();
         pool = await manager
           .createQueryBuilder(QuizMoviePool, 'p')
+          .andWhere('p.excluded = false')
           .orderBy('RANDOM()')
           .limit(1)
           .setLock('pessimistic_write')
@@ -482,7 +485,7 @@ export class QuizService {
 
       if (!pool) {
         throw new InternalServerErrorException(
-          'Quiz movie pool is empty — run the IMDb top-500 seed script first.',
+          'Quiz movie pool is empty- run the IMDb top-500 seed script first.',
         );
       }
 

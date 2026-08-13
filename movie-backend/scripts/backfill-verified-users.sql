@@ -13,7 +13,7 @@
 -- from before email verification existed, not someone's genuinely
 -- pending signup made after this deploy).
 
--- 1. Sanity check BEFORE — see how many accounts this will affect.
+-- 1. Sanity check BEFORE- see how many accounts this will affect.
 SELECT count(*) AS accounts_to_grandfather
 FROM users
 WHERE "isVerified" = false
@@ -25,7 +25,7 @@ SET "isVerified" = true
 WHERE "isVerified" = false
   AND "verificationToken" IS NULL;
 
--- 3. Sanity check AFTER — should be 0 remaining unverified accounts
+-- 3. Sanity check AFTER- should be 0 remaining unverified accounts
 --    with no way to verify (genuine new unverified signups will still
 --    show up here correctly, since they DO have a verificationToken).
 SELECT count(*) AS still_unverified_with_no_token
