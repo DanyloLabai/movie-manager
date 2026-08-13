@@ -1,5 +1,5 @@
 -- Baseline for the pgvector tables used by VectorService. Like the other
--- baseline, these were never captured by a migration- they were created
+-- baseline, these were never captured by a migration — they were created
 -- out-of-band (originally via a LangChain PGVectorStore default schema:
 -- id/text/metadata/embedding) and have been queried directly via pg.Pool
 -- ever since.
