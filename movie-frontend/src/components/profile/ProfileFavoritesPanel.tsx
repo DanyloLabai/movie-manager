@@ -106,6 +106,11 @@ function FavoritesList({
   readOnly: boolean;
   naLabel: string;
 }) {
+  const widthClass = posterClass
+    .split(" ")
+    .filter((cls) => cls.startsWith("w-"))
+    .join(" ");
+
   return (
     <>
       {favorites.map((fav) => {
@@ -115,7 +120,7 @@ function FavoritesList({
           <Link
             key={fav.id}
             to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}&fromTab=profile`}
-            className="flex flex-col gap-2 shrink-0 group"
+            className={`flex flex-col gap-2 shrink-0 min-w-0 group ${widthClass}`}
           >
             <div
               className={`relative rounded-[5px] overflow-hidden bg-[#1c1a14] ${posterClass}`}

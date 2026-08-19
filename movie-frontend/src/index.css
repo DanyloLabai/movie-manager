@@ -8,6 +8,7 @@ body {
   padding: 0;
   width: 100%;
   background-color: #12100e;
+  overscroll-behavior-x: none;
   overscroll-behavior-y: none;
 }
 
@@ -16,7 +17,7 @@ body {
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding-top: env(safe-area-inset-top);
+  overflow-x: hidden;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
