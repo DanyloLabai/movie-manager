@@ -419,6 +419,13 @@ export default function Search() {
     (v) => v !== undefined && v !== false,
   );
 
+  const top100MoviesBackdrop = [...trending, ...upcoming].find(
+    (item) => item.mediaType === "movie" && item.posterUrl,
+  );
+  const top100TvBackdrop = [...trending, ...upcoming].find(
+    (item) => item.mediaType === "tv" && item.posterUrl,
+  );
+
   const handleSearch = async (eOrQuery?: React.FormEvent | string) => {
     const queryOverride = typeof eOrQuery === "string" ? eOrQuery : undefined;
     if (eOrQuery && typeof eOrQuery !== "string") eOrQuery.preventDefault();
@@ -736,9 +743,9 @@ export default function Search() {
                   to="/top100/movie"
                   className="relative group overflow-hidden rounded-[10px] aspect-[16/9] bg-[#14110d] transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgba(217,172,84,.5)]"
                 >
-                  {trending[0]?.posterUrl && (
+                  {top100MoviesBackdrop?.posterUrl && (
                     <img
-                      src={trending[0].posterUrl}
+                      src={top100MoviesBackdrop.posterUrl}
                       alt=""
                       aria-hidden="true"
                       className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-55 group-hover:scale-105 transition-all duration-700"
@@ -765,9 +772,9 @@ export default function Search() {
                   to="/top100/tv"
                   className="relative group overflow-hidden rounded-[10px] aspect-[16/9] bg-[#14110d] transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgba(217,172,84,.5)]"
                 >
-                  {upcoming[0]?.posterUrl && (
+                  {top100TvBackdrop?.posterUrl && (
                     <img
-                      src={upcoming[0].posterUrl}
+                      src={top100TvBackdrop.posterUrl}
                       alt=""
                       aria-hidden="true"
                       className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-55 group-hover:scale-105 transition-all duration-700"

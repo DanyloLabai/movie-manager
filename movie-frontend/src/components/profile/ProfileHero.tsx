@@ -125,21 +125,17 @@ export default function ProfileHero({
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             </div>
           ) : (
+            <div className="absolute inset-0 bg-[#0f0d0a]" />
+          )}
+          {avatarUrl && (
             <div
               className="absolute inset-0"
               style={{
                 background:
-                  "radial-gradient(120% 100% at 50% 0%, #3a2f1a 0%, #201c15 55%, #0f0d0a 100%)",
+                  "linear-gradient(180deg, rgba(15,13,10,.4) 0%, #0f0d0a 100%)",
               }}
             />
           )}
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(15,13,10,.4) 0%, #0f0d0a 100%)",
-            }}
-          />
 
           <div className="absolute left-0 right-0 bottom-0 px-5 md:px-14 pb-[18px] flex items-end gap-[18px]">
             <div
@@ -198,21 +194,17 @@ export default function ProfileHero({
             />
           </div>
         ) : (
+          <div className="absolute inset-0 bg-[#0f0d0a]" />
+        )}
+        {avatarUrl && (
           <div
             className="absolute inset-0"
             style={{
               background:
-                "radial-gradient(120% 100% at 50% 0%, #3a2f1a 0%, #201c15 55%, #0f0d0a 100%)",
+                "linear-gradient(180deg, rgba(15,13,10,.28) 0%, rgba(15,13,10,.68) 55%, #0f0d0a 100%)",
             }}
           />
         )}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(15,13,10,.28) 0%, rgba(15,13,10,.68) 55%, #0f0d0a 100%)",
-          }}
-        />
 
         <div className="absolute left-0 right-0 bottom-0 px-5 md:px-14 pb-4 md:pb-7 flex items-end gap-3.5 md:gap-6">
           <div
