@@ -17,6 +17,18 @@ const extractRefreshTokenFromCookie = (req: Request): string | null => {
   return (req?.cookies?.refresh_token as string | undefined) ?? null;
 };
 
+// React Native has no browser-style cookie jar, so mobile sends the refresh
+// token in the request body instead. Cookie is checked first so web's
+// behavior is completely unchanged.
+const extractRefreshTokenFromBody = (req: Request): string | null => {
+  const body = req?.body as { refresh_token?: string } | undefined;
+  return body?.refresh_token ?? null;
+};
+
+const extractRefreshToken = (req: Request): string | null => {
+  return extractRefreshTokenFromCookie(req) ?? extractRefreshTokenFromBody(req);
+};
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(private configService: ConfigService) {
@@ -51,7 +63,7 @@ export class RefreshJwtStrategy extends PassportStrategy(
     }
 
     super({
-      jwtFromRequest: extractRefreshTokenFromCookie,
+      jwtFromRequest: extractRefreshToken,
       ignoreExpiration: false,
       secretOrKey: jwtRefreshSecret,
       passReqToCallback: true,
@@ -59,7 +71,7 @@ export class RefreshJwtStrategy extends PassportStrategy(
   }
 
   validate(req: Request, payload: JwtPayload) {
-    const refreshToken = extractRefreshTokenFromCookie(req);
+    const refreshToken = extractRefreshToken(req);
     return {
       userId: payload.sub,
       username: payload.username,

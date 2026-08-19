@@ -1,0 +1,19 @@
+{
+  "name": "movie-manager",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "mobile",
+    "shared"
+  ],
+  "scripts": {
+    "dev:backend": "npm run start:dev --prefix movie-backend",
+    "dev:frontend": "npm run dev --prefix movie-frontend",
+    "dev:mobile": "npm run start --workspace=mobile",
+    "dev:all": "concurrently -n backend,frontend,mobile -c blue,green,magenta \"npm run start:dev --prefix movie-backend\" \"npm run dev --prefix movie-frontend\" \"npm run start --workspace=mobile\"",
+    "typecheck:shared": "npm run typecheck --workspace=shared"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

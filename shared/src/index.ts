@@ -1,0 +1,4 @@
+// Barrel export for @movie-manager/shared.
+export * from './types';
+export * from './api';
+export * from './theme';

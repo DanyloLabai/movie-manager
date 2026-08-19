@@ -11,6 +11,10 @@ export class SignInResponseDto {
     username: string;
     email: string;
   };
+  // Only present when the request carries `X-Client-Platform: mobile` — web
+  // relies on the httpOnly refresh_token cookie instead, since exposing this
+  // to JS would defeat the point of it being httpOnly.
+  refresh_token?: string;
 }
 
 export class VerifyEmailResponseDto {
@@ -42,6 +46,8 @@ export class RefreshResponseDto {
     username: string;
     email: string;
   };
+  // See SignInResponseDto.refresh_token — same mobile-only gating.
+  refresh_token?: string;
 }
 
 export class LogoutResponseDto {

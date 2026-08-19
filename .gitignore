@@ -1,0 +1,29 @@
+# root-level workspace artifacts (mobile/, shared/ only — movie-backend and
+# movie-frontend keep their own .gitignore and are not workspace members)
+/node_modules
+mobile/node_modules
+shared/node_modules
+
+# Expo
+mobile/.expo
+mobile/.expo-shared
+mobile/dist
+mobile/web-build
+
+# native build artifacts (managed workflow shouldn't generate these, but ignore
+# them in case of a future prebuild/eject)
+mobile/ios
+mobile/android
+*.jks
+*.p12
+*.p8
+*.mobileprovision
+*.orig.*
+
+# env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
