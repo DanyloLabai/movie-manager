@@ -81,6 +81,12 @@ export class MoviesService {
   private readonly MAX_RATING = 10;
   private readonly RATING_STEP = 0.5;
 
+  private readonly EXCLUDED_TV_GENRE_IDS = new Set([
+    10763, // News
+    10764, // Reality
+    10767, // Talk
+  ]);
+
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
@@ -839,6 +845,18 @@ export class MoviesService {
         data.combined_credits?.cast ?? [];
 
       const knownFor = credits
+        .filter((media) => {
+          if (media.media_type !== 'movie' && media.media_type !== 'tv') {
+            return false;
+          }
+          if (
+            media.media_type === 'tv' &&
+            media.genre_ids?.some((g) => this.EXCLUDED_TV_GENRE_IDS.has(g))
+          ) {
+            return false;
+          }
+          return true;
+        })
         .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
         .slice(0, this.ACTOR_KNOWN_FOR_LIMIT)
         .map((media: TmdbCombinedCreditsCastDto) => {

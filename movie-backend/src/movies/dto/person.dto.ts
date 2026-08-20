@@ -8,6 +8,7 @@ export interface TmdbCombinedCreditsCastDto {
   first_air_date?: string;
   character?: string;
   popularity?: number;
+  genre_ids?: number[];
 }
 
 export interface TmdbPersonRecordDto {
