@@ -253,10 +253,6 @@ export default function Search() {
   const trendingTv = trending.filter((m) => m.mediaType === "tv");
   const upcomingMovies = upcoming.filter((m) => m.mediaType !== "tv");
   const upcomingTv = upcoming.filter((m) => m.mediaType === "tv");
-  const top100MoviesPoster =
-    trendingMovies[0]?.posterUrl ?? upcomingMovies[0]?.posterUrl ?? null;
-  const top100TvPoster =
-    trendingTv[0]?.posterUrl ?? upcomingTv[0]?.posterUrl ?? null;
 
   const visibleBecauseYouWatched = becauseYouWatched
     ? becauseYouWatched.similarMovies.filter(
@@ -468,6 +464,13 @@ export default function Search() {
 
   const hasActiveFilters = Object.values(filters).some(
     (v) => v !== undefined && v !== false,
+  );
+
+  const top100MoviesBackdrop = [...trending, ...upcoming].find(
+    (item) => item.mediaType === "movie" && item.posterUrl,
+  );
+  const top100TvBackdrop = [...trending, ...upcoming].find(
+    (item) => item.mediaType === "tv" && item.posterUrl,
   );
 
   const handleSearch = async (eOrQuery?: React.FormEvent | string) => {
@@ -862,9 +865,9 @@ export default function Search() {
                   to="/top100/movie"
                   className="relative group overflow-hidden rounded-[10px] aspect-[16/9] bg-[#14110d] transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgba(217,172,84,.5)]"
                 >
-                  {top100MoviesPoster && (
+                  {top100MoviesBackdrop?.posterUrl && (
                     <img
-                      src={top100MoviesPoster}
+                      src={top100MoviesBackdrop.posterUrl}
                       alt=""
                       aria-hidden="true"
                       className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-55 group-hover:scale-105 transition-all duration-700"
@@ -891,9 +894,9 @@ export default function Search() {
                   to="/top100/tv"
                   className="relative group overflow-hidden rounded-[10px] aspect-[16/9] bg-[#14110d] transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgba(217,172,84,.5)]"
                 >
-                  {top100TvPoster && (
+                  {top100TvBackdrop?.posterUrl && (
                     <img
-                      src={top100TvPoster}
+                      src={top100TvBackdrop.posterUrl}
                       alt=""
                       aria-hidden="true"
                       className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-55 group-hover:scale-105 transition-all duration-700"

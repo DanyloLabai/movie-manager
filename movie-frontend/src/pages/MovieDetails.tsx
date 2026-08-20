@@ -943,6 +943,15 @@ function ActionPanel({
             )}
           </div>
 
+          {released && !status.isWatched && (
+            <button
+              onClick={onWatched}
+              className="w-full py-3 bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] rounded-full font-bold text-[11px] uppercase tracking-wider transition active:scale-95"
+            >
+              ✓ {t("watchlist_watched")}
+            </button>
+          )}
+
           {released && status.isWatched && (
             <div className="pt-4 border-t border-[rgba(217,172,84,.16)]">
               <p className="font-mono-ui text-[10px] font-medium text-[#8f8574] mb-3 uppercase tracking-widest">

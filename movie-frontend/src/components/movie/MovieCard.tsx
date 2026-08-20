@@ -25,7 +25,7 @@ export const MovieCard = ({
   const isInPlans = addedIds.includes(movie.id);
 
   return (
-    <div className="group flex flex-col gap-2 font-ui">
+    <div className="group flex flex-col gap-2 font-ui min-w-0">
       <div className="relative w-full aspect-[2/3] rounded-[6px] overflow-hidden bg-[#0f0d0a]">
         {released ? (
           <button
