@@ -13,6 +13,7 @@ import { PushModule } from 'src/push/push.module';
 import { SearchHistoryModule } from 'src/search-history/search-history.module';
 import { AchievementsModule } from 'src/achievements/achievements.module';
 import { NotificationsModule } from 'src/notifications/notifications.module';
+import { AiUsageModule } from 'src/ai-chat/ai-usage.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { NotificationsModule } from 'src/notifications/notifications.module';
     SearchHistoryModule,
     AchievementsModule,
     NotificationsModule,
+    AiUsageModule,
   ],
   providers: [MoviesService, WatchedReminderService],
   controllers: [MoviesController],

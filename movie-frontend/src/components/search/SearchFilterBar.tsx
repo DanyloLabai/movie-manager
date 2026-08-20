@@ -5,11 +5,16 @@ import type { SmartSearchFilters } from "../../api/movies.api";
 interface SearchFilterBarProps {
   filters: SmartSearchFilters;
   onChange: (filters: SmartSearchFilters) => void;
+  onApply: () => void;
 }
 
 const RATING_TIERS = [6, 7, 8];
 
-export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
+export function SearchFilterBar({
+  filters,
+  onChange,
+  onApply,
+}: SearchFilterBarProps) {
   const { t } = useLang();
 
   const setFilter = <K extends keyof SmartSearchFilters>(
@@ -184,6 +189,14 @@ export function SearchFilterBar({ filters, onChange }: SearchFilterBarProps) {
           {t("filter_hide_watched")}
         </span>
       </label>
+
+      <button
+        type="button"
+        onClick={onApply}
+        className="ml-auto px-5 py-2 rounded-full bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] font-bold text-xs uppercase tracking-wider transition active:scale-95"
+      >
+        {t("filter_apply")}
+      </button>
     </div>
   );
 }

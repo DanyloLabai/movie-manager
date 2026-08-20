@@ -11,7 +11,9 @@ import {
   Query,
   Req,
   Logger,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
   ApiOperation,
@@ -28,6 +30,7 @@ import { SmartSearchQueryDto } from './dto/smart-search-query.dto';
 import { MovieFilterQueryDto } from './dto/movie-filter-query.dto';
 import { BecauseYouWatchedResponseDto } from './dto/because-you-watched-response.dto';
 import { VectorService } from '../vector/vector.service';
+import { AiDailyLimitGuard } from '../ai-chat/ai-daily-limit.guard';
 
 interface RequestWithUser extends Request {
   user: {
@@ -374,6 +377,8 @@ export class MoviesController {
   }
 
   @Get('recommendations')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseGuards(AiDailyLimitGuard)
   async getRecommendations(@Req() req: RequestWithUser) {
     const userId = Number(req.user.userId);
     return this.moviesService.getRecommendationsForUser(userId);

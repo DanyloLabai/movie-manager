@@ -47,6 +47,7 @@ import { ActivityService } from 'src/activity/activity.service';
 import { SearchHistoryService } from 'src/search-history/search-history.service';
 import { AchievementsService } from 'src/achievements/achievements.service';
 import { getErrorMessage } from '../common/utils/error.utils';
+import { AiUsageLogService } from 'src/ai-chat/ai-usage-log.service';
 
 @Injectable()
 export class MoviesService {
@@ -92,6 +93,7 @@ export class MoviesService {
     private readonly searchHistoryService: SearchHistoryService,
     private readonly achievementsService: AchievementsService,
     private readonly notificationsService: NotificationsService,
+    private readonly aiUsageLogService: AiUsageLogService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.tmdbToken = this.configService.get<string>('TMDB_API_TOKEN') as string;
@@ -237,7 +239,9 @@ export class MoviesService {
           this.mapMediaToDto(media, media.media_type as 'movie' | 'tv'),
         );
 
-      await this.cacheManager.set(cacheKey, results, this.TTL_24H);
+      if (results.length > 0) {
+        await this.cacheManager.set(cacheKey, results, this.TTL_24H);
+      }
       return results;
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
@@ -258,8 +262,14 @@ export class MoviesService {
         ),
       );
 
-    const literalResults = await this.searchLiteralWithFilters(dto, userId);
+    const { results: literalResults, hadTitleMatches } =
+      await this.searchLiteralWithFilters(dto, userId);
     if (literalResults.length > 0) return literalResults;
+
+    // A literal title match exists for this query but none satisfy the
+    // filters- fall back to semantic recs would just return unrelated
+    // movies that happen to fit the filters, not "бетмен"-like results.
+    if (hadTitleMatches) return [];
 
     const docs = await this.vectorService.searchSimilarMoviesFiltered(
       dto.query,
@@ -282,9 +292,21 @@ export class MoviesService {
   private async searchLiteralWithFilters(
     dto: SmartSearchQueryDto,
     userId: number,
-  ): Promise<MovieResultDto[]> {
+  ): Promise<{ results: MovieResultDto[]; hadTitleMatches: boolean }> {
     const allResults = await this.fetchTmdbMultiSearch(dto.query);
-    if (allResults.length === 0) return [];
+
+    // Basic eligibility only (media type, language, has a poster)- this is
+    // what determines whether the query is actually naming a real title, as
+    // opposed to a vibe/concept phrase that legitimately has no literal match.
+    const titleMatches = allResults.filter(
+      (item: TmdbMultiSearchResultDto) =>
+        (item.media_type === 'movie' || item.media_type === 'tv') &&
+        item.original_language !== 'ru' &&
+        !!item.poster_path,
+    );
+    if (titleMatches.length === 0) {
+      return { results: [], hadTitleMatches: false };
+    }
 
     let watchedTmdbIds: Set<number> | null = null;
     if (dto.excludeWatched) {
@@ -295,10 +317,7 @@ export class MoviesService {
       watchedTmdbIds = new Set(watched.map((w) => w.tmdbId));
     }
 
-    let candidates = allResults.filter((item: TmdbMultiSearchResultDto) => {
-      if (item.media_type !== 'movie' && item.media_type !== 'tv') return false;
-      if (item.original_language === 'ru' || !item.poster_path) return false;
-
+    let candidates = titleMatches.filter((item: TmdbMultiSearchResultDto) => {
       if (
         dto.genreId !== undefined &&
         !(item.genre_ids || []).includes(dto.genreId)
@@ -362,11 +381,14 @@ export class MoviesService {
         .map(({ item }) => item);
     }
 
-    return candidates
-      .slice(0, 20)
-      .map((media) =>
-        this.mapMediaToDto(media, media.media_type as 'movie' | 'tv'),
-      );
+    return {
+      results: candidates
+        .slice(0, 20)
+        .map((media) =>
+          this.mapMediaToDto(media, media.media_type as 'movie' | 'tv'),
+        ),
+      hadTitleMatches: true,
+    };
   }
 
   async findSimilarBySemantic(
@@ -525,32 +547,43 @@ export class MoviesService {
   }
 
   async getTrendingMovies(): Promise<MovieResultDto[]> {
-    const cacheKey = 'trending_weekly_v2';
+    const cacheKey = 'trending_weekly_v3';
     const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
     if (cached) return cached;
 
     try {
-      const { data } = await firstValueFrom(
-        this.httpService.get<TmdbMultiSearchResponseDto>(
-          `${this.baseUrl}/trending/all/week`,
-          {
-            params: { language: 'en-US' },
-            headers: { Authorization: `Bearer ${this.tmdbToken}` },
-          },
-        ),
-      );
+      // Fetched separately (rather than /trending/all/week) so TV shows
+      // aren't crowded out by movies, which otherwise dominate the combined
+      // feed and leave "Trending TV" with only a handful of entries.
+      const [movieRes, tvRes] = await Promise.all([
+        firstValueFrom(
+          this.httpService.get<TmdbMultiSearchResponseDto>(
+            `${this.baseUrl}/trending/movie/week`,
+            {
+              params: { language: 'en-US' },
+              headers: { Authorization: `Bearer ${this.tmdbToken}` },
+            },
+          ),
+        ).catch(() => null),
+        firstValueFrom(
+          this.httpService.get<TmdbMultiSearchResponseDto>(
+            `${this.baseUrl}/trending/tv/week`,
+            {
+              params: { language: 'en-US' },
+              headers: { Authorization: `Bearer ${this.tmdbToken}` },
+            },
+          ),
+        ).catch(() => null),
+      ]);
 
-      if (!data.results) return [];
-
-      const results = data.results
-        .filter(
-          (item: TmdbMultiSearchResultDto) =>
-            item.media_type === 'movie' || item.media_type === 'tv',
-        )
+      const trendingMovies = (movieRes?.data.results || [])
         .slice(0, this.TRENDING_LIMIT)
-        .map((media: TmdbMultiSearchResultDto) =>
-          this.mapMediaToDto(media, media.media_type as 'movie' | 'tv'),
-        );
+        .map((media) => this.mapMediaToDto(media, 'movie'));
+      const trendingTv = (tvRes?.data.results || [])
+        .slice(0, this.TRENDING_LIMIT)
+        .map((media) => this.mapMediaToDto(media, 'tv'));
+
+      const results = [...trendingMovies, ...trendingTv];
 
       await this.cacheManager.set(cacheKey, results, this.TTL_24H);
       return results;
@@ -562,7 +595,7 @@ export class MoviesService {
   }
 
   async getUpcomingMovies(): Promise<MovieResultDto[]> {
-    const cacheKey = 'upcoming_movies_v2';
+    const cacheKey = 'upcoming_v3';
     const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
     if (cached) return cached;
 
@@ -572,44 +605,59 @@ export class MoviesService {
       nextYear.setFullYear(nextYear.getFullYear() + 1);
       const futureDate = nextYear.toISOString().split('T')[0];
 
-      const { data } = await firstValueFrom(
-        this.httpService.get<TmdbMultiSearchResponseDto>(
-          `${this.baseUrl}/discover/movie`,
-          {
-            params: {
-              language: 'en-US',
-              page: 1,
-              sort_by: 'popularity.desc',
-              'primary_release_date.gte': today,
-              'primary_release_date.lte': futureDate,
-              with_release_type: '2|3',
+      // TV shows are discovered separately from movies (TMDB has no combined
+      // "upcoming/all" endpoint), otherwise "Coming Soon TV" has nothing to show.
+      const [movieRes, tvRes] = await Promise.all([
+        firstValueFrom(
+          this.httpService.get<TmdbMultiSearchResponseDto>(
+            `${this.baseUrl}/discover/movie`,
+            {
+              params: {
+                language: 'en-US',
+                page: 1,
+                sort_by: 'popularity.desc',
+                'primary_release_date.gte': today,
+                'primary_release_date.lte': futureDate,
+                with_release_type: '2|3',
+              },
+              headers: { Authorization: `Bearer ${this.tmdbToken}` },
             },
-            headers: { Authorization: `Bearer ${this.tmdbToken}` },
-          },
-        ),
-      );
+          ),
+        ).catch(() => null),
+        firstValueFrom(
+          this.httpService.get<TmdbMultiSearchResponseDto>(
+            `${this.baseUrl}/discover/tv`,
+            {
+              params: {
+                language: 'en-US',
+                page: 1,
+                sort_by: 'popularity.desc',
+                'first_air_date.gte': today,
+                'first_air_date.lte': futureDate,
+              },
+              headers: { Authorization: `Bearer ${this.tmdbToken}` },
+            },
+          ),
+        ).catch(() => null),
+      ]);
 
-      const results = data.results
+      const upcomingMovies = (movieRes?.data.results || [])
         .filter(
           (media: TmdbMultiSearchResultDto) =>
             media.poster_path && media.overview && media.title,
         )
         .slice(0, this.UPCOMING_LIMIT)
-        .map((media: TmdbMultiSearchResultDto) => ({
-          id: media.id,
-          title: media.title || 'Unknown',
-          originalTitle: media.original_title || media.title || 'Unknown',
-          description: media.overview,
-          releaseYear: media.release_date
-            ? media.release_date.split('-')[0]
-            : 'N/A',
-          releaseDate: media.release_date || null,
-          rating: media.vote_average || 0,
-          posterUrl: media.poster_path
-            ? `https://image.tmdb.org/t/p/w500${media.poster_path}`
-            : null,
-          mediaType: 'movie' as const,
-        }));
+        .map((media) => this.mapMediaToDto(media, 'movie'));
+
+      const upcomingTv = (tvRes?.data.results || [])
+        .filter(
+          (media: TmdbMultiSearchResultDto) =>
+            media.poster_path && media.overview && media.name,
+        )
+        .slice(0, this.UPCOMING_LIMIT)
+        .map((media) => this.mapMediaToDto(media, 'tv'));
+
+      const results = [...upcomingMovies, ...upcomingTv];
 
       await this.cacheManager.set(cacheKey, results, this.TTL_24H);
       return results;
@@ -1397,10 +1445,22 @@ export class MoviesService {
 
       const chatCompletion = await this.groq.chat.completions.create({
         messages: [{ role: 'user', content: prompt }],
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         temperature: 0.7,
         response_format: { type: 'json_object' },
       });
+
+      this.aiUsageLogService
+        .logUsage({
+          userId,
+          provider: 'groq',
+          wasFailover: false,
+          requestType: 'recommendations',
+          tokenCount: chatCompletion.usage?.total_tokens ?? null,
+        })
+        .catch((err: unknown) =>
+          this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
+        );
 
       const aiResponseText =
         chatCompletion.choices[0]?.message?.content || '{"titles":[]}';

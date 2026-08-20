@@ -206,6 +206,11 @@ export default function Search() {
 
   const [visibleCount, setVisibleCount] = useState(20);
 
+  const [liveResults, setLiveResults] = useState<MovieResult[]>([]);
+  const [isLiveSearching, setIsLiveSearching] = useState(false);
+  const [showLiveDropdown, setShowLiveDropdown] = useState(false);
+  const searchBarRef = useRef<HTMLDivElement>(null);
+
   const handleFindSimilar = (movie: MovieResult) => {
     navigate("/search", {
       state: {
@@ -243,6 +248,15 @@ export default function Search() {
   const visibleRecommendations = recommendations
     .filter((movie) => !addedIds.includes(movie.id))
     .slice(0, 20);
+
+  const trendingMovies = trending.filter((m) => m.mediaType !== "tv");
+  const trendingTv = trending.filter((m) => m.mediaType === "tv");
+  const upcomingMovies = upcoming.filter((m) => m.mediaType !== "tv");
+  const upcomingTv = upcoming.filter((m) => m.mediaType === "tv");
+  const top100MoviesPoster =
+    trendingMovies[0]?.posterUrl ?? upcomingMovies[0]?.posterUrl ?? null;
+  const top100TvPoster =
+    trendingTv[0]?.posterUrl ?? upcomingTv[0]?.posterUrl ?? null;
 
   const visibleBecauseYouWatched = becauseYouWatched
     ? becauseYouWatched.similarMovies.filter(
@@ -415,6 +429,43 @@ export default function Search() {
     fetchSearchHistory();
   }, []);
 
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2 || results.length > 0) {
+      setLiveResults([]);
+      setIsLiveSearching(false);
+      setShowLiveDropdown(false);
+      return;
+    }
+
+    setIsLiveSearching(true);
+    const timeoutId = setTimeout(() => {
+      moviesApi
+        .searchMovies({ title: query, skipHistory: true })
+        .then((response) => {
+          setLiveResults(response.slice(0, 5));
+          setShowLiveDropdown(true);
+        })
+        .catch(() => setLiveResults([]))
+        .finally(() => setIsLiveSearching(false));
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, results.length]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        searchBarRef.current &&
+        !searchBarRef.current.contains(e.target as Node)
+      ) {
+        setShowLiveDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const hasActiveFilters = Object.values(filters).some(
     (v) => v !== undefined && v !== false,
   );
@@ -427,6 +478,7 @@ export default function Search() {
     if (!query.trim()) return;
     if (queryOverride !== undefined) setSearchQuery(queryOverride);
 
+    setShowLiveDropdown(false);
     setIsSearching(true);
     try {
       setSimilarToTitle(null);
@@ -450,6 +502,8 @@ export default function Search() {
     setSimilarToTitle(null);
     setFilters({});
     setShowFilters(false);
+    setLiveResults([]);
+    setShowLiveDropdown(false);
     localStorage.removeItem(SEARCH_QUERY_CACHE_KEY);
     localStorage.removeItem(SEARCH_RESULTS_CACHE_KEY);
     localStorage.removeItem(SEARCH_TIMESTAMP_KEY);
@@ -586,7 +640,10 @@ export default function Search() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-24 sm:pb-12 sm:pt-9">
-        <div className="flex items-center gap-2 max-w-2xl mx-auto mb-4">
+        <div
+          ref={searchBarRef}
+          className="flex items-center gap-2 max-w-2xl mx-auto mb-4"
+        >
           <form
             onSubmit={handleSearch}
             className="relative flex-1 rounded-full transition-shadow"
@@ -595,9 +652,74 @@ export default function Search() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => {
+                if (searchQuery.trim().length >= 2 && results.length === 0) {
+                  setShowLiveDropdown(true);
+                }
+              }}
               placeholder={t("search_placeholder")}
               className="w-full pl-6 pr-32 py-3.5 sm:py-4 bg-white/[.03] border border-[#d9ac54]/30 rounded-full text-[#f2ead9] placeholder-[#8f8574] focus:outline-none focus:border-[#d9ac54] transition text-sm sm:text-base font-medium tracking-wide"
             />
+
+            {showLiveDropdown &&
+              searchQuery.trim().length >= 2 &&
+              results.length === 0 && (
+                <div className="absolute left-0 right-0 top-[calc(100%+8px)] bg-[#14110d] border border-[#d9ac54]/30 rounded-2xl shadow-2xl overflow-hidden z-50">
+                  {isLiveSearching && liveResults.length === 0 ? (
+                    <div className="flex items-center justify-center gap-2 px-5 py-5">
+                      {[0, 0.1, 0.2].map((delay, i) => (
+                        <div
+                          key={i}
+                          className="w-1.5 h-1.5 bg-[#d9ac54] rounded-full animate-bounce"
+                          style={{ animationDelay: `${delay}s` }}
+                        />
+                      ))}
+                    </div>
+                  ) : liveResults.length > 0 ? (
+                    <>
+                      {liveResults.map((movie) => (
+                        <Link
+                          key={`${movie.mediaType}-${movie.id}`}
+                          to={`/movie/${movie.id}?type=${movie.mediaType}`}
+                          onClick={() => setShowLiveDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[.05] transition text-left"
+                        >
+                          <div className="w-9 h-[54px] rounded-md overflow-hidden bg-white/[.05] shrink-0">
+                            {movie.posterUrl && (
+                              <img
+                                src={movie.posterUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-[#f2ead9] truncate">
+                              {movie.title}
+                            </p>
+                            <p className="text-[11px] text-[#8f8574]">
+                              {movie.releaseYear}
+                            </p>
+                          </div>
+                        </Link>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => handleSearch(searchQuery)}
+                        className="w-full text-center py-2.5 text-[11px] font-bold text-[#d9ac54] uppercase tracking-wider border-t border-[#d9ac54]/15 hover:bg-white/[.03] transition"
+                      >
+                        {t("search_find")} "{searchQuery}" →
+                      </button>
+                    </>
+                  ) : (
+                    !isLiveSearching && (
+                      <div className="px-5 py-4 text-sm text-[#8f8574] text-center">
+                        {t("search_empty")}
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
             <div className="absolute right-2 top-0 bottom-0 flex items-center gap-1">
               {searchQuery.trim() !== "" && (
                 <button
@@ -723,7 +845,11 @@ export default function Search() {
 
         {showFilters && searchQuery.trim() !== "" && (
           <div className="max-w-3xl mx-auto">
-            <SearchFilterBar filters={filters} onChange={setFilters} />
+            <SearchFilterBar
+              filters={filters}
+              onChange={setFilters}
+              onApply={() => handleSearch(searchQuery)}
+            />
           </div>
         )}
 
@@ -736,9 +862,9 @@ export default function Search() {
                   to="/top100/movie"
                   className="relative group overflow-hidden rounded-[10px] aspect-[16/9] bg-[#14110d] transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgba(217,172,84,.5)]"
                 >
-                  {trending[0]?.posterUrl && (
+                  {top100MoviesPoster && (
                     <img
-                      src={trending[0].posterUrl}
+                      src={top100MoviesPoster}
                       alt=""
                       aria-hidden="true"
                       className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-55 group-hover:scale-105 transition-all duration-700"
@@ -765,9 +891,9 @@ export default function Search() {
                   to="/top100/tv"
                   className="relative group overflow-hidden rounded-[10px] aspect-[16/9] bg-[#14110d] transition-shadow duration-300 hover:shadow-[0_0_0_1px_rgba(217,172,84,.5)]"
                 >
-                  {upcoming[0]?.posterUrl && (
+                  {top100TvPoster && (
                     <img
-                      src={upcoming[0].posterUrl}
+                      src={top100TvPoster}
                       alt=""
                       aria-hidden="true"
                       className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-55 group-hover:scale-105 transition-all duration-700"
@@ -826,10 +952,10 @@ export default function Search() {
           ) : (
             <div className="space-y-12">
               <MovieCarousel
-                title={t("search_trending")}
+                title={t("search_trending_movies")}
                 badge={t("search_hot")}
                 badgeClass="font-mono-ui text-[8.5px] font-bold tracking-[1.5px] text-[#e0554d] border border-[#e0554d]/45 rounded-full px-2 py-1"
-                movies={trending}
+                movies={trendingMovies}
                 isLoading={isLoadingHome && trending.length === 0}
                 fallback={
                   <div className="flex justify-center items-center h-40">
@@ -859,10 +985,65 @@ export default function Search() {
               />
 
               <MovieCarousel
-                title={t("search_coming_soon")}
+                title={t("search_trending_tv")}
+                badge={t("search_hot")}
+                badgeClass="font-mono-ui text-[8.5px] font-bold tracking-[1.5px] text-[#e0554d] border border-[#e0554d]/45 rounded-full px-2 py-1"
+                movies={trendingTv}
+                isLoading={isLoadingHome && trending.length === 0}
+                fallback={
+                  <div className="flex justify-center items-center h-40">
+                    <div className="flex gap-2">
+                      {[0, 0.1, 0.2].map((delay, i) => (
+                        <div
+                          key={i}
+                          className="w-2.5 h-2.5 bg-[#d9ac54] rounded-full animate-bounce"
+                          style={{ animationDelay: `${delay}s` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                }
+                emptyElement={
+                  <p className="text-[#f2ead9]/50 text-center text-sm">
+                    {t("search_failed_trends")}
+                  </p>
+                }
+                favoriteIds={favoriteIds}
+                addedIds={addedIds}
+                watchedIds={watchedIds}
+                onToggleFavorite={handleToggleFavorite}
+                onAdd={handleAdd}
+                onRemove={handleRemove}
+                onFindSimilar={handleFindSimilar}
+              />
+
+              <MovieCarousel
+                title={t("search_coming_soon_movies")}
                 badge={t("search_new")}
                 badgeClass="font-mono-ui text-[8.5px] font-bold tracking-[1.5px] text-[#d9ac54] border border-[#d9ac54]/45 rounded-full px-2 py-1"
-                movies={upcoming.slice(0, 10)}
+                movies={upcomingMovies.slice(0, 10)}
+                isLoading={isLoadingHome && upcoming.length === 0}
+                fallback={
+                  <div className="flex justify-center items-center h-24">
+                    <p className="text-[#f2ead9]/50 animate-pulse text-xs sm:text-sm font-semibold uppercase tracking-widest">
+                      {t("search_failed_trends")}
+                    </p>
+                  </div>
+                }
+                favoriteIds={favoriteIds}
+                addedIds={addedIds}
+                watchedIds={watchedIds}
+                onToggleFavorite={handleToggleFavorite}
+                onAdd={handleAdd}
+                onRemove={handleRemove}
+                onFindSimilar={handleFindSimilar}
+              />
+
+              <MovieCarousel
+                title={t("search_coming_soon_tv")}
+                badge={t("search_new")}
+                badgeClass="font-mono-ui text-[8.5px] font-bold tracking-[1.5px] text-[#d9ac54] border border-[#d9ac54]/45 rounded-full px-2 py-1"
+                movies={upcomingTv.slice(0, 10)}
                 isLoading={isLoadingHome && upcoming.length === 0}
                 fallback={
                   <div className="flex justify-center items-center h-24">

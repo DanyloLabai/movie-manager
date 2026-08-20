@@ -6,7 +6,7 @@ import {
 } from 'typeorm';
 
 export type AiProvider = 'groq' | 'gemini';
-export type AiRequestType = 'chat' | 'embedding';
+export type AiRequestType = 'chat' | 'embedding' | 'recommendations';
 
 @Entity('ai_usage_log')
 export class AiUsageLog {

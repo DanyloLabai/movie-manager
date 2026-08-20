@@ -723,7 +723,7 @@ Respond in Ukrainian. Keep "message" to 1-2 friendly sentences.`;
 
     try {
       const result = await generateText({
-        model: this.groqClient('llama-3.3-70b-versatile'),
+        model: this.groqClient('openai/gpt-oss-120b'),
         prompt: prompt,
         temperature: 0.1,
       });
