@@ -1,0 +1,31 @@
+{
+  "errors": {
+    "loadTitle": "Could not load this title.",
+    "updateWatchlist": "Could not update your watchlist.",
+    "markWatched": "Could not mark as watched.",
+    "updateFavorite": "Could not update favorite.",
+    "updateRating": "Could not update rating.",
+    "loadActor": "Could not load this actor.",
+    "actorNotFound": "Not found."
+  },
+  "mediaType": {
+    "movie": "Movie",
+    "tv": "TV"
+  },
+  "productionCountriesLabel": "Production Countries: ",
+  "addToWatchlist": "+ Add",
+  "watched": "✓ Watched",
+  "markWatched": "✓ Mark Watched",
+  "trailer": "Trailer",
+  "removeFromWatchlist": "Remove From Watchlist",
+  "yourRating": "Your Rating",
+  "topCast": "Top Cast",
+  "whereToWatch": "Where To Watch",
+  "friendsWatchedThis": "Friends Watched This",
+  "moreLikeThis": "More Like This",
+  "knownFor": "Known for",
+  "ratingModal": {
+    "title": "How was it?",
+    "subtitle": "Rate \"{{title}}\""
+  }
+}

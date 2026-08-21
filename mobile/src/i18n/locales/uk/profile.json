@@ -1,0 +1,108 @@
+{
+  "tabs": {
+    "profile": "Профіль",
+    "watchlist": "Список перегляду",
+    "watched": "Переглянуто",
+    "favorites": "Улюблене"
+  },
+  "filters": {
+    "all": "Усі",
+    "movies": "Фільми",
+    "tv": "ТБ"
+  },
+  "stats": {
+    "watched": "Переглянуто",
+    "avg": "Серед.",
+    "streak": "Серія",
+    "favorites": "Улюблене",
+    "completion": "Виконано"
+  },
+  "empty": "Тут поки нічого немає.",
+  "upcoming": "Скоро",
+  "markWatched": "Переглянуто",
+  "remove": "Видалити",
+  "notAvailable": "Н/Д",
+  "errors": {
+    "loadProfile": "Не вдалося завантажити ваш профіль.",
+    "loadList": "Не вдалося завантажити ваш список.",
+    "updateFavorite": "Не вдалося оновити улюблене.",
+    "removeFailed": "Не вдалося видалити.",
+    "updateFailed": "Не вдалося оновити.",
+    "updateRating": "Не вдалося оновити оцінку.",
+    "loadPublicProfile": "Не вдалося завантажити цей профіль.",
+    "sendFriendRequest": "Не вдалося надіслати запит у друзі."
+  },
+  "toasts": {
+    "removed": "Видалено.",
+    "movedToWatched": "Переміщено до переглянутих."
+  },
+  "ratingPrompt": {
+    "title": "Як вам фільм?",
+    "subtitle": "Оцініть «{{title}}»"
+  },
+  "hero": {
+    "sinceYear": "З {{year}} року",
+    "friendsCount_one": "{{count}} друг",
+    "friendsCount_few": "{{count}} друга",
+    "friendsCount_many": "{{count}} друзів",
+    "friendsCount_other": "{{count}} друга",
+    "share": "Поділитися"
+  },
+  "favorites": {
+    "topFavorites": "Топ улюблених",
+    "noFavorites": "Ще немає улюблених.",
+    "achievements": "Досягнення",
+    "friendsLabel": "Друзі",
+    "viewAll": "Переглянути всіх"
+  },
+  "charts": {
+    "genres": "Жанри",
+    "rating": "Оцінка",
+    "avg": "Серед."
+  },
+  "wrapped": {
+    "title": "Підсумки {{username}}",
+    "timeSpent": "Витрачений час",
+    "topGenre": "Улюблений жанр",
+    "favDecade": "Улюблене десятиліття",
+    "moviesTv": "Фільми / Серіали",
+    "longestMarathon": "Найдовший марафон",
+    "runtimeMinutes": "{{count}} хв",
+    "mostWatchedActor": "Найчастіший актор",
+    "inMoviesCount_one": "У {{count}} фільмі",
+    "inMoviesCount_few": "У {{count}} фільмах",
+    "inMoviesCount_many": "У {{count}} фільмах",
+    "inMoviesCount_other": "У {{count}} фільму"
+  },
+  "masterpieces": {
+    "title": "Топ-3 шедеври"
+  },
+  "ratingModal": {
+    "moviesCount_one": "{{count}} фільм",
+    "moviesCount_few": "{{count}} фільми",
+    "moviesCount_many": "{{count}} фільмів",
+    "moviesCount_other": "{{count}} фільму",
+    "loadMore": "Завантажити ще"
+  },
+  "heatmap": {
+    "title": "Активність"
+  },
+  "activityDayModal": {
+    "moviesCount_one": "{{count}} фільм",
+    "moviesCount_few": "{{count}} фільми",
+    "moviesCount_many": "{{count}} фільмів",
+    "moviesCount_other": "{{count}} фільму",
+    "actions": {
+      "watched": "Переглянуто",
+      "addedWatchlist": "Додано до списку перегляду",
+      "rated": "Оцінено",
+      "favorited": "Додано в улюблене"
+    }
+  },
+  "publicProfile": {
+    "notFound": "Не знайдено.",
+    "friends": "Друзі",
+    "requestSent": "Запит надіслано",
+    "addFriend": "Додати в друзі"
+  }
+}

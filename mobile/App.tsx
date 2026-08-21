@@ -2,6 +2,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/context/AuthContext';
+import { LanguageProvider } from './src/context/LanguageContext';
 import RootNavigator from './src/navigation/RootNavigator';
 import { useAppFonts } from './src/hooks/useAppFonts';
 import { colors } from './src/theme';
@@ -19,10 +20,12 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <RootNavigator />
-        <StatusBar style="light" />
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <RootNavigator />
+          <StatusBar style="light" />
+        </AuthProvider>
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }

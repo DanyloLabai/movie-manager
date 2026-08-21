@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { getActor, type ActorDetails } from '../../api/movies.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
@@ -10,6 +11,7 @@ import type { MainStackParamList } from '../../navigation/MainStack';
 type Props = NativeStackScreenProps<MainStackParamList, 'ActorDetail'>;
 
 export default function ActorDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation('movie');
   const { actorId } = route.params;
   const [actor, setActor] = useState<ActorDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +27,7 @@ export default function ActorDetailScreen({ route, navigation }: Props) {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(getErrorMessage(err, 'Could not load this actor.'));
+        if (!cancelled) setError(getErrorMessage(err, t('errors.loadActor')));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -47,7 +49,7 @@ export default function ActorDetailScreen({ route, navigation }: Props) {
   if (error || !actor) {
     return (
       <View style={styles.center}>
-        <Text style={styles.error}>{error ?? 'Not found.'}</Text>
+        <Text style={styles.error}>{error ?? t('errors.actorNotFound')}</Text>
       </View>
     );
   }
@@ -57,7 +59,7 @@ export default function ActorDetailScreen({ route, navigation }: Props) {
       data={actor.knownFor}
       key="actor-known-for"
       numColumns={3}
-      keyExtractor={(item) => String(item.id)}
+      keyExtractor={(item, index) => `${item.id}-${index}`}
       style={styles.container}
       contentContainerStyle={styles.listContent}
       columnWrapperStyle={styles.column}
@@ -79,7 +81,7 @@ export default function ActorDetailScreen({ route, navigation }: Props) {
               </Text>
             ) : null}
             {actor.knownFor.length > 0 ? (
-              <Text style={styles.sectionTitle}>Known for</Text>
+              <Text style={styles.sectionTitle}>{t('knownFor')}</Text>
             ) : null}
           </View>
         </>

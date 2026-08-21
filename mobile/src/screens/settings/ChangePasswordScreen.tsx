@@ -9,11 +9,13 @@ import {
   Text,
   TextInput,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { changePassword } from '../../api/auth.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
 import { colors, spacing, radius } from '../../theme';
 
 export default function ChangePasswordScreen() {
+  const { t } = useTranslation('settings');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -25,22 +27,22 @@ export default function ChangePasswordScreen() {
     setError(null);
     setSuccessMessage(null);
     if (!oldPassword || !newPassword) {
-      setError('Fill in both fields.');
+      setError(t('changePasswordScreen.fillBothFields'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match.');
+      setError(t('changePasswordScreen.passwordsDoNotMatch'));
       return;
     }
     setIsSubmitting(true);
     try {
       const result = await changePassword({ oldPassword, newPassword });
-      setSuccessMessage(result.message ?? 'Password changed.');
+      setSuccessMessage(result.message ?? t('changePasswordScreen.passwordChanged'));
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not change password.'));
+      setError(getErrorMessage(err, t('changePasswordScreen.changeError')));
     } finally {
       setIsSubmitting(false);
     }
@@ -52,7 +54,7 @@ export default function ChangePasswordScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.label}>CURRENT PASSWORD</Text>
+        <Text style={styles.label}>{t('changePasswordScreen.currentPassword').toUpperCase()}</Text>
         <TextInput
           style={styles.input}
           placeholderTextColor={colors.textFaint}
@@ -61,7 +63,7 @@ export default function ChangePasswordScreen() {
           onChangeText={setOldPassword}
         />
 
-        <Text style={styles.label}>NEW PASSWORD</Text>
+        <Text style={styles.label}>{t('changePasswordScreen.newPassword').toUpperCase()}</Text>
         <TextInput
           style={styles.input}
           placeholderTextColor={colors.textFaint}
@@ -70,7 +72,7 @@ export default function ChangePasswordScreen() {
           onChangeText={setNewPassword}
         />
 
-        <Text style={styles.label}>CONFIRM NEW PASSWORD</Text>
+        <Text style={styles.label}>{t('changePasswordScreen.confirmNewPassword').toUpperCase()}</Text>
         <TextInput
           style={styles.input}
           placeholderTextColor={colors.textFaint}
@@ -90,7 +92,7 @@ export default function ChangePasswordScreen() {
           {isSubmitting ? (
             <ActivityIndicator color={colors.textOnAccent} />
           ) : (
-            <Text style={styles.buttonText}>SAVE</Text>
+            <Text style={styles.buttonText}>{t('changePasswordScreen.save').toUpperCase()}</Text>
           )}
         </Pressable>
       </ScrollView>

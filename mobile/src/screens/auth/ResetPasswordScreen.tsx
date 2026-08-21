@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { fontWeight } from '@movie-manager/shared';
 import { resetPassword } from '../../api/auth.api';
@@ -28,6 +29,7 @@ type Props = NativeStackScreenProps<AuthStackParamList, 'ResetPassword'>;
 // yet — this screen instead lets the user paste that token in by hand, so
 // the mobile app can complete the same reset-password endpoint.
 export default function ResetPasswordScreen({ navigation }: Props) {
+  const { t } = useTranslation('auth');
   const backdropUri = useAuthBackdrop();
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -40,19 +42,19 @@ export default function ResetPasswordScreen({ navigation }: Props) {
     setError(null);
     setSuccessMessage(null);
     if (!token || !newPassword) {
-      setError('Fill in all fields.');
+      setError(t('shared.fillAllFields'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError(t('resetPassword.passwordsMismatch'));
       return;
     }
     setIsSubmitting(true);
     try {
       const result = await resetPassword({ token, newPassword });
-      setSuccessMessage(result.message || 'Password reset — log in with your new password.');
+      setSuccessMessage(result.message || t('resetPassword.defaultSuccess'));
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not reset password. The link may have expired.'));
+      setError(getErrorMessage(err, t('resetPassword.error')));
     } finally {
       setIsSubmitting(false);
     }
@@ -82,29 +84,29 @@ export default function ResetPasswordScreen({ navigation }: Props) {
             <View style={styles.iconBadge}>
               <Ionicons name="key-outline" size={26} color={colors.accent} />
             </View>
-            <Text style={styles.title}>NEW PASSWORD</Text>
-            <Text style={styles.subtitle}>PASTE THE CODE FROM YOUR EMAIL</Text>
+            <Text style={styles.title}>{t('resetPassword.title').toUpperCase()}</Text>
+            <Text style={styles.subtitle}>{t('resetPassword.subtitle').toUpperCase()}</Text>
 
             {successMessage ? (
               <>
                 <Text style={styles.success}>{successMessage}</Text>
                 <Pressable style={styles.button} onPress={() => navigation.navigate('Login')}>
-                  <Text style={styles.buttonText}>GO TO LOG IN</Text>
+                  <Text style={styles.buttonText}>{t('resetPassword.goToLogin').toUpperCase()}</Text>
                 </Pressable>
               </>
             ) : (
               <>
-                <Text style={styles.label}>RESET CODE</Text>
+                <Text style={styles.label}>{t('resetPassword.resetCodeLabel').toUpperCase()}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Paste the code from your email"
+                  placeholder={t('resetPassword.resetCodePlaceholder')}
                   placeholderTextColor={colors.textFaint}
                   autoCapitalize="none"
                   value={token}
                   onChangeText={setToken}
                 />
 
-                <Text style={styles.label}>NEW PASSWORD</Text>
+                <Text style={styles.label}>{t('resetPassword.newPasswordLabel').toUpperCase()}</Text>
                 <TextInput
                   style={styles.input}
                   placeholderTextColor={colors.textFaint}
@@ -113,7 +115,7 @@ export default function ResetPasswordScreen({ navigation }: Props) {
                   onChangeText={setNewPassword}
                 />
 
-                <Text style={styles.label}>CONFIRM NEW PASSWORD</Text>
+                <Text style={styles.label}>{t('resetPassword.confirmPasswordLabel').toUpperCase()}</Text>
                 <TextInput
                   style={styles.input}
                   placeholderTextColor={colors.textFaint}
@@ -132,7 +134,7 @@ export default function ResetPasswordScreen({ navigation }: Props) {
                   {isSubmitting ? (
                     <ActivityIndicator color={colors.textOnAccent} />
                   ) : (
-                    <Text style={styles.buttonText}>RESET PASSWORD</Text>
+                    <Text style={styles.buttonText}>{t('resetPassword.resetPasswordButton').toUpperCase()}</Text>
                   )}
                 </Pressable>
               </>
@@ -141,7 +143,7 @@ export default function ResetPasswordScreen({ navigation }: Props) {
             <View style={styles.divider} />
 
             <Pressable onPress={() => navigation.navigate('Login')} hitSlop={8}>
-              <Text style={styles.backLink}>← Back to log in</Text>
+              <Text style={styles.backLink}>{t('shared.backToLogin')}</Text>
             </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>

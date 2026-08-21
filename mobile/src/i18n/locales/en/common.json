@@ -1,0 +1,18 @@
+{
+  "save": "Save",
+  "saving": "Saving…",
+  "cancel": "Cancel",
+  "delete": "Delete",
+  "deleting": "Deleting…",
+  "ok": "OK",
+  "close": "Close",
+  "loading": "Loading…",
+  "retry": "Retry",
+  "back": "Back",
+  "confirm": "Confirm",
+  "yes": "Yes",
+  "no": "No",
+  "error": {
+    "generic": "Something went wrong. Please try again."
+  }
+}

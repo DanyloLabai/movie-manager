@@ -4,10 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { getProfile } from '../../api/movies.api';
 import { deleteAccount, updateProfile } from '../../api/users.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
@@ -16,6 +18,8 @@ import { useToast } from '../../hooks/useToast';
 import ScreenHeader from '../../components/ScreenHeader';
 import Toast from '../../components/Toast';
 import { colors, spacing, radius, fontWeight } from '../../theme';
+import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS } from '../../i18n';
+import type { SupportedLanguage } from '../../i18n';
 import type { AppTabsParamList } from '../../navigation/AppTabs';
 import type { MainStackParamList } from '../../navigation/MainStack';
 
@@ -25,7 +29,9 @@ type Props = CompositeScreenProps<
 >;
 
 export default function SettingsScreen({ navigation }: Props) {
+  const { t } = useTranslation('settings');
   const { logout } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const { toastMessage, showToast } = useToast();
 
   const [username, setUsername] = useState('');
@@ -42,6 +48,8 @@ export default function SettingsScreen({ navigation }: Props) {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+
+  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
 
   useEffect(() => {
     getProfile()
@@ -64,7 +72,7 @@ export default function SettingsScreen({ navigation }: Props) {
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      showToast('Photo library permission is required.');
+      showToast(t('photoPermissionRequired'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -82,7 +90,7 @@ export default function SettingsScreen({ navigation }: Props) {
     setProfileError('');
     const trimmed = username.trim();
     if (!/^[a-zA-Z0-9_]+$/.test(trimmed)) {
-      setProfileError('Username can only contain letters, numbers, and underscores.');
+      setProfileError(t('usernameInvalid'));
       return;
     }
     if (!hasChanges) return;
@@ -103,13 +111,13 @@ export default function SettingsScreen({ navigation }: Props) {
       setUsername(response.username ?? trimmed);
       if (response.avatarUrl) setAvatarUrl(response.avatarUrl);
       setPickedImageUri(null);
-      showToast('Profile updated.');
+      showToast(t('profileUpdated'));
     } catch (err) {
       const apiError = err as { response?: { status?: number } };
       setProfileError(
         apiError.response?.status === 409
-          ? 'That username is already taken.'
-          : getErrorMessage(err, 'Could not update profile.'),
+          ? t('usernameTaken')
+          : getErrorMessage(err, t('profileUpdateError')),
       );
     } finally {
       setIsSaving(false);
@@ -125,10 +133,10 @@ export default function SettingsScreen({ navigation }: Props) {
       } else {
         const success = await enablePushNotifications();
         setPushEnabled(success);
-        if (!success) showToast('Push notifications were not enabled.');
+        if (!success) showToast(t('pushNotificationsNotEnabled'));
       }
     } catch (err) {
-      showToast(getErrorMessage(err, 'Could not update push notifications.'));
+      showToast(getErrorMessage(err, t('pushNotificationsError')));
     } finally {
       setPushBusy(false);
     }
@@ -141,18 +149,23 @@ export default function SettingsScreen({ navigation }: Props) {
       await deleteAccount();
       await logout();
     } catch (err) {
-      setDeleteError(getErrorMessage(err, 'Could not delete account.'));
+      setDeleteError(getErrorMessage(err, t('deleteAccountError')));
       setIsDeleting(false);
     }
+  };
+
+  const handleSelectLanguage = async (next: SupportedLanguage) => {
+    setIsLanguageModalOpen(false);
+    if (next !== language) await setLanguage(next);
   };
 
   const previewUri = pickedImageUri ?? avatarUrl;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <ScreenHeader title="SETTINGS" />
+      <ScreenHeader title={t('title').toUpperCase()} />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.sectionTitle}>EDIT PROFILE</Text>
+        <Text style={styles.sectionTitle}>{t('editProfile').toUpperCase()}</Text>
 
         {profileError ? (
           <View style={styles.errorBox}>
@@ -178,10 +191,10 @@ export default function SettingsScreen({ navigation }: Props) {
               <Ionicons name="camera-outline" size={14} color={colors.accentBright} />
             </View>
           </Pressable>
-          <Text style={styles.avatarHint}>TAP IMAGE TO CHANGE (MAX 5MB)</Text>
+          <Text style={styles.avatarHint}>{t('avatarHint').toUpperCase()}</Text>
         </View>
 
-        <Text style={styles.inputLabel}>USERNAME</Text>
+        <Text style={styles.inputLabel}>{t('usernameLabel').toUpperCase()}</Text>
         <TextInput
           style={styles.input}
           value={username}
@@ -195,23 +208,23 @@ export default function SettingsScreen({ navigation }: Props) {
           onPress={() => void handleSaveProfile()}
           disabled={!hasChanges || isSaving}
         >
-          <Text style={styles.saveButtonText}>{isSaving ? 'SAVING…' : 'SAVE CHANGES'}</Text>
+          <Text style={styles.saveButtonText}>{isSaving ? t('saving').toUpperCase() : t('saveChanges').toUpperCase()}</Text>
         </Pressable>
 
-        <Text style={[styles.sectionTitle, styles.sectionSpacing]}>PREFERENCES</Text>
-        <View style={styles.row}>
-          <Text style={styles.rowLabel}>Language</Text>
+        <Text style={[styles.sectionTitle, styles.sectionSpacing]}>{t('preferences').toUpperCase()}</Text>
+        <Pressable style={styles.row} onPress={() => setIsLanguageModalOpen(true)}>
+          <Text style={styles.rowLabel}>{t('language')}</Text>
           <View style={styles.langBadge}>
             <Ionicons name="globe-outline" size={12} color={colors.accentBright} />
-            <Text style={styles.langBadgeText}>EN</Text>
+            <Text style={styles.langBadgeText}>{language.toUpperCase()}</Text>
           </View>
-        </View>
+        </Pressable>
 
         {pushSupported ? (
           <View style={styles.row}>
             <View style={styles.rowTextGroup}>
-              <Text style={styles.rowLabel}>Push Notifications</Text>
-              <Text style={styles.rowHint}>Get notified about releases and friend requests</Text>
+              <Text style={styles.rowLabel}>{t('pushNotifications')}</Text>
+              <Text style={styles.rowHint}>{t('pushNotificationsHint')}</Text>
             </View>
             <Switch
               value={pushEnabled}
@@ -223,31 +236,21 @@ export default function SettingsScreen({ navigation }: Props) {
           </View>
         ) : null}
 
-        <Text style={[styles.sectionTitle, styles.sectionSpacing]}>ACCOUNT</Text>
+        <Text style={[styles.sectionTitle, styles.sectionSpacing]}>{t('account').toUpperCase()}</Text>
         <Pressable style={styles.row} onPress={() => navigation.navigate('ChangePassword')}>
-          <Text style={styles.rowLabel}>Change password</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
-        </Pressable>
-        <Pressable style={styles.row} onPress={() => navigation.navigate('Top100', { type: 'movie' })}>
-          <Text style={styles.rowLabel}>Top 100 movies</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
-        </Pressable>
-        <Pressable style={styles.row} onPress={() => navigation.navigate('Top100', { type: 'tv' })}>
-          <Text style={styles.rowLabel}>Top 100 TV shows</Text>
+          <Text style={styles.rowLabel}>{t('changePassword')}</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
         </Pressable>
         <Pressable style={styles.row} onPress={() => void logout()}>
-          <Text style={[styles.rowLabel, styles.rowLabelDanger]}>Log out</Text>
+          <Text style={[styles.rowLabel, styles.rowLabelDanger]}>{t('logOut')}</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.danger} />
         </Pressable>
 
         <View style={styles.dangerZone}>
-          <Text style={styles.dangerTitle}>DANGER ZONE</Text>
-          <Text style={styles.dangerHint}>
-            Permanently delete your account and all your data. This cannot be undone.
-          </Text>
+          <Text style={styles.dangerTitle}>{t('dangerZone').toUpperCase()}</Text>
+          <Text style={styles.dangerHint}>{t('dangerZoneHint')}</Text>
           <Pressable style={styles.deleteButton} onPress={() => setIsDeleteModalOpen(true)}>
-            <Text style={styles.deleteButtonText}>DELETE ACCOUNT</Text>
+            <Text style={styles.deleteButtonText}>{t('deleteAccount').toUpperCase()}</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -260,10 +263,8 @@ export default function SettingsScreen({ navigation }: Props) {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>DELETE ACCOUNT?</Text>
-            <Text style={styles.modalText}>
-              This permanently deletes your account and all your data. This cannot be undone.
-            </Text>
+            <Text style={styles.modalTitle}>{t('deleteAccountConfirmTitle').toUpperCase()}</Text>
+            <Text style={styles.modalText}>{t('deleteAccountConfirmText')}</Text>
             {deleteError ? (
               <View style={styles.errorBox}>
                 <Text style={styles.errorText}>{deleteError}</Text>
@@ -275,18 +276,47 @@ export default function SettingsScreen({ navigation }: Props) {
                 onPress={() => setIsDeleteModalOpen(false)}
                 disabled={isDeleting}
               >
-                <Text style={styles.modalCancelText}>CANCEL</Text>
+                <Text style={styles.modalCancelText}>{t('common:cancel').toUpperCase()}</Text>
               </Pressable>
               <Pressable
                 style={styles.modalConfirm}
                 onPress={() => void handleDeleteAccount()}
                 disabled={isDeleting}
               >
-                <Text style={styles.modalConfirmText}>{isDeleting ? 'DELETING…' : 'DELETE'}</Text>
+                <Text style={styles.modalConfirmText}>
+                  {isDeleting ? t('common:deleting').toUpperCase() : t('common:delete').toUpperCase()}
+                </Text>
               </Pressable>
             </View>
           </View>
         </View>
+      </Modal>
+
+      <Modal
+        visible={isLanguageModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsLanguageModalOpen(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setIsLanguageModalOpen(false)}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('chooseLanguage').toUpperCase()}</Text>
+            {SUPPORTED_LANGUAGES.map((code) => (
+              <Pressable
+                key={code}
+                style={styles.langOption}
+                onPress={() => void handleSelectLanguage(code)}
+              >
+                <Text style={[styles.langOptionText, code === language && styles.langOptionTextActive]}>
+                  {LANGUAGE_LABELS[code]}
+                </Text>
+                {code === language ? (
+                  <Ionicons name="checkmark" size={18} color={colors.accentBright} />
+                ) : null}
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
       </Modal>
 
       <Toast message={toastMessage} />
@@ -376,6 +406,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   langBadgeText: { color: colors.accentBright, fontSize: 11, fontWeight: fontWeight.bold },
+  langOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderSubtle,
+  },
+  langOptionText: { color: colors.textPrimary, fontSize: 14, fontWeight: fontWeight.semibold },
+  langOptionTextActive: { color: colors.accentBright },
   dangerZone: {
     marginTop: spacing.xl,
     padding: spacing.md,

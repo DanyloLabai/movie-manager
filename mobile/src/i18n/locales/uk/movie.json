@@ -1,0 +1,31 @@
+{
+  "errors": {
+    "loadTitle": "Не вдалося завантажити інформацію про фільм.",
+    "updateWatchlist": "Не вдалося оновити список перегляду.",
+    "markWatched": "Не вдалося позначити переглянутим.",
+    "updateFavorite": "Не вдалося оновити обране.",
+    "updateRating": "Не вдалося оновити оцінку.",
+    "loadActor": "Не вдалося завантажити дані про актора.",
+    "actorNotFound": "Не знайдено."
+  },
+  "mediaType": {
+    "movie": "Фільм",
+    "tv": "Серіал"
+  },
+  "productionCountriesLabel": "Країни виробництва: ",
+  "addToWatchlist": "+ Додати",
+  "watched": "✓ Переглянуто",
+  "markWatched": "✓ Позначити переглянутим",
+  "trailer": "Трейлер",
+  "removeFromWatchlist": "Видалити зі списку перегляду",
+  "yourRating": "Ваша оцінка",
+  "topCast": "У головних ролях",
+  "whereToWatch": "Де подивитися",
+  "friendsWatchedThis": "Друзі це дивились",
+  "moreLikeThis": "Схожі фільми",
+  "knownFor": "Відомі роботи",
+  "ratingModal": {
+    "title": "Як вам?",
+    "subtitle": "Оцініть «{{title}}»"
+  }
+}

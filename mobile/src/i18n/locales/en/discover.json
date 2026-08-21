@@ -1,0 +1,86 @@
+{
+  "discoverScreen": {
+    "title": "Discover",
+    "subtitle": "Matched to your taste",
+    "todayCount": "{{completed}} / {{limit}} today",
+    "loadError": "Could not load Discover.",
+    "saveError": "Could not save that.",
+    "emptyState": "That's everything for today.",
+    "matchBadge": {
+      "forYou": "For You",
+      "differentPick": "Different Pick"
+    },
+    "details": "Details",
+    "actions": {
+      "skip": "Skip",
+      "watched": "Watched",
+      "watchlist": "Watchlist"
+    },
+    "rateModal": {
+      "title": "Rate it"
+    }
+  },
+  "search": {
+    "placeholder": "Enter movie title…",
+    "find": "Find",
+    "goBack": "Go back",
+    "resultsTitle": "Search results",
+    "noResults": "No results.",
+    "recent": "Recent",
+    "clear": "Clear",
+    "searchFailed": "Search failed.",
+    "addedToWatchlist": "Added to watchlist.",
+    "addToWatchlistError": "Could not add to watchlist.",
+    "removedFromWatchlist": "Removed from watchlist.",
+    "removeFromWatchlistError": "Could not remove from watchlist.",
+    "notReleasedYet": "This title has not been released yet.",
+    "favoriteUpdateError": "Could not update favorite.",
+    "footer": {
+      "added": "Added",
+      "add": "Add"
+    },
+    "promo": {
+      "title": "Not sure what to watch?",
+      "subtitle": "Swipe today's picks — {{remaining}} of {{dailyLimit}} left",
+      "link": "Discover"
+    },
+    "top100": {
+      "collection": "Collection",
+      "curated": "Curated",
+      "moviesTitle": "Top 100 Movies",
+      "moviesSubtitle": "All-Time Classics",
+      "tvTitle": "Top 100 TV Shows",
+      "tvSubtitle": "Highest Rated"
+    },
+    "carousels": {
+      "trendingMovies": "Trending Movies",
+      "trendingTv": "Trending TV Series",
+      "comingSoonMovies": "Coming Soon Movies",
+      "comingSoonTv": "Coming Soon TV Series",
+      "recommendedForYou": "Recommended For You",
+      "becauseYouWatched": "Because You Watched \"{{title}}\"",
+      "hot": "Hot",
+      "new": "New",
+      "ai": "AI",
+      "recommendationsEmptyHint": "Add movies to your Watchlist so AI can recommend similar titles!"
+    },
+    "friends": {
+      "sectionTitle": "Friends' Latest Watches",
+      "userWatched": "{{username}} watched",
+      "movie": "Movie",
+      "tvShow": "TV Show"
+    }
+  },
+  "filterBar": {
+    "genre": "Genre",
+    "anyGenre": "Any genre",
+    "year": "Year",
+    "runtimeMin": "Runtime (min)",
+    "from": "From",
+    "to": "To",
+    "minRating": "Min rating",
+    "any": "Any",
+    "hideWatched": "Hide already watched",
+    "applyFilters": "Apply filters"
+  }
+}

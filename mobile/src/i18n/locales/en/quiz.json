@@ -1,0 +1,127 @@
+{
+  "quizScreen": {
+    "headerTitle": "Quiz",
+    "headerSubtitle": "Guess today's movie from the hints",
+    "loadError": "Could not load today's quiz.",
+    "correctToast": "Correct!",
+    "incorrectToast": "Not quite — try again.",
+    "submitGuessError": "Could not submit guess.",
+    "buyHintError": "Could not buy a hint.",
+    "addWatchlistError": "Could not add to watchlist.",
+    "noQuizAvailable": "No quiz available right now.",
+    "points": "Points",
+    "dayStreak": "Day streak",
+    "best": "Best",
+    "hintUnlockCost": "{{cost}} pts to unlock next hint",
+    "correct": "Correct",
+    "failed": "Failed",
+    "triesUsed": "{{used}}/{{total}} tries",
+    "guessesLeft": "{{count}} guesses left",
+    "guessInputPlaceholder": "Type a movie title…",
+    "guessButton": "Guess",
+    "guessedHeadline": "Guessed!",
+    "notGuessedHeadline": "Didn't guess it",
+    "finalScore": "Final score",
+    "attemptsUsed": "Attempts used",
+    "hintsUsed": "Hints used",
+    "viewMovie": "View movie",
+    "added": "Added",
+    "watchlist": "Watchlist",
+    "newMovieIn": "New movie in",
+    "shareResult": "Share result →",
+    "hintsSectionTitle": "Hints",
+    "hintsAllOpened": "all opened after finishing",
+    "hintsOpenedCount": "{{revealed}} of {{total}} opened",
+    "lockedHint": "Locked hint",
+    "hintBuyCost": "−{{cost}} pts",
+    "friendsLeaderboard": "Friends leaderboard",
+    "you": "You",
+    "statusSolved": "Solved for {{score}}",
+    "statusFailed": "Failed today",
+    "statusInProgress": "In progress",
+    "statusNotPlayed": "Hasn't played yet",
+    "shareSolved": "LUMEN Daily Quiz — guessed \"{{title}}\" in {{used}}/{{total}} · {{score}} pts",
+    "shareFailedWithTitle": "LUMEN Daily Quiz — didn't guess \"{{title}}\" today",
+    "shareFailedNoTitle": "LUMEN Daily Quiz — didn't guess it today"
+  },
+  "aiChatScreen": {
+    "headerTitle": "Lumen AI",
+    "emptyTitle": "Lumen AI",
+    "emptyMessage": "Ask me for a movie recommendation.",
+    "suggestion1": "Suggest a mind-bending sci-fi movie",
+    "suggestion2": "What should I watch tonight?",
+    "suggestion3": "Movies similar to Inception",
+    "suggestion4": "What should I watch from my watchlist?",
+    "whyThis": "Why this",
+    "loadHistoryError": "Could not load chat history.",
+    "sendError": "Could not get a response.",
+    "chatCleared": "Chat history cleared.",
+    "addedToWatchlist": "Added to watchlist.",
+    "addWatchlistError": "Could not add to watchlist.",
+    "inputPlaceholder": "Ask about a movie…",
+    "disclaimer": "Lumen AI can make mistakes. Verify important info.",
+    "usageTitle": "Usage today",
+    "requests": "Requests",
+    "tokens": "Tokens",
+    "added": "Added",
+    "add": "Add",
+    "details": "Details"
+  },
+  "ranks": {
+    "filmLegend": "Film Legend",
+    "cinemaCurator": "Cinema Curator",
+    "cinephile": "Cinephile",
+    "movieEnthusiast": "Movie Enthusiast",
+    "cinemaGuest": "Cinema Guest"
+  },
+  "achievements": {
+    "first_blood": {
+      "text": "First Blood",
+      "requirement": "Add 1 movie to watchlist or mark as watched"
+    },
+    "critic": {
+      "text": "Critic",
+      "requirement": "Add 5 movies to favorites"
+    },
+    "cinephile": {
+      "text": "Cinephile",
+      "requirement": "Mark 10 movies as watched"
+    },
+    "collector": {
+      "text": "Collector",
+      "requirement": "Collect 20 movies total (watched + watchlist)"
+    },
+    "tastemaker": {
+      "text": "Tastemaker",
+      "requirement": "Add 20 movies to favorites"
+    },
+    "filmbuff": {
+      "text": "Film Buff",
+      "requirement": "Mark 50 movies as watched"
+    },
+    "librarian": {
+      "text": "Librarian",
+      "requirement": "Collect 100 movies total (watched + watchlist)"
+    },
+    "quiz_first_win": {
+      "text": "Quiz Rookie",
+      "requirement": "Solve your first daily quiz"
+    },
+    "quiz_perfectionist": {
+      "text": "Perfectionist",
+      "requirement": "Solve a quiz with no hints and one guess"
+    },
+    "quiz_streak_7": {
+      "text": "Week Streak",
+      "requirement": "Reach a 7-day quiz streak"
+    },
+    "quiz_streak_30": {
+      "text": "Month Streak",
+      "requirement": "Reach a 30-day quiz streak"
+    },
+    "quiz_veteran": {
+      "text": "Quiz Veteran",
+      "requirement": "Solve 50 daily quizzes"
+    }
+  }
+}

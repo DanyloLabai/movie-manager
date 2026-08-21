@@ -1,20 +1,31 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { WatchlistItem } from '@movie-manager/shared';
 import { getPublicProfile, addFriend, type PublicProfile } from '../../api/users.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
+import { getAchievementsList } from '../../utils/achievements';
 import MoviePosterCard from '../../components/MoviePosterCard';
-import { colors, spacing, radius } from '../../theme';
+import SegmentedTabs from '../../components/SegmentedTabs';
+import ProfileHero from '../../components/profile/ProfileHero';
+import ProfileStatsStrip from '../../components/profile/ProfileStatsStrip';
+import ProfileFavoritesPanel from '../../components/profile/ProfileFavoritesPanel';
+import ProfileWrappedPanel from '../../components/profile/ProfileWrappedPanel';
+import ProfileChartsPanel from '../../components/profile/ProfileChartsPanel';
+import { colors, spacing, fontWeight } from '../../theme';
 import type { MainStackParamList } from '../../navigation/MainStack';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PublicProfile'>;
 
 export default function PublicProfileScreen({ route, navigation }: Props) {
+  const { t } = useTranslation('profile');
   const { userId } = route.params;
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddingFriend, setIsAddingFriend] = useState(false);
+  const [activeTab, setActiveTab] = useState<'favorites' | 'watched'>('favorites');
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +36,7 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
         navigation.setOptions({ title: data.username ?? '' });
       })
       .catch((err) => {
-        if (!cancelled) setError(getErrorMessage(err, 'Could not load this profile.'));
+        if (!cancelled) setError(getErrorMessage(err, t('errors.loadPublicProfile')));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -42,11 +53,36 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
       await addFriend(userId);
       setProfile((prev) => (prev ? { ...prev, isFriend: true, requestPending: false } : prev));
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not send friend request.'));
+      setError(getErrorMessage(err, t('errors.sendFriendRequest')));
     } finally {
       setIsAddingFriend(false);
     }
   };
+
+  const goToMovie = (item: WatchlistItem) => {
+    navigation.push('MovieDetail', {
+      movieId: item.tmdbId,
+      title: item.title,
+      mediaType: item.mediaType === 'tv' ? 'tv' : 'movie',
+    });
+  };
+
+  const favoritesCount = profile?.favorites?.length ?? 0;
+  const watchedCount = profile?.watchedCount ?? 0;
+  const totalCount = profile?.totalCount ?? 0;
+  const stats = profile?.stats;
+  const hasStats = Boolean(stats?.genreDistribution && stats.genreDistribution.length > 0);
+
+  const achievements = useMemo(
+    () => getAchievementsList({ favoritesCount, watchedCount, totalCount }),
+    [favoritesCount, watchedCount, totalCount],
+  );
+
+  const watchedRecent = useMemo(
+    () => (profile?.recent ?? []).filter((m) => m.isWatched),
+    [profile?.recent],
+  );
+  const displayedMovies = activeTab === 'favorites' ? (profile?.favorites ?? []) : watchedRecent;
 
   if (isLoading) {
     return (
@@ -59,87 +95,121 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
   if (error || !profile) {
     return (
       <View style={styles.center}>
-        <Text style={styles.error}>{error ?? 'Not found.'}</Text>
+        <Text style={styles.error}>{error ?? t('publicProfile.notFound')}</Text>
       </View>
     );
   }
 
+  const friendRightSlot = profile.isFriend ? (
+    <View style={[styles.pill, styles.friendsPill]}>
+      <Text style={styles.friendsPillText}>✓ {t('publicProfile.friends').toUpperCase()}</Text>
+    </View>
+  ) : profile.requestPending ? (
+    <View style={[styles.pill, styles.mutedPill]}>
+      <Text style={styles.mutedPillText}>{t('publicProfile.requestSent').toUpperCase()}</Text>
+    </View>
+  ) : (
+    <Pressable
+      style={[styles.pill, styles.addPill]}
+      onPress={() => void handleAddFriend()}
+      disabled={isAddingFriend}
+    >
+      <Text style={styles.addPillText}>{isAddingFriend ? '…' : t('publicProfile.addFriend').toUpperCase()}</Text>
+    </Pressable>
+  );
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        {profile.avatarUrl ? (
-          <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} />
-        ) : (
-          <View style={[styles.avatar, styles.avatarPlaceholder]}>
-            <Text style={styles.avatarInitial}>
-              {(profile.username ?? '?')[0]?.toUpperCase()}
-            </Text>
-          </View>
-        )}
-        <Text style={styles.username}>{profile.username}</Text>
-        {profile.memberSince ? (
-          <Text style={styles.meta}>Member since {profile.memberSince}</Text>
-        ) : null}
-
-        {profile.isFriend ? (
-          <View style={styles.friendPill}>
-            <Text style={styles.friendPillText}>✓ Friends</Text>
-          </View>
-        ) : profile.requestPending ? (
-          <View style={styles.friendPillMuted}>
-            <Text style={styles.friendPillMutedText}>Request sent</Text>
-          </View>
-        ) : (
-          <Pressable
-            style={styles.addButton}
-            onPress={() => void handleAddFriend()}
-            disabled={isAddingFriend}
-          >
-            <Text style={styles.addButtonText}>
-              {isAddingFriend ? '…' : 'ADD FRIEND'}
-            </Text>
-          </Pressable>
-        )}
-      </View>
-
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{profile.watchedCount ?? 0}</Text>
-          <Text style={styles.statLabel}>Watched</Text>
+    <FlatList
+      style={styles.container}
+      data={displayedMovies}
+      key={`grid-${activeTab}`}
+      numColumns={2}
+      keyExtractor={(item, index) => `${item.id}-${index}`}
+      contentContainerStyle={styles.grid}
+      columnWrapperStyle={styles.gridColumn}
+      ListEmptyComponent={
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>{t('empty')}</Text>
         </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{profile.stats?.averageRating ?? '0.0'}</Text>
-          <Text style={styles.statLabel}>Avg rating</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{profile.favorites.length}</Text>
-          <Text style={styles.statLabel}>Favorites</Text>
-        </View>
-      </View>
+      }
+      renderItem={({ item }) => (
+        <MoviePosterCard
+          posterUrl={item.posterUrl}
+          title={item.title}
+          subtitle={activeTab === 'watched' ? `★ ${(item.rating ?? 0).toFixed(1)}` : undefined}
+          onPress={() => goToMovie(item)}
+        />
+      )}
+      ListHeaderComponent={
+        <View>
+          <ProfileHero
+            username={profile.username ?? ''}
+            avatarUrl={profile.avatarUrl ?? null}
+            watchedCount={watchedCount}
+            memberSince={profile.memberSince}
+            friendsCount={0}
+            onOpenFriends={() => {}}
+            rightSlot={friendRightSlot}
+          />
 
-      {profile.favorites.length > 0 ? (
-        <>
-          <Text style={styles.sectionTitle}>Favorites</Text>
-          <View style={styles.grid}>
-            {profile.favorites.map((item) => (
-              <MoviePosterCard
-                key={item.id}
-                width={96}
-                posterUrl={item.posterUrl ?? null}
-                title={item.title}
-                onPress={() =>
-                  navigation.push('MovieDetail', {
-                    movieId: item.tmdbId,
-                    title: item.title,
-                    mediaType: item.mediaType === 'tv' ? 'tv' : 'movie',
-                  })
-                }
+          <View style={styles.section}>
+            <ProfileStatsStrip
+              stats={[
+                { value: watchedCount, label: t('stats.watched').toUpperCase() },
+                { value: stats?.averageRating ?? '0.0', label: t('stats.avg').toUpperCase() },
+                { value: favoritesCount, label: t('stats.favorites').toUpperCase() },
+              ]}
+              watchedCount={watchedCount}
+              completionRate={stats?.completionRate ?? 0}
+              totalCount={totalCount}
+            />
+          </View>
+
+          <View style={styles.section}>
+            <ProfileFavoritesPanel
+              favorites={profile.favorites ?? []}
+              achievements={achievements}
+              friends={[]}
+              friendsCount={0}
+              onToggleFavorite={() => {}}
+              onOpenFriends={() => {}}
+              onPressMovie={goToMovie}
+              readOnly
+              showFriends={false}
+            />
+          </View>
+
+          {hasStats && stats ? (
+            <View style={styles.section}>
+              <ProfileWrappedPanel username={profile.username ?? ''} stats={stats} />
+            </View>
+          ) : null}
+
+          {hasStats && stats ? (
+            <View style={styles.section}>
+              <ProfileChartsPanel
+                genreDistribution={stats.genreDistribution ?? []}
+                ratingDistribution={stats.ratingDistribution ?? []}
+                averageRating={stats.averageRating ?? '0.0'}
+                topRated={stats.topRated ?? []}
+                onPressMovie={goToMovie}
               />
-            ))}
+            </View>
+          ) : null}
+
+          <View style={styles.tabsWrap}>
+            <SegmentedTabs
+              options={[
+                { key: 'favorites', label: t('tabs.favorites') },
+                { key: 'watched', label: t('tabs.watched') },
+              ]}
+              activeKey={activeTab}
+              onChange={(key) => setActiveTab(key as typeof activeTab)}
+            />
           </View>
-        </>
-      ) : null}
-    </ScrollView>
+        </View>
+      }
+    />
   );
 }
 
@@ -159,114 +229,65 @@ const styles = StyleSheet.create({
     color: colors.danger,
     fontSize: 13,
   },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    marginBottom: spacing.md,
-  },
-  avatarPlaceholder: {
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitial: {
-    color: colors.textOnAccent,
-    fontSize: 32,
-    fontWeight: '700',
-  },
-  username: {
-    color: colors.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  meta: {
-    color: colors.textMuted,
-    fontSize: 12,
-    marginTop: spacing.xs,
-  },
-  friendPill: {
-    marginTop: spacing.md,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-  },
-  friendPillText: {
-    color: colors.accentBright,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  friendPillMuted: {
-    marginTop: spacing.md,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.borderSubtle,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
-  },
-  friendPillMutedText: {
-    color: colors.textFaint,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  addButton: {
-    marginTop: spacing.md,
-    backgroundColor: colors.accent,
-    borderRadius: radius.full,
+  section: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xs + 4,
+    marginTop: spacing.lg,
   },
-  addButtonText: {
-    color: colors.textOnAccent,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: colors.borderSubtle,
-    paddingVertical: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    color: colors.textPrimary,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  statLabel: {
-    color: colors.textMuted,
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginTop: 2,
-  },
-  sectionTitle: {
-    color: colors.accentBright,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-    marginBottom: spacing.sm,
+  tabsWrap: {
+    marginTop: spacing.lg,
   },
   grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.md,
+  },
+  gridColumn: {
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  emptyContainer: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+  pill: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  friendsPill: {
+    borderColor: 'rgba(217,172,84,.45)',
+  },
+  friendsPillText: {
+    color: colors.accentBright,
+    fontSize: 11,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: 1.5,
+  },
+  mutedPill: {
+    borderColor: colors.borderSubtle,
+  },
+  mutedPillText: {
+    color: colors.textFaint,
+    fontSize: 11,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: 1.5,
+  },
+  addPill: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  addPillText: {
+    color: colors.textOnAccent,
+    fontSize: 11,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: 1.5,
   },
 });

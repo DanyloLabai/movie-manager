@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -24,9 +25,12 @@ import {
   getRecommendations,
   getTrending,
   getUpcomingMovies,
+  removeFromWatchlist,
   searchMovies,
+  smartSearchMovies,
   toggleFavorite,
   type BecauseYouWatchedResponse,
+  type SmartSearchFilters,
 } from '../../api/movies.api';
 import {
   getFriendsLastWatched,
@@ -40,6 +44,7 @@ import { formatTimeAgo } from '../../utils/time';
 import { useToast } from '../../hooks/useToast';
 import ScreenHeader from '../../components/ScreenHeader';
 import MoviePosterCard from '../../components/MoviePosterCard';
+import SearchFilterBar from '../../components/SearchFilterBar';
 import Toast from '../../components/Toast';
 import { colors, spacing, radius, fontWeight } from '../../theme';
 import type { AppTabsParamList } from '../../navigation/AppTabs';
@@ -66,17 +71,26 @@ const isReleased = (movie: MovieResult): boolean => {
   return true;
 };
 
-function AddFooter({ added, onAdd }: { added: boolean; onAdd: () => void }) {
+function AddFooter({
+  added,
+  onAdd,
+  onRemove,
+}: {
+  added: boolean;
+  onAdd: () => void;
+  onRemove: () => void;
+}) {
+  const { t } = useTranslation('discover');
   if (added) {
     return (
-      <View style={styles.addedPill}>
-        <Text style={styles.addedPillText}>✓ ADDED</Text>
-      </View>
+      <Pressable style={styles.footerLink} onPress={onRemove}>
+        <Text style={styles.footerLinkText}>✓ {t('search.footer.added').toUpperCase()}</Text>
+      </Pressable>
     );
   }
   return (
-    <Pressable style={styles.addButton} onPress={onAdd}>
-      <Text style={styles.addButtonText}>+ ADD</Text>
+    <Pressable style={styles.footerLink} onPress={onAdd}>
+      <Text style={styles.footerLinkText}>+ {t('search.footer.add').toUpperCase()}</Text>
     </Pressable>
   );
 }
@@ -90,6 +104,7 @@ interface CarouselProps {
   favoriteIds: Set<number>;
   addedIds: Set<number>;
   onAdd: (item: MovieResult) => void;
+  onRemove: (item: MovieResult) => void;
   onToggleFavorite: (item: MovieResult) => void;
   emptyHint?: string;
 }
@@ -103,6 +118,7 @@ function Carousel({
   favoriteIds,
   addedIds,
   onAdd,
+  onRemove,
   onToggleFavorite,
   emptyHint,
 }: CarouselProps) {
@@ -122,19 +138,29 @@ function Carousel({
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.carouselRow}>
-            {data.map((item) => (
+            {data.map((item, index) => {
+              const released = isReleased(item);
+              return (
               <MoviePosterCard
-                key={item.id}
+                key={`${item.id}-${index}`}
                 width={110}
                 posterUrl={item.posterUrl}
                 title={item.title}
                 subtitle={`${item.releaseYear || '—'} · ★ ${item.rating.toFixed(1)}`}
                 onPress={() => onPressItem(item)}
+                topLeftBadge={released ? undefined : '⏱'}
                 isFavorite={favoriteIds.has(item.id)}
-                onToggleFavorite={() => onToggleFavorite(item)}
-                footer={<AddFooter added={addedIds.has(item.id)} onAdd={() => onAdd(item)} />}
+                onToggleFavorite={released ? () => onToggleFavorite(item) : undefined}
+                footer={
+                  <AddFooter
+                    added={addedIds.has(item.id)}
+                    onAdd={() => onAdd(item)}
+                    onRemove={() => onRemove(item)}
+                  />
+                }
               />
-            ))}
+              );
+            })}
           </View>
         </ScrollView>
       )}
@@ -143,6 +169,7 @@ function Carousel({
 }
 
 export default function SearchScreen({ navigation }: Props) {
+  const { t } = useTranslation('discover');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<MovieResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -161,7 +188,11 @@ export default function SearchScreen({ navigation }: Props) {
 
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [swipeStatus, setSwipeStatus] = useState<SwipeStatus | null>(null);
+  const [filters, setFilters] = useState<SmartSearchFilters>({});
+  const [showFilters, setShowFilters] = useState(false);
   const { toastMessage, showToast } = useToast();
+
+  const hasActiveFilters = Object.values(filters).some((v) => v !== undefined && v !== false);
 
   useEffect(() => {
     Promise.all([
@@ -199,12 +230,13 @@ export default function SearchScreen({ navigation }: Props) {
     if (!trimmed) return;
     setIsSearching(true);
     setError(null);
-    searchMovies(trimmed)
+    const request = hasActiveFilters ? smartSearchMovies(trimmed, filters) : searchMovies(trimmed);
+    request
       .then((res) => {
         setResults(res);
         getSearchHistory().then((items) => setSearchHistory(items.map((i) => i.queryText))).catch(() => {});
       })
-      .catch((err) => setError(getErrorMessage(err, 'Search failed.')))
+      .catch((err) => setError(getErrorMessage(err, t('search.searchFailed'))))
       .finally(() => setIsSearching(false));
   };
 
@@ -253,7 +285,7 @@ export default function SearchScreen({ navigation }: Props) {
         mediaType: item.mediaType,
         releaseDate: item.releaseDate,
       });
-      showToast('Added to watchlist.');
+      showToast(t('search.addedToWatchlist'));
     } catch (err) {
       const apiError = err as { response?: { status?: number } };
       if (apiError.response?.status !== 400) {
@@ -262,8 +294,23 @@ export default function SearchScreen({ navigation }: Props) {
           next.delete(item.id);
           return next;
         });
-        showToast(getErrorMessage(err, 'Could not add to watchlist.'));
+        showToast(getErrorMessage(err, t('search.addToWatchlistError')));
       }
+    }
+  };
+
+  const handleRemove = async (item: MovieResult) => {
+    setAddedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(item.id);
+      return next;
+    });
+    try {
+      await removeFromWatchlist(item.id);
+      showToast(t('search.removedFromWatchlist'));
+    } catch (err) {
+      setAddedIds((prev) => new Set(prev).add(item.id));
+      showToast(getErrorMessage(err, t('search.removeFromWatchlistError')));
     }
   };
 
@@ -271,7 +318,7 @@ export default function SearchScreen({ navigation }: Props) {
   // item not yet in the watchlist 404s, so add it first and retry.
   const handleToggleFavorite = async (item: MovieResult) => {
     if (!isReleased(item)) {
-      showToast('This title has not been released yet.');
+      showToast(t('search.notReleasedYet'));
       return;
     }
     const wasFavorite = favoriteIds.has(item.id);
@@ -299,7 +346,7 @@ export default function SearchScreen({ navigation }: Props) {
           setFavoriteIds((prev) => new Set(prev).add(item.id));
           setAddedIds((prev) => new Set(prev).add(item.id));
         } catch {
-          showToast('Could not update favorite.');
+          showToast(t('search.favoriteUpdateError'));
         }
       } else {
         showToast('Could not update favorite.');
@@ -323,7 +370,7 @@ export default function SearchScreen({ navigation }: Props) {
           <Ionicons name="search" size={16} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Enter movie title…"
+            placeholder={t('search.placeholder')}
             placeholderTextColor={colors.textFaint}
             value={query}
             onChangeText={setQuery}
@@ -335,12 +382,25 @@ export default function SearchScreen({ navigation }: Props) {
               <Ionicons name="close-circle" size={16} color={colors.textFaint} />
             </Pressable>
           ) : null}
+          {query.trim().length > 0 ? (
+            <Pressable
+              style={[styles.filterToggle, (showFilters || hasActiveFilters) && styles.filterToggleActive]}
+              onPress={() => setShowFilters((v) => !v)}
+              hitSlop={6}
+            >
+              <Ionicons
+                name="options-outline"
+                size={16}
+                color={showFilters || hasActiveFilters ? colors.backgroundDeep : colors.textMuted}
+              />
+            </Pressable>
+          ) : null}
           <Pressable
             style={styles.findButton}
             onPress={() => runSearch(query)}
             disabled={isSearching || !query.trim()}
           >
-            <Text style={styles.findButtonText}>{isSearching ? '…' : 'FIND'}</Text>
+            <Text style={styles.findButtonText}>{isSearching ? '…' : t('search.find').toUpperCase()}</Text>
           </Pressable>
         </View>
         <Pressable style={styles.discoverButton} onPress={() => navigation.navigate('Discover')}>
@@ -357,13 +417,20 @@ export default function SearchScreen({ navigation }: Props) {
         <Pressable style={styles.promoBanner} onPress={() => navigation.navigate('Discover')}>
           <Ionicons name="albums-outline" size={20} color={colors.accentBright} />
           <View style={styles.promoTextGroup}>
-            <Text style={styles.promoTitle}>Not sure what to watch?</Text>
+            <Text style={styles.promoTitle}>{t('search.promo.title')}</Text>
             <Text style={styles.promoSubtitle}>
-              Swipe today's picks — {swipeStatus.remainingToday} of {swipeStatus.dailyLimit} left
+              {t('search.promo.subtitle', {
+                remaining: swipeStatus.remainingToday,
+                dailyLimit: swipeStatus.dailyLimit,
+              })}
             </Text>
           </View>
-          <Text style={styles.promoLink}>DISCOVER →</Text>
+          <Text style={styles.promoLink}>{t('search.promo.link').toUpperCase()} →</Text>
         </Pressable>
+      ) : null}
+
+      {showFilters && query.trim().length > 0 ? (
+        <SearchFilterBar filters={filters} onChange={setFilters} onApply={() => runSearch(query)} />
       ) : null}
 
       {isSearchMode ? (
@@ -376,20 +443,20 @@ export default function SearchScreen({ navigation }: Props) {
             data={results}
             key="search-results"
             numColumns={3}
-            keyExtractor={(item) => String(item.id)}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             contentContainerStyle={styles.grid}
             columnWrapperStyle={styles.gridColumn}
             ListHeaderComponent={
               results.length > 0 ? (
                 <View style={styles.resultsHeader}>
-                  <Text style={styles.resultsHeaderTitle}>SEARCH RESULTS</Text>
+                  <Text style={styles.resultsHeaderTitle}>{t('search.resultsTitle').toUpperCase()}</Text>
                   <Pressable onPress={handleClearSearch}>
-                    <Text style={styles.resultsHeaderBack}>← GO BACK</Text>
+                    <Text style={styles.resultsHeaderBack}>← {t('search.goBack').toUpperCase()}</Text>
                   </Pressable>
                 </View>
               ) : null
             }
-            ListEmptyComponent={<Text style={styles.emptyText}>No results.</Text>}
+            ListEmptyComponent={<Text style={styles.emptyText}>{t('search.noResults')}</Text>}
             renderItem={({ item }) => (
               <MoviePosterCard
                 posterUrl={item.posterUrl}
@@ -398,7 +465,13 @@ export default function SearchScreen({ navigation }: Props) {
                 isFavorite={favoriteIds.has(item.id)}
                 onToggleFavorite={() => void handleToggleFavorite(item)}
                 onPress={() => goToMovie(item)}
-                footer={<AddFooter added={addedIds.has(item.id)} onAdd={() => void handleAdd(item)} />}
+                footer={
+                  <AddFooter
+                    added={addedIds.has(item.id)}
+                    onAdd={() => void handleAdd(item)}
+                    onRemove={() => void handleRemove(item)}
+                  />
+                }
               />
             )}
           />
@@ -409,7 +482,7 @@ export default function SearchScreen({ navigation }: Props) {
         <ScrollView contentContainerStyle={styles.homeContent}>
           {searchHistory.length > 0 ? (
             <View style={styles.historySection}>
-              <Text style={styles.historyLabel}>RECENT</Text>
+              <Text style={styles.historyLabel}>{t('search.recent').toUpperCase()}</Text>
               <View style={styles.historyChips}>
                 {searchHistory.map((q) => (
                   <Pressable key={q} style={styles.historyChip} onPress={() => setQuery(q)}>
@@ -417,7 +490,7 @@ export default function SearchScreen({ navigation }: Props) {
                   </Pressable>
                 ))}
                 <Pressable style={styles.historyClear} onPress={() => void handleClearHistory()}>
-                  <Text style={styles.historyClearText}>✕ CLEAR</Text>
+                  <Text style={styles.historyClearText}>✕ {t('search.clear').toUpperCase()}</Text>
                 </Pressable>
               </View>
             </View>
@@ -435,10 +508,10 @@ export default function SearchScreen({ navigation }: Props) {
                 <LinearGradient colors={['transparent', colors.backgroundDeep]} style={styles.top100Overlay} />
                 <View style={styles.top100Content}>
                   <View style={styles.top100Tag}>
-                    <Text style={styles.top100TagText}>COLLECTION</Text>
+                    <Text style={styles.top100TagText}>{t('search.top100.collection').toUpperCase()}</Text>
                   </View>
-                  <Text style={styles.top100Title}>Top 100 Movies</Text>
-                  <Text style={styles.top100Subtitle}>All-Time Classics</Text>
+                  <Text style={styles.top100Title}>{t('search.top100.moviesTitle')}</Text>
+                  <Text style={styles.top100Subtitle}>{t('search.top100.moviesSubtitle')}</Text>
                 </View>
               </Pressable>
               <Pressable
@@ -451,67 +524,97 @@ export default function SearchScreen({ navigation }: Props) {
                 <LinearGradient colors={['transparent', colors.backgroundDeep]} style={styles.top100Overlay} />
                 <View style={styles.top100Content}>
                   <View style={styles.top100Tag}>
-                    <Text style={styles.top100TagText}>CURATED</Text>
+                    <Text style={styles.top100TagText}>{t('search.top100.curated').toUpperCase()}</Text>
                   </View>
-                  <Text style={styles.top100Title}>Top 100 TV Shows</Text>
-                  <Text style={styles.top100Subtitle}>Highest Rated</Text>
+                  <Text style={styles.top100Title}>{t('search.top100.tvTitle')}</Text>
+                  <Text style={styles.top100Subtitle}>{t('search.top100.tvSubtitle')}</Text>
                 </View>
               </Pressable>
             </View>
           ) : null}
 
           <Carousel
-            title="Trending This Week"
-            badge="HOT"
+            title={t('search.carousels.trendingMovies').toUpperCase()}
+            badge={t('search.carousels.hot').toUpperCase()}
             badgeColor={colors.danger}
-            data={trending}
+            data={trending.filter((m) => m.mediaType === 'movie')}
             onPressItem={goToMovie}
             favoriteIds={favoriteIds}
             addedIds={addedIds}
             onAdd={(item) => void handleAdd(item)}
+            onRemove={(item) => void handleRemove(item)}
             onToggleFavorite={(item) => void handleToggleFavorite(item)}
           />
 
           <Carousel
-            title="Coming Soon"
-            badge="NEW"
+            title={t('search.carousels.trendingTv').toUpperCase()}
+            badge={t('search.carousels.hot').toUpperCase()}
+            badgeColor={colors.danger}
+            data={trending.filter((m) => m.mediaType === 'tv')}
+            onPressItem={goToMovie}
+            favoriteIds={favoriteIds}
+            addedIds={addedIds}
+            onAdd={(item) => void handleAdd(item)}
+            onRemove={(item) => void handleRemove(item)}
+            onToggleFavorite={(item) => void handleToggleFavorite(item)}
+          />
+
+          <Carousel
+            title={t('search.carousels.comingSoonMovies').toUpperCase()}
+            badge={t('search.carousels.new').toUpperCase()}
             badgeColor={colors.accentBright}
-            data={upcoming.slice(0, 10)}
+            data={upcoming.filter((m) => m.mediaType === 'movie').slice(0, 10)}
             onPressItem={goToMovie}
             favoriteIds={favoriteIds}
             addedIds={addedIds}
             onAdd={(item) => void handleAdd(item)}
+            onRemove={(item) => void handleRemove(item)}
             onToggleFavorite={(item) => void handleToggleFavorite(item)}
           />
 
           <Carousel
-            title="Recommended For You"
-            badge="AI"
+            title={t('search.carousels.comingSoonTv').toUpperCase()}
+            badge={t('search.carousels.new').toUpperCase()}
+            badgeColor={colors.accentBright}
+            data={upcoming.filter((m) => m.mediaType === 'tv').slice(0, 10)}
+            onPressItem={goToMovie}
+            favoriteIds={favoriteIds}
+            addedIds={addedIds}
+            onAdd={(item) => void handleAdd(item)}
+            onRemove={(item) => void handleRemove(item)}
+            onToggleFavorite={(item) => void handleToggleFavorite(item)}
+          />
+
+          <Carousel
+            title={t('search.carousels.recommendedForYou')}
+            badge={t('search.carousels.ai').toUpperCase()}
             badgeColor={colors.accentBright}
             data={visibleRecommendations}
             onPressItem={goToMovie}
             favoriteIds={favoriteIds}
             addedIds={addedIds}
             onAdd={(item) => void handleAdd(item)}
+            onRemove={(item) => void handleRemove(item)}
             onToggleFavorite={(item) => void handleToggleFavorite(item)}
-            emptyHint="Add movies to your Watchlist so AI can recommend similar titles!"
+            emptyHint={t('search.carousels.recommendationsEmptyHint')}
           />
 
           {becauseYouWatched && visibleBecauseYouWatched.length > 0 ? (
             <Carousel
-              title={`Because You Watched "${becauseYouWatched.basedOnMovie.title}"`}
+              title={t('search.carousels.becauseYouWatched', { title: becauseYouWatched.basedOnMovie.title })}
               data={visibleBecauseYouWatched}
               onPressItem={goToMovie}
               favoriteIds={favoriteIds}
               addedIds={addedIds}
               onAdd={(item) => void handleAdd(item)}
+              onRemove={(item) => void handleRemove(item)}
               onToggleFavorite={(item) => void handleToggleFavorite(item)}
             />
           ) : null}
 
           {friendsActivity.length > 0 ? (
             <View style={styles.carouselSection}>
-              <Text style={styles.sectionTitle}>FRIENDS' LATEST WATCHES</Text>
+              <Text style={styles.sectionTitle}>{t('search.friends.sectionTitle').toUpperCase()}</Text>
               {friendsActivity.slice(0, 6).map((entry) => (
                 <Pressable
                   key={`${entry.user.id}-${entry.tmdbId}`}
@@ -541,14 +644,14 @@ export default function SearchScreen({ navigation }: Props) {
                         </View>
                       )}
                       <Text style={styles.friendUsername} numberOfLines={1}>
-                        {entry.user.username} watched
+                        {t('search.friends.userWatched', { username: entry.user.username })}
                       </Text>
                     </View>
                     <Text style={styles.friendMovieTitle} numberOfLines={1}>
                       {entry.title}
                     </Text>
                     <Text style={styles.friendMeta}>
-                      {entry.mediaType === 'tv' ? 'TV Show' : 'Movie'}
+                      {entry.mediaType === 'tv' ? t('search.friends.tvShow') : t('search.friends.movie')}
                       {entry.watchedAt ? ` · ${formatTimeAgo(entry.watchedAt)}` : ''}
                     </Text>
                   </View>
@@ -581,6 +684,16 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   searchInput: { flex: 1, color: colors.textPrimary, fontSize: 14 },
+  filterToggle: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterToggleActive: { backgroundColor: colors.accentBright, borderColor: colors.accentBright },
   findButton: {
     backgroundColor: colors.accentBright,
     borderRadius: radius.full,
@@ -660,7 +773,7 @@ const styles = StyleSheet.create({
   top100TagText: { color: colors.accentBright, fontSize: 8.5, fontWeight: fontWeight.semibold, letterSpacing: 1.5 },
   top100Title: { color: colors.textPrimary, fontSize: 18, fontWeight: fontWeight.bold },
   top100Subtitle: { color: colors.textMuted, fontSize: 11 },
-  carouselSection: { marginBottom: spacing.lg },
+  carouselSection: { marginBottom: spacing.lg + spacing.xs },
   carouselHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   sectionTitle: {
     color: colors.accentBright,
@@ -683,10 +796,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   carouselRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg },
-  addButton: { backgroundColor: colors.accentBright, borderRadius: radius.full, paddingVertical: 5, alignItems: 'center' },
-  addButtonText: { color: colors.textOnAccent, fontSize: 9.5, fontWeight: fontWeight.bold, letterSpacing: 0.5 },
-  addedPill: { borderWidth: 1, borderColor: 'rgba(217,172,84,.45)', borderRadius: radius.full, paddingVertical: 5, alignItems: 'center' },
-  addedPillText: { color: colors.accentBright, fontSize: 9.5, fontWeight: fontWeight.bold },
+  footerLink: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(217,172,84,.16)',
+    alignItems: 'center',
+  },
+  footerLinkText: {
+    color: colors.accentBright,
+    fontSize: 9.5,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 1,
+  },
   friendRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
   friendPoster: { width: 48, height: 72, borderRadius: radius.sm },
   friendPosterPlaceholder: { backgroundColor: colors.backgroundElevated },

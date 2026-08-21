@@ -1,0 +1,50 @@
+{
+  "friendsModal": {
+    "title": "Friends",
+    "tabs": {
+      "friends": "Friends",
+      "requests": "Requests",
+      "feed": "Feed"
+    },
+    "searchPlaceholder": "Search by username…",
+    "add": "Add",
+    "sent": "Sent",
+    "friendsStatus": "Friends",
+    "noUsersFound": "No users found.",
+    "noPendingRequests": "No pending requests.",
+    "noRecentActivity": "No recent activity.",
+    "noFriendsYet": "No friends yet — try search."
+  },
+  "top100": {
+    "movies": "Movies",
+    "tvShows": "TV Shows",
+    "added": "Added",
+    "addLabel": "Add",
+    "addedToWatchlist": "Added to watchlist.",
+    "removedFromWatchlist": "Removed from watchlist.",
+    "loadError": "Could not load Top 100.",
+    "addError": "Could not add to watchlist.",
+    "removeError": "Could not remove from watchlist.",
+    "favoriteError": "Could not update favorite."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "subtitle": "Stay updated with your cinematic journey.",
+    "markAllRead": "Mark all read",
+    "friendRequests": "Friend requests",
+    "nothingHereYet": "Nothing here yet.",
+    "view": "View",
+    "loadError": "Could not load notifications.",
+    "filters": {
+      "all": "All",
+      "friends": "Friends",
+      "achievements": "Achievements",
+      "releases": "Releases"
+    },
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "older": "Older"
+    }
+  }
+}

@@ -1,5 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 import { colors, fontWeight } from '../../theme';
 
 interface GenreSlice {
@@ -22,10 +24,16 @@ const GAP_DEGREES = 4;
 // the standard strokeDasharray/strokeDashoffset technique, rotated -90° so
 // the first slice starts at 12 o'clock like recharts does.
 export default function GenreDonut({ genreDistribution, size }: GenreDonutProps) {
+  const { t } = useTranslation('profile');
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const total = genreDistribution.reduce((sum, g) => sum + g.value, 0);
   const radius = (size - STROKE_WIDTH) / 2;
   const circumference = 2 * Math.PI * radius;
   const gapLength = (GAP_DEGREES / 360) * circumference;
+  const selected = selectedIndex != null ? genreDistribution[selectedIndex] : null;
+  const selectedPercent = selected && total > 0 ? Math.round((selected.value / total) * 100) : 0;
+
+  const toggle = (index: number) => setSelectedIndex((prev) => (prev === index ? null : index));
 
   let cumulative = 0;
 
@@ -49,23 +57,38 @@ export default function GenreDonut({ genreDistribution, size }: GenreDonutProps)
                   strokeWidth={STROKE_WIDTH}
                   strokeDasharray={`${dashLength} ${circumference - dashLength}`}
                   strokeDashoffset={offset}
+                  strokeOpacity={selectedIndex == null || selectedIndex === index ? 1 : 0.35}
                   fill="none"
+                  onPress={() => toggle(index)}
                 />
               );
             })}
           </G>
         </Svg>
         <View style={styles.centerLabel} pointerEvents="none">
-          <Text style={styles.centerLabelText}>{genreDistribution.length}</Text>
+          {selected ? (
+            <>
+              <Text style={styles.centerLabelName} numberOfLines={1}>
+                {selected.name}
+              </Text>
+              <Text style={styles.centerLabelPercent}>{selectedPercent}%</Text>
+            </>
+          ) : (
+            <Text style={styles.centerLabelText}>{genreDistribution.length}</Text>
+          )}
         </View>
       </View>
 
       <View style={styles.legend}>
         {genreDistribution.length === 0 ? (
-          <Text style={styles.emptyText}>N/A</Text>
+          <Text style={styles.emptyText}>{t('notAvailable')}</Text>
         ) : (
           genreDistribution.map((g, index) => (
-            <View key={g.name} style={styles.legendRow}>
+            <Pressable
+              key={g.name}
+              style={[styles.legendRow, selectedIndex != null && selectedIndex !== index && styles.legendRowDimmed]}
+              onPress={() => toggle(index)}
+            >
               <View style={[styles.swatch, { backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }]} />
               <Text style={styles.legendName} numberOfLines={1}>
                 {g.name}
@@ -73,7 +96,7 @@ export default function GenreDonut({ genreDistribution, size }: GenreDonutProps)
               <Text style={styles.legendPercent}>
                 · {total > 0 ? Math.round((g.value / total) * 100) : 0}%
               </Text>
-            </View>
+            </Pressable>
           ))
         )}
       </View>
@@ -89,9 +112,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   centerLabelText: { color: colors.textPrimary, fontSize: 20, fontWeight: fontWeight.bold },
+  centerLabelName: {
+    color: colors.textPrimary,
+    fontSize: 11,
+    fontWeight: fontWeight.bold,
+    textAlign: 'center',
+    paddingHorizontal: 4,
+  },
+  centerLabelPercent: { color: colors.accentBright, fontSize: 12, fontWeight: fontWeight.bold },
   legend: { flex: 1, minWidth: 0, gap: 6 },
   emptyText: { color: colors.textMuted, fontSize: 12, fontStyle: 'italic' },
   legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 },
+  legendRowDimmed: { opacity: 0.4 },
   swatch: { width: 8, height: 8, borderRadius: 2 },
   legendName: { flexShrink: 1, color: colors.textSubtle, fontSize: 12 },
   legendPercent: { color: colors.textMuted, fontSize: 12 },

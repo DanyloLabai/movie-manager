@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -11,8 +11,10 @@ import {
   Text,
   View,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MovieDetails, RecommendedMovie, WatchlistItem, WatchProvider } from '@movie-manager/shared';
 import {
@@ -64,6 +66,7 @@ const isReleased = (dateStr?: string | null): boolean => {
 };
 
 export default function MovieDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation('movie');
   const { movieId, mediaType = 'movie' } = route.params;
   const [details, setDetails] = useState<MovieDetails | null>(null);
   const [status, setStatus] = useState<WatchlistItem | null>(null);
@@ -75,6 +78,9 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
 
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [modalRating, setModalRating] = useState(0);
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const trailerY = useRef(0);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -89,11 +95,11 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       getSimilar(movieId, mediaType).then(setSimilar).catch(() => {});
       getFriendsWatched(movieId, mediaType).then(setFriendsWatched).catch(() => {});
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not load this title.'));
+      setError(getErrorMessage(err, t('errors.loadTitle')));
     } finally {
       setIsLoading(false);
     }
-  }, [movieId, mediaType]);
+  }, [movieId, mediaType, t]);
 
   useEffect(() => {
     void load();
@@ -112,7 +118,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       });
       setStatus(item);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not update your watchlist.'));
+      setError(getErrorMessage(err, t('errors.updateWatchlist')));
     } finally {
       setIsActionPending(false);
     }
@@ -148,7 +154,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       if (modalRating > 0) await rateMovie(movieId, modalRating);
       setStatus({ ...watched, rating: modalRating > 0 ? modalRating : watched.rating });
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not mark as watched.'));
+      setError(getErrorMessage(err, t('errors.markWatched')));
     } finally {
       setIsActionPending(false);
       closeRatingModal();
@@ -161,7 +167,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
     try {
       setStatus(await toggleFavorite(movieId));
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not update favorite.'));
+      setError(getErrorMessage(err, t('errors.updateFavorite')));
     } finally {
       setIsActionPending(false);
     }
@@ -174,7 +180,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       await rateMovie(movieId, rating);
       setStatus({ ...status, rating });
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not update rating.'));
+      setError(getErrorMessage(err, t('errors.updateRating')));
     } finally {
       setIsActionPending(false);
     }
@@ -186,7 +192,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       await removeFromWatchlist(movieId);
       setStatus(null);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not update your watchlist.'));
+      setError(getErrorMessage(err, t('errors.updateWatchlist')));
     } finally {
       setIsActionPending(false);
     }
@@ -217,7 +223,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
   const providers = details.watchProviders ?? [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView ref={scrollViewRef} style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         {backdropUrl ? (
           <>
@@ -243,7 +249,9 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
 
         <View style={styles.headerInfo}>
           <View style={styles.mediaBadge}>
-            <Text style={styles.mediaBadgeText}>{mediaType === 'tv' ? 'TV' : 'MOVIE'}</Text>
+            <Text style={styles.mediaBadgeText}>
+              {(mediaType === 'tv' ? t('mediaType.tv') : t('mediaType.movie')).toUpperCase()}
+            </Text>
           </View>
           <Text style={styles.title}>{details.title}</Text>
           <Text style={styles.meta}>
@@ -261,7 +269,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
 
       {details.productionCountries.length > 0 ? (
         <Text style={styles.countries}>
-          <Text style={styles.countriesLabel}>Production Countries: </Text>
+          <Text style={styles.countriesLabel}>{t('productionCountriesLabel')}</Text>
           {details.productionCountries.join(', ')}
         </Text>
       ) : null}
@@ -275,7 +283,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
             onPress={() => void handleAddWatchlist()}
             disabled={isActionPending}
           >
-            <Text style={styles.secondaryButtonText}>+ ADD</Text>
+            <Text style={styles.secondaryButtonText}>{t('addToWatchlist').toUpperCase()}</Text>
           </Pressable>
         ) : null}
         {released ? (
@@ -288,7 +296,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
             disabled={isActionPending}
           >
             <Text style={status?.isWatched ? styles.primaryButtonText : styles.secondaryButtonText}>
-              ✓ {status?.isWatched ? 'WATCHED' : 'MARK WATCHED'}
+              {(status?.isWatched ? t('watched') : t('markWatched')).toUpperCase()}
             </Text>
           </Pressable>
         ) : null}
@@ -310,23 +318,28 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
           </View>
         )}
         {details.trailerUrl ? (
-          <Pressable style={styles.trailerButton} onPress={() => Linking.openURL(details.trailerUrl!)}>
+          <Pressable
+            style={styles.trailerButton}
+            onPress={() =>
+              scrollViewRef.current?.scrollTo({ y: trailerY.current, animated: true })
+            }
+          >
             <Ionicons name="play" size={14} color={colors.textSubtle} />
-            <Text style={styles.secondaryButtonText}>TRAILER</Text>
+            <Text style={styles.secondaryButtonText}>{t('trailer').toUpperCase()}</Text>
           </Pressable>
         ) : null}
       </View>
 
       {status?.isWatched ? (
         <View style={styles.ratingRow}>
-          <Text style={styles.ratingLabel}>YOUR RATING</Text>
+          <Text style={styles.ratingLabel}>{t('yourRating').toUpperCase()}</Text>
           <StarRating size="sm" value={status.rating ?? 0} onRate={(r) => void handleRate(r)} />
         </View>
       ) : null}
 
       {status ? (
         <Pressable style={styles.removeButton} onPress={() => void handleRemove()} disabled={isActionPending}>
-          <Text style={styles.removeButtonText}>REMOVE FROM WATCHLIST</Text>
+          <Text style={styles.removeButtonText}>{t('removeFromWatchlist').toUpperCase()}</Text>
         </Pressable>
       ) : null}
 
@@ -334,7 +347,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
 
       {details.cast.length > 0 ? (
         <>
-          <Text style={styles.sectionTitle}>TOP CAST</Text>
+          <Text style={styles.sectionTitle}>{t('topCast').toUpperCase()}</Text>
           <FlatList
             data={details.cast}
             horizontal
@@ -363,9 +376,35 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
         </>
       ) : null}
 
+      {details.trailerUrl ? (
+        <View onLayout={(e) => { trailerY.current = e.nativeEvent.layout.y; }}>
+          <Text style={styles.sectionTitle}>{t('trailer').toUpperCase()}</Text>
+          <View style={styles.trailerWrap}>
+            <WebView
+              source={{
+                // Navigating the WebView straight to the youtube.com/embed
+                // URL makes YouTube reject it (error 153 — embed requires a
+                // real parent page). Wrapping it in an actual <iframe> inside
+                // a local HTML document gives YouTube a real embedding
+                // context, same as movie-frontend's <iframe> usage. baseUrl
+                // is required too — without it the inline HTML has no origin
+                // at all, which YouTube also treats as an unauthorized
+                // embed and rejects with the same error 153.
+                html: `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body{margin:0;padding:0;background:#000;height:100%;}iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;}</style></head><body><iframe src="${details.trailerUrl}?rel=0&modestbranding=1&playsinline=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe></body></html>`,
+                baseUrl: 'https://www.youtube.com',
+              }}
+              originWhitelist={['*']}
+              allowsFullscreenVideo
+              mediaPlaybackRequiresUserAction={false}
+              style={styles.trailerWebview}
+            />
+          </View>
+        </View>
+      ) : null}
+
       {providers.length > 0 ? (
         <>
-          <Text style={styles.sectionTitle}>WHERE TO WATCH</Text>
+          <Text style={styles.sectionTitle}>{t('whereToWatch').toUpperCase()}</Text>
           <View style={styles.providersRow}>
             {providers.map((p: WatchProvider) => {
               const link = getProviderLink(p.provider_name, details.title);
@@ -393,7 +432,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
 
       {friendsWatched.length > 0 ? (
         <>
-          <Text style={styles.sectionTitle}>FRIENDS WATCHED THIS</Text>
+          <Text style={styles.sectionTitle}>{t('friendsWatchedThis').toUpperCase()}</Text>
           <View style={styles.friendsWatchedRow}>
             {friendsWatched.map((friend) => (
               <View key={friend.id} style={styles.friendChip}>
@@ -418,11 +457,11 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
 
       {similar.length > 0 ? (
         <>
-          <Text style={styles.sectionTitle}>MORE LIKE THIS</Text>
+          <Text style={styles.sectionTitle}>{t('moreLikeThis').toUpperCase()}</Text>
           <FlatList
             data={similar}
             horizontal
-            keyExtractor={(item) => String(item.id)}
+            keyExtractor={(item, index) => `${item.id}-${index}`}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.castList}
             renderItem={({ item }) => (
@@ -447,21 +486,21 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       <Modal visible={isRatingModalOpen} transparent animationType="fade" onRequestClose={closeRatingModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>How was it?</Text>
-            <Text style={styles.modalSubtitle}>Rate "{details.title}"</Text>
+            <Text style={styles.modalTitle}>{t('ratingModal.title')}</Text>
+            <Text style={styles.modalSubtitle}>{t('ratingModal.subtitle', { title: details.title })}</Text>
             <View style={styles.modalStars}>
               <StarRating size="lg" value={modalRating} onRate={setModalRating} />
             </View>
             <View style={styles.modalActions}>
               <Pressable style={styles.modalCancel} onPress={closeRatingModal} disabled={isActionPending}>
-                <Text style={styles.modalCancelText}>CANCEL</Text>
+                <Text style={styles.modalCancelText}>{t('common:cancel').toUpperCase()}</Text>
               </Pressable>
               <Pressable
                 style={styles.modalConfirm}
                 onPress={() => void handleConfirmWatched()}
                 disabled={isActionPending}
               >
-                <Text style={styles.modalConfirmText}>OK</Text>
+                <Text style={styles.modalConfirmText}>{t('common:ok').toUpperCase()}</Text>
               </Pressable>
             </View>
           </View>
@@ -574,6 +613,15 @@ const styles = StyleSheet.create({
   castPhotoPlaceholder: { backgroundColor: colors.backgroundElevated },
   castName: { color: colors.textPrimary, fontSize: 12, fontWeight: fontWeight.semibold },
   castCharacter: { color: colors.textMuted, fontSize: 11 },
+  trailerWrap: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    aspectRatio: 16 / 9,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
+    backgroundColor: colors.backgroundDeep,
+  },
+  trailerWebview: { flex: 1, backgroundColor: 'transparent' },
   providersRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, paddingHorizontal: spacing.lg, marginBottom: spacing.md },
   providerLogo: { width: 40, height: 40 },
   providerLogoImage: { width: 40, height: 40, borderRadius: radius.sm },

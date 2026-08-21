@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
 import { Image, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { getUserRank } from '../../utils/achievements';
 import { colors, spacing, radius, fontWeight } from '../../theme';
 
@@ -11,6 +13,9 @@ interface ProfileHeroProps {
   memberSince?: string;
   friendsCount: number;
   onOpenFriends: () => void;
+  /** Overrides the default Friends/Share pill row — used by the public
+   * profile screen to show Friends/Add-Friend/Request-sent state instead. */
+  rightSlot?: ReactNode;
 }
 
 // Ported from movie-frontend's ProfileHero.tsx (the non-compact/mobile
@@ -27,7 +32,9 @@ export default function ProfileHero({
   memberSince,
   friendsCount,
   onOpenFriends,
+  rightSlot,
 }: ProfileHeroProps) {
+  const { t } = useTranslation('profile');
   const rank = getUserRank(watchedCount);
   const memberSinceYear = memberSince ? new Date(memberSince).getFullYear() : null;
 
@@ -75,20 +82,24 @@ export default function ProfileHero({
             </Text>
             <Text style={styles.rank} numberOfLines={1}>
               {rank}
-              {memberSinceYear ? ` · SINCE ${memberSinceYear}` : ''}
+              {memberSinceYear ? ` · ${t('hero.sinceYear', { year: memberSinceYear }).toUpperCase()}` : ''}
             </Text>
           </View>
         </View>
       </View>
 
       <View style={styles.actionsRow}>
-        <Pressable style={[styles.pill, styles.friendsPill]} onPress={onOpenFriends}>
-          <Ionicons name="people-outline" size={13} color={colors.accentBright} />
-          <Text style={styles.friendsPillText}>{friendsCount} FRIENDS</Text>
-        </Pressable>
-        <Pressable style={[styles.pill, styles.sharePill]} onPress={handleShare}>
-          <Text style={styles.sharePillText}>SHARE</Text>
-        </Pressable>
+        {rightSlot ?? (
+          <>
+            <Pressable style={[styles.pill, styles.friendsPill]} onPress={onOpenFriends}>
+              <Ionicons name="people-outline" size={13} color={colors.accentBright} />
+              <Text style={styles.friendsPillText}>{t('hero.friendsCount', { count: friendsCount }).toUpperCase()}</Text>
+            </Pressable>
+            <Pressable style={[styles.pill, styles.sharePill]} onPress={handleShare}>
+              <Text style={styles.sharePillText}>{t('hero.share').toUpperCase()}</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </View>
   );

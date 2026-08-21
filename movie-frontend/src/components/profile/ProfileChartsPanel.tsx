@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { useLang } from "../../context/LanguageContext";
 import ProfileRatingBars from "./ProfileRatingBars";
+import RatingMoviesModal from "./RatingMoviesModal";
 import type { WatchlistItem } from "../../types/movie.types";
 
 const CHART_COLORS = ["#d9ac54", "#a5822f", "#8a6a3c", "#5f4b28", "#3a2f1a"];
@@ -16,6 +18,11 @@ interface ProfileChartsPanelProps {
   ratingDistribution: { name: string; value: number }[];
   averageRating: string | number;
   topRated: WatchlistItem[];
+  /** Gates the rating-bars → "movies at this rating" modal. Off by default
+   * so viewing someone else's public profile can't be used to page through
+   * *your own* watched list (the backend endpoint the modal calls is always
+   * scoped to the signed-in user). Only the owner's own profile passes true. */
+  interactiveRating?: boolean;
 }
 
 interface ChartTooltipProps {
@@ -46,7 +53,13 @@ function GenreDonut({
   innerLabelSize: number;
 }) {
   const { t } = useLang();
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const total = genreDistribution.reduce((sum, g) => sum + g.value, 0);
+  const selected = selectedIndex != null ? genreDistribution[selectedIndex] : null;
+  const selectedPercent = selected && total > 0 ? Math.round((selected.value / total) * 100) : 0;
+
+  const toggle = (index: number) => setSelectedIndex((prev) => (prev === index ? null : index));
+
   return (
     <div className="flex items-center gap-5 md:gap-[26px]">
       <div style={{ width: size, height: size }} className="relative shrink-0">
@@ -59,19 +72,32 @@ function GenreDonut({
               paddingAngle={4}
               dataKey="value"
               stroke="none"
+              onClick={(_, index) => toggle(index)}
+              style={{ cursor: "pointer" }}
             >
               {genreDistribution.map((_, index) => (
-                <Cell key={index} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                <Cell
+                  key={index}
+                  fill={CHART_COLORS[index % CHART_COLORS.length]}
+                  opacity={selectedIndex == null || selectedIndex === index ? 1 : 0.35}
+                />
               ))}
             </Pie>
             <Tooltip content={<GenreTooltip />} cursor={{ fill: "transparent" }} wrapperStyle={{ zIndex: 9999 }} />
           </PieChart>
         </ResponsiveContainer>
         <div
-          className="absolute inset-0 flex items-center justify-center pointer-events-none font-bold text-[#f2ead9]"
-          style={{ fontSize: innerLabelSize }}
+          className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none font-bold text-[#f2ead9] text-center px-2"
+          style={{ fontSize: selected ? innerLabelSize * 0.4 : innerLabelSize }}
         >
-          {genreDistribution.length}
+          {selected ? (
+            <>
+              <span className="truncate max-w-full">{selected.name}</span>
+              <span className="text-[#d9ac54]">{selectedPercent}%</span>
+            </>
+          ) : (
+            genreDistribution.length
+          )}
         </div>
       </div>
       <div className="flex flex-col gap-1.5 md:gap-2 min-w-0">
@@ -79,7 +105,14 @@ function GenreDonut({
           <span className="text-[12px] text-[#8f8574] italic">{t("common_na")}</span>
         )}
         {genreDistribution.map((g, index) => (
-          <div key={g.name} className="flex items-center gap-2 text-[11.5px] md:text-[12.5px] text-[#c9c0ac] min-w-0">
+          <button
+            key={g.name}
+            type="button"
+            onClick={() => toggle(index)}
+            className={`flex items-center gap-2 text-[11.5px] md:text-[12.5px] min-w-0 text-left transition ${
+              selectedIndex === index ? "text-[#f2ead9]" : "text-[#c9c0ac]"
+            } ${selectedIndex != null && selectedIndex !== index ? "opacity-40" : ""}`}
+          >
             <span
               className="w-2 h-2 rounded-sm shrink-0"
               style={{ background: CHART_COLORS[index % CHART_COLORS.length] }}
@@ -88,7 +121,7 @@ function GenreDonut({
             <span className="text-[#8f8574] shrink-0">
               · {total > 0 ? Math.round((g.value / total) * 100) : 0}%
             </span>
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -129,8 +162,11 @@ export default function ProfileChartsPanel({
   ratingDistribution,
   averageRating,
   topRated,
+  interactiveRating = false,
 }: ProfileChartsPanelProps) {
   const { t } = useLang();
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const onBarClick = interactiveRating ? (r: number) => setSelectedRating(r) : undefined;
 
   return (
     <div className="font-ui">
@@ -151,7 +187,7 @@ export default function ProfileChartsPanel({
               {t("stats_avg")} {averageRating}
             </span>
           </div>
-          <ProfileRatingBars data={ratingDistribution} maxHeightPx={120} />
+          <ProfileRatingBars data={ratingDistribution} maxHeightPx={120} onBarClick={onBarClick} />
           <TopMasterpieces topRated={topRated} />
         </div>
       </div>
@@ -172,10 +208,14 @@ export default function ProfileChartsPanel({
               {t("stats_avg")} {averageRating}
             </span>
           </div>
-          <ProfileRatingBars data={ratingDistribution} maxHeightPx={80} />
+          <ProfileRatingBars data={ratingDistribution} maxHeightPx={80} onBarClick={onBarClick} />
         </div>
         <TopMasterpieces topRated={topRated} />
       </div>
+
+      {interactiveRating ? (
+        <RatingMoviesModal rating={selectedRating} onClose={() => setSelectedRating(null)} />
+      ) : null}
     </div>
   );
 }

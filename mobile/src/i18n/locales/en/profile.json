@@ -1,0 +1,100 @@
+{
+  "tabs": {
+    "profile": "Profile",
+    "watchlist": "Watchlist",
+    "watched": "Watched",
+    "favorites": "Favorites"
+  },
+  "filters": {
+    "all": "All",
+    "movies": "Movies",
+    "tv": "TV"
+  },
+  "stats": {
+    "watched": "Watched",
+    "avg": "Avg",
+    "streak": "Streak",
+    "favorites": "Favorites",
+    "completion": "Completion"
+  },
+  "empty": "Nothing here yet.",
+  "upcoming": "Upcoming",
+  "markWatched": "Watched",
+  "remove": "Remove",
+  "notAvailable": "N/A",
+  "errors": {
+    "loadProfile": "Could not load your profile.",
+    "loadList": "Could not load your list.",
+    "updateFavorite": "Could not update favorite.",
+    "removeFailed": "Could not remove.",
+    "updateFailed": "Could not update.",
+    "updateRating": "Could not update rating.",
+    "loadPublicProfile": "Could not load this profile.",
+    "sendFriendRequest": "Could not send friend request."
+  },
+  "toasts": {
+    "removed": "Removed.",
+    "movedToWatched": "Moved to watched."
+  },
+  "ratingPrompt": {
+    "title": "How was it?",
+    "subtitle": "Rate \"{{title}}\""
+  },
+  "hero": {
+    "sinceYear": "Since {{year}}",
+    "friendsCount_one": "{{count}} Friend",
+    "friendsCount_other": "{{count}} Friends",
+    "share": "Share"
+  },
+  "favorites": {
+    "topFavorites": "Top Favorites",
+    "noFavorites": "No favorites yet.",
+    "achievements": "Achievements",
+    "friendsLabel": "Friends",
+    "viewAll": "View all"
+  },
+  "charts": {
+    "genres": "Genres",
+    "rating": "Rating",
+    "avg": "Avg"
+  },
+  "wrapped": {
+    "title": "{{username}}'s Wrapped",
+    "timeSpent": "Time Spent",
+    "topGenre": "Top Genre",
+    "favDecade": "Fav Decade",
+    "moviesTv": "Movies / TV",
+    "longestMarathon": "Longest Marathon",
+    "runtimeMinutes": "{{count}} min",
+    "mostWatchedActor": "Most Watched Actor",
+    "inMoviesCount_one": "In {{count}} movie",
+    "inMoviesCount_other": "In {{count}} movies"
+  },
+  "masterpieces": {
+    "title": "Top 3 Masterpieces"
+  },
+  "ratingModal": {
+    "moviesCount_one": "{{count}} Movie",
+    "moviesCount_other": "{{count}} Movies",
+    "loadMore": "Load more"
+  },
+  "heatmap": {
+    "title": "Activity"
+  },
+  "activityDayModal": {
+    "moviesCount_one": "{{count}} Movie",
+    "moviesCount_other": "{{count}} Movies",
+    "actions": {
+      "watched": "Watched",
+      "addedWatchlist": "Added to watchlist",
+      "rated": "Rated",
+      "favorited": "Favorited"
+    }
+  },
+  "publicProfile": {
+    "notFound": "Not found.",
+    "friends": "Friends",
+    "requestSent": "Request sent",
+    "addFriend": "Add friend"
+  }
+}

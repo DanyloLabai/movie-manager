@@ -6,11 +6,13 @@ interface RatingBucket {
 interface ProfileRatingBarsProps {
   data: RatingBucket[];
   maxHeightPx: number;
+  onBarClick?: (rating: number) => void;
 }
 
 export default function ProfileRatingBars({
   data,
   maxHeightPx,
+  onBarClick,
 }: ProfileRatingBarsProps) {
   const maxValue = Math.max(1, ...data.map((d) => d.value));
 
@@ -23,10 +25,12 @@ export default function ProfileRatingBars({
         const heightPx = bucket.value
           ? Math.max(2, (bucket.value / maxValue) * maxHeightPx)
           : 0;
+        const clickable = onBarClick && bucket.value > 0;
         return (
           <div
             key={bucket.name}
-            className="flex-1 flex flex-col items-center justify-end gap-1 md:gap-1.5"
+            onClick={clickable ? () => onBarClick(Number(bucket.name)) : undefined}
+            className={`flex-1 flex flex-col items-center justify-end gap-1 md:gap-1.5 ${clickable ? "cursor-pointer group" : ""}`}
             style={{ height: maxHeightPx }}
           >
             {bucket.value > 0 && (
@@ -35,7 +39,7 @@ export default function ProfileRatingBars({
               </span>
             )}
             <div
-              className="w-full rounded-t-[3px] md:rounded-t-[3px] rounded-b-none"
+              className={`w-full rounded-t-[3px] md:rounded-t-[3px] rounded-b-none ${clickable ? "transition group-hover:brightness-125" : ""}`}
               style={{
                 height: heightPx,
                 minHeight: bucket.value > 0 ? 2 : 0,

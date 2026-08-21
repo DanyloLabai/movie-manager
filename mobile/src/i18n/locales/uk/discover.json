@@ -1,0 +1,86 @@
+{
+  "discoverScreen": {
+    "title": "Огляд",
+    "subtitle": "Підібрано під ваш смак",
+    "todayCount": "{{completed}} / {{limit}} сьогодні",
+    "loadError": "Не вдалося завантажити розділ «Огляд».",
+    "saveError": "Не вдалося зберегти дію.",
+    "emptyState": "На сьогодні це все.",
+    "matchBadge": {
+      "forYou": "Для вас",
+      "differentPick": "Інший варіант"
+    },
+    "details": "Деталі",
+    "actions": {
+      "skip": "Пропустити",
+      "watched": "Переглянуто",
+      "watchlist": "У список"
+    },
+    "rateModal": {
+      "title": "Оцініть"
+    }
+  },
+  "search": {
+    "placeholder": "Введіть назву фільму…",
+    "find": "Знайти",
+    "goBack": "Назад",
+    "resultsTitle": "Результати пошуку",
+    "noResults": "Нічого не знайдено.",
+    "recent": "Недавні",
+    "clear": "Очистити",
+    "searchFailed": "Пошук не вдався.",
+    "addedToWatchlist": "Додано до списку перегляду.",
+    "addToWatchlistError": "Не вдалося додати до списку перегляду.",
+    "removedFromWatchlist": "Видалено зі списку перегляду.",
+    "removeFromWatchlistError": "Не вдалося видалити зі списку перегляду.",
+    "notReleasedYet": "Цей тайтл ще не вийшов.",
+    "favoriteUpdateError": "Не вдалося оновити обране.",
+    "footer": {
+      "added": "Додано",
+      "add": "Додати"
+    },
+    "promo": {
+      "title": "Не знаєте, що подивитись?",
+      "subtitle": "Гортайте сьогоднішню добірку — залишилось {{remaining}} з {{dailyLimit}}",
+      "link": "Огляд"
+    },
+    "top100": {
+      "collection": "Колекція",
+      "curated": "Добірка",
+      "moviesTitle": "Топ 100 фільмів",
+      "moviesSubtitle": "Класика всіх часів",
+      "tvTitle": "Топ 100 серіалів",
+      "tvSubtitle": "Найвищі рейтинги"
+    },
+    "carousels": {
+      "trendingMovies": "Популярні фільми",
+      "trendingTv": "Популярні серіали",
+      "comingSoonMovies": "Скоро у прокаті: фільми",
+      "comingSoonTv": "Скоро у прокаті: серіали",
+      "recommendedForYou": "Рекомендовано для вас",
+      "becauseYouWatched": "Тому що ви дивились «{{title}}»",
+      "hot": "Хіт",
+      "new": "Новинка",
+      "ai": "ШІ",
+      "recommendationsEmptyHint": "Додайте фільми до списку перегляду, щоб ШІ міг радити схожі тайтли!"
+    },
+    "friends": {
+      "sectionTitle": "Останні перегляди друзів",
+      "userWatched": "{{username}} переглянув(ла)",
+      "movie": "Фільм",
+      "tvShow": "Серіал"
+    }
+  },
+  "filterBar": {
+    "genre": "Жанр",
+    "anyGenre": "Будь-який жанр",
+    "year": "Рік",
+    "runtimeMin": "Тривалість (хв)",
+    "from": "Від",
+    "to": "До",
+    "minRating": "Мін. рейтинг",
+    "any": "Будь-який",
+    "hideWatched": "Приховати переглянуте",
+    "applyFilters": "Застосувати фільтри"
+  }
+}

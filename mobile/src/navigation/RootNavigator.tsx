@@ -1,6 +1,7 @@
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import AuthStack from './AuthStack';
 import MainStack from './MainStack';
 import { colors } from '../theme';
@@ -26,8 +27,9 @@ const navigationTheme = {
 // mounted, which would lose navigator state and cause flicker on login.
 export default function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { isLoading: isLanguageLoading } = useLanguage();
 
-  if (isLoading) {
+  if (isLoading || isLanguageLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator color={colors.accent} size="large" />

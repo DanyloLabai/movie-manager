@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { WatchlistItem } from '@movie-manager/shared';
 import { colors, spacing, fontWeight } from '../../theme';
 
@@ -9,11 +10,12 @@ interface TopMasterpiecesProps {
 
 // Ported from movie-frontend's ProfileChartsPanel.tsx TopMasterpieces.
 export default function TopMasterpieces({ topRated, onPressMovie }: TopMasterpiecesProps) {
+  const { t } = useTranslation('profile');
   if (topRated.length === 0) return null;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>TOP 3 MASTERPIECES</Text>
+      <Text style={styles.sectionTitle}>{t('masterpieces.title').toUpperCase()}</Text>
       {topRated.map((item, index) => (
         <Pressable key={item.id} style={styles.row} onPress={() => onPressMovie(item)}>
           <Text style={styles.rank}>#{index + 1}</Text>

@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useTranslation } from 'react-i18next';
 import { colors, spacing, fontWeight } from '../../theme';
 
 export interface ProfileStatTile {
@@ -22,6 +23,7 @@ export default function ProfileStatsStrip({
   completionRate,
   totalCount,
 }: ProfileStatsStripProps) {
+  const { t } = useTranslation('profile');
   const clampedRate = Math.max(0, Math.min(100, completionRate));
 
   return (
@@ -43,7 +45,7 @@ export default function ProfileStatsStrip({
 
       <View style={styles.completion}>
         <View style={styles.completionHeader}>
-          <Text style={styles.completionLabel}>COMPLETION</Text>
+          <Text style={styles.completionLabel}>{t('stats.completion').toUpperCase()}</Text>
           <Text style={styles.completionValue}>
             {completionRate}% · {watchedCount}/{totalCount}
           </Text>

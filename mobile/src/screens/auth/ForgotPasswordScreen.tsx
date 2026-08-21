@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { fontWeight } from '@movie-manager/shared';
 import { forgotPassword } from '../../api/auth.api';
@@ -24,6 +25,7 @@ import type { AuthStackParamList } from '../../navigation/AuthStack';
 type Props = NativeStackScreenProps<AuthStackParamList, 'ForgotPassword'>;
 
 export default function ForgotPasswordScreen({ navigation }: Props) {
+  const { t } = useTranslation('auth');
   const backdropUri = useAuthBackdrop();
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -34,15 +36,15 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
     setError(null);
     setSuccessMessage(null);
     if (!email) {
-      setError('Enter your email address.');
+      setError(t('forgotPassword.enterEmail'));
       return;
     }
     setIsSubmitting(true);
     try {
       const result = await forgotPassword(email);
-      setSuccessMessage(result.message || 'Check your email for a reset link.');
+      setSuccessMessage(result.message || t('forgotPassword.defaultSuccess'));
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not send reset email.'));
+      setError(getErrorMessage(err, t('forgotPassword.error')));
     } finally {
       setIsSubmitting(false);
     }
@@ -72,19 +74,19 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
             <View style={styles.iconBadge}>
               <Ionicons name="mail-outline" size={26} color={colors.accent} />
             </View>
-            <Text style={styles.title}>RESET PASSWORD</Text>
+            <Text style={styles.title}>{t('forgotPassword.title').toUpperCase()}</Text>
             <Text style={styles.subtitle}>
-              {successMessage ? 'CHECK YOUR EMAIL' : "WE'LL EMAIL YOU A RESET LINK"}
+              {successMessage ? t('forgotPassword.checkYourEmail').toUpperCase() : t('forgotPassword.subtitleDefault').toUpperCase()}
             </Text>
 
             {successMessage ? (
               <Text style={styles.success}>{successMessage}</Text>
             ) : (
               <>
-                <Text style={styles.label}>EMAIL ADDRESS</Text>
+                <Text style={styles.label}>{t('shared.emailAddressLabel').toUpperCase()}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="name@example.com"
+                  placeholder={t('shared.emailPlaceholder')}
                   placeholderTextColor={colors.textFaint}
                   autoCapitalize="none"
                   keyboardType="email-address"
@@ -102,7 +104,7 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
                   {isSubmitting ? (
                     <ActivityIndicator color={colors.textOnAccent} />
                   ) : (
-                    <Text style={styles.buttonText}>SEND RESET LINK</Text>
+                    <Text style={styles.buttonText}>{t('forgotPassword.sendResetLink').toUpperCase()}</Text>
                   )}
                 </Pressable>
               </>
@@ -113,13 +115,13 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
               hitSlop={8}
               style={styles.haveTokenLink}
             >
-              <Text style={styles.footerLink}>Already have a reset code?</Text>
+              <Text style={styles.footerLink}>{t('forgotPassword.haveResetCode')}</Text>
             </Pressable>
 
             <View style={styles.divider} />
 
             <Pressable onPress={() => navigation.navigate('Login')} hitSlop={8}>
-              <Text style={styles.backLink}>← Back to log in</Text>
+              <Text style={styles.backLink}>{t('shared.backToLogin')}</Text>
             </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>

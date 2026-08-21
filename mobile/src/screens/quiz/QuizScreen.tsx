@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -60,14 +61,8 @@ function formatCountdown(ms: number): string {
 
 const RANK_COLORS = [colors.accentBright, '#e8c377', '#a87c2e'];
 
-function statusLabel(entry: QuizLeaderboardEntry): string {
-  if (entry.todayStatus === 'solved') return `Solved for ${entry.todayScore}`;
-  if (entry.todayStatus === 'failed') return 'Failed today';
-  if (entry.todayStatus === 'in_progress') return 'In progress';
-  return "Hasn't played yet";
-}
-
 export default function QuizScreen({ navigation }: Props) {
+  const { t } = useTranslation('quiz');
   const [quiz, setQuiz] = useState<QuizState | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [posterUri, setPosterUri] = useState<string | null>(null);
@@ -83,10 +78,17 @@ export default function QuizScreen({ navigation }: Props) {
 
   const isDone = !!quiz && (quiz.isSolved || quiz.isFailed);
 
+  const statusLabel = (entry: QuizLeaderboardEntry): string => {
+    if (entry.todayStatus === 'solved') return t('quizScreen.statusSolved', { score: entry.todayScore });
+    if (entry.todayStatus === 'failed') return t('quizScreen.statusFailed');
+    if (entry.todayStatus === 'in_progress') return t('quizScreen.statusInProgress');
+    return t('quizScreen.statusNotPlayed');
+  };
+
   useEffect(() => {
     getTodayQuiz()
       .then(setQuiz)
-      .catch((err) => showToast(getErrorMessage(err, 'Could not load today’s quiz.')))
+      .catch((err) => showToast(getErrorMessage(err, t('quizScreen.loadError'))))
       .finally(() => setIsLoading(false));
     getFriendsLeaderboard().then(setLeaderboard).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,9 +139,9 @@ export default function QuizScreen({ navigation }: Props) {
     try {
       const result = await submitGuess({ title: movie.title, tmdbId: movie.id });
       setQuiz(result);
-      showToast(result.correct ? 'Correct!' : 'Not quite — try again.');
+      showToast(result.correct ? t('quizScreen.correctToast') : t('quizScreen.incorrectToast'));
     } catch (err) {
-      showToast(getErrorMessage(err, 'Could not submit guess.'));
+      showToast(getErrorMessage(err, t('quizScreen.submitGuessError')));
     } finally {
       setIsSubmitting(false);
     }
@@ -151,7 +153,7 @@ export default function QuizScreen({ navigation }: Props) {
     try {
       setQuiz(await buyHint());
     } catch (err) {
-      showToast(getErrorMessage(err, 'Could not buy a hint.'));
+      showToast(getErrorMessage(err, t('quizScreen.buyHintError')));
     } finally {
       setIsBuyingHint(false);
     }
@@ -170,7 +172,7 @@ export default function QuizScreen({ navigation }: Props) {
     } catch (err) {
       const apiError = err as { response?: { status?: number } };
       if (apiError.response?.status === 400) setWatchlistAdded(true);
-      else showToast(getErrorMessage(err, 'Could not add to watchlist.'));
+      else showToast(getErrorMessage(err, t('quizScreen.addWatchlistError')));
     }
   };
 
@@ -178,8 +180,10 @@ export default function QuizScreen({ navigation }: Props) {
     if (!quiz) return;
     const title = quiz.answer?.title ?? '';
     const message = quiz.isSolved
-      ? `LUMEN Daily Quiz — guessed "${title}" in ${quiz.guesses.length}/${quiz.maxGuesses} · ${quiz.score} pts`
-      : `LUMEN Daily Quiz — ${title ? `didn't guess "${title}"` : "didn't guess it"} today`;
+      ? t('quizScreen.shareSolved', { title, used: quiz.guesses.length, total: quiz.maxGuesses, score: quiz.score })
+      : title
+        ? t('quizScreen.shareFailedWithTitle', { title })
+        : t('quizScreen.shareFailedNoTitle');
     void Share.share({ message });
   };
 
@@ -194,7 +198,7 @@ export default function QuizScreen({ navigation }: Props) {
   if (!quiz) {
     return (
       <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>
-        <Text style={styles.emptyText}>No quiz available right now.</Text>
+        <Text style={styles.emptyText}>{t('quizScreen.noQuizAvailable')}</Text>
       </SafeAreaView>
     );
   }
@@ -205,22 +209,22 @@ export default function QuizScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-      <ScreenHeader title="QUIZ" subtitle="Guess today's movie from the hints" />
+      <ScreenHeader title={t('quizScreen.headerTitle').toUpperCase()} subtitle={t('quizScreen.headerSubtitle')} />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{quiz.score}</Text>
-            <Text style={styles.statLabel}>POINTS</Text>
+            <Text style={styles.statLabel}>{t('quizScreen.points').toUpperCase()}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{quiz.streak.current}</Text>
-            <Text style={styles.statLabel}>DAY STREAK</Text>
+            <Text style={styles.statLabel}>{t('quizScreen.dayStreak').toUpperCase()}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <Text style={[styles.statValue, styles.statValueAccent]}>{quiz.streak.best}</Text>
-            <Text style={styles.statLabel}>BEST</Text>
+            <Text style={styles.statLabel}>{t('quizScreen.best').toUpperCase()}</Text>
           </View>
         </View>
 
@@ -238,7 +242,7 @@ export default function QuizScreen({ navigation }: Props) {
               disabled={isBuyingHint}
             >
               <Text style={styles.hintOverlayText}>
-                {isBuyingHint ? '…' : `${quiz.nextHintCost} pts to unlock next hint`}
+                {isBuyingHint ? '…' : t('quizScreen.hintUnlockCost', { cost: quiz.nextHintCost })}
               </Text>
             </Pressable>
           ) : null}
@@ -267,8 +271,8 @@ export default function QuizScreen({ navigation }: Props) {
           ))}
           <Text style={styles.dotsLabel}>
             {isDone
-              ? `${quiz.isSolved ? 'CORRECT' : 'FAILED'} · ${quiz.guesses.length}/${quiz.maxGuesses} TRIES`
-              : `${quiz.guessesLeft} GUESSES LEFT`}
+              ? `${(quiz.isSolved ? t('quizScreen.correct') : t('quizScreen.failed')).toUpperCase()} · ${t('quizScreen.triesUsed', { used: quiz.guesses.length, total: quiz.maxGuesses }).toUpperCase()}`
+              : t('quizScreen.guessesLeft', { count: quiz.guessesLeft }).toUpperCase()}
           </Text>
         </View>
 
@@ -277,7 +281,7 @@ export default function QuizScreen({ navigation }: Props) {
             <View style={styles.guessBarWrap}>
               <TextInput
                 style={styles.guessInput}
-                placeholder="Type a movie title…"
+                placeholder={t('quizScreen.guessInputPlaceholder')}
                 placeholderTextColor={colors.textFaint}
                 value={guessQuery}
                 onChangeText={setGuessQuery}
@@ -288,7 +292,7 @@ export default function QuizScreen({ navigation }: Props) {
                 disabled={isSubmitting || !suggestions[0]}
                 onPress={() => suggestions[0] && void handleGuess(suggestions[0])}
               >
-                <Text style={styles.guessButtonText}>GUESS</Text>
+                <Text style={styles.guessButtonText}>{t('quizScreen.guessButton').toUpperCase()}</Text>
               </Pressable>
             </View>
             {suggestions.length > 0 ? (
@@ -311,15 +315,17 @@ export default function QuizScreen({ navigation }: Props) {
                 size={16}
                 color={quiz.isSolved ? colors.accentBright : colors.danger}
               />
-              <Text style={styles.doneHeaderText}>{quiz.isSolved ? 'CORRECT' : 'FAILED'}</Text>
+              <Text style={styles.doneHeaderText}>
+                {(quiz.isSolved ? t('quizScreen.correct') : t('quizScreen.failed')).toUpperCase()}
+              </Text>
             </View>
             <Text style={styles.doneHeadline}>
               {quiz.isSolved ? (
                 <>
-                  Guessed! <Text style={styles.doneHeadlineAccent}>+{quiz.score}</Text>
+                  {t('quizScreen.guessedHeadline')} <Text style={styles.doneHeadlineAccent}>+{quiz.score}</Text>
                 </>
               ) : (
-                "Didn't guess it"
+                t('quizScreen.notGuessedHeadline')
               )}
             </Text>
             {quiz.answer ? (
@@ -332,19 +338,19 @@ export default function QuizScreen({ navigation }: Props) {
             <View style={styles.doneStatsRow}>
               <View style={styles.doneStatItem}>
                 <Text style={styles.doneStatValue}>{quiz.score}</Text>
-                <Text style={styles.doneStatLabel}>FINAL SCORE</Text>
+                <Text style={styles.doneStatLabel}>{t('quizScreen.finalScore').toUpperCase()}</Text>
               </View>
               <View style={styles.doneStatItem}>
                 <Text style={styles.doneStatValue}>
                   {quiz.guesses.length}/{quiz.maxGuesses}
                 </Text>
-                <Text style={styles.doneStatLabel}>ATTEMPTS USED</Text>
+                <Text style={styles.doneStatLabel}>{t('quizScreen.attemptsUsed').toUpperCase()}</Text>
               </View>
               <View style={styles.doneStatItem}>
                 <Text style={styles.doneStatValue}>
                   {quiz.hintsRevealed}/{TOTAL_HINTS}
                 </Text>
-                <Text style={styles.doneStatLabel}>HINTS USED</Text>
+                <Text style={styles.doneStatLabel}>{t('quizScreen.hintsUsed').toUpperCase()}</Text>
               </View>
             </View>
 
@@ -360,7 +366,7 @@ export default function QuizScreen({ navigation }: Props) {
                     })
                   }
                 >
-                  <Text style={styles.viewMovieButtonText}>VIEW MOVIE</Text>
+                  <Text style={styles.viewMovieButtonText}>{t('quizScreen.viewMovie').toUpperCase()}</Text>
                 </Pressable>
                 <Pressable
                   style={styles.watchlistButton}
@@ -368,7 +374,7 @@ export default function QuizScreen({ navigation }: Props) {
                   disabled={watchlistAdded}
                 >
                   <Text style={styles.watchlistButtonText}>
-                    {watchlistAdded ? '✓ ADDED' : '+ WATCHLIST'}
+                    {watchlistAdded ? `✓ ${t('quizScreen.added').toUpperCase()}` : `+ ${t('quizScreen.watchlist').toUpperCase()}`}
                   </Text>
                 </Pressable>
               </View>
@@ -376,10 +382,10 @@ export default function QuizScreen({ navigation }: Props) {
 
             <View style={styles.countdownRow}>
               <Ionicons name="time-outline" size={13} color={colors.accentBright} />
-              <Text style={styles.countdownLabel}>New movie in</Text>
+              <Text style={styles.countdownLabel}>{t('quizScreen.newMovieIn')}</Text>
               <Text style={styles.countdownValue}>{formatCountdown(countdownMs)}</Text>
               <Pressable style={styles.shareButton} onPress={handleShareResult}>
-                <Text style={styles.shareButtonText}>SHARE RESULT →</Text>
+                <Text style={styles.shareButtonText}>{t('quizScreen.shareResult').toUpperCase()}</Text>
               </Pressable>
             </View>
           </View>
@@ -387,10 +393,12 @@ export default function QuizScreen({ navigation }: Props) {
 
         <View style={styles.hintsSection}>
           <View style={styles.hintsHeader}>
-            <Text style={styles.sectionTitle}>HINTS</Text>
+            <Text style={styles.sectionTitle}>{t('quizScreen.hintsSectionTitle').toUpperCase()}</Text>
             <View style={styles.hintsHeaderLine} />
             <Text style={styles.hintsHeaderMeta}>
-              {isDone ? 'all opened after finishing' : `${revealedHints.length} of ${TOTAL_HINTS} opened`}
+              {isDone
+                ? t('quizScreen.hintsAllOpened')
+                : t('quizScreen.hintsOpenedCount', { revealed: revealedHints.length, total: TOTAL_HINTS })}
             </Text>
           </View>
           {revealedHints.map((hint, i) => (
@@ -403,14 +411,16 @@ export default function QuizScreen({ navigation }: Props) {
             <View key={`locked-${i}`} style={styles.hintRow}>
               <Text style={styles.hintIndexLocked}>#{revealedHints.length + i + 1}</Text>
               <Ionicons name="lock-closed-outline" size={12} color={colors.textMuted} />
-              <Text style={styles.hintTextLocked}>Locked hint</Text>
+              <Text style={styles.hintTextLocked}>{t('quizScreen.lockedHint')}</Text>
               {i === 0 && !isDone && quiz.nextHintCost !== null ? (
                 <Pressable
                   style={styles.hintBuyButton}
                   onPress={() => void handleBuyHint()}
                   disabled={isBuyingHint}
                 >
-                  <Text style={styles.hintBuyButtonText}>−{quiz.nextHintCost} PTS</Text>
+                  <Text style={styles.hintBuyButtonText}>
+                    {t('quizScreen.hintBuyCost', { cost: quiz.nextHintCost }).toUpperCase()}
+                  </Text>
                 </Pressable>
               ) : null}
             </View>
@@ -419,7 +429,7 @@ export default function QuizScreen({ navigation }: Props) {
 
         {leaderboard.length > 0 ? (
           <View style={styles.leaderboard}>
-            <Text style={styles.sectionTitle}>FRIENDS LEADERBOARD</Text>
+            <Text style={styles.sectionTitle}>{t('quizScreen.friendsLeaderboard').toUpperCase()}</Text>
             <FlatList
               data={leaderboard}
               keyExtractor={(item) => String(item.id)}
@@ -452,7 +462,7 @@ export default function QuizScreen({ navigation }: Props) {
                   </View>
                   <View style={styles.leaderboardText}>
                     <Text style={styles.leaderboardName} numberOfLines={1}>
-                      {item.isMe ? 'You' : item.username}
+                      {item.isMe ? t('quizScreen.you') : item.username}
                     </Text>
                     <Text style={styles.leaderboardStatus} numberOfLines={1}>
                       {statusLabel(item)}

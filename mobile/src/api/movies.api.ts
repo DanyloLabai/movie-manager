@@ -14,8 +14,8 @@ export async function getWatchlist(limit = 30, offset = 0): Promise<WatchlistIte
   return res.data as WatchlistItem[];
 }
 
-export async function getWatched(limit = 30, offset = 0): Promise<WatchlistItem[]> {
-  const res = await api.get('/movies/watched', { params: { limit, offset } });
+export async function getWatched(limit = 30, offset = 0, rating?: number): Promise<WatchlistItem[]> {
+  const res = await api.get('/movies/watched', { params: { limit, offset, rating } });
   return res.data as WatchlistItem[];
 }
 

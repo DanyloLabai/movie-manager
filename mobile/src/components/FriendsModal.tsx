@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   acceptFriendRequest,
@@ -54,6 +55,7 @@ function Avatar({ url, name, size = 38 }: { url: string | null; name: string; si
 }
 
 export default function FriendsModal({ visible, friends, onClose, onFriendsChange }: FriendsModalProps) {
+  const { t } = useTranslation('social');
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [mode, setMode] = useState<Mode>('list');
   const [requests, setRequests] = useState<FriendRequest[]>([]);
@@ -159,18 +161,18 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
   };
 
   const tabs: Array<{ key: Mode; label: string; count?: number }> = [
-    { key: 'list', label: 'Friends' },
-    { key: 'requests', label: 'Requests', count: requests.length || undefined },
-    { key: 'feed', label: 'Feed' },
+    { key: 'list', label: t('friendsModal.tabs.friends') },
+    { key: 'requests', label: t('friendsModal.tabs.requests'), count: requests.length || undefined },
+    { key: 'feed', label: t('friendsModal.tabs.feed') },
   ];
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>
-              FRIENDS <Text style={styles.headerCount}>· {friends.length}</Text>
+              {t('friendsModal.title').toUpperCase()} <Text style={styles.headerCount}>· {friends.length}</Text>
             </Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <Ionicons name="close" size={22} color={colors.textMuted} />
@@ -207,7 +209,7 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
               <View style={styles.flexFill}>
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Search by username…"
+                  placeholder={t('friendsModal.searchPlaceholder')}
                   placeholderTextColor={colors.textFaint}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
@@ -221,7 +223,7 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
                     keyExtractor={(u) => String(u.id)}
                     ListEmptyComponent={
                       searchQuery.trim().length < 2 ? null : (
-                        <Text style={styles.emptyText}>No users found.</Text>
+                        <Text style={styles.emptyText}>{t('friendsModal.noUsersFound')}</Text>
                       )
                     }
                     renderItem={({ item }) => (
@@ -231,9 +233,9 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
                           <Text style={styles.rowName}>{item.username}</Text>
                         </Pressable>
                         {item.isFriend ? (
-                          <Text style={styles.rowStatusText}>✓ Friends</Text>
+                          <Text style={styles.rowStatusText}>✓ {t('friendsModal.friendsStatus')}</Text>
                         ) : item.requestPending ? (
-                          <Text style={styles.rowStatusTextMuted}>Sent</Text>
+                          <Text style={styles.rowStatusTextMuted}>{t('friendsModal.sent')}</Text>
                         ) : (
                           <Pressable
                             style={styles.smallButton}
@@ -241,7 +243,7 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
                             disabled={busyId === item.id}
                           >
                             <Text style={styles.smallButtonText}>
-                              {busyId === item.id ? '…' : 'ADD'}
+                              {busyId === item.id ? '…' : t('friendsModal.add').toUpperCase()}
                             </Text>
                           </Pressable>
                         )}
@@ -257,7 +259,7 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
                 <FlatList
                   data={requests}
                   keyExtractor={(r) => String(r.id)}
-                  ListEmptyComponent={<Text style={styles.emptyText}>No pending requests.</Text>}
+                  ListEmptyComponent={<Text style={styles.emptyText}>{t('friendsModal.noPendingRequests')}</Text>}
                   renderItem={({ item }) => (
                     <View style={styles.row}>
                       <Pressable
@@ -294,7 +296,7 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
                 <FlatList
                   data={feedItems}
                   keyExtractor={(f) => String(f.id)}
-                  ListEmptyComponent={<Text style={styles.emptyText}>No recent activity.</Text>}
+                  ListEmptyComponent={<Text style={styles.emptyText}>{t('friendsModal.noRecentActivity')}</Text>}
                   renderItem={({ item }) => (
                     <Pressable
                       style={styles.row}
@@ -321,7 +323,7 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
                 />
               )
             ) : friends.length === 0 ? (
-              <Text style={styles.emptyText}>No friends yet — try search.</Text>
+              <Text style={styles.emptyText}>{t('friendsModal.noFriendsYet')}</Text>
             ) : (
               <FlatList
                 data={friends}
@@ -354,12 +356,15 @@ const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
   },
   sheet: {
+    width: '100%',
+    maxWidth: 420,
     backgroundColor: colors.surfaceMuted,
-    borderTopLeftRadius: radius.lg,
-    borderTopRightRadius: radius.lg,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
     maxHeight: '80%',

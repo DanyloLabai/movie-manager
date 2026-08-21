@@ -412,6 +412,7 @@ export default function Watchlist() {
               ratingDistribution={profileData.stats.ratingDistribution || []}
               averageRating={profileData.stats.averageRating || "0.0"}
               topRated={profileData.stats.topRated || []}
+              interactiveRating
             />
           </ProfileSection>
         )}

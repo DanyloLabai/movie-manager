@@ -1158,9 +1158,18 @@ export class MoviesService {
     });
   }
 
-  async getWatchedMovies(userId: number, limit?: number, offset = 0) {
+  async getWatchedMovies(
+    userId: number,
+    limit?: number,
+    offset = 0,
+    rating?: number,
+  ) {
     return this.watchlistRepo.find({
-      where: { user: { id: userId }, isWatched: true },
+      where: {
+        user: { id: userId },
+        isWatched: true,
+        ...(rating !== undefined ? { rating } : {}),
+      },
       order: { addedAt: 'DESC' },
       ...(limit !== undefined ? { take: limit, skip: offset } : {}),
     });

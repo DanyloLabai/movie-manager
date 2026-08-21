@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { fontWeight } from '@movie-manager/shared';
 import { signUp } from '../../api/auth.api';
@@ -26,6 +27,7 @@ import type { AuthStackParamList } from '../../navigation/AuthStack';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
 export default function RegisterScreen({ navigation }: Props) {
+  const { t } = useTranslation('auth');
   const backdropUri = useAuthBackdrop();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -40,11 +42,11 @@ export default function RegisterScreen({ navigation }: Props) {
     setError(null);
     setSuccessMessage(null);
     if (!username || !email || !password) {
-      setError('Fill in all fields.');
+      setError(t('shared.fillAllFields'));
       return;
     }
     if (!captchaToken) {
-      setError('Please complete the reCAPTCHA.');
+      setError(t('register.completeRecaptcha'));
       return;
     }
     setIsSubmitting(true);
@@ -52,7 +54,7 @@ export default function RegisterScreen({ navigation }: Props) {
       const result = await signUp({ username, email, password, captchaToken });
       setSuccessMessage(result.message);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not register.'));
+      setError(getErrorMessage(err, t('register.error')));
     } finally {
       setIsSubmitting(false);
     }
@@ -82,23 +84,23 @@ export default function RegisterScreen({ navigation }: Props) {
             <View style={styles.iconBadge}>
               <Ionicons name="bulb-outline" size={26} color={colors.accent} />
             </View>
-            <Text style={styles.title}>JOIN US</Text>
-            <Text style={styles.subtitle}>CREATE YOUR TRACKING PROFILE</Text>
+            <Text style={styles.title}>{t('register.title').toUpperCase()}</Text>
+            <Text style={styles.subtitle}>{t('register.subtitle').toUpperCase()}</Text>
 
-            <Text style={styles.label}>USERNAME</Text>
+            <Text style={styles.label}>{t('register.usernameLabel').toUpperCase()}</Text>
             <TextInput
               style={styles.input}
-              placeholder="username"
+              placeholder={t('register.usernamePlaceholder')}
               placeholderTextColor={colors.textFaint}
               autoCapitalize="none"
               value={username}
               onChangeText={setUsername}
             />
 
-            <Text style={styles.label}>EMAIL</Text>
+            <Text style={styles.label}>{t('register.emailLabel').toUpperCase()}</Text>
             <TextInput
               style={styles.input}
-              placeholder="name@example.com"
+              placeholder={t('shared.emailPlaceholder')}
               placeholderTextColor={colors.textFaint}
               autoCapitalize="none"
               keyboardType="email-address"
@@ -106,7 +108,7 @@ export default function RegisterScreen({ navigation }: Props) {
               onChangeText={setEmail}
             />
 
-            <Text style={styles.label}>PASSWORD</Text>
+            <Text style={styles.label}>{t('shared.passwordLabel').toUpperCase()}</Text>
             <View style={styles.passwordRow}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
@@ -148,16 +150,16 @@ export default function RegisterScreen({ navigation }: Props) {
               {isSubmitting ? (
                 <ActivityIndicator color={colors.textOnAccent} />
               ) : (
-                <Text style={styles.buttonText}>CREATE ACCOUNT</Text>
+                <Text style={styles.buttonText}>{t('register.createAccount').toUpperCase()}</Text>
               )}
             </Pressable>
 
             <View style={styles.divider} />
 
             <View style={styles.footerRow}>
-              <Text style={styles.footerText}>Already have an account? </Text>
+              <Text style={styles.footerText}>{t('register.alreadyHaveAccount')}</Text>
               <Pressable onPress={() => navigation.navigate('Login')} hitSlop={8}>
-                <Text style={styles.footerLink}>LOG IN</Text>
+                <Text style={styles.footerLink}>{t('register.logIn').toUpperCase()}</Text>
               </Pressable>
             </View>
           </ScrollView>

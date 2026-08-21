@@ -1,4 +1,5 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { ProfileData } from '@movie-manager/shared';
 import { colors, spacing, fontWeight } from '../../theme';
 
@@ -9,37 +10,38 @@ interface ProfileWrappedPanelProps {
 
 // Ported from movie-frontend's ProfileWrappedPanel.tsx (mobile grid variant).
 export default function ProfileWrappedPanel({ username, stats }: ProfileWrappedPanelProps) {
+  const { t } = useTranslation('profile');
   const hours = Math.floor((stats.totalMinutes ?? 0) / 60);
   const minutes = (stats.totalMinutes ?? 0) % 60;
   const hasMarathon = (stats.longestMovie?.runtime ?? 0) > 0;
 
   return (
     <View>
-      <Text style={styles.sectionTitle}>{username.toUpperCase()}'S WRAPPED</Text>
+      <Text style={styles.sectionTitle}>{t('wrapped.title', { username: username.toUpperCase() })}</Text>
 
       <View style={styles.grid}>
         <View style={styles.tile}>
           <Text style={styles.tileValue}>
             {hours}h {minutes}m
           </Text>
-          <Text style={styles.tileLabel}>TIME SPENT</Text>
+          <Text style={styles.tileLabel}>{t('wrapped.timeSpent').toUpperCase()}</Text>
         </View>
         <View style={styles.tile}>
           <Text style={styles.tileValue} numberOfLines={1}>
-            {stats.topGenre || 'N/A'}
+            {stats.topGenre || t('notAvailable')}
           </Text>
-          <Text style={styles.tileLabel}>TOP GENRE</Text>
+          <Text style={styles.tileLabel}>{t('wrapped.topGenre').toUpperCase()}</Text>
         </View>
         <View style={styles.tile}>
-          <Text style={styles.tileValue}>{stats.favoriteDecade || 'N/A'}</Text>
-          <Text style={styles.tileLabel}>FAV DECADE</Text>
+          <Text style={styles.tileValue}>{stats.favoriteDecade || t('notAvailable')}</Text>
+          <Text style={styles.tileLabel}>{t('wrapped.favDecade').toUpperCase()}</Text>
         </View>
         <View style={styles.tile}>
           <Text style={styles.tileValue}>
             {stats.moviesCount ?? 0}{' '}
             <Text style={styles.tileValueSecondary}>/ {stats.tvCount ?? 0}</Text>
           </Text>
-          <Text style={styles.tileLabel}>MOVIES / TV</Text>
+          <Text style={styles.tileLabel}>{t('wrapped.moviesTv').toUpperCase()}</Text>
         </View>
       </View>
 
@@ -47,10 +49,12 @@ export default function ProfileWrappedPanel({ username, stats }: ProfileWrappedP
         <View style={styles.detailRows}>
           {hasMarathon ? (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>LONGEST MARATHON</Text>
+              <Text style={styles.detailLabel}>{t('wrapped.longestMarathon').toUpperCase()}</Text>
               <Text style={styles.detailValue} numberOfLines={1}>
                 {stats.longestMovie?.title} ·{' '}
-                <Text style={styles.detailAccent}>{stats.longestMovie?.runtime} min</Text>
+                <Text style={styles.detailAccent}>
+                  {t('wrapped.runtimeMinutes', { count: stats.longestMovie?.runtime })}
+                </Text>
               </Text>
             </View>
           ) : null}
@@ -63,10 +67,12 @@ export default function ProfileWrappedPanel({ username, stats }: ProfileWrappedP
                   <View style={[styles.actorPhoto, styles.actorPhotoPlaceholder]} />
                 )}
                 <View style={styles.detailTextGroup}>
-                  <Text style={styles.detailLabel}>MOST WATCHED ACTOR</Text>
+                  <Text style={styles.detailLabel}>{t('wrapped.mostWatchedActor').toUpperCase()}</Text>
                   <Text style={styles.detailValue} numberOfLines={1}>
                     {stats.topActor.name}{' '}
-                    <Text style={styles.detailMuted}>· In {stats.topActor.count} movies</Text>
+                    <Text style={styles.detailMuted}>
+                      · {t('wrapped.inMoviesCount', { count: stats.topActor.count })}
+                    </Text>
                   </Text>
                 </View>
               </View>

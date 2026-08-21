@@ -7,6 +7,10 @@ interface MoviePosterCardProps {
   posterUrl: string | null;
   title: string;
   subtitle?: string;
+  /** Shares the top-left corner with the heart toggle below — pass at most
+   * one of `topLeftBadge`/`onToggleFavorite` per card, matching
+   * movie-frontend's MovieCard.tsx (heart when released, clock icon
+   * otherwise, never both). */
   topLeftBadge?: string;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
@@ -74,7 +78,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     overflow: 'hidden',
     backgroundColor: colors.backgroundDeep,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
   poster: {
     width: '100%',
@@ -102,7 +106,7 @@ const styles = StyleSheet.create({
   heartButton: {
     position: 'absolute',
     top: 6,
-    right: 6,
+    left: 6,
     width: 22,
     height: 22,
     borderRadius: radius.full,
@@ -118,6 +122,6 @@ const styles = StyleSheet.create({
   subtitle: {
     color: colors.textMuted,
     fontSize: 10,
-    marginTop: 1,
+    marginTop: 3,
   },
 });

@@ -267,18 +267,26 @@ export class MoviesController {
   })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiQuery({
+    name: 'rating',
+    required: false,
+    type: Number,
+    description: 'Filter to only movies rated exactly this value',
+  })
   @ApiResponse({ status: 200, description: 'List of watched movies' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getWatchedMovies(
     @Req() req: RequestWithUser,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('rating') rating?: string,
   ) {
     const userId = req.user.userId;
     return this.moviesService.getWatchedMovies(
       userId,
       limit !== undefined ? Number(limit) : DEFAULT_PAGE_SIZE,
       offset !== undefined ? Number(offset) : 0,
+      rating !== undefined ? Number(rating) : undefined,
     );
   }
 

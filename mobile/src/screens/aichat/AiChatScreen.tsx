@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { AiUsage, MovieResult, RecommendationReason } from '@movie-manager/shared';
 import { aiSearch, getHistory, getUsage, postHistory } from '../../api/ai.api';
 import { addToWatchlist, getProfile } from '../../api/movies.api';
@@ -49,20 +50,14 @@ interface ProfileResponse {
   inPlansIds?: number[];
 }
 
-const SUGGESTIONS = [
-  'Suggest a mind-bending sci-fi movie',
-  'What should I watch tonight?',
-  'Movies similar to Inception',
-  'What should I watch from my watchlist?',
-];
-
 function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
+  const { t } = useTranslation('quiz');
   const [isOpen, setIsOpen] = useState(false);
   return (
     <View style={styles.whyThis}>
       <Pressable style={styles.whyThisToggle} onPress={() => setIsOpen((v) => !v)}>
         <Ionicons name={isOpen ? 'chevron-down' : 'chevron-forward'} size={11} color={colors.accentBright} />
-        <Text style={styles.whyThisToggleText}>Why this</Text>
+        <Text style={styles.whyThisToggleText}>{t('aiChatScreen.whyThis')}</Text>
       </Pressable>
       {isOpen ? (
         <View style={styles.whyThisList}>
@@ -78,6 +73,13 @@ function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
 }
 
 export default function AiChatScreen({ navigation }: Props) {
+  const { t } = useTranslation('quiz');
+  const SUGGESTIONS = [
+    t('aiChatScreen.suggestion1'),
+    t('aiChatScreen.suggestion2'),
+    t('aiChatScreen.suggestion3'),
+    t('aiChatScreen.suggestion4'),
+  ];
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
@@ -92,7 +94,7 @@ export default function AiChatScreen({ navigation }: Props) {
       try {
         setMessages(await getHistory());
       } catch (err) {
-        showToast(getErrorMessage(err, 'Could not load chat history.'));
+        showToast(getErrorMessage(err, t('aiChatScreen.loadHistoryError')));
       } finally {
         setIsLoadingHistory(false);
       }
@@ -138,7 +140,7 @@ export default function AiChatScreen({ navigation }: Props) {
         () => {},
       );
     } catch (err) {
-      showToast(getErrorMessage(err, 'Could not get a response.'));
+      showToast(getErrorMessage(err, t('aiChatScreen.sendError')));
     } finally {
       setIsSending(false);
       getUsage().then(setUsage).catch(() => {});
@@ -148,7 +150,7 @@ export default function AiChatScreen({ navigation }: Props) {
   const handleClearChat = () => {
     setMessages([]);
     void postHistory([]).catch(() => {});
-    showToast('Chat history cleared.');
+    showToast(t('aiChatScreen.chatCleared'));
   };
 
   const handleAddFromChat = async (movie: MovieResult) => {
@@ -161,14 +163,14 @@ export default function AiChatScreen({ navigation }: Props) {
         releaseDate: movie.releaseDate,
       });
       setAddedIds((prev) => [...prev, movie.id]);
-      showToast('Added to watchlist.');
+      showToast(t('aiChatScreen.addedToWatchlist'));
     } catch (err) {
       const apiError = err as { response?: { status?: number } };
       if (apiError.response?.status === 400) {
         setAddedIds((prev) => [...prev, movie.id]);
-        showToast('Added to watchlist.');
+        showToast(t('aiChatScreen.addedToWatchlist'));
       } else {
-        showToast(getErrorMessage(err, 'Could not add to watchlist.'));
+        showToast(getErrorMessage(err, t('aiChatScreen.addWatchlistError')));
       }
     }
   };
@@ -188,10 +190,10 @@ export default function AiChatScreen({ navigation }: Props) {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={80}
+        keyboardVerticalOffset={0}
       >
         <ScreenHeader
-          title="LUMEN AI"
+          title={t('aiChatScreen.headerTitle').toUpperCase()}
           rightSlot={
             usage ? (
               <Pressable style={styles.usageButton} onPress={() => setIsUsageOpen(true)}>
@@ -210,8 +212,8 @@ export default function AiChatScreen({ navigation }: Props) {
               <View style={styles.emptyBadge}>
                 <Ionicons name="bulb-outline" size={24} color={colors.accentBright} />
               </View>
-              <Text style={styles.emptyTitle}>LUMEN AI</Text>
-              <Text style={styles.empty}>Ask me for a movie recommendation.</Text>
+              <Text style={styles.emptyTitle}>{t('aiChatScreen.emptyTitle').toUpperCase()}</Text>
+              <Text style={styles.empty}>{t('aiChatScreen.emptyMessage')}</Text>
               <View style={styles.suggestions}>
                 {SUGGESTIONS.map((chip) => (
                   <Pressable key={chip} style={styles.suggestionChip} onPress={() => void handleSend(chip)}>
@@ -269,11 +271,11 @@ export default function AiChatScreen({ navigation }: Props) {
                             <View style={styles.movieActions}>
                               {added ? (
                                 <View style={styles.addedPill}>
-                                  <Text style={styles.addedPillText}>✓ ADDED</Text>
+                                  <Text style={styles.addedPillText}>✓ {t('aiChatScreen.added').toUpperCase()}</Text>
                                 </View>
                               ) : (
                                 <Pressable style={styles.addButton} onPress={() => void handleAddFromChat(movie)}>
-                                  <Text style={styles.addButtonText}>+ ADD</Text>
+                                  <Text style={styles.addButtonText}>+ {t('aiChatScreen.add').toUpperCase()}</Text>
                                 </Pressable>
                               )}
                               <Pressable
@@ -286,7 +288,7 @@ export default function AiChatScreen({ navigation }: Props) {
                                   })
                                 }
                               >
-                                <Text style={styles.detailsButtonText}>DETAILS</Text>
+                                <Text style={styles.detailsButtonText}>{t('aiChatScreen.details').toUpperCase()}</Text>
                               </Pressable>
                             </View>
                           </View>
@@ -312,7 +314,7 @@ export default function AiChatScreen({ navigation }: Props) {
           </Pressable>
           <TextInput
             style={styles.input}
-            placeholder="Ask about a movie…"
+            placeholder={t('aiChatScreen.inputPlaceholder')}
             placeholderTextColor={colors.textMuted}
             value={draft}
             onChangeText={setDraft}
@@ -327,18 +329,18 @@ export default function AiChatScreen({ navigation }: Props) {
             )}
           </Pressable>
         </View>
-        <Text style={styles.disclaimer}>Lumen AI can make mistakes. Verify important info.</Text>
+        <Text style={styles.disclaimer}>{t('aiChatScreen.disclaimer')}</Text>
       </KeyboardAvoidingView>
 
       <Modal visible={isUsageOpen} transparent animationType="fade" onRequestClose={() => setIsUsageOpen(false)}>
         <Pressable style={styles.usageBackdrop} onPress={() => setIsUsageOpen(false)}>
           <Pressable style={styles.usageCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.usageCardTitle}>USAGE TODAY</Text>
+            <Text style={styles.usageCardTitle}>{t('aiChatScreen.usageTitle').toUpperCase()}</Text>
             {usage ? (
               <View style={styles.usageRows}>
                 <View style={styles.usageRow}>
                   <View style={styles.usageRowHeader}>
-                    <Text style={styles.usageRowLabel}>REQUESTS</Text>
+                    <Text style={styles.usageRowLabel}>{t('aiChatScreen.requests').toUpperCase()}</Text>
                     <Text style={styles.usageRowValue}>
                       {usage.requestCount}/{usage.requestLimit}
                     </Text>
@@ -354,7 +356,7 @@ export default function AiChatScreen({ navigation }: Props) {
                 </View>
                 <View style={styles.usageRow}>
                   <View style={styles.usageRowHeader}>
-                    <Text style={styles.usageRowLabel}>TOKENS</Text>
+                    <Text style={styles.usageRowLabel}>{t('aiChatScreen.tokens').toUpperCase()}</Text>
                     <Text style={styles.usageRowValue}>
                       {formatTokenCount(usage.totalTokens)}/{formatTokenCount(usage.tokenLimit)}
                     </Text>

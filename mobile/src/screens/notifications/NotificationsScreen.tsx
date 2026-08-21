@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AppNotification } from '@movie-manager/shared';
 import {
@@ -26,11 +27,11 @@ const FILTER_TYPES: Record<FilterKey, AppNotification['type'][] | null> = {
   releases: ['release'],
 };
 
-const FILTERS: { key: FilterKey; label: string }[] = [
-  { key: 'all', label: 'ALL' },
-  { key: 'friends', label: 'FRIENDS' },
-  { key: 'achievements', label: 'ACHIEVEMENTS' },
-  { key: 'releases', label: 'RELEASES' },
+const FILTERS: { key: FilterKey }[] = [
+  { key: 'all' },
+  { key: 'friends' },
+  { key: 'achievements' },
+  { key: 'releases' },
 ];
 
 const ICONS: Record<AppNotification['type'], keyof typeof Ionicons.glyphMap> = {
@@ -45,8 +46,7 @@ function isSameDay(a: Date, b: Date): boolean {
 }
 
 interface Group {
-  key: string;
-  label: string;
+  key: 'today' | 'yesterday' | 'older';
   items: AppNotification[];
 }
 
@@ -66,11 +66,12 @@ function groupByDate(items: AppNotification[]): Group[] {
     else older.push(n);
   }
 
-  return [
-    { key: 'today', label: 'TODAY', items: today },
-    { key: 'yesterday', label: 'YESTERDAY', items: yday },
-    { key: 'older', label: 'OLDER', items: older },
-  ].filter((g) => g.items.length > 0);
+  const groups: Group[] = [
+    { key: 'today', items: today },
+    { key: 'yesterday', items: yday },
+    { key: 'older', items: older },
+  ];
+  return groups.filter((g) => g.items.length > 0);
 }
 
 // Row union so a single FlatList can render both friend-request cards and
@@ -78,10 +79,11 @@ function groupByDate(items: AppNotification[]): Group[] {
 type ListRow =
   | { kind: 'requestsHeader' }
   | { kind: 'request'; request: FriendRequest }
-  | { kind: 'groupHeader'; label: string }
+  | { kind: 'groupHeader'; groupKey: 'today' | 'yesterday' | 'older' }
   | { kind: 'notification'; notification: AppNotification };
 
 export default function NotificationsScreen({ navigation }: Props) {
+  const { t } = useTranslation('social');
   const [items, setItems] = useState<AppNotification[]>([]);
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,7 +99,7 @@ export default function NotificationsScreen({ navigation }: Props) {
       setItems(notifs);
       setRequests(reqs);
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not load notifications.'));
+      setError(getErrorMessage(err, t('notifications.loadError')));
     } finally {
       setIsLoading(false);
     }
@@ -167,7 +169,7 @@ export default function NotificationsScreen({ navigation }: Props) {
     for (const r of requests) rows.push({ kind: 'request', request: r });
   }
   for (const group of groupByDate(filteredNotifications)) {
-    rows.push({ kind: 'groupHeader', label: group.label });
+    rows.push({ kind: 'groupHeader', groupKey: group.key });
     for (const n of group.items) rows.push({ kind: 'notification', notification: n });
   }
 
@@ -183,12 +185,12 @@ export default function NotificationsScreen({ navigation }: Props) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTextGroup}>
-          <Text style={styles.headerTitle}>NOTIFICATIONS</Text>
-          <Text style={styles.headerSubtitle}>Stay updated with your cinematic journey.</Text>
+          <Text style={styles.headerTitle}>{t('notifications.title').toUpperCase()}</Text>
+          <Text style={styles.headerSubtitle}>{t('notifications.subtitle')}</Text>
         </View>
         {unreadCount > 0 ? (
           <Pressable style={styles.markAllButton} onPress={() => void handleMarkAllRead()}>
-            <Text style={styles.markAllText}>MARK ALL READ</Text>
+            <Text style={styles.markAllText}>{t('notifications.markAllRead').toUpperCase()}</Text>
           </Pressable>
         ) : null}
       </View>
@@ -197,7 +199,7 @@ export default function NotificationsScreen({ navigation }: Props) {
         {FILTERS.map((f) => (
           <Pressable key={f.key} style={styles.filterTab} onPress={() => setActiveFilter(f.key)}>
             <Text style={[styles.filterTabText, activeFilter === f.key && styles.filterTabTextActive]}>
-              {f.label}
+              {t(`notifications.filters.${f.key}`).toUpperCase()}
             </Text>
             {activeFilter === f.key ? <View style={styles.filterTabUnderline} /> : null}
           </Pressable>
@@ -217,15 +219,15 @@ export default function NotificationsScreen({ navigation }: Props) {
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="notifications-off-outline" size={40} color={colors.textFaint} />
-            <Text style={styles.empty}>Nothing here yet.</Text>
+            <Text style={styles.empty}>{t('notifications.nothingHereYet')}</Text>
           </View>
         }
         renderItem={({ item: row }) => {
           if (row.kind === 'requestsHeader') {
-            return <Text style={styles.sectionLabel}>FRIEND REQUESTS</Text>;
+            return <Text style={styles.sectionLabel}>{t('notifications.friendRequests').toUpperCase()}</Text>;
           }
           if (row.kind === 'groupHeader') {
-            return <Text style={styles.sectionLabel}>{row.label}</Text>;
+            return <Text style={styles.sectionLabel}>{t(`notifications.groups.${row.groupKey}`).toUpperCase()}</Text>;
           }
           if (row.kind === 'request') {
             const req = row.request;
@@ -279,7 +281,7 @@ export default function NotificationsScreen({ navigation }: Props) {
                 </Text>
                 <Text style={styles.rowTimestamp}>{formatTimeAgo(item.createdAt)}</Text>
               </View>
-              <Text style={styles.viewLabel}>VIEW</Text>
+              <Text style={styles.viewLabel}>{t('notifications.view').toUpperCase()}</Text>
             </Pressable>
           );
         }}
@@ -312,13 +314,12 @@ const styles = StyleSheet.create({
   markAllText: { color: colors.textMuted, fontSize: 9.5, fontWeight: fontWeight.semibold, letterSpacing: 1 },
   filterRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.lg - spacing.md,
     marginTop: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderSubtle,
   },
-  filterTab: { paddingVertical: spacing.sm + 2 },
+  filterTab: { paddingVertical: spacing.sm + 2, paddingHorizontal: spacing.md },
   filterTabText: { color: colors.textMuted, fontSize: 10.5, fontWeight: fontWeight.semibold, letterSpacing: 1 },
   filterTabTextActive: { color: colors.accentBright },
   filterTabUnderline: { position: 'absolute', left: 0, right: 0, bottom: -1, height: 2, backgroundColor: colors.accentBright },

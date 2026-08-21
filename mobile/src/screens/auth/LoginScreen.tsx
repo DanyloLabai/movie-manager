@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { fontWeight } from '@movie-manager/shared';
 import { useAuth } from '../../context/AuthContext';
@@ -25,6 +26,7 @@ import type { AuthStackParamList } from '../../navigation/AuthStack';
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
+  const { t } = useTranslation('auth');
   const { login } = useAuth();
   const backdropUri = useAuthBackdrop();
   const [email, setEmail] = useState('');
@@ -46,7 +48,7 @@ export default function LoginScreen({ navigation }: Props) {
       // No manual navigation call needed — RootNavigator swaps to MainStack
       // as soon as isAuthenticated flips true.
     } catch (err) {
-      setError(getErrorMessage(err, 'Could not log in. Check your credentials.'));
+      setError(getErrorMessage(err, t('login.error')));
     } finally {
       setIsSubmitting(false);
     }
@@ -76,13 +78,13 @@ export default function LoginScreen({ navigation }: Props) {
             <View style={styles.iconBadge}>
               <Ionicons name="bulb-outline" size={26} color={colors.accent} />
             </View>
-            <Text style={styles.title}>LUMEN</Text>
-            <Text style={styles.subtitle}>LOG IN TO YOUR TRACKER</Text>
+            <Text style={styles.title}>{t('login.brandName')}</Text>
+            <Text style={styles.subtitle}>{t('login.subtitle').toUpperCase()}</Text>
 
-            <Text style={styles.label}>EMAIL ADDRESS</Text>
+            <Text style={styles.label}>{t('shared.emailAddressLabel').toUpperCase()}</Text>
             <TextInput
               style={styles.input}
-              placeholder="name@example.com"
+              placeholder={t('shared.emailPlaceholder')}
               placeholderTextColor={colors.textFaint}
               autoCapitalize="none"
               keyboardType="email-address"
@@ -90,7 +92,7 @@ export default function LoginScreen({ navigation }: Props) {
               onChangeText={setEmail}
             />
 
-            <Text style={styles.label}>PASSWORD</Text>
+            <Text style={styles.label}>{t('shared.passwordLabel').toUpperCase()}</Text>
             <View style={styles.passwordRow}>
               <TextInput
                 style={[styles.input, styles.passwordInput]}
@@ -123,20 +125,20 @@ export default function LoginScreen({ navigation }: Props) {
               {isSubmitting ? (
                 <ActivityIndicator color={colors.textOnAccent} />
               ) : (
-                <Text style={styles.buttonText}>SIGN IN</Text>
+                <Text style={styles.buttonText}>{t('login.signIn').toUpperCase()}</Text>
               )}
             </Pressable>
 
             <Pressable onPress={() => navigation.navigate('ForgotPassword')} hitSlop={8}>
-              <Text style={styles.forgotLink}>FORGOT YOUR PASSWORD?</Text>
+              <Text style={styles.forgotLink}>{t('login.forgotPassword').toUpperCase()}</Text>
             </Pressable>
 
             <View style={styles.divider} />
 
             <View style={styles.footerRow}>
-              <Text style={styles.footerText}>New here? </Text>
+              <Text style={styles.footerText}>{t('login.newHere')}</Text>
               <Pressable onPress={() => navigation.navigate('Register')} hitSlop={8}>
-                <Text style={styles.footerLink}>CREATE AN ACCOUNT</Text>
+                <Text style={styles.footerLink}>{t('login.createAccount').toUpperCase()}</Text>
               </Pressable>
             </View>
           </ScrollView>

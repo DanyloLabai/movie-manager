@@ -1,6 +1,7 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { WatchlistItem } from '@movie-manager/shared';
 import type { Achievement } from '../../utils/achievements';
 import type { Friend } from '../../api/users.api';
@@ -14,6 +15,10 @@ interface ProfileFavoritesPanelProps {
   onToggleFavorite: (tmdbId: number) => void;
   onOpenFriends: () => void;
   onPressMovie: (item: WatchlistItem) => void;
+  /** Viewing someone else's profile — hides the favorite-toggle control. */
+  readOnly?: boolean;
+  /** Hides the friends-avatar row (public profile pages don't show it). */
+  showFriends?: boolean;
 }
 
 const POSTER_WIDTH = 108;
@@ -30,16 +35,19 @@ export default function ProfileFavoritesPanel({
   onToggleFavorite,
   onOpenFriends,
   onPressMovie,
+  readOnly = false,
+  showFriends = true,
 }: ProfileFavoritesPanelProps) {
+  const { t } = useTranslation('profile');
   const topFavorites = favorites.slice(0, 3);
   const visibleFriends = friends.slice(0, 5);
   const remainingFriends = Math.max(0, friendsCount - visibleFriends.length);
 
   return (
     <View>
-      <Text style={styles.sectionTitle}>TOP FAVORITES</Text>
+      <Text style={styles.sectionTitle}>{t('favorites.topFavorites').toUpperCase()}</Text>
       {topFavorites.length === 0 ? (
-        <Text style={styles.emptyText}>No favorites yet.</Text>
+        <Text style={styles.emptyText}>{t('favorites.noFavorites')}</Text>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.favoritesScroll}>
           <View style={styles.favoritesRow}>
@@ -57,17 +65,27 @@ export default function ProfileFavoritesPanel({
                     ) : (
                       <View style={[styles.favoritePoster, styles.favoritePosterPlaceholder]} />
                     )}
-                    <Pressable
-                      style={styles.heartBadge}
-                      onPress={() => onToggleFavorite(fav.tmdbId)}
-                      hitSlop={6}
-                    >
-                      <Ionicons
-                        name={fav.isFavorite ? 'heart' : 'heart-outline'}
-                        size={11}
-                        color={fav.isFavorite ? colors.danger : 'rgba(242,234,217,.5)'}
-                      />
-                    </Pressable>
+                    {readOnly ? (
+                      <View style={styles.heartBadge}>
+                        <Ionicons
+                          name={fav.isFavorite ? 'heart' : 'heart-outline'}
+                          size={11}
+                          color={fav.isFavorite ? colors.danger : 'rgba(242,234,217,.5)'}
+                        />
+                      </View>
+                    ) : (
+                      <Pressable
+                        style={styles.heartBadge}
+                        onPress={() => onToggleFavorite(fav.tmdbId)}
+                        hitSlop={6}
+                      >
+                        <Ionicons
+                          name={fav.isFavorite ? 'heart' : 'heart-outline'}
+                          size={11}
+                          color={fav.isFavorite ? colors.danger : 'rgba(242,234,217,.5)'}
+                        />
+                      </Pressable>
+                    )}
                   </View>
                   <Text style={styles.favoriteTitle} numberOfLines={1}>
                     {fav.title}
@@ -80,7 +98,7 @@ export default function ProfileFavoritesPanel({
         </ScrollView>
       )}
 
-      <Text style={[styles.sectionTitle, styles.achievementsTitle]}>ACHIEVEMENTS</Text>
+      <Text style={[styles.sectionTitle, styles.achievementsTitle]}>{t('favorites.achievements').toUpperCase()}</Text>
       <View style={styles.achievementsList}>
         {achievements.map((a) => (
           <View key={a.id} style={[styles.achievementRow, !a.isUnlocked && styles.achievementRowLocked]}>
@@ -103,39 +121,41 @@ export default function ProfileFavoritesPanel({
         ))}
       </View>
 
-      <View style={styles.friendsRow}>
-        <Text style={styles.friendsRowTitle}>
-          FRIENDS · {friendsCount}
-        </Text>
-        <View style={styles.friendsStack}>
-          {visibleFriends.map((fr) => (
-            <View key={fr.id} style={styles.friendAvatarRing}>
-              {fr.avatarUrl ? (
-                <Image source={{ uri: fr.avatarUrl }} style={styles.friendAvatar} />
-              ) : (
-                <LinearGradient
-                  colors={['#e8c377', '#a87c2e']}
-                  start={{ x: 0.35, y: 0.3 }}
-                  end={{ x: 1, y: 1 }}
-                  style={[styles.friendAvatar, styles.friendAvatarFallback]}
-                >
-                  <Text style={styles.friendAvatarInitial}>
-                    {fr.username.charAt(0).toUpperCase()}
-                  </Text>
-                </LinearGradient>
-              )}
-            </View>
-          ))}
-          {remainingFriends > 0 ? (
-            <View style={[styles.friendAvatarRing, styles.friendsOverflow]}>
-              <Text style={styles.friendsOverflowText}>+{remainingFriends}</Text>
-            </View>
-          ) : null}
-          <Pressable onPress={onOpenFriends} style={styles.viewAllButton}>
-            <Text style={styles.viewAllText}>View all</Text>
-          </Pressable>
+      {showFriends ? (
+        <View style={styles.friendsRow}>
+          <Text style={styles.friendsRowTitle}>
+            {t('favorites.friendsLabel').toUpperCase()} · {friendsCount}
+          </Text>
+          <View style={styles.friendsStack}>
+            {visibleFriends.map((fr) => (
+              <View key={fr.id} style={styles.friendAvatarRing}>
+                {fr.avatarUrl ? (
+                  <Image source={{ uri: fr.avatarUrl }} style={styles.friendAvatar} />
+                ) : (
+                  <LinearGradient
+                    colors={['#e8c377', '#a87c2e']}
+                    start={{ x: 0.35, y: 0.3 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.friendAvatar, styles.friendAvatarFallback]}
+                  >
+                    <Text style={styles.friendAvatarInitial}>
+                      {fr.username.charAt(0).toUpperCase()}
+                    </Text>
+                  </LinearGradient>
+                )}
+              </View>
+            ))}
+            {remainingFriends > 0 ? (
+              <View style={[styles.friendAvatarRing, styles.friendsOverflow]}>
+                <Text style={styles.friendsOverflowText}>+{remainingFriends}</Text>
+              </View>
+            ) : null}
+            <Pressable onPress={onOpenFriends} style={styles.viewAllButton}>
+              <Text style={styles.viewAllText}>{t('favorites.viewAll')}</Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
+      ) : null}
     </View>
   );
 }

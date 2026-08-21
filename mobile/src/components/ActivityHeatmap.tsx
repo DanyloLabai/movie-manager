@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import type { ActivityDay } from '../api/users.api';
 import { colors, spacing } from '../theme';
 
@@ -24,11 +25,13 @@ interface ActivityHeatmapProps {
   onPrevYear: () => void;
   onNextYear: () => void;
   canGoNext: boolean;
+  onPressDay?: (day: ActivityDay) => void;
 }
 
-// Simplified vs. movie-frontend's ActivityHeatmap.tsx: a scrollable week-grid
-// with the same 5-level gold intensity scale, but no per-day tooltip/modal —
-// tapping a cell is a no-op here.
+// Ported from movie-frontend's ActivityHeatmap.tsx: a scrollable week-grid
+// with the same 5-level gold intensity scale. Tapping a day with activity
+// calls onPressDay with that day's full record (including its actions list)
+// so the caller can show a detail modal, matching web's ActivityDayModal.
 export default function ActivityHeatmap({
   days,
   year,
@@ -36,8 +39,11 @@ export default function ActivityHeatmap({
   onPrevYear,
   onNextYear,
   canGoNext,
+  onPressDay,
 }: ActivityHeatmapProps) {
+  const { t } = useTranslation('profile');
   const scrollRef = useRef<ScrollView>(null);
+  const dayByDate = useMemo(() => new Map(days.map((d) => [d.date, d])), [days]);
 
   const weeks = useMemo(() => {
     const countByDate = new Map(days.map((d) => [d.date, d.count]));
@@ -70,7 +76,7 @@ export default function ActivityHeatmap({
   return (
     <View>
       <View style={styles.headerRow}>
-        <Text style={styles.title}>ACTIVITY · {year}</Text>
+        <Text style={styles.title}>{t('heatmap.title').toUpperCase()} · {year}</Text>
         <View style={styles.yearNav}>
           <Pressable onPress={onPrevYear} hitSlop={8}>
             <Ionicons name="chevron-back" size={16} color={colors.textMuted} />
@@ -86,7 +92,7 @@ export default function ActivityHeatmap({
       </View>
 
       {isLoading ? (
-        <Text style={styles.loading}>Loading…</Text>
+        <Text style={styles.loading}>{t('common:loading')}</Text>
       ) : (
         <ScrollView
           ref={scrollRef}
@@ -98,8 +104,13 @@ export default function ActivityHeatmap({
             {weeks.map((week, i) => (
               <View key={i} style={styles.col}>
                 {week.map((day) => (
-                  <View
+                  <Pressable
                     key={day.date}
+                    disabled={!day.inYear || day.count === 0}
+                    onPress={() => {
+                      const full = dayByDate.get(day.date);
+                      if (full) onPressDay?.(full);
+                    }}
                     style={[
                       styles.cell,
                       { backgroundColor: day.inYear ? levelColor(day.count) : 'transparent' },

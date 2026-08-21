@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTranslation } from 'react-i18next';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -24,7 +25,7 @@ import {
   removeFromWatchlist,
   toggleFavorite,
 } from '../../api/movies.api';
-import { getFriends, type Friend } from '../../api/users.api';
+import { getFriends, type Friend, type ActivityDay, type ActivityDayAction } from '../../api/users.api';
 import { getMyStats, type QuizStats } from '../../api/quiz.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
 import { getAchievementsList } from '../../utils/achievements';
@@ -35,6 +36,7 @@ import SegmentedTabs from '../../components/SegmentedTabs';
 import MoviePosterCard from '../../components/MoviePosterCard';
 import StarRating from '../../components/StarRating';
 import ActivityHeatmap from '../../components/ActivityHeatmap';
+import ActivityDayModal from '../../components/ActivityDayModal';
 import FriendsModal from '../../components/FriendsModal';
 import Toast from '../../components/Toast';
 import ProfileHero from '../../components/profile/ProfileHero';
@@ -79,6 +81,7 @@ export default function ProfileScreen({ route, navigation }: Props) {
     null,
   );
   const [modalRating, setModalRating] = useState(0);
+  const [selectedDay, setSelectedDay] = useState<ActivityDay | null>(null);
   const { toastMessage, showToast } = useToast();
 
   const activityHeatmap = useActivityHeatmap(activeTab === 'profile');
@@ -266,6 +269,7 @@ export default function ProfileScreen({ route, navigation }: Props) {
             onPrevYear={activityHeatmap.goToPreviousYear}
             onNextYear={activityHeatmap.goToNextYear}
             canGoNext={activityHeatmap.canGoNext}
+            onPressDay={setSelectedDay}
           />
         </View>
 
@@ -295,6 +299,7 @@ export default function ProfileScreen({ route, navigation }: Props) {
               averageRating={stats.averageRating ?? '0.0'}
               topRated={stats.topRated ?? []}
               onPressMovie={goToMovie}
+              interactiveRating
             />
           </View>
         ) : null}
@@ -355,7 +360,7 @@ export default function ProfileScreen({ route, navigation }: Props) {
           data={displayedMovies}
           key={`grid-${activeTab}`}
           numColumns={2}
-          keyExtractor={(item) => String(item.id)}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
           contentContainerStyle={styles.grid}
           columnWrapperStyle={styles.gridColumn}
           onEndReached={loadMore}
@@ -420,6 +425,19 @@ export default function ProfileScreen({ route, navigation }: Props) {
         friends={friends}
         onClose={() => setIsFriendsModalOpen(false)}
         onFriendsChange={setFriends}
+      />
+
+      <ActivityDayModal
+        day={selectedDay}
+        onClose={() => setSelectedDay(null)}
+        onPressMovie={(action: ActivityDayAction) => {
+          setSelectedDay(null);
+          navigation.navigate('MovieDetail', {
+            movieId: action.tmdbId,
+            title: action.title,
+            mediaType: action.mediaType === 'tv' ? 'tv' : 'movie',
+          });
+        }}
       />
 
       <Modal visible={!!ratingTarget} transparent animationType="fade" onRequestClose={() => setRatingTarget(null)}>
