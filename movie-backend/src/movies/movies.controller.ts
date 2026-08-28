@@ -39,6 +39,13 @@ interface RequestWithUser extends Request {
   };
 }
 
+interface RequestWithOptionalUser extends Request {
+  user?: {
+    userId: number;
+    username: string;
+  };
+}
+
 const DEFAULT_PAGE_SIZE = 30;
 
 @ApiTags('Movies')
@@ -131,11 +138,12 @@ export class MoviesController {
     return this.moviesService.getTop100(type);
   }
 
+  @Public()
   @Get('search')
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Search movies',
-    description: 'Search for movies by title (requires authentication)',
+    description:
+      'Search for movies by title. Works without authentication; search history is only logged for signed-in users.',
   })
   @ApiQuery({
     name: 'title',
@@ -153,13 +161,12 @@ export class MoviesController {
     description: 'List of matching movies',
     type: [MovieResultDto],
   })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async searchByTitle(
-    @Req() req: RequestWithUser,
+    @Req() req: RequestWithOptionalUser,
     @Query('title') title: string,
     @Query('skipHistory') skipHistory?: string,
   ): Promise<MovieResultDto[] | null> {
-    return this.moviesService.searchMovies(title, req.user.userId, {
+    return this.moviesService.searchMovies(title, req.user?.userId, {
       skipHistory: skipHistory === 'true',
     });
   }
@@ -340,11 +347,13 @@ export class MoviesController {
     return this.moviesService.getProfileData(userId);
   }
 
+  @Public()
   @Get('trending')
   async getTrendingMovies(): Promise<MovieResultDto[]> {
     return this.moviesService.getTrendingMovies();
   }
 
+  @Public()
   @Get(':tmdbId/details')
   async getMovieDetails(
     @Param('tmdbId', ParseIntPipe) tmdbId: number,
@@ -400,6 +409,7 @@ export class MoviesController {
     );
   }
 
+  @Public()
   @Get(':id/similar')
   async getSimilar(@Param('id') id: string, @Query('type') type: string) {
     return this.moviesService.getSimilarMovies(+id, type);
