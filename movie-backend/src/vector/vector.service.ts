@@ -1,7 +1,8 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectDataSource } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
-import { Pool } from 'pg';
+import { DataSource } from 'typeorm';
 import { GenreDto } from '../movies/dto/genre.dto';
 import {
   MovieTextMetadataRow,
@@ -36,38 +37,35 @@ export interface DiscoveryCandidate {
 
 @Injectable()
 export class VectorService implements OnModuleInit {
-  private pool: Pool;
   private geminiApiKey: string;
   private readonly logger = new Logger(VectorService.name);
 
   private readonly PREFERENCE_DUPLICATE_DISTANCE_THRESHOLD = 0.05;
 
+  // Bounds the self-join in consolidateUserPreferences to at most this many
+  // most-recent facts per user, so the O(k^2) pairwise distance comparison
+  // stays cheap even if a user's preference count grows unexpectedly large
+  // (normally saveUserFact's insert-time dedup keeps k small on its own).
+  private readonly MAX_PREFERENCES_PER_CONSOLIDATION = 300;
+
   private readonly SEARCH_RELEVANCE_DISTANCE_THRESHOLD = 0.6;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    @InjectDataSource() private readonly dataSource: DataSource,
+  ) {}
 
-  async onModuleInit() {
-    const databaseUrl = this.configService.get<string>('DATABASE_URL');
+  onModuleInit() {
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY');
 
-    if (!databaseUrl || !geminiApiKey) {
-      throw new Error('DATABASE_URL and GEMINI_API_KEY are required.');
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY is required.');
     }
 
     this.geminiApiKey = geminiApiKey;
 
-    this.pool = new Pool({
-      connectionString: databaseUrl,
-      ssl:
-        process.env.NODE_ENV === 'production'
-          ? { rejectUnauthorized: false }
-          : undefined,
-      max: 5,
-    });
-
-    await this.pool.query('SELECT 1');
     this.logger.log(
-      'VectorService initialized with gemini-embedding-2 via the Gemini REST API.',
+      'VectorService initialized with gemini-embedding-2 via the Gemini REST API, sharing the TypeORM connection pool.',
     );
   }
 
@@ -99,11 +97,11 @@ export class VectorService implements OnModuleInit {
     mediaType: 'movie' | 'tv';
   }): Promise<boolean> {
     try {
-      const existing = await this.pool.query(
+      const existing = await this.dataSource.query<unknown[]>(
         `SELECT 1 FROM movie_embeddings WHERE metadata->>'tmdbId' = $1 LIMIT 1`,
         [String(movie.id)],
       );
-      if ((existing.rowCount ?? 0) > 0) {
+      if (existing.length > 0) {
         return true;
       }
 
@@ -117,7 +115,7 @@ export class VectorService implements OnModuleInit {
         mediaType: movie.mediaType,
       };
 
-      await this.pool.query(
+      await this.dataSource.query(
         `INSERT INTO movie_embeddings
            (text, embedding, metadata, genre_ids, release_year, vote_average, runtime, media_type)
          VALUES ($1, $2::vector, $3, $4, $5, $6, $7, $8)`,
@@ -146,7 +144,7 @@ export class VectorService implements OnModuleInit {
       const embedding = await this.embed(fact);
       const metadata = { userId, type: 'preference' };
 
-      await this.pool.query(
+      await this.dataSource.query(
         `DELETE FROM user_memory_embeddings
          WHERE metadata->>'userId' = $1
            AND embedding <=> $2::vector < $3`,
@@ -157,7 +155,7 @@ export class VectorService implements OnModuleInit {
         ],
       );
 
-      await this.pool.query(
+      await this.dataSource.query(
         `INSERT INTO user_memory_embeddings (text, embedding, metadata)
          VALUES ($1, $2::vector, $3)`,
         [fact, JSON.stringify(embedding), JSON.stringify(metadata)],
@@ -175,7 +173,7 @@ export class VectorService implements OnModuleInit {
     this.logger.log('Running daily preference deduplication...');
 
     try {
-      const { rows: users } = await this.pool.query<{ userId: string }>(
+      const users = await this.dataSource.query<Array<{ userId: string }>>(
         `SELECT DISTINCT metadata->>'userId' AS "userId"
          FROM user_memory_embeddings
          WHERE metadata->>'type' = 'preference'`,
@@ -205,21 +203,32 @@ export class VectorService implements OnModuleInit {
   }
 
   private async consolidateUserPreferences(userId: string): Promise<number> {
-    const { rows: pairs } = await this.pool.query<{
-      idA: string;
-      idB: string;
-      createdAtA: string;
-      createdAtB: string;
-    }>(
-      `SELECT a.id AS "idA", b.id AS "idB",
+    const pairs = await this.dataSource.query<
+      Array<{
+        idA: string;
+        idB: string;
+        createdAtA: string;
+        createdAtB: string;
+      }>
+    >(
+      `WITH candidates AS (
+         SELECT id, embedding, "createdAt"
+         FROM user_memory_embeddings
+         WHERE metadata->>'userId' = $1 AND metadata->>'type' = 'preference'
+         ORDER BY "createdAt" DESC
+         LIMIT $3
+       )
+       SELECT a.id AS "idA", b.id AS "idB",
               a."createdAt" AS "createdAtA", b."createdAt" AS "createdAtB"
-       FROM user_memory_embeddings a
-       JOIN user_memory_embeddings b ON a.id < b.id
-       WHERE a.metadata->>'userId' = $1 AND a.metadata->>'type' = 'preference'
-         AND b.metadata->>'userId' = $1 AND b.metadata->>'type' = 'preference'
-         AND a.embedding <=> b.embedding < $2
+       FROM candidates a
+       JOIN candidates b ON a.id < b.id
+       WHERE a.embedding <=> b.embedding < $2
        ORDER BY a.embedding <=> b.embedding ASC`,
-      [userId, this.PREFERENCE_DUPLICATE_DISTANCE_THRESHOLD],
+      [
+        userId,
+        this.PREFERENCE_DUPLICATE_DISTANCE_THRESHOLD,
+        this.MAX_PREFERENCES_PER_CONSOLIDATION,
+      ],
     );
 
     const toDelete = new Set<string>();
@@ -236,7 +245,7 @@ export class VectorService implements OnModuleInit {
 
     if (toDelete.size === 0) return 0;
 
-    await this.pool.query(
+    await this.dataSource.query(
       `DELETE FROM user_memory_embeddings WHERE id = ANY($1::uuid[])`,
       [Array.from(toDelete)],
     );
@@ -250,7 +259,7 @@ export class VectorService implements OnModuleInit {
   ): Promise<Array<{ pageContent: string; metadata: MovieEmbeddingMetadata }>> {
     const embedding = await this.embed(query);
 
-    const result = await this.pool.query<MovieTextMetadataRow>(
+    const rows = await this.dataSource.query<MovieTextMetadataRow[]>(
       `SELECT text, metadata
        FROM movie_embeddings
        ORDER BY embedding <=> $1::vector
@@ -258,7 +267,7 @@ export class VectorService implements OnModuleInit {
       [JSON.stringify(embedding), k],
     );
 
-    return result.rows.map((row) => ({
+    return rows.map((row) => ({
       pageContent: row.text,
       metadata:
         typeof row.metadata === 'string'
@@ -327,7 +336,7 @@ export class VectorService implements OnModuleInit {
     const embedding = await this.embed(query);
     const { clause, params } = this.buildFilterClause(filters, userId, 3);
 
-    const result = await this.pool.query<MovieTextMetadataDistanceRow>(
+    const rows = await this.dataSource.query<MovieTextMetadataDistanceRow[]>(
       `SELECT text, metadata, embedding <=> $1::vector AS distance
        FROM movie_embeddings
        ${clause}
@@ -336,7 +345,7 @@ export class VectorService implements OnModuleInit {
       [JSON.stringify(embedding), k, ...params],
     );
 
-    return result.rows
+    return rows
       .filter(
         (row) =>
           Number(row.distance) <= this.SEARCH_RELEVANCE_DISTANCE_THRESHOLD,
@@ -362,7 +371,7 @@ export class VectorService implements OnModuleInit {
       ? `${clause} AND metadata->>'tmdbId' != $1`
       : `WHERE metadata->>'tmdbId' != $1`;
 
-    const result = await this.pool.query<MovieTextMetadataRow>(
+    const rows = await this.dataSource.query<MovieTextMetadataRow[]>(
       `WITH target AS (
          SELECT embedding FROM movie_embeddings
          WHERE metadata->>'tmdbId' = $1
@@ -376,7 +385,7 @@ export class VectorService implements OnModuleInit {
       [tmdbIdStr, k, ...params],
     );
 
-    return result.rows.map((row) => ({
+    return rows.map((row) => ({
       pageContent: row.text,
       metadata:
         typeof row.metadata === 'string'
@@ -393,7 +402,7 @@ export class VectorService implements OnModuleInit {
     if (tmdbIdsA.length === 0 || tmdbIdsB.length === 0) return null;
 
     try {
-      const result = await this.pool.query<TasteCompatibilityRow>(
+      const rows = await this.dataSource.query<TasteCompatibilityRow[]>(
         `WITH vec_a AS (
            SELECT AVG(embedding) AS v, COUNT(*) AS n
            FROM movie_embeddings
@@ -413,7 +422,7 @@ export class VectorService implements OnModuleInit {
         [tmdbIdsA, tmdbIdsB],
       );
 
-      const row = result.rows[0];
+      const row = rows[0];
       if (!row) return null;
       if (
         Number(row.countA) < MIN_SAMPLE_SIZE ||
@@ -438,7 +447,7 @@ export class VectorService implements OnModuleInit {
     try {
       const embedding = await this.embed(query);
 
-      const result = await this.pool.query<UserFactSimilarityRow>(
+      const rows = await this.dataSource.query<UserFactSimilarityRow[]>(
         `SELECT text, 1 - (embedding <=> $2::vector) AS similarity
          FROM user_memory_embeddings
          WHERE metadata->>'userId' = $1 AND metadata->>'type' = 'preference'
@@ -447,7 +456,7 @@ export class VectorService implements OnModuleInit {
         [String(userId), JSON.stringify(embedding), k],
       );
 
-      return result.rows.map((row) => ({
+      return rows.map((row) => ({
         preferenceText: row.text,
         similarityScore: Number(row.similarity),
       }));
@@ -464,7 +473,7 @@ export class VectorService implements OnModuleInit {
   ): Promise<DiscoveryCandidate[]> {
     if (likedTmdbIds.length === 0) return [];
 
-    const result = await this.pool.query<MovieMetadataRow>(
+    const rows = await this.dataSource.query<MovieMetadataRow[]>(
       `WITH centroid AS (
          SELECT AVG(embedding) AS v
          FROM movie_embeddings
@@ -480,7 +489,7 @@ export class VectorService implements OnModuleInit {
       [likedTmdbIds, excludeTmdbIds, k],
     );
 
-    return this.rowsToCandidates(result.rows);
+    return this.rowsToCandidates(rows);
   }
 
   async searchDiverseForUser(
@@ -504,7 +513,7 @@ export class VectorService implements OnModuleInit {
     params.push(k);
     const limitParamIndex = params.length;
 
-    const result = await this.pool.query<MovieMetadataRow>(
+    const rows = await this.dataSource.query<MovieMetadataRow[]>(
       `SELECT metadata
        FROM movie_embeddings
        WHERE ${conditions.join(' AND ')}
@@ -513,7 +522,7 @@ export class VectorService implements OnModuleInit {
       params,
     );
 
-    return this.rowsToCandidates(result.rows);
+    return this.rowsToCandidates(rows);
   }
 
   private rowsToCandidates(
