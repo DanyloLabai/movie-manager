@@ -6,6 +6,8 @@ import * as swipeApi from "../api/swipe.api";
 import type { SwipeStatus } from "../api/swipe.api";
 
 import { useLang } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
+import { useAuthPrompt } from "../context/AuthPromptContext";
 import { MovieCarousel } from "../components/movie/MovieCarousel";
 import { BecauseYouWatchedCarousel } from "../components/movie/BecauseYouWatchedCarousel";
 import { FriendActivityCarousel } from "../components/movie/FriendActivityCarousel";
@@ -203,6 +205,8 @@ export default function Search() {
   const { t } = useLang();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
+  const { open: openAuthPrompt } = useAuthPrompt();
 
   const [visibleCount, setVisibleCount] = useState(20);
 
@@ -212,6 +216,10 @@ export default function Search() {
   const searchBarRef = useRef<HTMLDivElement>(null);
 
   const handleFindSimilar = (movie: MovieResult) => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     navigate("/search", {
       state: {
         similarTo: {
@@ -479,6 +487,10 @@ export default function Search() {
 
     const query = queryOverride ?? searchQuery;
     if (!query.trim()) return;
+    if (hasActiveFilters && !isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     if (queryOverride !== undefined) setSearchQuery(queryOverride);
 
     setShowLiveDropdown(false);
@@ -515,6 +527,10 @@ export default function Search() {
   };
 
   const handleAdd = async (movie: MovieResult) => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     try {
       await moviesApi.addToWatchlist({
         tmdbId: movie.id,
@@ -538,6 +554,10 @@ export default function Search() {
   };
 
   const handleRemove = async (movie: MovieResult) => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     try {
       await moviesApi.removeFromWatchlist(movie.id);
       setAddedIds((prev) => prev.filter((id) => id !== movie.id));
@@ -553,6 +573,10 @@ export default function Search() {
   };
 
   const handleToggleFavorite = async (movie: MovieResult) => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     if (!isReleased(movie)) {
       showToast(t("search_fav_unreleased"));
       return;
@@ -771,6 +795,12 @@ export default function Search() {
           <Link
             to="/discover"
             title={t("nav_discover")}
+            onClick={(e) => {
+              if (!isAuthenticated) {
+                e.preventDefault();
+                openAuthPrompt();
+              }
+            }}
             className="relative shrink-0 w-11 h-11 sm:w-auto sm:h-12 sm:pl-3.5 sm:pr-5 rounded-full border border-[#d9ac54]/45 hover:bg-[#d9ac54]/10 flex items-center justify-center sm:justify-start gap-2.5 transition"
           >
             <DiscoverStackIcon />

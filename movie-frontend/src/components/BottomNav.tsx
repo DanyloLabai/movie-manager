@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useLang } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
+import { useAuthPrompt } from "../context/AuthPromptContext";
 import { NAV_ICONS as ICONS } from "./navIcons";
 
 const VISIBLE_ROUTES = [
@@ -19,6 +21,8 @@ export default function BottomNav() {
   const { t } = useLang();
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { open } = useAuthPrompt();
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number; target: EventTarget | null } | null>(
     null,
@@ -63,11 +67,11 @@ export default function BottomNav() {
   }, []);
 
   const tabs = [
-    { key: "ai-chat", to: "/ai-chat", label: t("nav_ai_chat"), icon: ICONS.chat },
-    { key: "search", to: "/search", label: t("nav_search"), icon: ICONS.search },
-    { key: "quiz", to: "/quiz", label: t("nav_quiz"), icon: ICONS.quiz },
-    { key: "watchlist", to: "/watchlist", label: t("nav_profile"), icon: ICONS.profile },
-    { key: "settings", to: "/settings", label: t("nav_settings"), icon: ICONS.settings },
+    { key: "ai-chat", to: "/ai-chat", label: t("nav_ai_chat"), icon: ICONS.chat, requiresAuth: true },
+    { key: "search", to: "/search", label: t("nav_search"), icon: ICONS.search, requiresAuth: false },
+    { key: "quiz", to: "/quiz", label: t("nav_quiz"), icon: ICONS.quiz, requiresAuth: true },
+    { key: "watchlist", to: "/watchlist", label: t("nav_profile"), icon: ICONS.profile, requiresAuth: true },
+    { key: "settings", to: "/settings", label: t("nav_settings"), icon: ICONS.settings, requiresAuth: true },
   ];
 
   const isVisible = VISIBLE_ROUTES.some((r) => location.pathname.startsWith(r));
@@ -100,7 +104,12 @@ export default function BottomNav() {
       if (currentIndex === -1) return;
       const nextIndex = dx < 0 ? currentIndex + 1 : currentIndex - 1;
       if (nextIndex < 0 || nextIndex >= tabs.length) return;
-      navigate(tabs[nextIndex].to);
+      const nextTab = tabs[nextIndex];
+      if (nextTab.requiresAuth && !isAuthenticated) {
+        open();
+        return;
+      }
+      navigate(nextTab.to);
     };
 
     document.addEventListener("touchstart", handleTouchStart, { passive: true });
@@ -110,7 +119,7 @@ export default function BottomNav() {
       document.removeEventListener("touchend", handleTouchEnd);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isVisible, isKeyboardOpen, location.pathname]);
+  }, [isVisible, isKeyboardOpen, location.pathname, isAuthenticated]);
 
   if (isKeyboardOpen || !isVisible) {
     return null;
@@ -125,6 +134,12 @@ export default function BottomNav() {
             <Link
               key={tab.key}
               to={tab.to}
+              onClick={(e) => {
+                if (tab.requiresAuth && !isAuthenticated) {
+                  e.preventDefault();
+                  open();
+                }
+              }}
               className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 min-w-[56px] rounded-xl transition-colors ${
                 isActive ? "bg-[#c8963c]/10" : ""
               }`}

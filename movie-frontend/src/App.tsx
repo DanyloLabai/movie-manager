@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -6,6 +7,8 @@ import {
   useLocation,
 } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import { useAuthPrompt } from "./context/AuthPromptContext";
+import AuthRequiredModal from "./components/AuthRequiredModal";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Watchlist from "./pages/Watchlist";
@@ -31,6 +34,14 @@ import type { JSX } from "react";
 
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, isLoading } = useAuth();
+  const { open } = useAuthPrompt();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      open();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -41,7 +52,7 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/search" replace />;
   }
 
   return children;
@@ -80,14 +91,7 @@ function AppRoutes() {
           }
         />
 
-        <Route
-          path="/search"
-          element={
-            <ProtectedRoute>
-              <Search />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/search" element={<Search />} />
 
         <Route
           path="/watchlist"
@@ -125,14 +129,7 @@ function AppRoutes() {
           }
         />
 
-        <Route
-          path="/movie/:id"
-          element={
-            <ProtectedRoute>
-              <MovieDetails />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/movie/:id" element={<MovieDetails />} />
 
         <Route
           path="/actor/:id"
@@ -177,17 +174,29 @@ function AppRoutes() {
   );
 }
 
+const CHROMELESS_PATHS = [
+  "/login",
+  "/register",
+  "/verify-email",
+  "/forgot-password",
+  "/reset-password",
+];
+
 function AppShell() {
-  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  const hideChrome = CHROMELESS_PATHS.some((p) =>
+    location.pathname.startsWith(p),
+  );
 
   return (
     <div className="min-h-[100dvh] bg-[#12100e] text-[#f0e6cc] font-sans overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
       <ApiNotification />
-      {isAuthenticated && <Sidebar />}
-      <div className={isAuthenticated ? SIDEBAR_PADDING_CLASS : undefined}>
+      {!hideChrome && <Sidebar />}
+      <div className={!hideChrome ? SIDEBAR_PADDING_CLASS : undefined}>
         <AppRoutes />
       </div>
-      {isAuthenticated && <BottomNav />}
+      {!hideChrome && <BottomNav />}
+      <AuthRequiredModal />
     </div>
   );
 }

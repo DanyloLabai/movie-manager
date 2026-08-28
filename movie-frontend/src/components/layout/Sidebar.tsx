@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import LogoImg from "../../assets/logo.png";
 import { useLang } from "../../context/LanguageContext";
+import { useAuth } from "../../context/AuthContext";
+import { useAuthPrompt } from "../../context/AuthPromptContext";
 import { getUserRank } from "../../utils/achievements";
 import * as moviesApi from "../../api/movies.api";
 import NotificationBell from "../NotificationBell";
@@ -23,14 +25,16 @@ const SidebarLink = ({
   icon,
   label,
   badge,
+  onClick,
 }: {
   to: string;
   isActive: boolean;
   icon: React.ReactNode;
   label: string;
   badge?: React.ReactNode;
+  onClick?: (e: React.MouseEvent) => void;
 }) => (
-  <Link to={to} className={navItemClass(isActive)}>
+  <Link to={to} className={navItemClass(isActive)} onClick={onClick}>
     <svg
       className={`w-4 h-4 shrink-0 ${isActive ? "text-[#d9ac54]" : ""}`}
       fill="none"
@@ -54,9 +58,12 @@ interface SidebarProfile {
 export default function Sidebar() {
   const { t } = useLang();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
+  const { open } = useAuthPrompt();
   const [profile, setProfile] = useState<SidebarProfile | null>(null);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     moviesApi
       .getProfile()
       .then((data) =>
@@ -68,23 +75,49 @@ export default function Sidebar() {
         }),
       )
       .catch(() => {});
-  }, []);
+  }, [isAuthenticated]);
+
+  const guardClick = (requiresAuth: boolean) => (e: React.MouseEvent) => {
+    if (requiresAuth && !isAuthenticated) {
+      e.preventDefault();
+      open();
+    }
+  };
 
   const tabs = [
-    { key: "ai-chat", to: "/ai-chat", label: t("nav_ai_chat"), icon: NAV_ICONS.chat },
-    { key: "search", to: "/search", label: t("nav_search"), icon: NAV_ICONS.search },
+    {
+      key: "ai-chat",
+      to: "/ai-chat",
+      label: t("nav_ai_chat"),
+      icon: NAV_ICONS.chat,
+      requiresAuth: true,
+    },
+    {
+      key: "search",
+      to: "/search",
+      label: t("nav_search"),
+      icon: NAV_ICONS.search,
+      requiresAuth: false,
+    },
     {
       key: "quiz",
       to: "/quiz",
       label: t("nav_quiz"),
       icon: NAV_ICONS.quiz,
+      requiresAuth: true,
       badge: (
         <span className="font-mono-ui text-[8.5px] font-semibold tracking-[1px] text-[#d9ac54] border border-[#d9ac54]/40 rounded-full px-[7px] py-[2px]">
           {t("nav_badge_new")}
         </span>
       ),
     },
-    { key: "watchlist", to: "/watchlist", label: t("nav_profile"), icon: NAV_ICONS.profile },
+    {
+      key: "watchlist",
+      to: "/watchlist",
+      label: t("nav_profile"),
+      icon: NAV_ICONS.profile,
+      requiresAuth: true,
+    },
   ];
 
   const goalYear = new Date().getFullYear();
@@ -128,6 +161,7 @@ export default function Sidebar() {
             icon={tab.icon}
             label={tab.label}
             badge={tab.badge}
+            onClick={guardClick(tab.requiresAuth)}
           />
         ))}
 
@@ -161,6 +195,7 @@ export default function Sidebar() {
           <Link
             to="/watchlist"
             className="flex items-center gap-2.5 min-w-0 flex-1"
+            onClick={guardClick(true)}
           >
             <div
               className="w-[34px] h-[34px] rounded-full flex items-center justify-center font-ui font-bold text-[13px] text-[#14110c] overflow-hidden shrink-0"
@@ -180,10 +215,12 @@ export default function Sidebar() {
             </div>
             <div className="flex flex-col min-w-0 flex-1">
               <span className="font-ui font-semibold text-[12.5px] text-[#f2ead9] truncate">
-                {profile?.username || ""}
+                {isAuthenticated ? profile?.username || "" : t("sidebar_guest_name")}
               </span>
               <span className="font-mono-ui text-[9.5px] tracking-[1px] text-[#8f8574] uppercase truncate">
-                {getUserRank(profile?.watchedCount || 0, t)}
+                {isAuthenticated
+                  ? getUserRank(profile?.watchedCount || 0, t)
+                  : t("auth_required_login")}
               </span>
             </div>
           </Link>
@@ -191,6 +228,7 @@ export default function Sidebar() {
             to="/settings"
             className="shrink-0 text-[#645c4d] hover:text-[#c9c0ac] transition"
             title={t("nav_settings")}
+            onClick={guardClick(true)}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               {NAV_ICONS.settings}

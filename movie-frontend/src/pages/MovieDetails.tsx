@@ -7,6 +7,8 @@ import {
 } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
 import { useLang } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
+import { useAuthPrompt } from "../context/AuthPromptContext";
 import StarRating from "../components/StarRating";
 import LogoIcon from "../components/LogoIcon";
 import type {
@@ -94,6 +96,8 @@ export default function MovieDetails() {
   const [searchParams] = useSearchParams();
   const mediaType = searchParams.get("type") || "movie";
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { open: openAuthPrompt } = useAuthPrompt();
 
   const [movie, setMovie] = useState<MovieDetailsType | null>(null);
   const [status, setStatus] = useState<UserMovieStatusType | null>(null);
@@ -225,6 +229,10 @@ export default function MovieDetails() {
     initialRating: number | null = null,
   ) => {
     if (!movie) return;
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     try {
       const posterUrl = resolveImage(movie.posterPath, "w500");
       await moviesApi.addToWatchlist({
@@ -251,6 +259,10 @@ export default function MovieDetails() {
 
   const handleToggleFavorite = async () => {
     if (!movie || !status) return;
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     try {
       await moviesApi.toggleFavorite(movie.id);
       updateStatusCache({ ...status, isFavorite: !status.isFavorite });
@@ -262,6 +274,10 @@ export default function MovieDetails() {
 
   const handleMarkWatched = async () => {
     if (!movie) return;
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     try {
       await moviesApi.markWatched(movie.id);
       showToast(t("movie_marked_watched"));
@@ -273,6 +289,10 @@ export default function MovieDetails() {
 
   const handleRate = async (rating: number) => {
     if (!movie) return;
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     try {
       await moviesApi.rateMovie(movie.id, rating);
       showToast(
@@ -294,6 +314,10 @@ export default function MovieDetails() {
 
   const handleSaveProgress = async () => {
     if (!movie || !status) return;
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     try {
       await moviesApi.updateEpisodeProgress(
         movie.id,
@@ -313,6 +337,10 @@ export default function MovieDetails() {
 
   const handleRemove = async () => {
     if (!movie) return;
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     try {
       await moviesApi.removeFromWatchlist(movie.id);
       showToast(t("movie_removed"));
@@ -344,6 +372,10 @@ export default function MovieDetails() {
   };
 
   const openWatchedModal = () => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     setPendingAction(status ? "update_watched" : "new_watched");
     setModalRating(status?.rating || 0);
     setIsRatingModalOpen(true);
