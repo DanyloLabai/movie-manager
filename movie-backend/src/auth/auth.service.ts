@@ -65,7 +65,7 @@ export class AuthService {
       username,
       email,
       password: hashedPassword,
-      verificationToken,
+      verificationToken: this.hashToken(verificationToken),
       verificationTokenExpiresAt: new Date(
         Date.now() + VERIFICATION_TOKEN_TTL_MS,
       ),
@@ -297,6 +297,10 @@ export class AuthService {
     await this.refreshTokensRepository.delete({ userId });
   }
 
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
   private async verifyCaptcha(token: string): Promise<boolean> {
     const secret = this.configService.get<string>('RECAPTCHA_SECRET_KEY');
 
@@ -314,7 +318,7 @@ export class AuthService {
 
   async verifyEmail(token: string) {
     const user = await this.usersRepository.findOne({
-      where: { verificationToken: token },
+      where: { verificationToken: this.hashToken(token) },
     });
 
     if (
@@ -347,7 +351,7 @@ export class AuthService {
     }
 
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    user.verificationToken = verificationToken;
+    user.verificationToken = this.hashToken(verificationToken);
     user.verificationTokenExpiresAt = new Date(
       Date.now() + VERIFICATION_TOKEN_TTL_MS,
     );
@@ -396,7 +400,7 @@ export class AuthService {
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    user.resetToken = resetToken;
+    user.resetToken = this.hashToken(resetToken);
     user.resetTokenExpiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
     await this.usersRepository.save(user);
 
@@ -431,7 +435,7 @@ export class AuthService {
 
   async resetPassword(token: string, newPassword: string) {
     const user = await this.usersRepository.findOne({
-      where: { resetToken: token },
+      where: { resetToken: this.hashToken(token) },
     });
 
     if (

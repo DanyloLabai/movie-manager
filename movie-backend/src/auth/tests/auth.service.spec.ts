@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { of } from 'rxjs';
+import * as crypto from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { Resend } from 'resend';
 import { AuthService } from '../auth.service';
@@ -32,6 +33,8 @@ jest.mock('resend', () => ({
 
 const mockedBcrypt = jest.mocked(bcrypt);
 const MockedResend = jest.mocked(Resend);
+const sha256 = (value: string) =>
+  crypto.createHash('sha256').update(value).digest('hex');
 
 const mockUser: Partial<User> = {
   id: 1,
@@ -381,6 +384,9 @@ describe('AuthService', () => {
       const result = await service.verifyEmail('valid-token-abc');
 
       expect(result.verified).toBe(true);
+      expect(mockUsersRepository.findOne).toHaveBeenCalledWith({
+        where: { verificationToken: sha256('valid-token-abc') },
+      });
       expect(mockUsersRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ isVerified: true, verificationToken: null }),
       );
@@ -437,6 +443,9 @@ describe('AuthService', () => {
       );
 
       expect(result.message).toBe('Password successfully reset!');
+      expect(mockUsersRepository.findOne).toHaveBeenCalledWith({
+        where: { resetToken: sha256('valid-reset-token') },
+      });
       expect(mockUsersRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({ resetToken: null }),
       );
