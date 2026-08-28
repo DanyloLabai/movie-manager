@@ -13,6 +13,7 @@ import { ActivityService } from '../../activity/activity.service';
 import { SearchHistoryService } from '../../search-history/search-history.service';
 import { AchievementsService } from '../../achievements/achievements.service';
 import { NotificationsService } from '../../notifications/notifications.service';
+import { AiUsageLogService } from '../../ai-chat/ai-usage-log.service';
 
 jest.mock('groq-sdk', () => {
   const Groq = jest.fn().mockImplementation(() => ({}));
@@ -127,6 +128,7 @@ const buildModule = async (): Promise<TestingModule> =>
           markAllNotificationsRead: jest.fn().mockResolvedValue(undefined),
         },
       },
+      { provide: AiUsageLogService, useValue: {} },
     ],
   }).compile();
 
