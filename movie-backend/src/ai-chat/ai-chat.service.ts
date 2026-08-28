@@ -74,11 +74,14 @@ export interface RecommendationReason {
   similarityScore: number;
 }
 
+export const DEFAULT_AI_PROVIDER_TIMEOUT_MS = 15000;
+
 @Injectable()
 export class AiChatService {
   private groqClient: ReturnType<typeof createGroq>;
   private geminiClient: ReturnType<typeof createGoogleGenerativeAI>;
   private readonly logger = new Logger(AiChatService.name);
+  private readonly providerTimeoutMs: number;
 
   constructor(
     private configService: ConfigService,
@@ -91,6 +94,14 @@ export class AiChatService {
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
     this.groqClient = createGroq({ apiKey: groqApiKey });
     this.geminiClient = createGoogleGenerativeAI({ apiKey: geminiApiKey });
+    this.providerTimeoutMs = Number(
+      this.configService.get<string>('AI_PROVIDER_TIMEOUT_MS') ??
+        DEFAULT_AI_PROVIDER_TIMEOUT_MS,
+    );
+  }
+
+  private newProviderAbortSignal(): AbortSignal {
+    return AbortSignal.timeout(this.providerTimeoutMs);
   }
 
   async searchMovieByDescription(
@@ -227,6 +238,7 @@ export class AiChatService {
       messages,
       schema: aiResponseSchema,
       temperature: 0.5,
+      abortSignal: this.newProviderAbortSignal(),
     });
 
     let foundMovies: MovieResultDto[] = [];
@@ -308,10 +320,17 @@ export class AiChatService {
     const rejected: string[] = [];
     const MAX_RESULTS = 8;
 
-    for (const rawTitle of titles.slice(0, MAX_RESULTS)) {
+    const titleLookups = await Promise.all(
+      titles.slice(0, MAX_RESULTS).map(async (rawTitle) => {
+        const { title, year } = this.parseTitleYear(rawTitle);
+        return {
+          title,
+          mediaData: await this.moviesService.findMovieByTitle(title, year),
+        };
+      }),
+    );
+    for (const { title, mediaData } of titleLookups) {
       if (foundMoviesMap.size >= MAX_RESULTS) break;
-      const { title, year } = this.parseTitleYear(rawTitle);
-      const mediaData = await this.moviesService.findMovieByTitle(title, year);
       if (mediaData) {
         this.processFoundMovie(
           mediaData,
@@ -327,19 +346,34 @@ export class AiChatService {
       }
     }
 
-    for (const concept of concepts.slice(0, 3)) {
-      if (foundMoviesMap.size >= MAX_RESULTS) break;
-      this.logger.log(`Performing Vector Search for concept: "${concept}"`);
-      try {
-        const similarDocs = await this.vectorService.searchSimilarMovies(
-          concept,
-          10,
+    if (foundMoviesMap.size < MAX_RESULTS) {
+      const conceptSearches = await Promise.all(
+        concepts.slice(0, 3).map(async (concept) => {
+          this.logger.log(`Performing Vector Search for concept: "${concept}"`);
+          try {
+            const similarDocs = await this.vectorService.searchSimilarMovies(
+              concept,
+              10,
+            );
+            return { concept, similarDocs };
+          } catch (err) {
+            this.logger.error(
+              `Vector search failed for concept "${concept}": ${(err as Error).message}`,
+            );
+            return { concept, similarDocs: [] };
+          }
+        }),
+      );
+
+      for (const { concept, similarDocs } of conceptSearches) {
+        if (foundMoviesMap.size >= MAX_RESULTS) break;
+        const docLookups = await Promise.all(
+          similarDocs.map((doc) =>
+            this.moviesService.findMovieByTitle(doc.metadata.title),
+          ),
         );
-        for (const doc of similarDocs) {
+        for (const mediaData of docLookups) {
           if (foundMoviesMap.size >= MAX_RESULTS) break;
-          const mediaData = await this.moviesService.findMovieByTitle(
-            doc.metadata.title,
-          );
           if (mediaData) {
             this.processFoundMovie(
               mediaData,
@@ -354,10 +388,6 @@ export class AiChatService {
             );
           }
         }
-      } catch (err) {
-        this.logger.error(
-          `Vector search failed for concept "${concept}": ${(err as Error).message}`,
-        );
       }
     }
 
@@ -603,6 +633,7 @@ RESPONSE TONE:
         ],
         schema: watchTogetherSchema,
         temperature: 0.6,
+        abortSignal: this.newProviderAbortSignal(),
       });
 
       const movies: MovieResultDto[] = [];
@@ -726,6 +757,7 @@ Respond in Ukrainian. Keep "message" to 1-2 friendly sentences.`;
         model: this.groqClient('openai/gpt-oss-120b'),
         prompt: prompt,
         temperature: 0.1,
+        abortSignal: this.newProviderAbortSignal(),
       });
 
       const extractedFact = result.text.trim();

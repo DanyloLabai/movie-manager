@@ -39,33 +39,41 @@ async function bootstrap() {
   const reflector = app.get(Reflector);
   app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
 
-  const config = new DocumentBuilder()
-    .setTitle('Movie Manager API')
-    .setDescription(
-      'API for Movie Manager - Search, track, and manage movies with AI chat support',
-    )
-    .setVersion('1.0.0')
-    .addBearerAuth()
-    .addTag('Auth', 'Authentication endpoints')
-    .addTag('Movies', 'Movie search and management')
-    .addTag('Users', 'User profile management')
-    .addTag('AI Chat', 'AI chat with Gemini API')
-    .build();
+  const swaggerEnabled =
+    process.env.ENABLE_SWAGGER === 'true' ||
+    process.env.NODE_ENV !== 'production';
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document, {
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
+  if (swaggerEnabled) {
+    const config = new DocumentBuilder()
+      .setTitle('Movie Manager API')
+      .setDescription(
+        'API for Movie Manager - Search, track, and manage movies with AI chat support',
+      )
+      .setVersion('1.0.0')
+      .addBearerAuth()
+      .addTag('Auth', 'Authentication endpoints')
+      .addTag('Movies', 'Movie search and management')
+      .addTag('Users', 'User profile management')
+      .addTag('AI Chat', 'AI chat with Gemini API')
+      .build();
+
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    });
+  }
 
   app.enableShutdownHooks();
 
   await app.listen(port, '0.0.0.0');
   console.log(`Application is running on port: ${port}`);
-  console.log(
-    `Swagger documentation available at http://localhost:${port}/api/docs`,
-  );
+  if (swaggerEnabled) {
+    console.log(
+      `Swagger documentation available at http://localhost:${port}/api/docs`,
+    );
+  }
 }
 
 bootstrap().catch((error: unknown) => {
