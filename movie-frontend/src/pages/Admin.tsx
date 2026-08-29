@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import * as adminApi from "../api/admin.api";
-import type { AiUsageStats, AiUsageWindowStats } from "../api/admin.api";
+import type {
+  AiUsageStats,
+  AiUsageWindowStats,
+  FeedbackEntry,
+} from "../api/admin.api";
+import { useLang } from "../context/LanguageContext";
+import { formatTimeAgo } from "../utils/time";
 
 const WINDOWS: Array<{ key: keyof AiUsageStats; label: string }> = [
   { key: "last24h", label: "Last 24h" },
@@ -66,6 +72,91 @@ function WindowCard({
   );
 }
 
+function StarRow({ rating }: { rating: number }) {
+  return (
+    <span className="text-sm leading-none tracking-tight">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <span
+          key={star}
+          style={{ color: star <= rating ? "#c8963c" : "#3a352c" }}
+        >
+          ★
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function FeedbackSection() {
+  const { t } = useLang();
+  const [feedback, setFeedback] = useState<FeedbackEntry[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    adminApi
+      .getFeedback()
+      .then(setFeedback)
+      .catch(() => setError(true))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-xs font-black text-[#c8963c] uppercase tracking-widest mb-4">
+        User Feedback
+      </h2>
+
+      {isLoading ? (
+        <p className="text-center text-[#f0e6cc]/50 animate-pulse text-sm py-6 font-semibold uppercase tracking-widest">
+          Loading...
+        </p>
+      ) : error ? (
+        <div className="text-center p-6 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20">
+          <p className="text-[#f0e6cc]/60 text-sm font-medium">
+            Failed to load feedback.
+          </p>
+        </div>
+      ) : !feedback || feedback.length === 0 ? (
+        <div className="text-center p-6 bg-[#1a1714] rounded-2xl border border-[#c8963c]/20">
+          <p className="text-[#f0e6cc]/60 text-sm font-medium">
+            No feedback yet.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {feedback.map((entry) => (
+            <div
+              key={entry.id}
+              className="bg-[#1a1714] border border-[#c8963c]/20 rounded-2xl p-4 shadow-xl"
+            >
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <div className="min-w-0">
+                  <span className="text-[13px] font-bold text-[#f0e6cc] truncate">
+                    {entry.user.username}
+                  </span>
+                  <span className="text-[11px] text-[#f0e6cc]/40 ml-2">
+                    {entry.user.email}
+                  </span>
+                </div>
+                <span className="text-[10px] text-[#f0e6cc]/40 whitespace-nowrap uppercase tracking-widest">
+                  {formatTimeAgo(entry.createdAt, t)}
+                </span>
+              </div>
+              <StarRow rating={entry.rating} />
+              {entry.message && (
+                <p className="text-[13px] text-[#f0e6cc]/80 mt-2 whitespace-pre-wrap">
+                  {entry.message}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function Admin() {
   const [stats, setStats] = useState<AiUsageStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,7 +188,7 @@ export default function Admin() {
           &lt; Back
         </Link>
         <h1 className="text-sm font-black text-[#f0e6cc] uppercase tracking-widest">
-          AI Usage
+          Admin
         </h1>
         <span className="w-10" />
       </header>
@@ -120,11 +211,17 @@ export default function Admin() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-            {WINDOWS.map(({ key, label }) => (
-              <WindowCard key={key} label={label} stats={stats[key]} />
-            ))}
-          </div>
+          <>
+            <h2 className="text-xs font-black text-[#c8963c] uppercase tracking-widest mb-4 mt-4">
+              AI Usage
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {WINDOWS.map(({ key, label }) => (
+                <WindowCard key={key} label={label} stats={stats[key]} />
+              ))}
+            </div>
+            <FeedbackSection />
+          </>
         )}
       </main>
     </div>
