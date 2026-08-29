@@ -17,6 +17,7 @@ import { AdminModule } from './admin/admin.module';
 import { QuizModule } from './quiz/quiz.module';
 import { HealthModule } from './health/health.module';
 import { SwipeModule } from './swipe/swipe.module';
+import { FeedbackModule } from './feedback/feedback.module';
 
 @Module({
   imports: [
@@ -85,6 +86,7 @@ import { SwipeModule } from './swipe/swipe.module';
     QuizModule,
     HealthModule,
     SwipeModule,
+    FeedbackModule,
   ],
   providers: [
     {

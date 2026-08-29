@@ -73,6 +73,14 @@ api.interceptors.response.use(
       !originalRequest._retry &&
       !isAuthEndpoint
     ) {
+      const hadToken = !!localStorage.getItem(STORAGE_KEYS.TOKEN);
+      if (!hadToken) {
+        // Guest hitting an authenticated-only endpoint (e.g. background
+        // calls on the public search page)- let the caller handle it
+        // instead of bouncing a never-logged-in visitor to /login.
+        return Promise.reject(error);
+      }
+
       originalRequest._retry = true;
       const newToken = await refreshAccessToken();
 

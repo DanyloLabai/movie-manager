@@ -63,7 +63,10 @@ export default function Sidebar() {
   const [profile, setProfile] = useState<SidebarProfile | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setProfile(null);
+      return;
+    }
     moviesApi
       .getProfile()
       .then((data) =>

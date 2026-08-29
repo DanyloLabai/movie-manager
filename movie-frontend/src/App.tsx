@@ -9,6 +9,7 @@ import {
 import { useAuth } from "./context/AuthContext";
 import { useAuthPrompt } from "./context/AuthPromptContext";
 import AuthRequiredModal from "./components/AuthRequiredModal";
+import FeedbackPrompt from "./components/FeedbackPrompt";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Watchlist from "./pages/Watchlist";
@@ -197,6 +198,7 @@ function AppShell() {
       </div>
       {!hideChrome && <BottomNav />}
       <AuthRequiredModal />
+      {!hideChrome && <FeedbackPrompt />}
     </div>
   );
 }
