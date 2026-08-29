@@ -101,8 +101,14 @@ export default function FeedbackPrompt() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[150] w-[calc(100%-2rem)] max-w-sm animate-fade-in">
-      <div className="p-5 bg-[#0f0d0a] border border-[#d9ac54]/30 rounded-3xl shadow-2xl relative font-ui">
+    <div
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-fade-in sm:inset-auto sm:bottom-4 sm:right-4 sm:block sm:bg-transparent sm:p-0 sm:backdrop-blur-none"
+      onClick={dismiss}
+    >
+      <div
+        className="w-full max-w-sm p-5 bg-[#0f0d0a] border border-[#d9ac54]/30 rounded-3xl shadow-2xl relative font-ui"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           onClick={dismiss}
           className="absolute top-3 right-3 text-[#8f8574] hover:text-[#d9ac54] transition p-1"
