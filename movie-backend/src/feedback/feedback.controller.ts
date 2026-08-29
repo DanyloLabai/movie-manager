@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   ApiTags,
@@ -31,5 +31,21 @@ export class FeedbackController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async create(@Req() req: RequestWithUser, @Body() dto: CreateFeedbackDto) {
     return this.feedbackService.create(req.user.userId, dto);
+  }
+
+  @Get('mine')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Check whether the current user has already submitted feedback',
+    description:
+      'Server-authoritative check so the feedback prompt stays suppressed across devices/browsers, not just in local storage (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'Submission status' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async mine(@Req() req: RequestWithUser) {
+    const hasSubmitted = await this.feedbackService.hasSubmitted(
+      req.user.userId,
+    );
+    return { hasSubmitted };
   }
 }

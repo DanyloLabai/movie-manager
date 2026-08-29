@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useLang } from "../context/LanguageContext";
-import { submitFeedback } from "../api/feedback.api";
+import { submitFeedback, getMyFeedbackStatus } from "../api/feedback.api";
 import { STORAGE_KEYS } from "../constants/storage";
 
 const SHOW_AFTER_MS = 90_000;
@@ -52,8 +52,32 @@ export default function FeedbackPrompt() {
       return;
     }
 
-    const timer = window.setTimeout(() => setVisible(true), SHOW_AFTER_MS);
-    return () => window.clearTimeout(timer);
+    let cancelled = false;
+    let timer: number | undefined;
+
+    // Local storage alone isn't reliable across devices/browsers or after
+    // clearing site data, so confirm with the server before arming the
+    // timer- a user who already submitted from anywhere should never see
+    // this again.
+    getMyFeedbackStatus()
+      .then(({ hasSubmitted }) => {
+        if (cancelled) return;
+        if (hasSubmitted) {
+          writeState({ ...readState(), submitted: true });
+          return;
+        }
+        timer = window.setTimeout(() => setVisible(true), SHOW_AFTER_MS);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          timer = window.setTimeout(() => setVisible(true), SHOW_AFTER_MS);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
   }, [isAuthenticated]);
 
   const dismiss = () => {

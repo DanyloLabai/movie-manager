@@ -62,6 +62,13 @@ export class FeedbackService {
     });
   }
 
+  async hasSubmitted(userId: number): Promise<boolean> {
+    const count = await this.feedbackRepo.count({
+      where: { user: { id: userId } },
+    });
+    return count > 0;
+  }
+
   private async notifyAdmins(user: User, feedback: Feedback) {
     const admins = await this.usersRepo.find({
       where: { isAdmin: true },

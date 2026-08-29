@@ -63,10 +63,7 @@ export default function Sidebar() {
   const [profile, setProfile] = useState<SidebarProfile | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      setProfile(null);
-      return;
-    }
+    if (!isAuthenticated) return;
     moviesApi
       .getProfile()
       .then((data) =>
@@ -79,6 +76,11 @@ export default function Sidebar() {
       )
       .catch(() => {});
   }, [isAuthenticated]);
+
+  // Don't show stale data from a previous session once logged out- the
+  // effect above only clears `profile` on its next run, which would let a
+  // guest briefly see the last logged-in user's avatar/goal bar.
+  const visibleProfile = isAuthenticated ? profile : null;
 
   const guardClick = (requiresAuth: boolean) => (e: React.MouseEvent) => {
     if (requiresAuth && !isAuthenticated) {
@@ -125,8 +127,13 @@ export default function Sidebar() {
 
   const goalYear = new Date().getFullYear();
   const goalPct =
-    profile && profile.totalCount > 0
-      ? Math.min(100, Math.round((profile.watchedCount / profile.totalCount) * 100))
+    visibleProfile && visibleProfile.totalCount > 0
+      ? Math.min(
+          100,
+          Math.round(
+            (visibleProfile.watchedCount / visibleProfile.totalCount) * 100,
+          ),
+        )
       : 0;
 
   return (
@@ -172,14 +179,14 @@ export default function Sidebar() {
       </nav>
 
       <div className="px-6 py-4 border-t border-[rgba(217,172,84,.16)] flex flex-col gap-3.5 shrink-0">
-        {profile && profile.totalCount > 0 && (
+        {visibleProfile && visibleProfile.totalCount > 0 && (
           <div className="flex flex-col gap-[7px]">
             <div className="flex items-center justify-between">
               <span className="font-mono-ui text-[8.5px] tracking-[2px] text-[#645c4d] uppercase">
                 {t("sidebar_goal_label")} {goalYear}
               </span>
               <span className="font-ui font-semibold text-[10.5px] text-[#d9ac54]">
-                {profile.watchedCount}/{profile.totalCount}
+                {visibleProfile.watchedCount}/{visibleProfile.totalCount}
               </span>
             </div>
             <div className="h-[3px] bg-white/[.08] rounded-full overflow-hidden">
@@ -206,23 +213,25 @@ export default function Sidebar() {
                 background: "radial-gradient(circle at 35% 30%, #e8c377, #a87c2e)",
               }}
             >
-              {profile?.avatarUrl ? (
+              {visibleProfile?.avatarUrl ? (
                 <img
-                  src={profile.avatarUrl}
-                  alt={profile.username}
+                  src={visibleProfile.avatarUrl}
+                  alt={visibleProfile.username}
                   className="w-full h-full object-cover"
                 />
               ) : (
-                (profile?.username || "?").charAt(0).toUpperCase()
+                (visibleProfile?.username || "?").charAt(0).toUpperCase()
               )}
             </div>
             <div className="flex flex-col min-w-0 flex-1">
               <span className="font-ui font-semibold text-[12.5px] text-[#f2ead9] truncate">
-                {isAuthenticated ? profile?.username || "" : t("sidebar_guest_name")}
+                {isAuthenticated
+                  ? visibleProfile?.username || ""
+                  : t("sidebar_guest_name")}
               </span>
               <span className="font-mono-ui text-[9.5px] tracking-[1px] text-[#8f8574] uppercase truncate">
                 {isAuthenticated
-                  ? getUserRank(profile?.watchedCount || 0, t)
+                  ? getUserRank(visibleProfile?.watchedCount || 0, t)
                   : t("auth_required_login")}
               </span>
             </div>

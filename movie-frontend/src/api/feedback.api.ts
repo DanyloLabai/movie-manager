@@ -12,4 +12,11 @@ export async function submitFeedback(
   return res.data as { success: true };
 }
 
-export default { submitFeedback };
+export async function getMyFeedbackStatus(): Promise<{
+  hasSubmitted: boolean;
+}> {
+  const res = await api.get("/feedback/mine");
+  return res.data as { hasSubmitted: boolean };
+}
+
+export default { submitFeedback, getMyFeedbackStatus };
