@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useLang } from "../../context/LanguageContext";
 
 interface WrappedStats {
@@ -6,8 +7,18 @@ interface WrappedStats {
   favoriteDecade?: string;
   moviesCount?: number;
   tvCount?: number;
-  longestMovie?: { title: string; runtime?: number };
-  topActor?: { name: string; count: number; profileUrl: string | null } | null;
+  longestMovie?: {
+    title: string;
+    runtime?: number;
+    tmdbId?: number;
+    mediaType?: string;
+  };
+  topActor?: {
+    id?: number;
+    name: string;
+    count: number;
+    profileUrl: string | null;
+  } | null;
 }
 
 interface ProfileWrappedPanelProps {
@@ -81,7 +92,14 @@ export default function ProfileWrappedPanel({
       {(hasMarathon || stats.topActor) && (
         <div className="flex flex-col gap-3 md:flex-row md:gap-[60px] md:pt-1.5">
           {hasMarathon && (
-            <div className="flex flex-col gap-0.5 md:flex-row md:items-center md:gap-3">
+            <Link
+              to={
+                stats.longestMovie?.tmdbId
+                  ? `/movie/${stats.longestMovie.tmdbId}?type=${stats.longestMovie.mediaType || "movie"}&fromTab=profile`
+                  : "#"
+              }
+              className={`flex flex-col gap-0.5 md:flex-row md:items-center md:gap-3 ${stats.longestMovie?.tmdbId ? "hover:opacity-80 transition" : "pointer-events-none"}`}
+            >
               <span className="hidden md:inline text-[#d9ac54] text-base">
                 ◷
               </span>
@@ -96,10 +114,15 @@ export default function ProfileWrappedPanel({
                   </span>
                 </span>
               </div>
-            </div>
+            </Link>
           )}
           {stats.topActor && (
-            <div className="flex flex-col gap-0.5 md:flex-row md:items-center md:gap-3">
+            <Link
+              to={
+                stats.topActor.id ? `/actor/${stats.topActor.id}` : "#"
+              }
+              className={`flex flex-col gap-0.5 md:flex-row md:items-center md:gap-3 ${stats.topActor.id ? "hover:opacity-80 transition" : "pointer-events-none"}`}
+            >
               <div className="hidden md:block w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[#d9ac54]/30">
                 {stats.topActor.profileUrl ? (
                   <img
@@ -126,7 +149,7 @@ export default function ProfileWrappedPanel({
                   </span>
                 </span>
               </div>
-            </div>
+            </Link>
           )}
         </div>
       )}

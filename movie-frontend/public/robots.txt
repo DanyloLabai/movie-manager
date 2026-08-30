@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /settings
+Disallow: /notifications
+Disallow: /watchlist
+Disallow: /discover
+Disallow: /ai-chat
+Disallow: /quiz
+Disallow: /top100
+Disallow: /actor
+Disallow: /change-password
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /forgot-password
+
+Sitemap: https://movietracker.ink/sitemap.xml
