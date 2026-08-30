@@ -30,6 +30,7 @@ type PublicProfileData = {
   avatarUrl?: string | null;
   watchedCount?: number;
   totalCount?: number;
+  totalFavorites?: number;
   favorites?: PublicMovieRef[];
   recent?: PublicMovieRef[];
   isFriend?: boolean;
@@ -45,8 +46,14 @@ type PublicProfileData = {
     tvCount?: number;
     favoriteDecade?: string;
     completionRate?: number;
-    longestMovie?: { title: string; runtime: number };
+    longestMovie?: {
+      title: string;
+      runtime: number;
+      tmdbId?: number;
+      mediaType?: string;
+    };
     topActor?: {
+      id?: number;
       name: string;
       count: number;
       profileUrl: string | null;
@@ -64,6 +71,8 @@ type TasteCompatibility = {
     mediaType: string;
   }>;
 };
+
+const PUBLIC_TAB_PAGE_SIZE = 30;
 
 const isReleased = () => true;
 
@@ -91,10 +100,16 @@ export default function PublicProfile() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [needsAuth, setNeedsAuth] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"favorites" | "watched">(
     "favorites",
   );
+
+  const [tabMovies, setTabMovies] = useState<WatchlistItem[]>([]);
+  const [tabLoading, setTabLoading] = useState(true);
+  const [tabLoadingMore, setTabLoadingMore] = useState(false);
+  const [tabHasMore, setTabHasMore] = useState(false);
 
   const [compat, setCompat] = useState<TasteCompatibility | null>(null);
   const [isCompatModalOpen, setIsCompatModalOpen] = useState(false);
@@ -116,14 +131,59 @@ export default function PublicProfile() {
       try {
         const data = await usersApi.getPublicProfile(id as string);
         setProfileData(data);
-      } catch {
-        setError(true);
+      } catch (err: unknown) {
+        const apiError = err as { response?: { status?: number } };
+        if (apiError.response?.status === 401) {
+          setNeedsAuth(true);
+        } else {
+          setError(true);
+        }
       } finally {
         setIsLoading(false);
       }
     };
     if (id) fetchPublicProfile();
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !profileData) return;
+    setTabLoading(true);
+    const fetcher =
+      activeTab === "favorites"
+        ? usersApi.getPublicFavorites
+        : usersApi.getPublicWatched;
+    fetcher(id, { limit: PUBLIC_TAB_PAGE_SIZE, offset: 0 })
+      .then((data: WatchlistItem[]) => {
+        setTabMovies(data || []);
+        setTabHasMore((data?.length || 0) === PUBLIC_TAB_PAGE_SIZE);
+      })
+      .catch(() => {
+        setTabMovies([]);
+        setTabHasMore(false);
+      })
+      .finally(() => setTabLoading(false));
+  }, [activeTab, id, profileData]);
+
+  const loadMoreTabMovies = async () => {
+    if (!id || tabLoadingMore || !tabHasMore) return;
+    setTabLoadingMore(true);
+    try {
+      const fetcher =
+        activeTab === "favorites"
+          ? usersApi.getPublicFavorites
+          : usersApi.getPublicWatched;
+      const data: WatchlistItem[] = await fetcher(id, {
+        limit: PUBLIC_TAB_PAGE_SIZE,
+        offset: tabMovies.length,
+      });
+      setTabMovies((prev) => [...prev, ...(data || [])]);
+      setTabHasMore((data?.length || 0) === PUBLIC_TAB_PAGE_SIZE);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTabLoadingMore(false);
+    }
+  };
 
   useEffect(() => {
     if (!id || !profileData?.isFriend) return;
@@ -139,8 +199,13 @@ export default function PublicProfile() {
     try {
       const result = await aiApi.watchTogether(Number(id));
       setWatchTogetherResult(result);
-    } catch {
-      showToast(t("common_error"));
+    } catch (err: unknown) {
+      const apiError = err as { response?: { status?: number } };
+      showToast(
+        apiError.response?.status === 429
+          ? t("chat_daily_limit")
+          : t("common_error"),
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -211,6 +276,34 @@ export default function PublicProfile() {
     );
   }
 
+  if (needsAuth) {
+    return (
+      <div className="min-h-[100dvh] bg-[#0f0d0a] flex flex-col items-center justify-center text-center p-4 font-ui">
+        <h1 className="text-lg font-bold text-[#f2ead9] uppercase tracking-widest mb-2">
+          {t("auth_required_title")}
+        </h1>
+        <p className="text-[#8f8574] mb-6 text-sm max-w-xs">
+          {t("auth_required_message")}
+        </p>
+        <div className="flex flex-col gap-2.5 w-full max-w-xs">
+          <Link
+            to="/login"
+            className="w-full py-2.5 rounded-xl font-ui font-semibold text-[12px] uppercase tracking-widest text-[#14110c] transition hover:opacity-90"
+            style={{ background: "linear-gradient(90deg, #a87c2e, #d9ac54)" }}
+          >
+            {t("auth_required_login")}
+          </Link>
+          <Link
+            to="/register"
+            className="w-full py-2.5 rounded-xl font-ui font-semibold text-[12px] uppercase tracking-widest text-[#d9ac54] border border-[#d9ac54]/40 hover:bg-white/[.03] transition"
+          >
+            {t("auth_required_register")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (error || !profileData) {
     return (
       <div className="min-h-[100dvh] bg-[#0f0d0a] flex flex-col items-center justify-center text-center p-4 font-ui">
@@ -229,7 +322,8 @@ export default function PublicProfile() {
   }
 
   const watchedCount = profileData.watchedCount || 0;
-  const favoritesCount = profileData.favorites?.length || 0;
+  const favoritesCount =
+    profileData.totalFavorites ?? profileData.favorites?.length ?? 0;
   const totalCount = profileData.totalCount || 0;
   const userRank = getUserRank(watchedCount, t);
 
@@ -247,15 +341,9 @@ export default function PublicProfile() {
   const favorites = (profileData.favorites || []).map((m) =>
     toWatchlistItem(m, { isFavorite: true, isWatched: true }),
   );
-  const watchedRecent = (profileData.recent || [])
-    .filter((m) => m.isWatched)
-    .map((m) => toWatchlistItem(m, { isFavorite: false, isWatched: true }));
   const topRated = (profileData.stats?.topRated || []).map((m) =>
     toWatchlistItem(m, { isFavorite: false, isWatched: true }),
   );
-
-  const displayedMovies =
-    activeTab === "favorites" ? favorites : watchedRecent;
 
   const friendActionSlot = (
     <>
@@ -386,6 +474,7 @@ export default function PublicProfile() {
             isReleased={isReleased}
             onToggleFavorite={() => {}}
             onOpenFriends={() => {}}
+            onViewAllFavorites={() => setActiveTab("favorites")}
             showFriends={false}
             readOnly
           />
@@ -433,38 +522,57 @@ export default function PublicProfile() {
             ))}
           </div>
 
-          {displayedMovies.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-[18px] gap-y-[26px]">
-              {displayedMovies.map((movie) => (
-                <Link
-                  to={`/movie/${movie.tmdbId}?type=${movie.mediaType || "movie"}`}
-                  key={movie.id}
-                  className="group flex flex-col gap-[9px]"
-                >
-                  <div className="relative w-full aspect-[2/3] rounded-[6px] overflow-hidden bg-[#0f0d0a]">
-                    {movie.posterUrl ? (
-                      <img
-                        src={movie.posterUrl}
-                        alt={movie.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center w-full h-full text-[9px] text-[#f2ead9]/30">
-                        {t("common_na")}
-                      </div>
-                    )}
-                    {(movie.rating ?? 0) > 0 && (
-                      <div className="absolute top-1.5 right-1.5 bg-[rgba(15,13,10,.75)] px-1.5 py-0.5 rounded-md text-[#d9ac54] text-[10px] font-mono-ui font-bold">
-                        ★ {movie.rating}
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-[13px] font-semibold text-[#f2ead9] truncate group-hover:text-[#d9ac54] transition">
-                    {movie.title}
-                  </span>
-                </Link>
-              ))}
-            </div>
+          {tabLoading ? (
+            <p className="text-center text-[#8f8574] animate-pulse text-sm mt-4 font-semibold uppercase tracking-widest">
+              {t("watchlist_loading")}
+            </p>
+          ) : tabMovies.length > 0 ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-[18px] gap-y-[26px]">
+                {tabMovies.map((movie) => (
+                  <Link
+                    to={`/movie/${movie.tmdbId}?type=${movie.mediaType || "movie"}`}
+                    key={movie.id}
+                    className="group flex flex-col gap-[9px]"
+                  >
+                    <div className="relative w-full aspect-[2/3] rounded-[6px] overflow-hidden bg-[#0f0d0a]">
+                      {movie.posterUrl ? (
+                        <img
+                          src={movie.posterUrl}
+                          alt={movie.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center w-full h-full text-[9px] text-[#f2ead9]/30">
+                          {t("common_na")}
+                        </div>
+                      )}
+                      {(movie.rating ?? 0) > 0 && (
+                        <div className="absolute top-1.5 right-1.5 bg-[rgba(15,13,10,.75)] px-1.5 py-0.5 rounded-md text-[#d9ac54] text-[10px] font-mono-ui font-bold">
+                          ★ {movie.rating}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[13px] font-semibold text-[#f2ead9] truncate group-hover:text-[#d9ac54] transition">
+                      {movie.title}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              {tabHasMore && (
+                <div className="flex justify-center mt-8">
+                  <button
+                    onClick={loadMoreTabMovies}
+                    disabled={tabLoadingMore}
+                    className="px-6 py-2.5 border border-[#d9ac54]/40 hover:border-[#d9ac54] text-[#d9ac54] font-bold uppercase tracking-wider rounded-full transition text-xs disabled:opacity-50"
+                  >
+                    {tabLoadingMore
+                      ? t("common_loading_more")
+                      : t("common_load_more")}
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="text-center py-12 border border-[rgba(217,172,84,.2)] border-dashed rounded-[10px]">
               <p className="text-[#8f8574] text-sm italic">

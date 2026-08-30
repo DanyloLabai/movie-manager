@@ -196,7 +196,7 @@ describe('MoviesService', () => {
       expect(result).toEqual(items);
       expect(mockWatchlistRepo.find).toHaveBeenCalledWith({
         where: { user: { id: 1 }, isWatched: false },
-        order: { addedAt: 'DESC' },
+        order: { addedAt: 'DESC', id: 'DESC' },
       });
     });
 
@@ -219,7 +219,7 @@ describe('MoviesService', () => {
       expect(result).toEqual(watched);
       expect(mockWatchlistRepo.find).toHaveBeenCalledWith({
         where: { user: { id: 1 }, isWatched: true },
-        order: { addedAt: 'DESC' },
+        order: { addedAt: 'DESC', id: 'DESC' },
       });
     });
   });

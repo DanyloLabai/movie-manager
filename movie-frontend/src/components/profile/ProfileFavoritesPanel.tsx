@@ -14,6 +14,7 @@ interface ProfileFavoritesPanelProps {
   onOpenFriends: () => void;
   showFriends?: boolean;
   readOnly?: boolean;
+  onViewAllFavorites?: () => void;
 }
 
 function HeartBadge({
@@ -270,9 +271,9 @@ export default function ProfileFavoritesPanel({
   onOpenFriends,
   showFriends = true,
   readOnly = false,
+  onViewAllFavorites,
 }: ProfileFavoritesPanelProps) {
   const { t } = useLang();
-  const topFavorites = favorites.slice(0, 3);
   const visibleFriends = friends.slice(0, 5);
   const remainingFriends = Math.max(0, friendsCount - visibleFriends.length);
 
@@ -280,17 +281,27 @@ export default function ProfileFavoritesPanel({
     <div className="font-ui">
       <div className="hidden md:flex gap-10">
         <div className="flex-[1.4] flex flex-col gap-4 min-w-0">
-          <span className="font-mono-ui text-[12px] font-semibold tracking-[3px] text-[#d9ac54] uppercase">
-            {t("watchlist_top_fav")}
-          </span>
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-mono-ui text-[12px] font-semibold tracking-[3px] text-[#d9ac54] uppercase">
+              {t("watchlist_top_fav")}
+            </span>
+            {onViewAllFavorites && favorites.length > 0 && (
+              <button
+                onClick={onViewAllFavorites}
+                className="font-semibold text-[11px] tracking-wide text-[#d9ac54] border-b border-[#d9ac54]/50 pb-0.5 hover:text-[#e8c377] transition shrink-0"
+              >
+                {t("profile_view_all")}
+              </button>
+            )}
+          </div>
           {favorites.length === 0 ? (
             <div className="text-center py-6 text-[#8f8574] text-sm italic">
               {t("watchlist_no_fav")}
             </div>
           ) : (
-            <div className="flex gap-[18px]">
+            <div className="flex gap-[18px] overflow-x-auto pb-1">
               <FavoritesList
-                favorites={topFavorites}
+                favorites={favorites}
                 posterClass="w-[150px] h-[222px]"
                 isReleased={isReleased}
                 onToggleFavorite={onToggleFavorite}
@@ -323,9 +334,19 @@ export default function ProfileFavoritesPanel({
 
       <div className="md:hidden flex flex-col">
         <div className="flex flex-col gap-3 pb-5 -mx-5 px-5 border-b border-[rgba(217,172,84,.16)]">
-          <span className="font-mono-ui text-[11px] font-semibold tracking-[2.5px] text-[#d9ac54] uppercase">
-            {t("watchlist_top_fav")}
-          </span>
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-mono-ui text-[11px] font-semibold tracking-[2.5px] text-[#d9ac54] uppercase">
+              {t("watchlist_top_fav")}
+            </span>
+            {onViewAllFavorites && favorites.length > 0 && (
+              <button
+                onClick={onViewAllFavorites}
+                className="font-semibold text-[10.5px] tracking-wide text-[#d9ac54] border-b border-[#d9ac54]/50 pb-0.5 hover:text-[#e8c377] transition shrink-0"
+              >
+                {t("profile_view_all")}
+              </button>
+            )}
+          </div>
           {favorites.length === 0 ? (
             <div className="text-center py-6 text-[#8f8574] text-sm italic">
               {t("watchlist_no_fav")}
@@ -333,7 +354,7 @@ export default function ProfileFavoritesPanel({
           ) : (
             <div className="flex gap-3 overflow-x-auto pb-1">
               <FavoritesList
-                favorites={topFavorites}
+                favorites={favorites}
                 posterClass="w-[118px] h-[175px]"
                 isReleased={isReleased}
                 onToggleFavorite={onToggleFavorite}

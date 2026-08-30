@@ -81,6 +81,56 @@ export class UsersController {
     return this.usersService.getPublicProfile(targetUserId, currentUserId);
   }
 
+  @Get('public/:id/watched')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Get another user's watched movies",
+    description:
+      'Paginated list of movies/TV shows a user has marked as watched (requires authentication)',
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Watched movies' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getPublicWatched(
+    @Param('id', ParseIntPipe) targetUserId: number,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.usersService.getPublicWatched(
+      targetUserId,
+      limit !== undefined ? Number(limit) : 30,
+      offset !== undefined ? Number(offset) : 0,
+    );
+  }
+
+  @Get('public/:id/favorites')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Get another user's favorite movies",
+    description:
+      "Paginated list of a user's favorited movies/TV shows (requires authentication)",
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Favorite movies' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getPublicFavorites(
+    @Param('id', ParseIntPipe) targetUserId: number,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.usersService.getPublicFavorites(
+      targetUserId,
+      limit !== undefined ? Number(limit) : 30,
+      offset !== undefined ? Number(offset) : 0,
+    );
+  }
+
   @Get('public/:id/compatibility')
   @ApiBearerAuth()
   @ApiOperation({

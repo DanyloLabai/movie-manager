@@ -42,6 +42,22 @@ export async function getTasteCompatibility(userId: string | number) {
   return res.data;
 }
 
+export async function getPublicWatched(
+  userId: string | number,
+  params?: { limit?: number; offset?: number },
+) {
+  const res = await api.get(`/users/public/${userId}/watched`, { params });
+  return res.data;
+}
+
+export async function getPublicFavorites(
+  userId: string | number,
+  params?: { limit?: number; offset?: number },
+) {
+  const res = await api.get(`/users/public/${userId}/favorites`, { params });
+  return res.data;
+}
+
 export type FriendRequest = {
   id: number;
   createdAt: string;
@@ -135,6 +151,8 @@ export default {
   searchUsers,
   getFriendsFeed,
   getTasteCompatibility,
+  getPublicWatched,
+  getPublicFavorites,
   getFriendRequests,
   acceptFriendRequest,
   declineFriendRequest,

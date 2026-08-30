@@ -898,29 +898,40 @@ export class MoviesService {
   }
 
   async getProfileData(userId: number) {
-    const [user, favorites, recent, watchedItems, inPlansItems, totalCount] =
-      await Promise.all([
-        this.usersRepo.findOne({ where: { id: userId } }),
-        this.watchlistRepo.find({
-          where: { user: { id: userId }, isFavorite: true },
-          order: { updatedAt: 'DESC' },
-          take: this.PROFILE_FAVORITES_LIMIT,
-        }),
-        this.watchlistRepo.find({
-          where: { user: { id: userId } },
-          order: { updatedAt: 'DESC' },
-          take: this.PROFILE_RECENT_LIMIT,
-        }),
-        this.watchlistRepo.find({
-          where: { user: { id: userId }, isWatched: true },
-        }),
-        this.watchlistRepo.find({
-          where: { user: { id: userId }, isWatched: false },
-        }),
-        this.watchlistRepo.count({
-          where: { user: { id: userId } },
-        }),
-      ]);
+    const [
+      user,
+      favorites,
+      recent,
+      watchedItems,
+      inPlansItems,
+      totalCount,
+      totalFavorites,
+    ] = await Promise.all([
+      this.usersRepo.findOne({ where: { id: userId } }),
+      this.watchlistRepo.find({
+        where: { user: { id: userId }, isFavorite: true },
+        order: { updatedAt: 'DESC' },
+        take: this.PROFILE_FAVORITES_LIMIT,
+      }),
+      this.watchlistRepo.find({
+        where: { user: { id: userId } },
+        order: { updatedAt: 'DESC' },
+        take: this.PROFILE_RECENT_LIMIT,
+      }),
+      this.watchlistRepo.find({
+        where: { user: { id: userId }, isWatched: true },
+        order: { watchedAt: 'DESC' },
+      }),
+      this.watchlistRepo.find({
+        where: { user: { id: userId }, isWatched: false },
+      }),
+      this.watchlistRepo.count({
+        where: { user: { id: userId } },
+      }),
+      this.watchlistRepo.count({
+        where: { user: { id: userId }, isFavorite: true },
+      }),
+    ]);
 
     const topRated = watchedItems
       .filter((item) => item.rating && item.rating > 0)
@@ -934,13 +945,20 @@ export class MoviesService {
 
     let totalMinutes = 0;
     const genreCounts: Record<string, number> = {};
-    let longestMovie = { title: 'None', runtime: 0 };
+    let longestMovie: {
+      title: string;
+      runtime: number;
+      tmdbId?: number;
+      mediaType?: string;
+    } = { title: 'None', runtime: 0 };
     const actorCounts: Record<
       string,
-      { count: number; name: string; profileUrl: string | null }
+      { id: number; count: number; name: string; profileUrl: string | null }
     > = {};
 
-    const itemsToAnalyze = watchedItems.slice(-this.PROFILE_ANALYZE_LIMIT);
+    // Most-recently-watched slice (watchedItems is ordered watchedAt DESC)
+    // analyzed to bound the number of TMDB detail lookups per profile load.
+    const itemsToAnalyze = watchedItems.slice(0, this.PROFILE_ANALYZE_LIMIT);
 
     const detailsResults = await Promise.all(
       itemsToAnalyze.map((item) =>
@@ -948,8 +966,9 @@ export class MoviesService {
       ),
     );
 
-    detailsResults.forEach((detail) => {
+    detailsResults.forEach((detail, index) => {
       if (!detail) return;
+      const sourceItem = itemsToAnalyze[index];
 
       totalMinutes += detail.runtime || 0;
       detail.genres?.forEach((g: GenreDto) => {
@@ -957,13 +976,19 @@ export class MoviesService {
       });
 
       if (detail.runtime && detail.runtime > longestMovie.runtime) {
-        longestMovie = { title: detail.title, runtime: detail.runtime };
+        longestMovie = {
+          title: detail.title,
+          runtime: detail.runtime,
+          tmdbId: sourceItem.tmdbId,
+          mediaType: sourceItem.mediaType,
+        };
       }
 
       if (detail.cast && Array.isArray(detail.cast)) {
         detail.cast.slice(0, 5).forEach((actor: CastMemberDto) => {
           if (!actorCounts[actor.id]) {
             actorCounts[actor.id] = {
+              id: actor.id,
               count: 0,
               name: actor.name,
               profileUrl: actor.profile_path
@@ -1059,6 +1084,7 @@ export class MoviesService {
       inPlansIds: inPlansItems.map((item) => item.tmdbId),
       watchedCount: watchedItems.length,
       totalCount,
+      totalFavorites,
       stats: {
         totalMinutes,
         topGenre,
@@ -1150,18 +1176,44 @@ export class MoviesService {
     return savedItem;
   }
 
-  async getWatchlist(userId: number, limit?: number, offset = 0) {
+  async getWatchlist(
+    userId: number,
+    limit?: number,
+    offset = 0,
+    sortBy: 'addedAt' | 'rating' = 'addedAt',
+    sortDir: 'ASC' | 'DESC' = 'DESC',
+  ) {
     return this.watchlistRepo.find({
       where: { user: { id: userId }, isWatched: false },
-      order: { addedAt: 'DESC' },
+      order: { [sortBy]: sortDir, id: 'DESC' },
       ...(limit !== undefined ? { take: limit, skip: offset } : {}),
     });
   }
 
-  async getWatchedMovies(userId: number, limit?: number, offset = 0) {
+  async getWatchedMovies(
+    userId: number,
+    limit?: number,
+    offset = 0,
+    sortBy: 'addedAt' | 'rating' = 'addedAt',
+    sortDir: 'ASC' | 'DESC' = 'DESC',
+  ) {
     return this.watchlistRepo.find({
       where: { user: { id: userId }, isWatched: true },
-      order: { addedAt: 'DESC' },
+      order: { [sortBy]: sortDir, id: 'DESC' },
+      ...(limit !== undefined ? { take: limit, skip: offset } : {}),
+    });
+  }
+
+  async getFavorites(
+    userId: number,
+    limit?: number,
+    offset = 0,
+    sortBy: 'updatedAt' | 'rating' = 'updatedAt',
+    sortDir: 'ASC' | 'DESC' = 'DESC',
+  ) {
+    return this.watchlistRepo.find({
+      where: { user: { id: userId }, isFavorite: true },
+      order: { [sortBy]: sortDir, id: 'DESC' },
       ...(limit !== undefined ? { take: limit, skip: offset } : {}),
     });
   }
