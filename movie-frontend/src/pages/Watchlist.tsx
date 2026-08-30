@@ -47,10 +47,13 @@ export default function Watchlist() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialTab =
-    (searchParams.get("tab") as "profile" | "watchlist" | "watched") ||
-    "profile";
+    (searchParams.get("tab") as
+      | "profile"
+      | "watchlist"
+      | "watched"
+      | "favorites") || "profile";
   const [activeTab, setActiveTab] = useState<
-    "profile" | "watchlist" | "watched"
+    "profile" | "watchlist" | "watched" | "favorites"
   >(initialTab);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -113,14 +116,32 @@ export default function Watchlist() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const fetchMoviesPage = useCallback(
+    (offset: number) => {
+      const sortDir = sortDesc ? "desc" : "asc";
+      if (activeTab === "favorites") {
+        return moviesApi.getFavorites({
+          limit: WATCHLIST_PAGE_SIZE,
+          offset,
+          sortBy: "updatedAt",
+          sortDir,
+        });
+      }
+      const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
+      return moviesApi.getWatchlist(endpointName, {
+        limit: WATCHLIST_PAGE_SIZE,
+        offset,
+        sortBy: activeTab === "watched" ? "rating" : "addedAt",
+        sortDir,
+      });
+    },
+    [activeTab, sortDesc],
+  );
+
   const fetchMovies = useCallback(async () => {
     setIsLoading(true);
     try {
-      const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
-      const response = await moviesApi.getWatchlist(endpointName, {
-        limit: WATCHLIST_PAGE_SIZE,
-        offset: 0,
-      });
+      const response = await fetchMoviesPage(0);
       setMovies(response || []);
       setHasMoreMovies((response?.length || 0) === WATCHLIST_PAGE_SIZE);
     } catch (error: unknown) {
@@ -132,17 +153,13 @@ export default function Watchlist() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, navigate]);
+  }, [fetchMoviesPage, navigate]);
 
   const loadMoreMovies = useCallback(async () => {
     if (isLoadingMore || !hasMoreMovies) return;
     setIsLoadingMore(true);
     try {
-      const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
-      const response = await moviesApi.getWatchlist(endpointName, {
-        limit: WATCHLIST_PAGE_SIZE,
-        offset: movies.length,
-      });
+      const response = await fetchMoviesPage(movies.length);
       setMovies((prev) => [...prev, ...(response || [])]);
       setHasMoreMovies((response?.length || 0) === WATCHLIST_PAGE_SIZE);
     } catch (error) {
@@ -150,7 +167,7 @@ export default function Watchlist() {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [activeTab, movies.length, isLoadingMore, hasMoreMovies]);
+  }, [fetchMoviesPage, movies.length, isLoadingMore, hasMoreMovies]);
 
   const fetchProfile = useCallback(async () => {
     setIsLoading(true);
@@ -176,7 +193,11 @@ export default function Watchlist() {
   }, [navigate]);
 
   useEffect(() => {
-    if (activeTab === "watchlist" || activeTab === "watched") {
+    if (
+      activeTab === "watchlist" ||
+      activeTab === "watched" ||
+      activeTab === "favorites"
+    ) {
       fetchMovies();
     } else if (activeTab === "profile") {
       fetchProfile();
@@ -213,6 +234,8 @@ export default function Watchlist() {
         }
         return { ...prev, favorites: newFavorites, recent: newRecent };
       });
+    } else if (activeTab === "favorites") {
+      setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
     } else {
       setMovies((prev) =>
         prev.map((item) =>
@@ -229,6 +252,7 @@ export default function Watchlist() {
     } catch {
       showToast(t("search_fav_error2"));
       if (activeTab === "profile") fetchProfile();
+      if (activeTab === "favorites") fetchMovies();
     }
   };
 
@@ -263,7 +287,17 @@ export default function Watchlist() {
   };
 
   const confirmMarkWatched = async (tmdbId: number, rating: number | null) => {
-    setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
+    if (activeTab === "favorites") {
+      setMovies((prev) =>
+        prev.map((item) =>
+          item.tmdbId === tmdbId
+            ? { ...item, isWatched: true, rating: rating ?? item.rating }
+            : item,
+        ),
+      );
+    } else {
+      setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
+    }
     try {
       await moviesApi.markWatched(tmdbId);
       if (rating !== null) await moviesApi.rateMovie(tmdbId, rating);
@@ -330,7 +364,8 @@ export default function Watchlist() {
 
   const renderProfileTab = () => {
     const totalCount = profileData?.totalCount || 0;
-    const favoritesCount = profileData?.favorites?.length || 0;
+    const favoritesCount =
+      profileData?.totalFavorites ?? profileData?.favorites?.length ?? 0;
     const watchedCount = profileData?.watchedCount || 0;
 
     const hasStats = Boolean(
@@ -393,6 +428,7 @@ export default function Watchlist() {
             isReleased={isReleased}
             onToggleFavorite={handleToggleFavorite}
             onOpenFriends={() => setIsFriendsModalOpen(true)}
+            onViewAllFavorites={() => setActiveTab("favorites")}
           />
         </ProfileSection>
 
@@ -426,15 +462,7 @@ export default function Watchlist() {
         activeTab !== "watched" ||
         watchedSearchQuery.trim() === "" ||
         item.title.toLowerCase().includes(watchedSearchQuery.trim().toLowerCase()),
-    )
-    .slice()
-    .sort((a, b) => {
-      const diff =
-        activeTab === "watched"
-          ? (a.rating || 0) - (b.rating || 0)
-          : new Date(a.addedAt || 0).getTime() - new Date(b.addedAt || 0).getTime();
-      return sortDesc ? -diff : diff;
-    });
+    );
 
   return (
     <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
@@ -473,42 +501,46 @@ export default function Watchlist() {
         </div>
 
         <div className="flex items-center gap-1 mb-8 border-b border-[rgba(217,172,84,.16)] overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide">
-          {(["profile", "watchlist", "watched"] as const).map((tab) => {
-            const watchedCount = profileData?.watchedCount ?? null;
-            const watchlistCount =
-              profileData?.totalCount != null && watchedCount != null
-                ? profileData.totalCount - watchedCount
-                : null;
-            const tabCount =
-              tab === "watchlist"
-                ? watchlistCount
-                : tab === "watched"
-                  ? watchedCount
+          {(["profile", "watchlist", "watched", "favorites"] as const).map(
+            (tab) => {
+              const watchedCount = profileData?.watchedCount ?? null;
+              const watchlistCount =
+                profileData?.totalCount != null && watchedCount != null
+                  ? profileData.totalCount - watchedCount
                   : null;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`relative px-4 py-4 shrink-0 font-ui font-semibold text-[11.5px] uppercase tracking-[2px] transition-colors ${
-                  activeTab === tab
-                    ? "text-[#d9ac54]"
-                    : "text-[#8f8574] hover:text-[#c9c0ac]"
-                }`}
-              >
-                {tab === "watchlist"
-                  ? t("watchlist_planned")
-                  : tab === "profile"
-                    ? t("nav_profile")
-                    : t("watchlist_watched")}
-                {tabCount != null && (
-                  <span className="text-[#645c4d]"> · {tabCount}</span>
-                )}
-                {activeTab === tab && (
-                  <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-[#d9ac54]" />
-                )}
-              </button>
-            );
-          })}
+              const tabCount =
+                tab === "watchlist"
+                  ? watchlistCount
+                  : tab === "watched"
+                    ? watchedCount
+                    : null;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`relative px-4 py-4 shrink-0 font-ui font-semibold text-[11.5px] uppercase tracking-[2px] transition-colors ${
+                    activeTab === tab
+                      ? "text-[#d9ac54]"
+                      : "text-[#8f8574] hover:text-[#c9c0ac]"
+                  }`}
+                >
+                  {tab === "watchlist"
+                    ? t("watchlist_planned")
+                    : tab === "profile"
+                      ? t("nav_profile")
+                      : tab === "favorites"
+                        ? t("watchlist_favorites")
+                        : t("watchlist_watched")}
+                  {tabCount != null && (
+                    <span className="text-[#645c4d]"> · {tabCount}</span>
+                  )}
+                  {activeTab === tab && (
+                    <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-[#d9ac54]" />
+                  )}
+                </button>
+              );
+            },
+          )}
 
           {activeTab === "watchlist" && (
             <div className="ml-auto flex items-center gap-1.5 py-2">
@@ -610,7 +642,9 @@ export default function Watchlist() {
                           )}
                         </Link>
 
-                        {activeTab === "watchlist" && !released && (
+                        {(activeTab === "watchlist" ||
+                          (activeTab === "favorites" && !item.isWatched)) &&
+                          !released && (
                           <div className="absolute top-1.5 left-1.5 font-mono-ui text-[8px] font-semibold tracking-[1px] text-[#d9ac54] bg-[rgba(15,13,10,.75)] px-1.5 py-0.5 rounded-full uppercase">
                             {t("umcoming")}
                           </div>
@@ -673,14 +707,15 @@ export default function Watchlist() {
                         <span className="text-[13px] font-semibold text-[#f2ead9] truncate hover:text-[#d9ac54] transition">
                           {item.title}
                         </span>
-                        {activeTab === "watched" && (
+                        {item.isWatched && (
                           <span className="font-mono-ui text-[11px] font-bold text-[#d9ac54] shrink-0">
                             {(item.rating || 0).toFixed(1).replace(/\.0$/, "")}/10
                           </span>
                         )}
                       </Link>
 
-                      {activeTab === "watched" ? (
+                      {activeTab === "watched" ||
+                      (activeTab === "favorites" && item.isWatched) ? (
                         <div className="-mt-1">
                           <StarRating
                             size="sm"
@@ -698,7 +733,8 @@ export default function Watchlist() {
                       )}
 
                       <div className="flex justify-between items-center gap-1 pt-[9px] border-t border-[rgba(217,172,84,.16)]">
-                        {activeTab === "watchlist" ? (
+                        {activeTab === "watchlist" ||
+                        (activeTab === "favorites" && !item.isWatched) ? (
                           released ? (
                             <button
                               onClick={() => handleMarkWatched(item.tmdbId)}

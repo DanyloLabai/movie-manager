@@ -92,9 +92,24 @@ export async function toggleFavorite(id: number): Promise<void> {
 
 export async function getWatchlist(
   endpoint: "watchlist" | "watched",
-  params?: { limit?: number; offset?: number },
+  params?: {
+    limit?: number;
+    offset?: number;
+    sortBy?: "addedAt" | "rating";
+    sortDir?: "asc" | "desc";
+  },
 ): Promise<WatchlistItem[]> {
   const res = await api.get(`/movies/${endpoint}`, { params });
+  return res.data as WatchlistItem[];
+}
+
+export async function getFavorites(params?: {
+  limit?: number;
+  offset?: number;
+  sortBy?: "updatedAt" | "rating";
+  sortDir?: "asc" | "desc";
+}): Promise<WatchlistItem[]> {
+  const res = await api.get(`/movies/favorites`, { params });
   return res.data as WatchlistItem[];
 }
 
@@ -209,6 +224,7 @@ export default {
   removeFromWatchlist,
   toggleFavorite,
   getWatchlist,
+  getFavorites,
   getProfile,
   getTop100,
   getMovieDetails,

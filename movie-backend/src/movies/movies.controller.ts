@@ -229,18 +229,53 @@ export class MoviesController {
   })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiQuery({ name: 'sortBy', required: false, enum: ['addedAt', 'rating'] })
+  @ApiQuery({ name: 'sortDir', required: false, enum: ['asc', 'desc'] })
   @ApiResponse({ status: 200, description: 'User watchlist' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getWatchlist(
     @Req() req: RequestWithUser,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
   ) {
     const userId = req.user.userId;
     return this.moviesService.getWatchlist(
       userId,
       limit !== undefined ? Number(limit) : DEFAULT_PAGE_SIZE,
       offset !== undefined ? Number(offset) : 0,
+      sortBy === 'rating' ? 'rating' : 'addedAt',
+      sortDir === 'asc' ? 'ASC' : 'DESC',
+    );
+  }
+
+  @Get('favorites')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get favorites',
+    description: 'Get user favorite movies/TV shows (requires authentication)',
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiQuery({ name: 'sortBy', required: false, enum: ['updatedAt', 'rating'] })
+  @ApiQuery({ name: 'sortDir', required: false, enum: ['asc', 'desc'] })
+  @ApiResponse({ status: 200, description: 'User favorites' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getFavorites(
+    @Req() req: RequestWithUser,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.getFavorites(
+      userId,
+      limit !== undefined ? Number(limit) : DEFAULT_PAGE_SIZE,
+      offset !== undefined ? Number(offset) : 0,
+      sortBy === 'rating' ? 'rating' : 'updatedAt',
+      sortDir === 'asc' ? 'ASC' : 'DESC',
     );
   }
 
@@ -274,18 +309,24 @@ export class MoviesController {
   })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiQuery({ name: 'sortBy', required: false, enum: ['addedAt', 'rating'] })
+  @ApiQuery({ name: 'sortDir', required: false, enum: ['asc', 'desc'] })
   @ApiResponse({ status: 200, description: 'List of watched movies' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getWatchedMovies(
     @Req() req: RequestWithUser,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
   ) {
     const userId = req.user.userId;
     return this.moviesService.getWatchedMovies(
       userId,
       limit !== undefined ? Number(limit) : DEFAULT_PAGE_SIZE,
       offset !== undefined ? Number(offset) : 0,
+      sortBy === 'rating' ? 'rating' : 'addedAt',
+      sortDir === 'asc' ? 'ASC' : 'DESC',
     );
   }
 

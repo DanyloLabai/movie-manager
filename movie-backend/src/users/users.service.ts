@@ -175,6 +175,30 @@ export class UsersService {
     };
   }
 
+  async getPublicWatched(targetUserId: number, limit: number, offset: number) {
+    const user = await this.usersRepository.findOne({
+      where: { id: targetUserId },
+    });
+    if (!user) {
+      throw new NotFoundException('Profile not found');
+    }
+    return this.moviesService.getWatchedMovies(targetUserId, limit, offset);
+  }
+
+  async getPublicFavorites(
+    targetUserId: number,
+    limit: number,
+    offset: number,
+  ) {
+    const user = await this.usersRepository.findOne({
+      where: { id: targetUserId },
+    });
+    if (!user) {
+      throw new NotFoundException('Profile not found');
+    }
+    return this.moviesService.getFavorites(targetUserId, limit, offset);
+  }
+
   private async makeFriends(userA: User, userB: User): Promise<void> {
     const [freshA, freshB] = await Promise.all([
       this.usersRepository.findOne({
