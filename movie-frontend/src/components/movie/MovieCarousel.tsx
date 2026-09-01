@@ -52,8 +52,8 @@ export const MovieCarousel = ({
 
   return (
     <section>
-      <div className="flex items-center gap-3.5 mb-4">
-        <span className="font-mono-ui text-[11px] sm:text-[11.5px] font-semibold tracking-[3px] text-[#d9ac54] uppercase whitespace-nowrap">
+      <div className="flex items-center gap-3.5 mb-4 min-w-0">
+        <span className="font-mono-ui text-[11px] sm:text-[11.5px] font-semibold tracking-[3px] text-[#d9ac54] uppercase truncate min-w-0 shrink">
           {title}
         </span>
         {badge && <span className={badgeClass}>{badge}</span>}
