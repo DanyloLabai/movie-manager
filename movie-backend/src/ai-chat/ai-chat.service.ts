@@ -76,10 +76,7 @@ export interface RecommendationReason {
   similarityScore: number;
 }
 
-// DeepSeek V4-Pro (the primary chat model) reasons more before answering
-// than fast models like gpt-oss-120b, so it needs a bit more headroom
-// before we time out and fail over to Groq.
-export const DEFAULT_AI_PROVIDER_TIMEOUT_MS = 25000;
+export const DEFAULT_AI_PROVIDER_TIMEOUT_MS = 15000;
 
 @Injectable()
 export class AiChatService {
@@ -170,29 +167,26 @@ export class AiChatService {
     }));
 
     try {
-      // DeepSeek V4-Pro is primary here (not Groq's gpt-oss-120b): recognizing
-      // a movie from a vague/partial plot description leans on broad world
-      // knowledge, and gpt-oss-120b's recall of niche/recent titles is
-      // noticeably weaker — it was making users go back and forth with extra
-      // hints instead of naming the movie right away. DeepSeek V4-Pro is also
-      // far cheaper per token than Gemini 2.5 Pro, which we tried here first.
-      // Groq stays as the fast/cheap failover for when DeepSeek errors out or
-      // hits its rate limit.
-      this.logger.log('Calling DeepSeek with generateObject...');
+      // Groq (gpt-oss-120b) is primary here: it's the proven-good option in
+      // production. DeepSeek V4-Pro is kept as the failover for when Groq
+      // errors out or hits its rate limit- flip this back to primary once
+      // the DeepSeek account has a funded balance and its results have been
+      // re-validated against Groq's.
+      this.logger.log('Calling Groq with generateObject...');
       const startedAt = Date.now();
       const { tokenCount, ...response } = await this.generateAiResponse(
-        this.deepseekClient('deepseek-v4-pro'),
+        this.groqClient('openai/gpt-oss-120b'),
         systemPrompt,
         formattedMessages,
         userContextData,
         alreadyShownIds,
         relevantPreferences,
       );
-      this.logger.log('Response served by DeepSeek (primary)');
+      this.logger.log('Response served by Groq (primary)');
       this.aiUsageLogService
         .logUsage({
           userId,
-          provider: 'deepseek',
+          provider: 'groq',
           wasFailover: false,
           requestType: 'chat',
           tokenCount,
@@ -202,26 +196,26 @@ export class AiChatService {
           this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
         );
       return response;
-    } catch (deepseekError: unknown) {
+    } catch (groqError: unknown) {
       this.logger.error(
-        `DeepSeek failed: ${deepseekError instanceof Error ? deepseekError.message : String(deepseekError)}`,
+        `Groq failed: ${groqError instanceof Error ? groqError.message : String(groqError)}`,
       );
-      this.logger.warn('Falling back to Groq...');
+      this.logger.warn('Falling back to DeepSeek...');
       try {
         const startedAt = Date.now();
         const { tokenCount, ...response } = await this.generateAiResponse(
-          this.groqClient('openai/gpt-oss-120b'),
+          this.deepseekClient('deepseek-v4-pro'),
           systemPrompt,
           formattedMessages,
           userContextData,
           alreadyShownIds,
           relevantPreferences,
         );
-        this.logger.log('Response served by Groq (fallback)');
+        this.logger.log('Response served by DeepSeek (fallback)');
         this.aiUsageLogService
           .logUsage({
             userId,
-            provider: 'groq',
+            provider: 'deepseek',
             wasFailover: true,
             requestType: 'chat',
             tokenCount,
@@ -233,12 +227,14 @@ export class AiChatService {
             ),
           );
         return response;
-      } catch (groqError: unknown) {
-        const groqMessage =
-          groqError instanceof Error ? groqError.message : String(groqError);
+      } catch (deepseekError: unknown) {
+        const deepseekMessage =
+          deepseekError instanceof Error
+            ? deepseekError.message
+            : String(deepseekError);
         throw new InternalServerErrorException(
           'All AI services are currently unavailable',
-          groqMessage,
+          deepseekMessage,
         );
       }
     }
