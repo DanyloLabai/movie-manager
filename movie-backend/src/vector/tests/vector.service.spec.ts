@@ -352,10 +352,12 @@ describe('VectorService', () => {
         {
           text: 'Title: Fight Club.',
           metadata: { tmdbId: 550, title: 'Fight Club' },
+          distance: 0.2,
         },
         {
           text: 'Title: Se7en.',
           metadata: JSON.stringify({ tmdbId: 807, title: 'Se7en' }),
+          distance: 0.3,
         },
       ]);
 
@@ -375,6 +377,20 @@ describe('VectorService', () => {
         expect.stringContaining('ORDER BY embedding <=> $1::vector'),
         [JSON.stringify([0.1, 0.2]), 5],
       );
+    });
+
+    it('should filter out rows beyond the relevance distance threshold', async () => {
+      mockFetchOk([0.1]);
+      mockDataSourceQuery.mockResolvedValueOnce([
+        { text: 'Close match', metadata: { tmdbId: 1 }, distance: 0.2 },
+        { text: 'Far match', metadata: { tmdbId: 2 }, distance: 0.9 },
+      ]);
+
+      const result = await service.searchSimilarMovies('query');
+
+      expect(result).toEqual([
+        { pageContent: 'Close match', metadata: { tmdbId: 1 } },
+      ]);
     });
 
     it('should return an empty array when there are no matching rows', async () => {
@@ -398,7 +414,7 @@ describe('VectorService', () => {
     it('should propagate an error when a row has malformed metadata JSON', async () => {
       mockFetchOk([0.1, 0.2]);
       mockDataSourceQuery.mockResolvedValueOnce([
-        { text: 'Broken', metadata: '{not valid json' },
+        { text: 'Broken', metadata: '{not valid json', distance: 0.2 },
       ]);
 
       await expect(service.searchSimilarMovies('query')).rejects.toThrow();

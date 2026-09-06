@@ -10,7 +10,6 @@ import { ConfigService } from '@nestjs/config';
 import { generateText, generateObject } from 'ai';
 import { z } from 'zod';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createOpenAI } from '@ai-sdk/openai';
 import { createDeepSeek } from '@ai-sdk/deepseek';
 import { MoviesService } from '../movies/movies.service';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
@@ -90,7 +89,6 @@ export class AiChatService {
   private groqClient: ReturnType<typeof createGroq>;
   private geminiClient: ReturnType<typeof createGoogleGenerativeAI>;
   private deepseekClient: ReturnType<typeof createDeepSeek>;
-  private deepseekCompatClient: ReturnType<typeof createOpenAI>;
   private readonly logger = new Logger(AiChatService.name);
   private readonly providerTimeoutMs: number;
   private readonly deepseekProviderTimeoutMs: number;
@@ -109,13 +107,6 @@ export class AiChatService {
     this.groqClient = createGroq({ apiKey: groqApiKey });
     this.geminiClient = createGoogleGenerativeAI({ apiKey: geminiApiKey });
     this.deepseekClient = createDeepSeek({ apiKey: deepseekApiKey });
-    // recommendForTwo's DeepSeek fallback still goes through the OpenAI-
-    // compatible endpoint (unchanged) rather than the dedicated client above,
-    // which is used only as searchMovieByDescription's primary provider.
-    this.deepseekCompatClient = createOpenAI({
-      apiKey: deepseekApiKey,
-      baseURL: 'https://api.deepseek.com/v1',
-    });
     this.providerTimeoutMs = Number(
       this.configService.get<string>('AI_PROVIDER_TIMEOUT_MS') ??
         DEFAULT_AI_PROVIDER_TIMEOUT_MS,
@@ -707,6 +698,7 @@ RESPONSE TONE:
 
     const runWith = async (
       model: ReturnType<typeof this.groqClient>,
+      timeoutMs: number,
     ): Promise<{
       message: string;
       movies?: MovieResultDto[];
@@ -720,7 +712,7 @@ RESPONSE TONE:
         ],
         schema: watchTogetherSchema,
         temperature: 0.6,
-        abortSignal: this.newProviderAbortSignal(),
+        abortSignal: this.newProviderAbortSignal(timeoutMs),
       });
 
       const movies: MovieResultDto[] = [];
@@ -743,15 +735,20 @@ RESPONSE TONE:
     };
 
     try {
+      // DeepSeek V4-Pro primary here too, same rationale as
+      // searchMovieByDescription: its "thinking" mode gives noticeably better
+      // taste-matching than Groq/Gemini, at the cost of ~117s latency- worth
+      // it for an on-demand, low-frequency action like this.
       const startedAt = Date.now();
       const { tokenCount, ...response } = await runWith(
-        this.groqClient('openai/gpt-oss-120b'),
+        this.deepseekClient('deepseek-v4-pro'),
+        this.deepseekProviderTimeoutMs,
       );
-      this.logger.log('Watch-together response served by Groq (primary)');
+      this.logger.log('Watch-together response served by DeepSeek (primary)');
       this.aiUsageLogService
         .logUsage({
           userId: userIdA,
-          provider: 'groq',
+          provider: 'deepseek',
           wasFailover: false,
           requestType: 'chat',
           tokenCount,
@@ -761,14 +758,15 @@ RESPONSE TONE:
           this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
         );
       return response;
-    } catch (groqError: unknown) {
+    } catch (deepseekError: unknown) {
       this.logger.error(
-        `Watch-together Groq failed: ${groqError instanceof Error ? groqError.message : String(groqError)}`,
+        `Watch-together DeepSeek failed: ${deepseekError instanceof Error ? deepseekError.message : String(deepseekError)}`,
       );
       try {
         const startedAt = Date.now();
         const { tokenCount, ...response } = await runWith(
           this.geminiClient('gemini-flash-latest'),
+          this.providerTimeoutMs,
         );
         this.logger.log(
           'Watch-together response served by Gemini (1st fallback)',
@@ -795,15 +793,16 @@ RESPONSE TONE:
         try {
           const startedAt = Date.now();
           const { tokenCount, ...response } = await runWith(
-            this.deepseekCompatClient('deepseek-chat'),
+            this.groqClient('openai/gpt-oss-120b'),
+            this.providerTimeoutMs,
           );
           this.logger.log(
-            'Watch-together response served by DeepSeek (2nd fallback)',
+            'Watch-together response served by Groq (2nd fallback)',
           );
           this.aiUsageLogService
             .logUsage({
               userId: userIdA,
-              provider: 'deepseek',
+              provider: 'groq',
               wasFailover: true,
               requestType: 'chat',
               tokenCount,
@@ -815,14 +814,12 @@ RESPONSE TONE:
               ),
             );
           return response;
-        } catch (deepseekError: unknown) {
-          const deepseekMessage =
-            deepseekError instanceof Error
-              ? deepseekError.message
-              : String(deepseekError);
+        } catch (groqError: unknown) {
+          const groqMessage =
+            groqError instanceof Error ? groqError.message : String(groqError);
           throw new InternalServerErrorException(
             'All AI services are currently unavailable',
-            deepseekMessage,
+            groqMessage,
           );
         }
       }

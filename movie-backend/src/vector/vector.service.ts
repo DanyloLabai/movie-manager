@@ -50,6 +50,13 @@ export class VectorService implements OnModuleInit {
 
   private readonly SEARCH_RELEVANCE_DISTANCE_THRESHOLD = 0.6;
 
+  // embed() had no timeout at all, so a slow/hung Gemini embedContent call
+  // (undici's default fetch timeout is several minutes) could stall any
+  // request that awaits it directly, including AI Chat's memory lookup and
+  // concept search- both on the critical path of every chat request
+  // regardless of which chat-completion provider is healthy.
+  private readonly EMBED_TIMEOUT_MS = 15000;
+
   constructor(
     private readonly configService: ConfigService,
     @InjectDataSource() private readonly dataSource: DataSource,
@@ -81,6 +88,7 @@ export class VectorService implements OnModuleInit {
         model: 'models/gemini-embedding-001',
         content: { parts: [{ text }] },
       }),
+      signal: AbortSignal.timeout(this.EMBED_TIMEOUT_MS),
     });
     if (!res.ok) {
       const err = await res.text();
@@ -262,21 +270,26 @@ export class VectorService implements OnModuleInit {
   ): Promise<Array<{ pageContent: string; metadata: MovieEmbeddingMetadata }>> {
     const embedding = await this.embed(query);
 
-    const rows = await this.dataSource.query<MovieTextMetadataRow[]>(
-      `SELECT text, metadata
+    const rows = await this.dataSource.query<MovieTextMetadataDistanceRow[]>(
+      `SELECT text, metadata, embedding <=> $1::vector AS distance
        FROM movie_embeddings
        ORDER BY embedding <=> $1::vector
        LIMIT $2`,
       [JSON.stringify(embedding), k],
     );
 
-    return rows.map((row) => ({
-      pageContent: row.text,
-      metadata:
-        typeof row.metadata === 'string'
-          ? (JSON.parse(row.metadata) as MovieEmbeddingMetadata)
-          : (row.metadata as MovieEmbeddingMetadata),
-    }));
+    return rows
+      .filter(
+        (row) =>
+          Number(row.distance) <= this.SEARCH_RELEVANCE_DISTANCE_THRESHOLD,
+      )
+      .map((row) => ({
+        pageContent: row.text,
+        metadata:
+          typeof row.metadata === 'string'
+            ? (JSON.parse(row.metadata) as MovieEmbeddingMetadata)
+            : (row.metadata as MovieEmbeddingMetadata),
+      }));
   }
 
   private buildFilterClause(

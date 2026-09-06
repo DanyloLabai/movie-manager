@@ -30,13 +30,6 @@ jest.mock('@ai-sdk/google', () => ({
   })),
 }));
 
-jest.mock('@ai-sdk/openai', () => ({
-  createOpenAI: jest.fn(() => (modelId: string) => ({
-    provider: 'deepseek',
-    modelId,
-  })),
-}));
-
 jest.mock('@ai-sdk/deepseek', () => ({
   createDeepSeek: jest.fn(() => (modelId: string) => ({
     provider: 'deepseek',
