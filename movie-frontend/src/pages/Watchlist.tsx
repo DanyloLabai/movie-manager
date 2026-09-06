@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { saveScrollState, consumeScrollState } from "../utils/scrollRestoration";
 import * as moviesApi from "../api/movies.api";
 import * as usersApi from "../api/users.api";
 import type { FriendRequest } from "../api/users.api";
@@ -60,7 +61,9 @@ export default function Watchlist() {
   const [hasMoreMovies, setHasMoreMovies] = useState(false);
   const [mediaFilter, setMediaFilter] = useState<"all" | "movie" | "tv">("all");
   const [sortDesc, setSortDesc] = useState(true);
-  const [watchedSearchQuery, setWatchedSearchQuery] = useState("");
+  const [watchedSortBy, setWatchedSortBy] = useState<"rating" | "addedAt">(
+    "rating",
+  );
 
   useEffect(() => {
     navigate(`?tab=${activeTab}`, { replace: true });
@@ -117,11 +120,11 @@ export default function Watchlist() {
   };
 
   const fetchMoviesPage = useCallback(
-    (offset: number) => {
+    (offset: number, limit: number = WATCHLIST_PAGE_SIZE) => {
       const sortDir = sortDesc ? "desc" : "asc";
       if (activeTab === "favorites") {
         return moviesApi.getFavorites({
-          limit: WATCHLIST_PAGE_SIZE,
+          limit,
           offset,
           sortBy: "updatedAt",
           sortDir,
@@ -129,21 +132,32 @@ export default function Watchlist() {
       }
       const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
       return moviesApi.getWatchlist(endpointName, {
-        limit: WATCHLIST_PAGE_SIZE,
+        limit,
         offset,
-        sortBy: activeTab === "watched" ? "rating" : "addedAt",
+        sortBy: activeTab === "watched" ? watchedSortBy : "addedAt",
         sortDir,
       });
     },
-    [activeTab, sortDesc],
+    [activeTab, sortDesc, watchedSortBy],
   );
+
+  // Restoring scroll position after returning from a movie's details page needs
+  // the same number of items re-loaded first (pagination is offset-based), so we
+  // stash the target scrollY here and only apply it once that data has rendered.
+  const pendingScrollYRef = useRef<number | null>(null);
 
   const fetchMovies = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetchMoviesPage(0);
+      const savedScroll = consumeScrollState(activeTab);
+      const initialLimit =
+        savedScroll?.itemCount && savedScroll.itemCount > WATCHLIST_PAGE_SIZE
+          ? savedScroll.itemCount
+          : WATCHLIST_PAGE_SIZE;
+      const response = await fetchMoviesPage(0, initialLimit);
       setMovies(response || []);
-      setHasMoreMovies((response?.length || 0) === WATCHLIST_PAGE_SIZE);
+      setHasMoreMovies((response?.length || 0) === initialLimit);
+      if (savedScroll) pendingScrollYRef.current = savedScroll.scrollY;
     } catch (error: unknown) {
       const apiError = error as { response?: { status?: number } };
       if (apiError.response?.status === 401) {
@@ -153,7 +167,7 @@ export default function Watchlist() {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchMoviesPage, navigate]);
+  }, [activeTab, fetchMoviesPage, navigate]);
 
   const loadMoreMovies = useCallback(async () => {
     if (isLoadingMore || !hasMoreMovies) return;
@@ -181,6 +195,8 @@ export default function Watchlist() {
       if (data.avatarUrl !== undefined) {
         setAvatarUrl(data.avatarUrl ?? null);
       }
+      const savedScroll = consumeScrollState("profile");
+      if (savedScroll) pendingScrollYRef.current = savedScroll.scrollY;
     } catch (error: unknown) {
       const apiError = error as { response?: { status?: number } };
       if (apiError.response?.status === 401) {
@@ -203,6 +219,15 @@ export default function Watchlist() {
       fetchProfile();
     }
   }, [activeTab, fetchMovies, fetchProfile]);
+
+  useEffect(() => {
+    if (isLoading || pendingScrollYRef.current === null) return;
+    const targetY = pendingScrollYRef.current;
+    pendingScrollYRef.current = null;
+    // Wait a frame so the just-rendered content has been painted/laid out
+    // before we scroll to a position that depends on its height.
+    requestAnimationFrame(() => window.scrollTo({ top: targetY }));
+  }, [isLoading, movies, profileData]);
 
   const activityHeatmap = useActivityHeatmap(activeTab === "profile");
 
@@ -429,6 +454,7 @@ export default function Watchlist() {
             onToggleFavorite={handleToggleFavorite}
             onOpenFriends={() => setIsFriendsModalOpen(true)}
             onViewAllFavorites={() => setActiveTab("favorites")}
+            onMovieLinkClick={handleMovieLinkClick}
           />
         </ProfileSection>
 
@@ -448,6 +474,7 @@ export default function Watchlist() {
               ratingDistribution={profileData.stats.ratingDistribution || []}
               averageRating={profileData.stats.averageRating || "0.0"}
               topRated={profileData.stats.topRated || []}
+              onMovieLinkClick={handleMovieLinkClick}
             />
           </ProfileSection>
         )}
@@ -455,14 +482,11 @@ export default function Watchlist() {
     );
   };
 
-  const displayedMovies = movies
-    .filter((item) => mediaFilter === "all" || item.mediaType === mediaFilter)
-    .filter(
-      (item) =>
-        activeTab !== "watched" ||
-        watchedSearchQuery.trim() === "" ||
-        item.title.toLowerCase().includes(watchedSearchQuery.trim().toLowerCase()),
-    );
+  const displayedMovies = movies.filter(
+    (item) => mediaFilter === "all" || item.mediaType === mediaFilter,
+  );
+
+  const handleMovieLinkClick = () => saveScrollState(activeTab, movies.length);
 
   return (
     <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
@@ -571,24 +595,27 @@ export default function Watchlist() {
           )}
 
           {activeTab === "watched" && (
-            <div className="ml-auto flex items-center gap-2 py-2">
-              <div className="flex items-center gap-2 px-3.5 py-1.5 border border-white/[.12] rounded-full text-[#8f8574] focus-within:border-[#d9ac54]/45 transition">
-                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M19 11a8 8 0 11-16 0 8 8 0 0116 0z" />
-                </svg>
-                <input
-                  type="text"
-                  value={watchedSearchQuery}
-                  onChange={(e) => setWatchedSearchQuery(e.target.value)}
-                  placeholder={t("watchlist_search_placeholder")}
-                  className="bg-transparent text-[11px] text-[#f2ead9] placeholder-[#8f8574] focus:outline-none w-24 sm:w-36"
-                />
-              </div>
+            <div className="ml-auto flex items-center gap-1.5 py-2">
+              {(["rating", "addedAt"] as const).map((field) => (
+                <button
+                  key={field}
+                  onClick={() => setWatchedSortBy(field)}
+                  className={`px-3.5 py-1.5 rounded-full font-ui font-bold text-[10px] uppercase tracking-[1px] transition ${
+                    watchedSortBy === field
+                      ? "bg-[#d9ac54] text-[#14110c]"
+                      : "border border-white/[.15] text-[#8f8574] hover:text-[#c9c0ac]"
+                  }`}
+                >
+                  {field === "rating"
+                    ? t("watchlist_sort_by_rating")
+                    : t("watchlist_sort_by_date")}
+                </button>
+              ))}
               <button
                 onClick={() => setSortDesc((v) => !v)}
-                className="text-[11px] text-[#8f8574] hover:text-[#d9ac54] transition whitespace-nowrap"
+                className="ml-2.5 text-[11px] text-[#8f8574] hover:text-[#d9ac54] transition whitespace-nowrap"
               >
-                {t("watchlist_sort_rating")} {sortDesc ? "↓" : "↑"}
+                {sortDesc ? "↓" : "↑"}
               </button>
             </div>
           )}
@@ -627,6 +654,7 @@ export default function Watchlist() {
                       <div className="relative w-full aspect-[2/3] rounded-[6px] overflow-hidden bg-[#0f0d0a]">
                         <Link
                           to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}&fromTab=${activeTab}`}
+                          onClick={handleMovieLinkClick}
                           className="block w-full h-full"
                         >
                           {item.posterUrl ? (
@@ -701,6 +729,7 @@ export default function Watchlist() {
 
                       <Link
                         to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
+                        onClick={handleMovieLinkClick}
                         className="flex items-center justify-between gap-2"
                         title={item.title}
                       >
@@ -750,6 +779,7 @@ export default function Watchlist() {
                         ) : (
                           <Link
                             to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
+                            onClick={handleMovieLinkClick}
                             className="font-semibold text-[10px] tracking-[1.5px] text-[#d9ac54] hover:text-[#e8c377] transition uppercase"
                           >
                             {t("details")}

@@ -16,6 +16,7 @@ interface ProfileChartsPanelProps {
   ratingDistribution: { name: string; value: number }[];
   averageRating: string | number;
   topRated: WatchlistItem[];
+  onMovieLinkClick?: () => void;
 }
 
 interface ChartTooltipProps {
@@ -95,7 +96,13 @@ function GenreDonut({
   );
 }
 
-function TopMasterpieces({ topRated }: { topRated: WatchlistItem[] }) {
+function TopMasterpieces({
+  topRated,
+  onMovieLinkClick,
+}: {
+  topRated: WatchlistItem[];
+  onMovieLinkClick?: () => void;
+}) {
   const { t } = useLang();
   if (topRated.length === 0) return null;
   return (
@@ -107,6 +114,7 @@ function TopMasterpieces({ topRated }: { topRated: WatchlistItem[] }) {
         <Link
           key={item.id}
           to={`/movie/${item.tmdbId}?type=${item.mediaType}&fromTab=profile`}
+          onClick={onMovieLinkClick}
           className="flex items-center gap-2.5 md:gap-3 hover:opacity-80 transition"
         >
           <span className="font-mono-ui font-bold text-[11px] md:text-[12px] text-[#d9ac54] shrink-0">
@@ -129,6 +137,7 @@ export default function ProfileChartsPanel({
   ratingDistribution,
   averageRating,
   topRated,
+  onMovieLinkClick,
 }: ProfileChartsPanelProps) {
   const { t } = useLang();
 
@@ -152,7 +161,7 @@ export default function ProfileChartsPanel({
             </span>
           </div>
           <ProfileRatingBars data={ratingDistribution} maxHeightPx={120} />
-          <TopMasterpieces topRated={topRated} />
+          <TopMasterpieces topRated={topRated} onMovieLinkClick={onMovieLinkClick} />
         </div>
       </div>
 
@@ -174,7 +183,7 @@ export default function ProfileChartsPanel({
           </div>
           <ProfileRatingBars data={ratingDistribution} maxHeightPx={80} />
         </div>
-        <TopMasterpieces topRated={topRated} />
+        <TopMasterpieces topRated={topRated} onMovieLinkClick={onMovieLinkClick} />
       </div>
     </div>
   );

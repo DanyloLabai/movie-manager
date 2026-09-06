@@ -15,6 +15,7 @@ interface ProfileFavoritesPanelProps {
   showFriends?: boolean;
   readOnly?: boolean;
   onViewAllFavorites?: () => void;
+  onMovieLinkClick?: () => void;
 }
 
 function HeartBadge({
@@ -99,6 +100,7 @@ function FavoritesList({
   onToggleFavorite,
   readOnly,
   naLabel,
+  onMovieLinkClick,
 }: {
   favorites: WatchlistItem[];
   posterClass: string;
@@ -106,6 +108,7 @@ function FavoritesList({
   onToggleFavorite: (tmdbId: number) => void;
   readOnly: boolean;
   naLabel: string;
+  onMovieLinkClick?: () => void;
 }) {
   const widthClass = posterClass
     .split(" ")
@@ -121,6 +124,7 @@ function FavoritesList({
           <Link
             key={fav.id}
             to={`/movie/${fav.tmdbId}?type=${fav.mediaType || "movie"}&fromTab=profile`}
+            onClick={onMovieLinkClick}
             className={`flex flex-col gap-2 shrink-0 min-w-0 group ${widthClass}`}
           >
             <div
@@ -272,6 +276,7 @@ export default function ProfileFavoritesPanel({
   showFriends = true,
   readOnly = false,
   onViewAllFavorites,
+  onMovieLinkClick,
 }: ProfileFavoritesPanelProps) {
   const { t } = useLang();
   const visibleFriends = friends.slice(0, 5);
@@ -307,6 +312,7 @@ export default function ProfileFavoritesPanel({
                 onToggleFavorite={onToggleFavorite}
                 readOnly={readOnly}
                 naLabel={t("common_na")}
+                onMovieLinkClick={onMovieLinkClick}
               />
             </div>
           )}
@@ -360,6 +366,7 @@ export default function ProfileFavoritesPanel({
                 onToggleFavorite={onToggleFavorite}
                 readOnly={readOnly}
                 naLabel={t("common_na")}
+                onMovieLinkClick={onMovieLinkClick}
               />
             </div>
           )}

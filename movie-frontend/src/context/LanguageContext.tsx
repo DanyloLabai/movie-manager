@@ -253,7 +253,8 @@ const translations = {
     watchlist_filter_tv: "TV",
     watchlist_sort_added: "Sort: added",
     watchlist_sort_rating: "Sort: rating",
-    watchlist_search_placeholder: "search in list",
+    watchlist_sort_by_rating: "Rating",
+    watchlist_sort_by_date: "Date added",
 
     login_welcome: "Welcome to Lumen",
     login_subtitle: "Log in to your tracker",
@@ -766,7 +767,8 @@ const translations = {
     watchlist_filter_tv: "Серіали",
     watchlist_sort_added: "Сортувати: додано",
     watchlist_sort_rating: "Сортувати: оцінка",
-    watchlist_search_placeholder: "пошук у списку",
+    watchlist_sort_by_rating: "Оцінка",
+    watchlist_sort_by_date: "Дата додавання",
 
     login_welcome: "Ласкаво просимо в Lumen",
     login_subtitle: "Увійди у свій обліковий запис",
