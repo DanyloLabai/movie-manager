@@ -10,6 +10,8 @@ import { ConfigService } from '@nestjs/config';
 import { generateText, generateObject } from 'ai';
 import { z } from 'zod';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createDeepSeek } from '@ai-sdk/deepseek';
 import { MoviesService } from '../movies/movies.service';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
 import { WatchlistItem } from '../movies/watchlist-entity';
@@ -75,13 +77,23 @@ export interface RecommendationReason {
 }
 
 export const DEFAULT_AI_PROVIDER_TIMEOUT_MS = 15000;
+// DeepSeek V4-Pro reasons ("thinking") before answering by default, which is
+// what gives it good recall on vague/niche plot descriptions- but measured
+// end-to-end latency for a single generateObject call was ~117s. Disabling
+// thinking drops that to ~4s but also drops recall to Groq's level, defeating
+// the point of using it as primary. So instead of disabling thinking, this
+// primary-only call gets its own much longer timeout.
+export const DEFAULT_DEEPSEEK_PROVIDER_TIMEOUT_MS = 150000;
 
 @Injectable()
 export class AiChatService {
   private groqClient: ReturnType<typeof createGroq>;
   private geminiClient: ReturnType<typeof createGoogleGenerativeAI>;
+  private deepseekClient: ReturnType<typeof createDeepSeek>;
+  private deepseekCompatClient: ReturnType<typeof createOpenAI>;
   private readonly logger = new Logger(AiChatService.name);
   private readonly providerTimeoutMs: number;
+  private readonly deepseekProviderTimeoutMs: number;
 
   constructor(
     private configService: ConfigService,
@@ -92,16 +104,32 @@ export class AiChatService {
   ) {
     const groqApiKey = this.configService.get<string>('GROQ_API_KEY') || '';
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
+    const deepseekApiKey =
+      this.configService.get<string>('DEEPSEEK_API_KEY') || '';
     this.groqClient = createGroq({ apiKey: groqApiKey });
     this.geminiClient = createGoogleGenerativeAI({ apiKey: geminiApiKey });
+    this.deepseekClient = createDeepSeek({ apiKey: deepseekApiKey });
+    // recommendForTwo's DeepSeek fallback still goes through the OpenAI-
+    // compatible endpoint (unchanged) rather than the dedicated client above,
+    // which is used only as searchMovieByDescription's primary provider.
+    this.deepseekCompatClient = createOpenAI({
+      apiKey: deepseekApiKey,
+      baseURL: 'https://api.deepseek.com/v1',
+    });
     this.providerTimeoutMs = Number(
       this.configService.get<string>('AI_PROVIDER_TIMEOUT_MS') ??
         DEFAULT_AI_PROVIDER_TIMEOUT_MS,
     );
+    this.deepseekProviderTimeoutMs = Number(
+      this.configService.get<string>('DEEPSEEK_PROVIDER_TIMEOUT_MS') ??
+        DEFAULT_DEEPSEEK_PROVIDER_TIMEOUT_MS,
+    );
   }
 
-  private newProviderAbortSignal(): AbortSignal {
-    return AbortSignal.timeout(this.providerTimeoutMs);
+  private newProviderAbortSignal(
+    timeoutMs: number = this.providerTimeoutMs,
+  ): AbortSignal {
+    return AbortSignal.timeout(timeoutMs);
   }
 
   async searchMovieByDescription(
@@ -153,20 +181,30 @@ export class AiChatService {
     }));
 
     try {
-      this.logger.log('Calling Groq with generateText...');
+      // DeepSeek V4-Pro is primary here: with its default "thinking" mode it
+      // correctly identified a real test case (vague description -> Army of
+      // Thieves) that both Gemini-without-thinking-time-pressure and Groq
+      // struggled with. The cost of that recall is latency- a single call
+      // measured ~117s end-to-end- so it gets its own much longer timeout
+      // (deepseekProviderTimeoutMs) instead of sharing providerTimeoutMs with
+      // the fast fallbacks below. Disabling thinking would cut that to ~4s
+      // but also drops recall to Groq's level, which defeats the purpose.
+      this.logger.log('Calling DeepSeek with generateObject...');
       const startedAt = Date.now();
       const { tokenCount, ...response } = await this.generateAiResponse(
-        this.groqClient('openai/gpt-oss-120b'),
+        this.deepseekClient('deepseek-v4-pro'),
         systemPrompt,
         formattedMessages,
         userContextData,
         alreadyShownIds,
         relevantPreferences,
+        this.deepseekProviderTimeoutMs,
       );
+      this.logger.log('Response served by DeepSeek (primary)');
       this.aiUsageLogService
         .logUsage({
           userId,
-          provider: 'groq',
+          provider: 'deepseek',
           wasFailover: false,
           requestType: 'chat',
           tokenCount,
@@ -176,9 +214,9 @@ export class AiChatService {
           this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
         );
       return response;
-    } catch (groqError: unknown) {
+    } catch (deepseekError: unknown) {
       this.logger.error(
-        `Groq failed: ${groqError instanceof Error ? groqError.message : String(groqError)}`,
+        `DeepSeek failed: ${deepseekError instanceof Error ? deepseekError.message : String(deepseekError)}`,
       );
       this.logger.warn('Falling back to Gemini...');
       try {
@@ -191,6 +229,7 @@ export class AiChatService {
           alreadyShownIds,
           relevantPreferences,
         );
+        this.logger.log('Response served by Gemini (1st fallback)');
         this.aiUsageLogService
           .logUsage({
             userId,
@@ -207,14 +246,44 @@ export class AiChatService {
           );
         return response;
       } catch (geminiError: unknown) {
-        const geminiMessage =
-          geminiError instanceof Error
-            ? geminiError.message
-            : String(geminiError);
-        throw new InternalServerErrorException(
-          'All AI services are currently unavailable',
-          geminiMessage,
+        this.logger.error(
+          `Gemini failed: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}`,
         );
+        this.logger.warn('Falling back to Groq...');
+        try {
+          const startedAt = Date.now();
+          const { tokenCount, ...response } = await this.generateAiResponse(
+            this.groqClient('openai/gpt-oss-120b'),
+            systemPrompt,
+            formattedMessages,
+            userContextData,
+            alreadyShownIds,
+            relevantPreferences,
+          );
+          this.logger.log('Response served by Groq (2nd fallback)');
+          this.aiUsageLogService
+            .logUsage({
+              userId,
+              provider: 'groq',
+              wasFailover: true,
+              requestType: 'chat',
+              tokenCount,
+              latencyMs: Date.now() - startedAt,
+            })
+            .catch((err: unknown) =>
+              this.logger.warn(
+                `AI usage logging failed: ${getErrorMessage(err)}`,
+              ),
+            );
+          return response;
+        } catch (groqError: unknown) {
+          const groqMessage =
+            groqError instanceof Error ? groqError.message : String(groqError);
+          throw new InternalServerErrorException(
+            'All AI services are currently unavailable',
+            groqMessage,
+          );
+        }
       }
     }
   }
@@ -226,6 +295,7 @@ export class AiChatService {
     userContextData: UserContextData,
     alreadyShownIds: Set<number>,
     relevantPreferences: RecommendationReason[],
+    timeoutMs?: number,
   ): Promise<{
     message: string;
     movies?: MovieResultDto[];
@@ -238,7 +308,7 @@ export class AiChatService {
       messages,
       schema: aiResponseSchema,
       temperature: 0.5,
-      abortSignal: this.newProviderAbortSignal(),
+      abortSignal: this.newProviderAbortSignal(timeoutMs),
     });
 
     let foundMovies: MovieResultDto[] = [];
@@ -567,6 +637,22 @@ character, or universe by name (e.g. "find Se7en", "other parts of Shrek", "movi
 → If the user adds a qualifier like "які я ще не бачив" / "не додав у список"- same as above but set excludeOwned: true, so already watched/watchlisted titles from that list get filtered out.
 → CRITICAL: If the user names a SPECIFIC title (in any language, or a plot/actor description of a specific movie), and you are NOT fully certain it exists or don't personally recognize it (e.g. it's a very recent or upcoming release)- DO NOT refuse or say you can't find it. Still put your best-guess real title in "titles" (translate to its original/English title if you can- that's what the search index uses) and let the backend verify it. Only say you couldn't find something AFTER attempting a real title guess, never instead of one.
 
+RULE 1B- PLOT RECALL ("what movie is this?"- part of RULE 1, force: true):
+Users often describe a SINGLE specific movie/show they're trying to identify by a scene, character detail, or
+plot fragment, without naming it (e.g. "фільм де капітан корабля грає у хованки", "movie where a blond guy
+speed-cracks a safe", "there's this movie where a kid sees dead people"). This is DIFFERENT from RULE 4: the
+user wants the NAME of the ONE movie they have in mind, not a list of movies that merely share a theme.
+→ Recognize this pattern from: a singular reference ("фільм де...", "a/the movie where...", "what's that movie
+with...") combined with a SPECIFIC plot/scene/character detail- not a broad genre or topic (that's RULE 4).
+→ Set "force": true.
+→ Commit to your single best real-title guess in "titles". Only include a 2nd or 3rd title if multiple real
+movies are truly and equally plausible matches for the EXACT detail given- never pad the list with merely
+similar/thematically-related movies to hedge your bet. A wrong list of "close enough" movies is worse than one
+honest best guess.
+→ If you genuinely don't recognize the specific movie from the description, say so honestly in "message"- but
+still provide your single best guess in "titles" per the CRITICAL rule above, exactly as for any other
+uncertain title. Never silently substitute a themed grab-bag of unrelated movies instead.
+
 RULE 2- WATCHLIST PICK:
 If the user asks "what should I watch from my list", "pick from my watchlist", or similar:
 → Set "force": true, "excludeOwned": false, suggesting only items from their Watchlist.
@@ -576,7 +662,8 @@ Only use upcoming movies if the user EXPLICITLY asks for "new movies", "upcoming
 
 RULE 4- OPEN RECOMMENDATIONS / VIBE SEARCH (force: false):
 For general or niche recommendations ("recommend something scary", "what should I watch tonight", "movies about space",
-"фільми про Формулу-1"), even ones with no obvious single franchise:
+"фільми про Формулу-1"), even ones with no obvious single franchise. This does NOT include a user trying to
+recall ONE specific remembered movie by plot/scene detail, even if they don't name it- see RULE 1B for that.
 → Set "force": false.
 → IMPORTANT: List up to 8 REAL, concrete titles you know fit the request directly in "titles"- do NOT rely only on a
 vague concept, since concept-only search misses niche topics. Draw on your own knowledge of real movies/shows.
@@ -660,6 +747,7 @@ RESPONSE TONE:
       const { tokenCount, ...response } = await runWith(
         this.groqClient('openai/gpt-oss-120b'),
       );
+      this.logger.log('Watch-together response served by Groq (primary)');
       this.aiUsageLogService
         .logUsage({
           userId: userIdA,
@@ -682,6 +770,9 @@ RESPONSE TONE:
         const { tokenCount, ...response } = await runWith(
           this.geminiClient('gemini-flash-latest'),
         );
+        this.logger.log(
+          'Watch-together response served by Gemini (1st fallback)',
+        );
         this.aiUsageLogService
           .logUsage({
             userId: userIdA,
@@ -698,14 +789,42 @@ RESPONSE TONE:
           );
         return response;
       } catch (geminiError: unknown) {
-        const geminiMessage =
-          geminiError instanceof Error
-            ? geminiError.message
-            : String(geminiError);
-        throw new InternalServerErrorException(
-          'All AI services are currently unavailable',
-          geminiMessage,
+        this.logger.error(
+          `Watch-together Gemini failed: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}`,
         );
+        try {
+          const startedAt = Date.now();
+          const { tokenCount, ...response } = await runWith(
+            this.deepseekCompatClient('deepseek-chat'),
+          );
+          this.logger.log(
+            'Watch-together response served by DeepSeek (2nd fallback)',
+          );
+          this.aiUsageLogService
+            .logUsage({
+              userId: userIdA,
+              provider: 'deepseek',
+              wasFailover: true,
+              requestType: 'chat',
+              tokenCount,
+              latencyMs: Date.now() - startedAt,
+            })
+            .catch((err: unknown) =>
+              this.logger.warn(
+                `AI usage logging failed: ${getErrorMessage(err)}`,
+              ),
+            );
+          return response;
+        } catch (deepseekError: unknown) {
+          const deepseekMessage =
+            deepseekError instanceof Error
+              ? deepseekError.message
+              : String(deepseekError);
+          throw new InternalServerErrorException(
+            'All AI services are currently unavailable',
+            deepseekMessage,
+          );
+        }
       }
     }
   }

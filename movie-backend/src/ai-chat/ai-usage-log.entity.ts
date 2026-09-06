@@ -5,7 +5,7 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 
-export type AiProvider = 'groq' | 'gemini';
+export type AiProvider = 'groq' | 'gemini' | 'deepseek';
 export type AiRequestType = 'chat' | 'embedding' | 'recommendations';
 
 @Entity('ai_usage_log')

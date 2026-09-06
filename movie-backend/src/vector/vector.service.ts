@@ -65,17 +65,20 @@ export class VectorService implements OnModuleInit {
     this.geminiApiKey = geminiApiKey;
 
     this.logger.log(
-      'VectorService initialized with gemini-embedding-2 via the Gemini REST API, sharing the TypeORM connection pool.',
+      'VectorService initialized with gemini-embedding-001 via the Gemini REST API, sharing the TypeORM connection pool.',
     );
   }
 
   private async embed(text: string): Promise<number[]> {
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-embedding-2:embedContent?key=${this.geminiApiKey}`;
+    // gemini-embedding-001's default output is 3072-dim, matching the existing
+    // movie_embeddings/user_memory_embeddings vector(3072) columns, so no
+    // outputDimensionality override or schema change is needed here.
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-embedding-001:embedContent?key=${this.geminiApiKey}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'models/gemini-embedding-2',
+        model: 'models/gemini-embedding-001',
         content: { parts: [{ text }] },
       }),
     });

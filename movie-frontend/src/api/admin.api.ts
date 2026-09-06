@@ -4,7 +4,7 @@ export interface AiUsageWindowStats {
   totalRequests: number;
   failoverRequests: number;
   failoverRate: number;
-  byProvider: Array<{ provider: "groq" | "gemini"; count: number }>;
+  byProvider: Array<{ provider: "groq" | "gemini" | "deepseek"; count: number }>;
 }
 
 export interface AiUsageStats {
