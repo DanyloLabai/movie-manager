@@ -77,6 +77,13 @@ export interface RecommendationReason {
 }
 
 export const DEFAULT_AI_PROVIDER_TIMEOUT_MS = 15000;
+// DeepSeek V4-Pro reasons ("thinking") before answering by default, which is
+// what gives it good recall on vague/niche plot descriptions- but measured
+// end-to-end latency for a single generateObject call was ~117s. Disabling
+// thinking drops that to ~4s but also drops recall to Groq's level, defeating
+// the point of using it as primary. So instead of disabling thinking, this
+// primary-only call gets its own much longer timeout.
+export const DEFAULT_DEEPSEEK_PROVIDER_TIMEOUT_MS = 150000;
 
 @Injectable()
 export class AiChatService {
@@ -86,6 +93,7 @@ export class AiChatService {
   private deepseekCompatClient: ReturnType<typeof createOpenAI>;
   private readonly logger = new Logger(AiChatService.name);
   private readonly providerTimeoutMs: number;
+  private readonly deepseekProviderTimeoutMs: number;
 
   constructor(
     private configService: ConfigService,
@@ -112,10 +120,16 @@ export class AiChatService {
       this.configService.get<string>('AI_PROVIDER_TIMEOUT_MS') ??
         DEFAULT_AI_PROVIDER_TIMEOUT_MS,
     );
+    this.deepseekProviderTimeoutMs = Number(
+      this.configService.get<string>('DEEPSEEK_PROVIDER_TIMEOUT_MS') ??
+        DEFAULT_DEEPSEEK_PROVIDER_TIMEOUT_MS,
+    );
   }
 
-  private newProviderAbortSignal(): AbortSignal {
-    return AbortSignal.timeout(this.providerTimeoutMs);
+  private newProviderAbortSignal(
+    timeoutMs: number = this.providerTimeoutMs,
+  ): AbortSignal {
+    return AbortSignal.timeout(timeoutMs);
   }
 
   async searchMovieByDescription(
@@ -167,28 +181,30 @@ export class AiChatService {
     }));
 
     try {
-      // Gemini is primary here (not Groq's gpt-oss-120b): a direct side-by-side
-      // test on a vague plot description ("blond guy who quickly cracks a
-      // safe" -> Army of Thieves) showed gpt-oss-120b flailing through wrong
-      // guesses (Italian Job, Ocean's Eleven, ...) while Gemini named the
-      // right movie on the first try. Groq stays as the fast/cheap 1st
-      // fallback, DeepSeek V4-Pro as the 2nd (its account currently has no
-      // balance, so it's a no-op reserve until it's topped up).
-      this.logger.log('Calling Gemini with generateObject...');
+      // DeepSeek V4-Pro is primary here: with its default "thinking" mode it
+      // correctly identified a real test case (vague description -> Army of
+      // Thieves) that both Gemini-without-thinking-time-pressure and Groq
+      // struggled with. The cost of that recall is latency- a single call
+      // measured ~117s end-to-end- so it gets its own much longer timeout
+      // (deepseekProviderTimeoutMs) instead of sharing providerTimeoutMs with
+      // the fast fallbacks below. Disabling thinking would cut that to ~4s
+      // but also drops recall to Groq's level, which defeats the purpose.
+      this.logger.log('Calling DeepSeek with generateObject...');
       const startedAt = Date.now();
       const { tokenCount, ...response } = await this.generateAiResponse(
-        this.geminiClient('gemini-flash-latest'),
+        this.deepseekClient('deepseek-v4-pro'),
         systemPrompt,
         formattedMessages,
         userContextData,
         alreadyShownIds,
         relevantPreferences,
+        this.deepseekProviderTimeoutMs,
       );
-      this.logger.log('Response served by Gemini (primary)');
+      this.logger.log('Response served by DeepSeek (primary)');
       this.aiUsageLogService
         .logUsage({
           userId,
-          provider: 'gemini',
+          provider: 'deepseek',
           wasFailover: false,
           requestType: 'chat',
           tokenCount,
@@ -198,26 +214,26 @@ export class AiChatService {
           this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
         );
       return response;
-    } catch (geminiError: unknown) {
+    } catch (deepseekError: unknown) {
       this.logger.error(
-        `Gemini failed: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}`,
+        `DeepSeek failed: ${deepseekError instanceof Error ? deepseekError.message : String(deepseekError)}`,
       );
-      this.logger.warn('Falling back to Groq...');
+      this.logger.warn('Falling back to Gemini...');
       try {
         const startedAt = Date.now();
         const { tokenCount, ...response } = await this.generateAiResponse(
-          this.groqClient('openai/gpt-oss-120b'),
+          this.geminiClient('gemini-flash-latest'),
           systemPrompt,
           formattedMessages,
           userContextData,
           alreadyShownIds,
           relevantPreferences,
         );
-        this.logger.log('Response served by Groq (1st fallback)');
+        this.logger.log('Response served by Gemini (1st fallback)');
         this.aiUsageLogService
           .logUsage({
             userId,
-            provider: 'groq',
+            provider: 'gemini',
             wasFailover: true,
             requestType: 'chat',
             tokenCount,
@@ -229,26 +245,26 @@ export class AiChatService {
             ),
           );
         return response;
-      } catch (groqError: unknown) {
+      } catch (geminiError: unknown) {
         this.logger.error(
-          `Groq failed: ${groqError instanceof Error ? groqError.message : String(groqError)}`,
+          `Gemini failed: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}`,
         );
-        this.logger.warn('Falling back to DeepSeek...');
+        this.logger.warn('Falling back to Groq...');
         try {
           const startedAt = Date.now();
           const { tokenCount, ...response } = await this.generateAiResponse(
-            this.deepseekClient('deepseek-v4-pro'),
+            this.groqClient('openai/gpt-oss-120b'),
             systemPrompt,
             formattedMessages,
             userContextData,
             alreadyShownIds,
             relevantPreferences,
           );
-          this.logger.log('Response served by DeepSeek (2nd fallback)');
+          this.logger.log('Response served by Groq (2nd fallback)');
           this.aiUsageLogService
             .logUsage({
               userId,
-              provider: 'deepseek',
+              provider: 'groq',
               wasFailover: true,
               requestType: 'chat',
               tokenCount,
@@ -260,14 +276,12 @@ export class AiChatService {
               ),
             );
           return response;
-        } catch (deepseekError: unknown) {
-          const deepseekMessage =
-            deepseekError instanceof Error
-              ? deepseekError.message
-              : String(deepseekError);
+        } catch (groqError: unknown) {
+          const groqMessage =
+            groqError instanceof Error ? groqError.message : String(groqError);
           throw new InternalServerErrorException(
             'All AI services are currently unavailable',
-            deepseekMessage,
+            groqMessage,
           );
         }
       }
@@ -281,6 +295,7 @@ export class AiChatService {
     userContextData: UserContextData,
     alreadyShownIds: Set<number>,
     relevantPreferences: RecommendationReason[],
+    timeoutMs?: number,
   ): Promise<{
     message: string;
     movies?: MovieResultDto[];
@@ -293,7 +308,7 @@ export class AiChatService {
       messages,
       schema: aiResponseSchema,
       temperature: 0.5,
-      abortSignal: this.newProviderAbortSignal(),
+      abortSignal: this.newProviderAbortSignal(timeoutMs),
     });
 
     let foundMovies: MovieResultDto[] = [];
