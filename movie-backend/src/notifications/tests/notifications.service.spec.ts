@@ -207,7 +207,7 @@ describe('NotificationsService', () => {
       await service.deleteOldNotifications();
 
       expect(mockNotificationRepo.delete).toHaveBeenCalledWith(
-        expect.objectContaining({ createdAt: expect.anything() }),
+        expect.objectContaining({ createdAt: expect.any(Object) as object }),
       );
     });
     it('logs a message only when result.affected is truthy', async () => {
