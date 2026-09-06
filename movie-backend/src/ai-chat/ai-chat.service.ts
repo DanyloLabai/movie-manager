@@ -10,6 +10,8 @@ import { ConfigService } from '@nestjs/config';
 import { generateText, generateObject } from 'ai';
 import { z } from 'zod';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createDeepSeek } from '@ai-sdk/deepseek';
 import { MoviesService } from '../movies/movies.service';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
 import { WatchlistItem } from '../movies/watchlist-entity';
@@ -74,12 +76,17 @@ export interface RecommendationReason {
   similarityScore: number;
 }
 
-export const DEFAULT_AI_PROVIDER_TIMEOUT_MS = 15000;
+// DeepSeek V4-Pro (the primary chat model) reasons more before answering
+// than fast models like gpt-oss-120b, so it needs a bit more headroom
+// before we time out and fail over to Groq.
+export const DEFAULT_AI_PROVIDER_TIMEOUT_MS = 25000;
 
 @Injectable()
 export class AiChatService {
   private groqClient: ReturnType<typeof createGroq>;
   private geminiClient: ReturnType<typeof createGoogleGenerativeAI>;
+  private deepseekClient: ReturnType<typeof createDeepSeek>;
+  private deepseekCompatClient: ReturnType<typeof createOpenAI>;
   private readonly logger = new Logger(AiChatService.name);
   private readonly providerTimeoutMs: number;
 
@@ -92,8 +99,18 @@ export class AiChatService {
   ) {
     const groqApiKey = this.configService.get<string>('GROQ_API_KEY') || '';
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
+    const deepseekApiKey =
+      this.configService.get<string>('DEEPSEEK_API_KEY') || '';
     this.groqClient = createGroq({ apiKey: groqApiKey });
     this.geminiClient = createGoogleGenerativeAI({ apiKey: geminiApiKey });
+    this.deepseekClient = createDeepSeek({ apiKey: deepseekApiKey });
+    // recommendForTwo's DeepSeek fallback still goes through the OpenAI-
+    // compatible endpoint (unchanged) rather than the dedicated client above,
+    // which is used only as searchMovieByDescription's primary provider.
+    this.deepseekCompatClient = createOpenAI({
+      apiKey: deepseekApiKey,
+      baseURL: 'https://api.deepseek.com/v1',
+    });
     this.providerTimeoutMs = Number(
       this.configService.get<string>('AI_PROVIDER_TIMEOUT_MS') ??
         DEFAULT_AI_PROVIDER_TIMEOUT_MS,
@@ -153,20 +170,29 @@ export class AiChatService {
     }));
 
     try {
-      this.logger.log('Calling Groq with generateText...');
+      // DeepSeek V4-Pro is primary here (not Groq's gpt-oss-120b): recognizing
+      // a movie from a vague/partial plot description leans on broad world
+      // knowledge, and gpt-oss-120b's recall of niche/recent titles is
+      // noticeably weaker — it was making users go back and forth with extra
+      // hints instead of naming the movie right away. DeepSeek V4-Pro is also
+      // far cheaper per token than Gemini 2.5 Pro, which we tried here first.
+      // Groq stays as the fast/cheap failover for when DeepSeek errors out or
+      // hits its rate limit.
+      this.logger.log('Calling DeepSeek with generateObject...');
       const startedAt = Date.now();
       const { tokenCount, ...response } = await this.generateAiResponse(
-        this.groqClient('openai/gpt-oss-120b'),
+        this.deepseekClient('deepseek-v4-pro'),
         systemPrompt,
         formattedMessages,
         userContextData,
         alreadyShownIds,
         relevantPreferences,
       );
+      this.logger.log('Response served by DeepSeek (primary)');
       this.aiUsageLogService
         .logUsage({
           userId,
-          provider: 'groq',
+          provider: 'deepseek',
           wasFailover: false,
           requestType: 'chat',
           tokenCount,
@@ -176,25 +202,26 @@ export class AiChatService {
           this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
         );
       return response;
-    } catch (groqError: unknown) {
+    } catch (deepseekError: unknown) {
       this.logger.error(
-        `Groq failed: ${groqError instanceof Error ? groqError.message : String(groqError)}`,
+        `DeepSeek failed: ${deepseekError instanceof Error ? deepseekError.message : String(deepseekError)}`,
       );
-      this.logger.warn('Falling back to Gemini...');
+      this.logger.warn('Falling back to Groq...');
       try {
         const startedAt = Date.now();
         const { tokenCount, ...response } = await this.generateAiResponse(
-          this.geminiClient('gemini-flash-latest'),
+          this.groqClient('openai/gpt-oss-120b'),
           systemPrompt,
           formattedMessages,
           userContextData,
           alreadyShownIds,
           relevantPreferences,
         );
+        this.logger.log('Response served by Groq (fallback)');
         this.aiUsageLogService
           .logUsage({
             userId,
-            provider: 'gemini',
+            provider: 'groq',
             wasFailover: true,
             requestType: 'chat',
             tokenCount,
@@ -206,14 +233,12 @@ export class AiChatService {
             ),
           );
         return response;
-      } catch (geminiError: unknown) {
-        const geminiMessage =
-          geminiError instanceof Error
-            ? geminiError.message
-            : String(geminiError);
+      } catch (groqError: unknown) {
+        const groqMessage =
+          groqError instanceof Error ? groqError.message : String(groqError);
         throw new InternalServerErrorException(
           'All AI services are currently unavailable',
-          geminiMessage,
+          groqMessage,
         );
       }
     }
@@ -660,6 +685,7 @@ RESPONSE TONE:
       const { tokenCount, ...response } = await runWith(
         this.groqClient('openai/gpt-oss-120b'),
       );
+      this.logger.log('Watch-together response served by Groq (primary)');
       this.aiUsageLogService
         .logUsage({
           userId: userIdA,
@@ -682,6 +708,9 @@ RESPONSE TONE:
         const { tokenCount, ...response } = await runWith(
           this.geminiClient('gemini-flash-latest'),
         );
+        this.logger.log(
+          'Watch-together response served by Gemini (1st fallback)',
+        );
         this.aiUsageLogService
           .logUsage({
             userId: userIdA,
@@ -698,14 +727,42 @@ RESPONSE TONE:
           );
         return response;
       } catch (geminiError: unknown) {
-        const geminiMessage =
-          geminiError instanceof Error
-            ? geminiError.message
-            : String(geminiError);
-        throw new InternalServerErrorException(
-          'All AI services are currently unavailable',
-          geminiMessage,
+        this.logger.error(
+          `Watch-together Gemini failed: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}`,
         );
+        try {
+          const startedAt = Date.now();
+          const { tokenCount, ...response } = await runWith(
+            this.deepseekCompatClient('deepseek-chat'),
+          );
+          this.logger.log(
+            'Watch-together response served by DeepSeek (2nd fallback)',
+          );
+          this.aiUsageLogService
+            .logUsage({
+              userId: userIdA,
+              provider: 'deepseek',
+              wasFailover: true,
+              requestType: 'chat',
+              tokenCount,
+              latencyMs: Date.now() - startedAt,
+            })
+            .catch((err: unknown) =>
+              this.logger.warn(
+                `AI usage logging failed: ${getErrorMessage(err)}`,
+              ),
+            );
+          return response;
+        } catch (deepseekError: unknown) {
+          const deepseekMessage =
+            deepseekError instanceof Error
+              ? deepseekError.message
+              : String(deepseekError);
+          throw new InternalServerErrorException(
+            'All AI services are currently unavailable',
+            deepseekMessage,
+          );
+        }
       }
     }
   }
