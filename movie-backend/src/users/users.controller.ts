@@ -49,6 +49,24 @@ export class UsersController {
     return this.usersService.updateUserProfile(userId, newUsername, file);
   }
 
+  @Patch('me/timezone')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Update the current user's timezone",
+    description:
+      "Client-reported IANA timezone (e.g. from Intl.DateTimeFormat().resolvedOptions().timeZone on web, or the device timezone on mobile), used to anchor daily-limit resets to the user's own midnight. Call on login/app-start (requires authentication).",
+  })
+  @ApiResponse({ status: 200, description: 'Timezone updated' })
+  @ApiResponse({ status: 400, description: 'Invalid timezone' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateTimezone(
+    @Req() req: AuthenticatedRequest,
+    @Body('timezone') timezone: string,
+  ) {
+    const userId = req.user.userId;
+    return this.usersService.updateTimezone(userId, timezone);
+  }
+
   @Delete('me')
   @ApiBearerAuth()
   @ApiOperation({

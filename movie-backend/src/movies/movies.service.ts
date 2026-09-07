@@ -535,6 +535,17 @@ export class MoviesService {
         if (exactMatch) results = [exactMatch];
       }
 
+      if (results.length > 1) {
+        const normalizedQuery = title.trim().toLowerCase();
+        const exactTitleMatches = results.filter(
+          (r: TmdbMultiSearchResultDto) => {
+            const rTitle = (r.title || r.name || '').trim().toLowerCase();
+            return rTitle === normalizedQuery;
+          },
+        );
+        if (exactTitleMatches.length > 0) results = exactTitleMatches;
+      }
+
       if (results.length === 0) return null;
 
       const media = results[0];

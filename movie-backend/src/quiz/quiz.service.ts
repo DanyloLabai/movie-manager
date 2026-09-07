@@ -20,6 +20,11 @@ import { QuizHintsService } from './quiz-hints.service';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/users.entity';
 import { AchievementsService } from '../achievements/achievements.service';
+import {
+  APP_TIME_ZONE,
+  dateStringInTimeZone,
+  startOfDayInTimeZone,
+} from '../common/timezone.util';
 
 const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -508,10 +513,14 @@ export class QuizService {
   }
 
   private dateStringDaysAgo(days: number): string {
-    return new Date(Date.now() - days * MS_PER_DAY).toISOString().slice(0, 10);
+    const startOfToday = startOfDayInTimeZone(APP_TIME_ZONE);
+    return dateStringInTimeZone(
+      APP_TIME_ZONE,
+      new Date(startOfToday.getTime() - days * MS_PER_DAY),
+    );
   }
 
   private todayDateString(): string {
-    return new Date().toISOString().slice(0, 10);
+    return dateStringInTimeZone(APP_TIME_ZONE);
   }
 }
