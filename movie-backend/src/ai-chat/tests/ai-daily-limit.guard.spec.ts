@@ -67,8 +67,8 @@ describe('AiDailyLimitGuard', () => {
 
     await guard.canActivate(buildContext(1));
 
-    const sinceArg = mockAiUsageLogService.getUserUsageSince.mock
-      .calls[0][1] as Date;
+    const [, sinceArg] = mockAiUsageLogService.getUserUsageSince.mock
+      .calls[0] as [number, Date];
     expect(sinceArg).toBeInstanceOf(Date);
   });
 

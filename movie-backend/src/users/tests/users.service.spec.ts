@@ -130,9 +130,9 @@ describe('UsersService', () => {
     });
 
     it('should throw BadRequestException for an invalid timezone', async () => {
-      await expect(
-        service.updateTimezone(1, 'Not/A_Zone'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.updateTimezone(1, 'Not/A_Zone')).rejects.toThrow(
+        BadRequestException,
+      );
       expect(mockUsersRepository.update).not.toHaveBeenCalled();
     });
 
