@@ -142,6 +142,11 @@ export async function getFriendsLastWatched(): Promise<FriendLastWatched[]> {
   return res.data;
 }
 
+export async function updateTimezone(timezone: string) {
+  const res = await api.patch(`/users/me/timezone`, { timezone });
+  return res.data;
+}
+
 export default {
   getPublicProfile,
   updateProfile,
@@ -161,4 +166,5 @@ export default {
   getSearchHistory,
   clearSearchHistory,
   getFriendsLastWatched,
+  updateTimezone,
 };
