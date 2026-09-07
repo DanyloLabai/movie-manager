@@ -10,6 +10,8 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import {
   ApiTags,
   ApiOperation,
@@ -26,8 +28,8 @@ import {
 import { AiUsageLogService } from './ai-usage-log.service';
 import type { ChatMessage } from './interfaces/chat-message.interface';
 import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
-
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+import { APP_TIME_ZONE, startOfDayInTimeZone } from '../common/timezone.util';
+import { User } from '../users/users.entity';
 
 @ApiTags('AI Chat')
 @Controller('api/ai')
@@ -39,6 +41,8 @@ export class AiChatController {
     private readonly aiChatService: AiChatService,
     private readonly aiUsageLogService: AiUsageLogService,
     private readonly configService: ConfigService,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
   ) {
     this.requestLimit = Number(
       this.configService.get<string>('AI_DAILY_REQUEST_LIMIT') ??
@@ -55,13 +59,17 @@ export class AiChatController {
   @ApiOperation({
     summary: 'Get current user AI usage',
     description:
-      "Get the current user's AI request/token usage for the rolling 24h window, plus the daily limits (requires authentication)",
+      "Get the current user's AI request/token usage since their local midnight (Kyiv by default, or the user's own reported timezone), plus the daily limits (requires authentication)",
   })
   @ApiResponse({ status: 200, description: 'User AI usage stats' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUsage(@Req() req: AuthenticatedRequest) {
     const userId = req.user.userId;
-    const since = new Date(Date.now() - ONE_DAY_MS);
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      select: ['timezone'],
+    });
+    const since = startOfDayInTimeZone(user?.timezone || APP_TIME_ZONE);
     const { requestCount, totalTokens } =
       await this.aiUsageLogService.getUserUsageSince(userId, since);
     return {
