@@ -57,3 +57,12 @@ export function dateStringInTimeZone(
 ): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone }).format(reference);
 }
+
+export function isValidTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}

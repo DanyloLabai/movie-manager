@@ -21,6 +21,7 @@ import { ActivityService } from 'src/activity/activity.service';
 import { VectorService } from 'src/vector/vector.service';
 import { SearchHistoryService } from 'src/search-history/search-history.service';
 import { NotificationsService } from 'src/notifications/notifications.service';
+import { APP_TIME_ZONE, isValidTimeZone } from 'src/common/timezone.util';
 
 @Injectable()
 export class UsersService {
@@ -41,6 +42,25 @@ export class UsersService {
       api_key: this.configService.get<string>('CLOUDINARY_API_KEY'),
       api_secret: this.configService.get<string>('CLOUDINARY_API_SECRET'),
     });
+  }
+
+  async updateTimezone(
+    userId: number,
+    timezone: string,
+  ): Promise<{ timezone: string }> {
+    if (!timezone || !isValidTimeZone(timezone)) {
+      throw new BadRequestException('Invalid IANA timezone identifier.');
+    }
+    await this.usersRepository.update(userId, { timezone });
+    return { timezone };
+  }
+
+  async getUserTimeZone(userId: number): Promise<string> {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+      select: ['timezone'],
+    });
+    return user?.timezone || APP_TIME_ZONE;
   }
 
   async updateUserProfile(

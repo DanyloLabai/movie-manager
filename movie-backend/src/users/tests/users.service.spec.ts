@@ -50,6 +50,7 @@ const buildUser = (overrides: Partial<User> = {}): User =>
 const mockUsersRepository = {
   findOne: jest.fn(),
   save: jest.fn(),
+  update: jest.fn(),
 };
 
 const mockMoviesService = {
@@ -114,6 +115,62 @@ describe('UsersService', () => {
 
     service = module.get<UsersService>(UsersService);
     jest.clearAllMocks();
+  });
+
+  describe('updateTimezone', () => {
+    it('should save a valid IANA timezone', async () => {
+      mockUsersRepository.update.mockResolvedValue({ affected: 1 });
+
+      const result = await service.updateTimezone(1, 'America/New_York');
+
+      expect(result).toEqual({ timezone: 'America/New_York' });
+      expect(mockUsersRepository.update).toHaveBeenCalledWith(1, {
+        timezone: 'America/New_York',
+      });
+    });
+
+    it('should throw BadRequestException for an invalid timezone', async () => {
+      await expect(
+        service.updateTimezone(1, 'Not/A_Zone'),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockUsersRepository.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw BadRequestException for an empty timezone', async () => {
+      await expect(service.updateTimezone(1, '')).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe('getUserTimeZone', () => {
+    it("should return the user's stored timezone when set", async () => {
+      mockUsersRepository.findOne.mockResolvedValue(
+        buildUser({ timezone: 'America/New_York' }),
+      );
+
+      const result = await service.getUserTimeZone(1);
+
+      expect(result).toBe('America/New_York');
+    });
+
+    it('should fall back to the app default when unset', async () => {
+      mockUsersRepository.findOne.mockResolvedValue(
+        buildUser({ timezone: null }),
+      );
+
+      const result = await service.getUserTimeZone(1);
+
+      expect(result).toBe('Europe/Kyiv');
+    });
+
+    it('should fall back to the app default when the user is not found', async () => {
+      mockUsersRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.getUserTimeZone(99);
+
+      expect(result).toBe('Europe/Kyiv');
+    });
   });
 
   describe('updateUserProfile', () => {

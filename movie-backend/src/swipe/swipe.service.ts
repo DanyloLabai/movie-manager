@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SwipeAction } from './swipe-action.entity';
 import { WatchlistItem } from '../movies/watchlist-entity';
+import { User } from '../users/users.entity';
 import { MoviesService } from '../movies/movies.service';
 import { DiscoveryCandidate, VectorService } from '../vector/vector.service';
 import { SwipeActionDto } from './dto/swipe-action.dto';
@@ -33,6 +34,8 @@ export class SwipeService {
     private readonly swipeActionRepo: Repository<SwipeAction>,
     @InjectRepository(WatchlistItem)
     private readonly watchlistRepo: Repository<WatchlistItem>,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
     private readonly moviesService: MoviesService,
     private readonly vectorService: VectorService,
   ) {}
@@ -40,7 +43,13 @@ export class SwipeService {
   private async getUsage(
     userId: number,
   ): Promise<{ count: number; resetAt: string | null }> {
-    const since = startOfDayInTimeZone(APP_TIME_ZONE);
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      select: ['timezone'],
+    });
+    const timeZone = user?.timezone || APP_TIME_ZONE;
+
+    const since = startOfDayInTimeZone(timeZone);
     const count = await this.swipeActionRepo
       .createQueryBuilder('a')
       .where('a."userId" = :userId', { userId })
@@ -49,7 +58,7 @@ export class SwipeService {
 
     const resetAt =
       count >= this.DAILY_LIMIT
-        ? nextStartOfDayInTimeZone(APP_TIME_ZONE).toISOString()
+        ? nextStartOfDayInTimeZone(timeZone).toISOString()
         : null;
 
     return { count, resetAt };
