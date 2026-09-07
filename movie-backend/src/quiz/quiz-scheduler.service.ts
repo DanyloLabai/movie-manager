@@ -12,7 +12,7 @@ export class QuizSchedulerService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  @Cron('0 0 * * *')
+  @Cron('0 0 * * *', { timeZone: 'Europe/Kyiv' })
   async generateTodayQuiz() {
     this.logger.log('Generating daily movie quiz...');
     try {

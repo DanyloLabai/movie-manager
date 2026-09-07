@@ -8,10 +8,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { AiUsageLogService } from './ai-usage-log.service';
 import { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
+import { APP_TIME_ZONE, startOfDayInTimeZone } from '../common/timezone.util';
 
 export const DEFAULT_DAILY_REQUEST_LIMIT = 15;
 export const DEFAULT_DAILY_TOKEN_LIMIT = 60000;
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class AiDailyLimitGuard implements CanActivate {
@@ -37,7 +37,7 @@ export class AiDailyLimitGuard implements CanActivate {
     const userId = req.user?.userId;
     if (!userId) return true;
 
-    const since = new Date(Date.now() - ONE_DAY_MS);
+    const since = startOfDayInTimeZone(APP_TIME_ZONE);
     const { requestCount, totalTokens } =
       await this.aiUsageLogService.getUserUsageSince(userId, since);
 
