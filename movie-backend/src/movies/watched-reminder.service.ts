@@ -6,6 +6,7 @@ import { Cron } from '@nestjs/schedule';
 import { Resend } from 'resend';
 import { User } from 'src/users/users.entity';
 import { WatchlistItem } from './watchlist-entity';
+import { NotificationsService } from 'src/notifications/notifications.service';
 
 @Injectable()
 export class WatchedReminderService {
@@ -20,6 +21,7 @@ export class WatchedReminderService {
     private readonly usersRepo: Repository<User>,
     @InjectRepository(WatchlistItem)
     private readonly watchlistRepo: Repository<WatchlistItem>,
+    private readonly notificationsService: NotificationsService,
   ) {
     this.resend = new Resend(this.configService.get<string>('RESEND_API_KEY'));
     this.frontendUrl =
@@ -69,39 +71,65 @@ export class WatchedReminderService {
       }
 
       for (const user of usersToNotify) {
-        if (!user.email) continue;
+        let anyChannelSent = false;
+
+        if (user.email) {
+          try {
+            await this.resend.emails.send({
+              from: 'Lumen Movie Tracker <noreply@movietracker.ink>',
+              to: user.email,
+              subject: "🎬 You haven't logged a watch in a while",
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #12100e; color: #f0e6cc; padding: 40px; border-radius: 16px;">
+                  <h2 style="color: #c8963c; text-transform: uppercase; letter-spacing: 0.1em;">We miss you! 🍿</h2>
+                  <p>Hi <strong>${user.username}</strong>,</p>
+                  <p>It's been ${this.reminderDays}+ days since you last marked something as watched. Your watchlist is waiting for you.</p>
+                  <a href="${this.frontendUrl}/watchlist"
+                     style="display: inline-block; padding: 14px 28px; background-color: #c8963c; color: #12100e; text-decoration: none; border-radius: 12px; font-weight: 900; margin: 24px 0; text-transform: uppercase; letter-spacing: 0.1em;">
+                    View Watchlist
+                  </a>
+                </div>
+              `,
+            });
+            anyChannelSent = true;
+            this.logger.log(`Sent inactivity reminder email to ${user.email}`);
+          } catch (emailError: unknown) {
+            const errorMsg =
+              emailError instanceof Error
+                ? emailError.message
+                : String(emailError);
+            this.logger.error(
+              `Failed to send inactivity reminder email to ${user.email}: ${errorMsg}`,
+            );
+          }
+        }
 
         try {
-          await this.resend.emails.send({
-            from: 'Lumen Movie Tracker <noreply@movietracker.ink>',
-            to: user.email,
-            subject: "🎬 You haven't logged a watch in a while",
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #12100e; color: #f0e6cc; padding: 40px; border-radius: 16px;">
-                <h2 style="color: #c8963c; text-transform: uppercase; letter-spacing: 0.1em;">We miss you! 🍿</h2>
-                <p>Hi <strong>${user.username}</strong>,</p>
-                <p>It's been ${this.reminderDays}+ days since you last marked something as watched. Your watchlist is waiting for you.</p>
-                <a href="${this.frontendUrl}/watchlist"
-                   style="display: inline-block; padding: 14px 28px; background-color: #c8963c; color: #12100e; text-decoration: none; border-radius: 12px; font-weight: 900; margin: 24px 0; text-transform: uppercase; letter-spacing: 0.1em;">
-                  View Watchlist
-                </a>
-              </div>
-            `,
+          await this.notificationsService.notify(user.id, {
+            type: 'inactivity',
+            title: 'We miss you! 🍿',
+            body: `It's been ${this.reminderDays}+ days since you last marked something as watched.`,
+            pushTitle: '🍿 We miss you!',
+            pushBody: `It's been ${this.reminderDays}+ days since your last watch. Your watchlist is waiting.`,
+            url: '/watchlist',
           });
-
-          user.lastReminderSentAt = new Date();
-          await this.usersRepo.save(user);
-
-          this.logger.log(`Sent inactivity reminder to ${user.email}`);
-        } catch (emailError: unknown) {
+          anyChannelSent = true;
+        } catch (notifyError: unknown) {
           const errorMsg =
-            emailError instanceof Error
-              ? emailError.message
-              : String(emailError);
+            notifyError instanceof Error
+              ? notifyError.message
+              : String(notifyError);
           this.logger.error(
-            `Failed to send inactivity reminder to ${user.email}: ${errorMsg}`,
+            `Failed to send inactivity push/in-app notification to user ${user.id}: ${errorMsg}`,
           );
         }
+
+        if (anyChannelSent) {
+          user.lastReminderSentAt = new Date();
+          await this.usersRepo.save(user);
+        }
+        // If neither channel succeeded, lastReminderSentAt stays untouched, so this user is
+        // picked up again on tomorrow's run instead of being silently marked "reminded".
       }
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);

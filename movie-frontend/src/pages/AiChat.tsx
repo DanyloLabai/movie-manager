@@ -7,6 +7,7 @@ import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import NotificationBell from "../components/NotificationBell";
 import LogoIcon from "../components/LogoIcon";
+import AddMovieModal from "../components/movie/AddMovieModal";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
@@ -95,6 +96,9 @@ export default function AiChat() {
   const [input, setInput] = useState("");
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
+  const [addModalMovie, setAddModalMovie] = useState<MovieResult | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -357,6 +361,35 @@ export default function AiChat() {
         setAddedIds((prev) => [...prev, movie.id]);
         showToast(t("chat_added"));
       } else showToast(t("chat_add_error"));
+    }
+  };
+
+  const handleMarkWatchedFromChat = async (
+    movie: MovieResult,
+    rating: number | null,
+  ) => {
+    try {
+      await moviesApi.addToWatchlist({
+        tmdbId: movie.id,
+        title: movie.title,
+        posterUrl: movie.posterUrl,
+        mediaType: movie.mediaType,
+        releaseDate: movie.releaseDate,
+      });
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status !== 400) {
+        showToast(t("chat_add_error"));
+        return;
+      }
+    }
+    try {
+      await moviesApi.markWatched(movie.id);
+      if (rating) await moviesApi.rateMovie(movie.id, rating);
+      setAddedIds((prev) => [...prev, movie.id]);
+      showToast(rating ? t("movie_added_rated") : t("movie_marked_watched"));
+    } catch {
+      showToast(t("chat_add_error"));
     }
   };
 
@@ -669,7 +702,7 @@ export default function AiChat() {
                                     </div>
                                   ) : (
                                     <button
-                                      onClick={() => handleAddFromChat(movie)}
+                                      onClick={() => setAddModalMovie(movie)}
                                       className="px-[18px] py-2 bg-[#d9ac54] hover:bg-[#e8c377] rounded-full font-bold text-[10.5px] tracking-[1.5px] text-[#14110c] uppercase transition active:scale-95 shrink-0 whitespace-nowrap"
                                     >
                                       {t("chat_add_btn")}
@@ -825,6 +858,21 @@ export default function AiChat() {
         <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-[#0f0d0a] border border-[#d9ac54]/50 text-[#d9ac54] px-4 py-3 rounded-xl shadow-2xl z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap animate-fade-in">
           {toastMessage}
         </div>
+      )}
+
+      {addModalMovie && (
+        <AddMovieModal
+          title={addModalMovie.title}
+          onClose={() => setAddModalMovie(null)}
+          onAddToWatchlist={() => {
+            handleAddFromChat(addModalMovie);
+            setAddModalMovie(null);
+          }}
+          onMarkWatched={(rating) => {
+            handleMarkWatchedFromChat(addModalMovie, rating);
+            setAddModalMovie(null);
+          }}
+        />
       )}
     </div>
   );

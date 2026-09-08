@@ -88,7 +88,8 @@ export type ActivityActionType =
   | "watched"
   | "rated"
   | "added_watchlist"
-  | "favorited";
+  | "favorited"
+  | "rewatched";
 
 export type ActivityDayAction = {
   tmdbId: number;

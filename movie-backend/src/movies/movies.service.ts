@@ -11,7 +11,8 @@ import { firstValueFrom } from 'rxjs';
 import { InjectRepository } from '@nestjs/typeorm';
 import { WatchlistItem } from './watchlist-entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
-import { In, MoreThanOrEqual, Repository } from 'typeorm';
+import { In, MoreThan, MoreThanOrEqual, Repository } from 'typeorm';
+import { APP_TIME_ZONE, startOfDayInTimeZone } from '../common/timezone.util';
 import {
   TmdbMultiSearchResponseDto,
   TmdbMultiSearchResultDto,
@@ -48,6 +49,11 @@ import { SearchHistoryService } from 'src/search-history/search-history.service'
 import { AchievementsService } from 'src/achievements/achievements.service';
 import { getErrorMessage } from '../common/utils/error.utils';
 import { AiUsageLogService } from 'src/ai-chat/ai-usage-log.service';
+
+interface RecommendationsCacheEntry {
+  movies: MovieResultDto[];
+  generatedAt: string;
+}
 
 @Injectable()
 export class MoviesService {
@@ -498,8 +504,9 @@ export class MoviesService {
     title: string,
     year?: number,
     type?: 'movie' | 'tv',
+    director?: string,
   ): Promise<MovieResultDto | null> {
-    const cacheKey = `find_title_v3:${title.toLowerCase()}:${year || 'any'}:${type || 'any'}`;
+    const cacheKey = `find_title_v4:${title.toLowerCase()}:${year || 'any'}:${type || 'any'}:${director?.trim().toLowerCase() || 'any'}`;
     const cached = await this.cacheManager.get<MovieResultDto>(cacheKey);
     if (cached) return cached;
 
@@ -546,6 +553,14 @@ export class MoviesService {
         if (exactTitleMatches.length > 0) results = exactTitleMatches;
       }
 
+      if (results.length > 1 && director) {
+        const directorMatch = await this.findByDirectorOrCreator(
+          results,
+          director,
+        );
+        if (directorMatch) results = [directorMatch];
+      }
+
       if (results.length === 0) return null;
 
       const media = results[0];
@@ -561,6 +576,67 @@ export class MoviesService {
       this.logger.error(`Error finding media in TMDB: ${errorMsg}`);
       return null;
     }
+  }
+
+  private async findByDirectorOrCreator(
+    candidates: TmdbMultiSearchResultDto[],
+    director: string,
+  ): Promise<TmdbMultiSearchResultDto | null> {
+    const normalizedDirector = director.trim().toLowerCase();
+    if (!normalizedDirector) return null;
+
+    const checks = await Promise.all(
+      candidates.slice(0, 5).map(async (candidate) => {
+        try {
+          const matches =
+            candidate.media_type === 'tv'
+              ? await this.tvHasCreator(candidate.id, normalizedDirector)
+              : await this.movieHasDirector(candidate.id, normalizedDirector);
+          return matches ? candidate : null;
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    return checks.find((c) => c !== null) ?? null;
+  }
+
+  private async movieHasDirector(
+    movieId: number,
+    normalizedDirector: string,
+  ): Promise<boolean> {
+    const { data } = await firstValueFrom(
+      this.httpService.get<{ crew?: { job: string; name: string }[] }>(
+        `${this.baseUrl}/movie/${movieId}/credits`,
+        { headers: { Authorization: `Bearer ${this.tmdbToken}` } },
+      ),
+    );
+    return (data.crew || []).some((c) => {
+      if (c.job !== 'Director') return false;
+      const name = c.name.toLowerCase();
+      return (
+        name.includes(normalizedDirector) || normalizedDirector.includes(name)
+      );
+    });
+  }
+
+  private async tvHasCreator(
+    tvId: number,
+    normalizedDirector: string,
+  ): Promise<boolean> {
+    const { data } = await firstValueFrom(
+      this.httpService.get<{ created_by?: { name: string }[] }>(
+        `${this.baseUrl}/tv/${tvId}`,
+        { headers: { Authorization: `Bearer ${this.tmdbToken}` } },
+      ),
+    );
+    return (data.created_by || []).some((c) => {
+      const name = c.name.toLowerCase();
+      return (
+        name.includes(normalizedDirector) || normalizedDirector.includes(name)
+      );
+    });
   }
 
   async getTrendingMovies(): Promise<MovieResultDto[]> {
@@ -1138,10 +1214,6 @@ export class MoviesService {
       user: { id: userId },
     });
 
-    await this.cacheManager
-      .del(`recommendations:user:${userId}`)
-      .catch(() => {});
-
     const savedItem = await this.watchlistRepo.save(newItem);
 
     this.activityService
@@ -1240,10 +1312,6 @@ export class MoviesService {
     item.isWatched = true;
     item.updatedAt = new Date();
 
-    await this.cacheManager
-      .del(`recommendations:user:${userId}`)
-      .catch(() => {});
-
     this.activityService
       .logActivity(userId, 'watched', {
         tmdbId: item.tmdbId,
@@ -1290,10 +1358,6 @@ export class MoviesService {
     item.isWatched = true;
     item.updatedAt = new Date();
 
-    await this.cacheManager
-      .del(`recommendations:user:${userId}`)
-      .catch(() => {});
-
     this.activityService
       .logActivity(userId, 'rated', {
         tmdbId: item.tmdbId,
@@ -1307,6 +1371,52 @@ export class MoviesService {
       );
 
     return this.watchlistRepo.save(item);
+  }
+
+  async rewatchMovie(userId: number, tmdbId: number, rating?: number) {
+    const item = await this.watchlistRepo.findOne({
+      where: { user: { id: userId }, tmdbId },
+    });
+
+    if (!item) throw new NotFoundException('Media not found in your list');
+    if (!item.isWatched) {
+      throw new BadRequestException(
+        'Mark it as watched first before logging a rewatch',
+      );
+    }
+
+    const normalizedRating =
+      rating !== undefined ? this.normalizeRating(rating) : null;
+
+    item.watchedAt = new Date();
+    item.updatedAt = new Date();
+    if (normalizedRating !== null) item.rating = normalizedRating;
+
+    this.activityService
+      .logActivity(userId, 'rewatched', {
+        tmdbId: item.tmdbId,
+        title: item.title,
+        posterUrl: item.posterUrl,
+        mediaType: item.mediaType,
+        rating: normalizedRating,
+      })
+      .catch((err: unknown) =>
+        this.logger.error(`Failed to log activity: ${getErrorMessage(err)}`),
+      );
+
+    this.achievementsService
+      .checkAndNotify(userId)
+      .catch((err: unknown) =>
+        this.logger.error(
+          `Failed to check achievements: ${getErrorMessage(err)}`,
+        ),
+      );
+
+    return this.watchlistRepo.save(item);
+  }
+
+  async getRatingHistory(userId: number, tmdbId: number) {
+    return this.activityService.getRatingHistory(userId, tmdbId);
   }
 
   async updateEpisodeProgress(
@@ -1341,10 +1451,6 @@ export class MoviesService {
 
     item.isFavorite = !item.isFavorite;
     item.updatedAt = new Date();
-
-    await this.cacheManager
-      .del(`recommendations:user:${userId}`)
-      .catch(() => {});
 
     if (item.isFavorite) {
       this.activityService
@@ -1443,17 +1549,34 @@ export class MoviesService {
       );
     }
 
-    await this.cacheManager
-      .del(`recommendations:user:${userId}`)
-      .catch(() => {});
-
     return { message: 'Successfully removed' };
   }
 
   async getRecommendationsForUser(userId: number): Promise<MovieResultDto[]> {
     const cacheKey = `recommendations:user:${userId}`;
-    const cached = await this.cacheManager.get<MovieResultDto[]>(cacheKey);
-    if (cached) return cached;
+    const cached =
+      await this.cacheManager.get<RecommendationsCacheEntry>(cacheKey);
+
+    if (cached) {
+      const generatedAt = new Date(cached.generatedAt);
+      const generatedToday =
+        startOfDayInTimeZone(APP_TIME_ZONE, generatedAt).getTime() ===
+        startOfDayInTimeZone(APP_TIME_ZONE).getTime();
+
+      if (generatedToday) return cached.movies;
+
+      const hasWatchedSinceLastGeneration = await this.watchlistRepo.exist({
+        where: {
+          user: { id: userId },
+          isWatched: true,
+          watchedAt: MoreThan(generatedAt),
+        },
+      });
+
+      if (!hasWatchedSinceLastGeneration) {
+        return cached.movies;
+      }
+    }
 
     try {
       const userItems = await this.watchlistRepo.find({
@@ -1574,12 +1697,16 @@ export class MoviesService {
         )
         .slice(0, this.RECOMMENDATIONS_LIMIT);
 
-      await this.cacheManager.set(cacheKey, results, this.TTL_1H);
+      const entry: RecommendationsCacheEntry = {
+        movies: results,
+        generatedAt: new Date().toISOString(),
+      };
+      await this.cacheManager.set(cacheKey, entry, this.TTL_7D);
       return results;
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error generating AI recommendations: ${errorMsg}`);
-      return [];
+      return cached?.movies ?? [];
     }
   }
 

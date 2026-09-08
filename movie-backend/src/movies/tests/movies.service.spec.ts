@@ -46,6 +46,7 @@ const mockWatchlistRepo = {
   create: jest.fn(),
   save: jest.fn(),
   delete: jest.fn(),
+  exist: jest.fn(),
 };
 
 const mockUsersRepo = {
@@ -91,6 +92,11 @@ const mockCacheManager = {
   del: jest.fn().mockResolvedValue(undefined),
 };
 
+const mockActivityService = {
+  logActivity: jest.fn().mockResolvedValue(undefined),
+  getRatingHistory: jest.fn().mockResolvedValue([]),
+};
+
 const buildModule = async (): Promise<TestingModule> =>
   Test.createTestingModule({
     providers: [
@@ -109,7 +115,7 @@ const buildModule = async (): Promise<TestingModule> =>
       },
       {
         provide: ActivityService,
-        useValue: { logActivity: jest.fn().mockResolvedValue(undefined) },
+        useValue: mockActivityService,
       },
       {
         provide: SearchHistoryService,
@@ -159,9 +165,7 @@ describe('MoviesService', () => {
 
       expect(result).toEqual(newItem);
       expect(mockWatchlistRepo.save).toHaveBeenCalledTimes(1);
-      expect(mockCacheManager.del).toHaveBeenCalledWith(
-        'recommendations:user:1',
-      );
+      expect(mockCacheManager.del).not.toHaveBeenCalled();
     });
 
     it('should throw BadRequestException if item already exists', async () => {
@@ -234,9 +238,7 @@ describe('MoviesService', () => {
 
       expect(result.isWatched).toBe(true);
       expect(mockWatchlistRepo.save).toHaveBeenCalledTimes(1);
-      expect(mockCacheManager.del).toHaveBeenCalledWith(
-        'recommendations:user:1',
-      );
+      expect(mockCacheManager.del).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when item is not in watchlist', async () => {
@@ -318,15 +320,108 @@ describe('MoviesService', () => {
       );
     });
 
-    it('should clear recommendations cache after rating', async () => {
+    it('should not clear the recommendations cache after rating', async () => {
       const item = mockWatchlistItem();
       mockWatchlistRepo.findOne.mockResolvedValue(item);
       mockWatchlistRepo.save.mockResolvedValue({ ...item, rating: 7 });
 
       await service.rateMovie(1, 550, 7);
 
-      expect(mockCacheManager.del).toHaveBeenCalledWith(
-        'recommendations:user:1',
+      expect(mockCacheManager.del).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('rewatchMovie', () => {
+    it('should bump watchedAt without changing the rating when none is given', async () => {
+      const item = mockWatchlistItem({ isWatched: true, rating: 8 });
+      mockWatchlistRepo.findOne.mockResolvedValue(item);
+      mockWatchlistRepo.save.mockImplementation(
+        (saved: WatchlistItem) => saved,
+      );
+
+      const result = await service.rewatchMovie(1, 550);
+
+      expect(result.rating).toBe(8);
+      expect(mockActivityService.logActivity).toHaveBeenCalledWith(
+        1,
+        'rewatched',
+        expect.objectContaining({ rating: null }),
+      );
+    });
+
+    it('should overwrite the rating while still logging the rewatch activity', async () => {
+      const item = mockWatchlistItem({ isWatched: true, rating: 6 });
+      mockWatchlistRepo.findOne.mockResolvedValue(item);
+      mockWatchlistRepo.save.mockImplementation(
+        (saved: WatchlistItem) => saved,
+      );
+
+      const result = await service.rewatchMovie(1, 550, 9);
+
+      expect(result.rating).toBe(9);
+      expect(mockActivityService.logActivity).toHaveBeenCalledWith(
+        1,
+        'rewatched',
+        expect.objectContaining({ rating: 9 }),
+      );
+    });
+
+    it('should normalize the new rating the same way rateMovie does', async () => {
+      const item = mockWatchlistItem({ isWatched: true, rating: 6 });
+      mockWatchlistRepo.findOne.mockResolvedValue(item);
+      mockWatchlistRepo.save.mockImplementation(
+        (saved: WatchlistItem) => saved,
+      );
+
+      const result = await service.rewatchMovie(1, 550, 25);
+
+      expect(result.rating).toBe(10);
+    });
+
+    it('should throw NotFoundException when item is not in watchlist', async () => {
+      mockWatchlistRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.rewatchMovie(1, 9999, 8)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('should throw BadRequestException when the item was never watched', async () => {
+      const item = mockWatchlistItem({ isWatched: false });
+      mockWatchlistRepo.findOne.mockResolvedValue(item);
+
+      await expect(service.rewatchMovie(1, 550, 8)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('should not clear the recommendations cache on rewatch', async () => {
+      const item = mockWatchlistItem({ isWatched: true, rating: 6 });
+      mockWatchlistRepo.findOne.mockResolvedValue(item);
+      mockWatchlistRepo.save.mockImplementation(
+        (saved: WatchlistItem) => saved,
+      );
+
+      await service.rewatchMovie(1, 550, 9);
+
+      expect(mockCacheManager.del).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getRatingHistory', () => {
+    it('should delegate to ActivityService.getRatingHistory', async () => {
+      const history = [
+        { rating: 6, isRewatch: false, createdAt: new Date('2026-01-01') },
+        { rating: 9, isRewatch: true, createdAt: new Date('2026-02-01') },
+      ];
+      mockActivityService.getRatingHistory.mockResolvedValue(history);
+
+      const result = await service.getRatingHistory(1, 550);
+
+      expect(result).toEqual(history);
+      expect(mockActivityService.getRatingHistory).toHaveBeenCalledWith(
+        1,
+        550,
       );
     });
   });
@@ -391,9 +486,7 @@ describe('MoviesService', () => {
         user: { id: 1 },
         tmdbId: 550,
       });
-      expect(mockCacheManager.del).toHaveBeenCalledWith(
-        'recommendations:user:1',
-      );
+      expect(mockCacheManager.del).not.toHaveBeenCalled();
     });
 
     it('should throw NotFoundException when item does not exist', async () => {

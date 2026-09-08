@@ -11,6 +11,7 @@ interface BecauseYouWatchedCarouselProps {
   watchedIds: number[];
   onToggleFavorite: (item: MovieResult) => void;
   onAdd: (item: MovieResult) => void;
+  onMarkWatched: (item: MovieResult) => void;
   onRemove: (item: MovieResult) => void;
   onFindSimilar?: (item: MovieResult) => void;
 }
@@ -23,6 +24,7 @@ export const BecauseYouWatchedCarousel = ({
   watchedIds,
   onToggleFavorite,
   onAdd,
+  onMarkWatched,
   onRemove,
   onFindSimilar,
 }: BecauseYouWatchedCarouselProps) => {
@@ -39,6 +41,7 @@ export const BecauseYouWatchedCarousel = ({
       watchedIds={watchedIds}
       onToggleFavorite={onToggleFavorite}
       onAdd={onAdd}
+      onMarkWatched={onMarkWatched}
       onRemove={onRemove}
       onFindSimilar={onFindSimilar}
     />

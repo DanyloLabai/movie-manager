@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useLang } from "../../context/LanguageContext";
+import AddMovieModal from "./AddMovieModal";
 import type { MovieCardProps } from "../../types/movie.types";
 
 const isReleased = (movie: {
@@ -16,13 +18,17 @@ export const MovieCard = ({
   movie,
   favoriteIds,
   addedIds,
+  watchedIds,
   onToggleFavorite,
   onAdd,
+  onMarkWatched,
   onRemove,
 }: MovieCardProps) => {
   const { t } = useLang();
   const released = isReleased(movie);
   const isInPlans = addedIds.includes(movie.id);
+  const isWatched = watchedIds.includes(movie.id);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
     <div className="group flex flex-col gap-2 font-ui min-w-0">
@@ -108,7 +114,14 @@ export const MovieCard = ({
       </p>
 
       <div className="mt-auto pt-2 border-t border-[rgba(217,172,84,.16)] text-center">
-        {isInPlans ? (
+        {isWatched ? (
+          <button
+            onClick={() => onRemove(movie)}
+            className="font-semibold text-[10px] tracking-[1.5px] text-[#d9ac54] hover:text-[#e8c377] transition uppercase"
+          >
+            ✓ {t("watchlist_watched")}
+          </button>
+        ) : isInPlans ? (
           <button
             onClick={() => onRemove(movie)}
             className="font-semibold text-[10px] tracking-[1.5px] text-[#d9ac54] hover:text-[#e8c377] transition uppercase"
@@ -117,13 +130,28 @@ export const MovieCard = ({
           </button>
         ) : (
           <button
-            onClick={() => onAdd(movie)}
+            onClick={() => setIsModalOpen(true)}
             className="font-semibold text-[10px] tracking-[1.5px] text-[#d9ac54] hover:text-[#e8c377] transition uppercase"
           >
             + {t("search_add")}
           </button>
         )}
       </div>
+
+      {isModalOpen && (
+        <AddMovieModal
+          title={movie.title}
+          onClose={() => setIsModalOpen(false)}
+          onAddToWatchlist={() => {
+            onAdd(movie);
+            setIsModalOpen(false);
+          }}
+          onMarkWatched={(rating) => {
+            onMarkWatched(movie, rating);
+            setIsModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

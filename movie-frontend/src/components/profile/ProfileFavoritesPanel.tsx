@@ -307,7 +307,7 @@ export default function ProfileFavoritesPanel({
             <div className="flex gap-[18px] overflow-x-auto pb-1">
               <FavoritesList
                 favorites={favorites}
-                posterClass="w-[150px] h-[222px]"
+                posterClass="w-[240px] aspect-[2/3]"
                 isReleased={isReleased}
                 onToggleFavorite={onToggleFavorite}
                 readOnly={readOnly}

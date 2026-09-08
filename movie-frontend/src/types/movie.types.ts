@@ -140,6 +140,7 @@ export interface MovieCardProps {
   watchedIds: number[];
   onToggleFavorite: (item: MovieResult) => void;
   onAdd: (item: MovieResult) => void;
+  onMarkWatched: (item: MovieResult, rating?: number | null) => void;
   onRemove: (item: MovieResult) => void;
   onFindSimilar?: (item: MovieResult) => void;
 }

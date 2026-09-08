@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Repository } from 'typeorm';
+import { Between, LessThan, Repository } from 'typeorm';
 import { Activity, ActivityType } from './activity.entity';
 import { User } from '../users/users.entity';
 import { WatchlistItem } from '../movies/watchlist-entity';
@@ -48,6 +48,12 @@ export interface DayActivityDto {
   date: string;
   count: number;
   actions: DayActivityActionDto[];
+}
+
+export interface RatingHistoryEntryDto {
+  rating: number;
+  isRewatch: boolean;
+  createdAt: Date;
 }
 
 const FEED_PAGE_SIZE = 30;
@@ -200,5 +206,48 @@ export class ActivityService {
     }
 
     return Array.from(byDay.values());
+  }
+
+  /**
+   * Rebuilds the rating history for one title from the activity log.
+   * rateMovie() writes a 'rated' row on every star-click correction, not
+   * just the first one- including it every time it means "history" balloons
+   * with every minor tweak instead of only showing actual rewatches. So this
+   * only takes the settled 'rated' baseline right before the first rewatch
+   * (ignoring any earlier back-and-forth corrections) plus every 'rewatched'
+   * row after that- 'rated' corrections made after a rewatch don't add new
+   * entries, only another rewatch does.
+   */
+  async getRatingHistory(
+    userId: number,
+    tmdbId: number,
+  ): Promise<RatingHistoryEntryDto[]> {
+    const rewatches = await this.activityRepo.find({
+      where: { user: { id: userId }, tmdbId, type: 'rewatched' },
+      order: { createdAt: 'ASC' },
+    });
+
+    const firstRewatchAt = rewatches[0]?.createdAt;
+    const baseline = await this.activityRepo.findOne({
+      where: {
+        user: { id: userId },
+        tmdbId,
+        type: 'rated',
+        ...(firstRewatchAt ? { createdAt: LessThan(firstRewatchAt) } : {}),
+      },
+      order: { createdAt: 'DESC' },
+    });
+
+    const entries = [...(baseline ? [baseline] : []), ...rewatches];
+
+    return entries
+      .filter(
+        (entry): entry is Activity & { rating: number } => entry.rating != null,
+      )
+      .map((entry) => ({
+        rating: entry.rating,
+        isRewatch: entry.type === 'rewatched',
+        createdAt: entry.createdAt,
+      }));
   }
 }

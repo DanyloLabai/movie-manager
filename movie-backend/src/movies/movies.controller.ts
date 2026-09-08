@@ -11,7 +11,6 @@ import {
   Query,
   Req,
   Logger,
-  UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
@@ -30,7 +29,6 @@ import { SmartSearchQueryDto } from './dto/smart-search-query.dto';
 import { MovieFilterQueryDto } from './dto/movie-filter-query.dto';
 import { BecauseYouWatchedResponseDto } from './dto/because-you-watched-response.dto';
 import { VectorService } from '../vector/vector.service';
-import { AiDailyLimitGuard } from '../ai-chat/ai-daily-limit.guard';
 
 interface RequestWithUser extends Request {
   user: {
@@ -349,6 +347,29 @@ export class MoviesController {
     return this.moviesService.rateMovie(userId, tmdbId, rating);
   }
 
+  @Patch('watchlist/:tmdbId/rewatch')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Log a rewatch',
+    description:
+      'Marks a rewatch of an already-watched title, bumping its last-watched date and optionally recording a new rating without losing the old one (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'Rewatch logged' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Media not found in watchlist' })
+  async rewatchMovie(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+    @Body() body: { rating?: number },
+  ) {
+    const userId = req.user.userId;
+    const rating =
+      body?.rating !== undefined && body.rating !== null
+        ? Number(body.rating)
+        : undefined;
+    return this.moviesService.rewatchMovie(userId, tmdbId, rating);
+  }
+
   @Patch('watchlist/:tmdbId/progress')
   @ApiBearerAuth()
   @ApiOperation({
@@ -426,9 +447,24 @@ export class MoviesController {
     );
   }
 
+  @Get(':tmdbId/rating-history')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get rating history',
+    description:
+      'Chronological list of every rating the user has given this title, across the original watch and any rewatches (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'Rating history' })
+  async getRatingHistory(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.getRatingHistory(userId, tmdbId);
+  }
+
   @Get('recommendations')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @UseGuards(AiDailyLimitGuard)
   async getRecommendations(@Req() req: RequestWithUser) {
     const userId = Number(req.user.userId);
     return this.moviesService.getRecommendationsForUser(userId);

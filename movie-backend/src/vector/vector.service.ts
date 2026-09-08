@@ -42,19 +42,9 @@ export class VectorService implements OnModuleInit {
 
   private readonly PREFERENCE_DUPLICATE_DISTANCE_THRESHOLD = 0.05;
 
-  // Bounds the self-join in consolidateUserPreferences to at most this many
-  // most-recent facts per user, so the O(k^2) pairwise distance comparison
-  // stays cheap even if a user's preference count grows unexpectedly large
-  // (normally saveUserFact's insert-time dedup keeps k small on its own).
   private readonly MAX_PREFERENCES_PER_CONSOLIDATION = 300;
 
   private readonly SEARCH_RELEVANCE_DISTANCE_THRESHOLD = 0.6;
-
-  // embed() had no timeout at all, so a slow/hung Gemini embedContent call
-  // (undici's default fetch timeout is several minutes) could stall any
-  // request that awaits it directly, including AI Chat's memory lookup and
-  // concept search- both on the critical path of every chat request
-  // regardless of which chat-completion provider is healthy.
   private readonly EMBED_TIMEOUT_MS = 15000;
 
   constructor(
@@ -77,9 +67,6 @@ export class VectorService implements OnModuleInit {
   }
 
   private async embed(text: string): Promise<number[]> {
-    // gemini-embedding-001's default output is 3072-dim, matching the existing
-    // movie_embeddings/user_memory_embeddings vector(3072) columns, so no
-    // outputDimensionality override or schema change is needed here.
     const url = `https://generativelanguage.googleapis.com/v1/models/gemini-embedding-001:embedContent?key=${this.geminiApiKey}`;
     const res = await fetch(url, {
       method: 'POST',

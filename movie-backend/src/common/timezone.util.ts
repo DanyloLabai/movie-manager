@@ -39,7 +39,9 @@ export function startOfDayInTimeZone(
     shifted.getUTCMonth(),
     shifted.getUTCDate(),
   );
-  return new Date(localMidnightAsUtcDigits - offsetMs);
+  const result = new Date(localMidnightAsUtcDigits - offsetMs);
+  result.setUTCMilliseconds(0);
+  return result;
 }
 
 export function nextStartOfDayInTimeZone(

@@ -25,6 +25,7 @@ import {
   DEFAULT_DAILY_REQUEST_LIMIT,
   DEFAULT_DAILY_TOKEN_LIMIT,
 } from './ai-daily-limit.guard';
+import { TasteMatchDailyLimitGuard } from './taste-match-daily-limit.guard';
 import { AiUsageLogService } from './ai-usage-log.service';
 import type { ChatMessage } from './interfaces/chat-message.interface';
 import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
@@ -71,7 +72,7 @@ export class AiChatController {
     });
     const since = startOfDayInTimeZone(user?.timezone || APP_TIME_ZONE);
     const { requestCount, totalTokens } =
-      await this.aiUsageLogService.getUserUsageSince(userId, since);
+      await this.aiUsageLogService.getUserUsageSince(userId, since, 'chat');
     return {
       requestCount,
       totalTokens,
@@ -104,7 +105,7 @@ export class AiChatController {
 
   @Post('watch-together/:friendId')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @UseGuards(AiDailyLimitGuard)
+  @UseGuards(TasteMatchDailyLimitGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get AI movie picks for watching with a friend',
