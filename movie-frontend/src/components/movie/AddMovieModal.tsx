@@ -7,6 +7,7 @@ interface AddMovieModalProps {
   onClose: () => void;
   onAddToWatchlist: () => void;
   onMarkWatched: (rating: number | null) => void;
+  initialStep?: "choose" | "rating";
 }
 
 export default function AddMovieModal({
@@ -14,9 +15,10 @@ export default function AddMovieModal({
   onClose,
   onAddToWatchlist,
   onMarkWatched,
+  initialStep = "choose",
 }: AddMovieModalProps) {
   const { t } = useLang();
-  const [step, setStep] = useState<"choose" | "rating">("choose");
+  const [step, setStep] = useState<"choose" | "rating">(initialStep);
   const [rating, setRating] = useState(0);
 
   return (

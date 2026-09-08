@@ -6,6 +6,7 @@ import { useLang } from "../context/LanguageContext";
 import { useToast } from "../hooks/useToast";
 import NotificationBell from "../components/NotificationBell";
 import LogoIcon from "../components/LogoIcon";
+import AddMovieModal from "../components/movie/AddMovieModal";
 import type { MovieResult } from "../types/movie.types";
 import type { QuizState, QuizLeaderboardEntry } from "../api/quiz.api";
 
@@ -85,6 +86,8 @@ export default function DailyQuiz() {
   const [isBuyingHint, setIsBuyingHint] = useState(false);
   const [leaderboard, setLeaderboard] = useState<QuizLeaderboardEntry[]>([]);
   const [watchlistAdded, setWatchlistAdded] = useState(false);
+  const [watchedAdded, setWatchedAdded] = useState(false);
+  const [isWatchedModalOpen, setIsWatchedModalOpen] = useState(false);
   const [countdownMs, setCountdownMs] = useState(() =>
     msUntilNextUtcMidnight(),
   );
@@ -253,6 +256,36 @@ export default function DailyQuiz() {
       }
     }
   }, [quiz, watchlistAdded, showToast, t]);
+
+  const handleMarkWatched = useCallback(
+    async (rating: number | null) => {
+      if (!quiz?.answer) return;
+      try {
+        await moviesApi.addToWatchlist({
+          tmdbId: quiz.answer.tmdbId,
+          title: quiz.answer.title,
+          posterUrl: quiz.answer.posterUrl,
+          mediaType: "movie",
+        });
+      } catch (error: unknown) {
+        const apiError = error as { response?: { status?: number } };
+        if (apiError.response?.status !== 400) {
+          showToast(t("quiz_watchlist_error"));
+          return;
+        }
+      }
+      try {
+        await moviesApi.markWatched(quiz.answer.tmdbId);
+        if (rating) await moviesApi.rateMovie(quiz.answer.tmdbId, rating);
+        setWatchlistAdded(true);
+        setWatchedAdded(true);
+        showToast(rating ? t("movie_added_rated") : t("movie_marked_watched"));
+      } catch {
+        showToast(t("quiz_watchlist_error"));
+      }
+    },
+    [quiz, showToast, t],
+  );
 
   const handleShareResult = useCallback(async () => {
     if (!quiz) return;
@@ -575,22 +608,35 @@ export default function DailyQuiz() {
                       </span>
                     </div>
                     {quiz.answer && (
-                      <div className="flex items-center gap-2.5 sm:ml-auto">
+                      <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:items-center sm:gap-2.5 sm:w-auto sm:ml-auto">
                         <Link
                           to={`/movie/${quiz.answer.tmdbId}?type=movie`}
-                          className="px-6 py-3 bg-[#d9ac54] hover:bg-[#e8c377] rounded-full font-bold text-[11.5px] tracking-[2px] text-[#14110c] uppercase whitespace-nowrap transition active:scale-95"
+                          className="col-span-2 text-center px-4 sm:px-6 py-2.5 sm:py-3 bg-[#d9ac54] hover:bg-[#e8c377] rounded-full font-bold text-[10.5px] sm:text-[11.5px] tracking-[1.5px] sm:tracking-[2px] text-[#14110c] uppercase whitespace-nowrap transition active:scale-95"
                         >
                           {t("quiz_view_movie")}
                         </Link>
+                        {watchedAdded ? (
+                          <div className="text-center px-4 sm:px-6 py-2.5 sm:py-3 border border-[#d9ac54]/45 rounded-full font-semibold text-[10.5px] sm:text-[11.5px] tracking-[1.5px] sm:tracking-[2px] text-[#d9ac54] uppercase whitespace-nowrap">
+                            ✓ {t("watchlist_watched")}
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setIsWatchedModalOpen(true)}
+                            className="text-center px-4 sm:px-6 py-2.5 sm:py-3 border border-white/[.18] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] rounded-full font-semibold text-[10.5px] sm:text-[11.5px] tracking-[1.5px] sm:tracking-[2px] text-[#c9c0ac] uppercase whitespace-nowrap transition"
+                          >
+                            ✓ {t("watchlist_watched")}
+                          </button>
+                        )}
                         {watchlistAdded ? (
-                          <div className="px-6 py-3 border border-[#d9ac54]/45 rounded-full font-semibold text-[11.5px] tracking-[2px] text-[#d9ac54] uppercase whitespace-nowrap">
+                          <div className="text-center px-4 sm:px-6 py-2.5 sm:py-3 border border-[#d9ac54]/45 rounded-full font-semibold text-[10.5px] sm:text-[11.5px] tracking-[1.5px] sm:tracking-[2px] text-[#d9ac54] uppercase whitespace-nowrap">
                             ✓ {t("search_added_btn")}
                           </div>
                         ) : (
                           <button
                             type="button"
                             onClick={handleAddWatchlist}
-                            className="px-6 py-3 border border-white/[.18] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] rounded-full font-semibold text-[11.5px] tracking-[2px] text-[#c9c0ac] uppercase whitespace-nowrap transition"
+                            className="text-center px-4 sm:px-6 py-2.5 sm:py-3 border border-white/[.18] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] rounded-full font-semibold text-[10.5px] sm:text-[11.5px] tracking-[1.5px] sm:tracking-[2px] text-[#c9c0ac] uppercase whitespace-nowrap transition"
                           >
                             {t("quiz_add_watchlist_btn")}
                           </button>
@@ -775,6 +821,19 @@ export default function DailyQuiz() {
         <div className="fixed bottom-24 sm:bottom-8 left-1/2 sm:left-[calc(50%+7.5rem)] -translate-x-1/2 z-50 px-5 py-2.5 bg-[#14110d] border border-[#d9ac54]/40 rounded-full text-sm text-[#f2ead9] shadow-xl">
           {toastMessage}
         </div>
+      )}
+
+      {isWatchedModalOpen && quiz?.answer && (
+        <AddMovieModal
+          title={quiz.answer.title}
+          initialStep="rating"
+          onClose={() => setIsWatchedModalOpen(false)}
+          onAddToWatchlist={handleAddWatchlist}
+          onMarkWatched={(rating) => {
+            handleMarkWatched(rating);
+            setIsWatchedModalOpen(false);
+          }}
+        />
       )}
     </div>
   );
