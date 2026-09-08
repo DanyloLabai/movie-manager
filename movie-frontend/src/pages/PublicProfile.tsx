@@ -118,6 +118,7 @@ export default function PublicProfile() {
     movies?: MovieResult[];
   } | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [dailyLimitReached, setDailyLimitReached] = useState(false);
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [requestSent, setRequestSent] = useState(false);
 
@@ -201,11 +202,12 @@ export default function PublicProfile() {
       setWatchTogetherResult(result);
     } catch (err: unknown) {
       const apiError = err as { response?: { status?: number } };
-      showToast(
-        apiError.response?.status === 429
-          ? t("chat_daily_limit")
-          : t("common_error"),
-      );
+      if (apiError.response?.status === 429) {
+        setDailyLimitReached(true);
+        showToast(t("compat_daily_limit"));
+      } else {
+        showToast(t("common_error"));
+      }
     } finally {
       setIsGenerating(false);
     }
@@ -653,13 +655,26 @@ export default function PublicProfile() {
             </div>
 
             {!watchTogetherResult ? (
-              <button
-                onClick={handleGenerateWatchTogether}
-                disabled={isGenerating}
-                className="w-full py-3 bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] font-bold uppercase tracking-widest rounded-full transition active:scale-95 disabled:opacity-50 text-xs"
-              >
-                {isGenerating ? t("compat_generating") : t("compat_generate")}
-              </button>
+              dailyLimitReached ? (
+                <p className="text-center text-[10px] text-[#8f8574] uppercase tracking-widest py-3">
+                  {t("compat_daily_limit")}
+                </p>
+              ) : (
+                <>
+                  <button
+                    onClick={handleGenerateWatchTogether}
+                    disabled={isGenerating}
+                    className="w-full py-3 bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] font-bold uppercase tracking-widest rounded-full transition active:scale-95 disabled:opacity-50 text-xs"
+                  >
+                    {isGenerating
+                      ? t("compat_generating")
+                      : t("compat_generate")}
+                  </button>
+                  <p className="text-center text-[9px] text-[#8f8574] uppercase tracking-widest mt-2">
+                    {t("compat_tries_hint")}
+                  </p>
+                </>
+              )
             ) : (
               <div>
                 {watchTogetherResult.message && (
@@ -705,13 +720,21 @@ export default function PublicProfile() {
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={handleGenerateWatchTogether}
-                  disabled={isGenerating}
-                  className="w-full mt-3 py-2.5 border border-[#d9ac54]/40 hover:border-[#d9ac54] text-[#d9ac54] font-bold uppercase tracking-widest rounded-full transition active:scale-95 disabled:opacity-50 text-[10px]"
-                >
-                  {isGenerating ? t("compat_generating") : t("compat_regenerate")}
-                </button>
+                {dailyLimitReached ? (
+                  <p className="text-center text-[10px] text-[#8f8574] uppercase tracking-widest mt-3 py-2.5">
+                    {t("compat_daily_limit")}
+                  </p>
+                ) : (
+                  <button
+                    onClick={handleGenerateWatchTogether}
+                    disabled={isGenerating}
+                    className="w-full mt-3 py-2.5 border border-[#d9ac54]/40 hover:border-[#d9ac54] text-[#d9ac54] font-bold uppercase tracking-widest rounded-full transition active:scale-95 disabled:opacity-50 text-[10px]"
+                  >
+                    {isGenerating
+                      ? t("compat_generating")
+                      : t("compat_regenerate")}
+                  </button>
+                )}
               </div>
             )}
           </div>
