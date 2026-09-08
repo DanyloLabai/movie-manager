@@ -152,6 +152,23 @@ export async function markWatched(id: number): Promise<void> {
   await api.post(`/movies/watchlist/${id}/watched`);
 }
 
+export async function rewatchMovie(id: number, rating?: number): Promise<void> {
+  await api.patch(`/movies/watchlist/${id}/rewatch`, { rating });
+}
+
+export interface RatingHistoryEntry {
+  rating: number;
+  isRewatch: boolean;
+  createdAt: string;
+}
+
+export async function getRatingHistory(
+  id: number,
+): Promise<RatingHistoryEntry[]> {
+  const res = await api.get(`/movies/${id}/rating-history`);
+  return res.data;
+}
+
 export async function updateEpisodeProgress(
   id: number,
   season: number,
@@ -232,6 +249,8 @@ export default {
   getActor,
   rateMovie,
   markWatched,
+  rewatchMovie,
+  getRatingHistory,
   updateEpisodeProgress,
   getStatus,
   getFriendsWatched,

@@ -105,12 +105,15 @@ export default function MovieDetails() {
     RecommendedMovieType[]
   >([]);
   const [friendsWatched, setFriendsWatched] = useState<FriendWatchedType[]>([]);
+  const [ratingHistory, setRatingHistory] = useState<
+    moviesApi.RatingHistoryEntry[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<
-    "new_watched" | "update_watched" | null
+    "new_watched" | "update_watched" | "rewatch" | null
   >(null);
   const [modalRating, setModalRating] = useState(0);
 
@@ -152,6 +155,7 @@ export default function MovieDetails() {
     setMovie(null);
     setRecommendations([]);
     setFriendsWatched([]);
+    setRatingHistory([]);
     setStatus(null);
     setIsLoading(true);
     setIsRatingModalOpen(false);
@@ -159,26 +163,31 @@ export default function MovieDetails() {
 
     (async () => {
       try {
-        const [details, statusRes, recs, friendsRes] = await Promise.all([
-          (await import("../api/movies.api")).getMovieDetails(
-            tmdbId,
-            mediaType,
-          ),
-          (await import("../api/movies.api"))
-            .getStatus(tmdbId)
-            .catch(() => null),
-          (await import("../api/movies.api"))
-            .getSimilar(tmdbId, mediaType)
-            .catch(() => []),
-          (await import("../api/movies.api"))
-            .getFriendsWatched(tmdbId, mediaType)
-            .catch(() => []),
-        ]);
+        const [details, statusRes, recs, friendsRes, ratingHistoryRes] =
+          await Promise.all([
+            (await import("../api/movies.api")).getMovieDetails(
+              tmdbId,
+              mediaType,
+            ),
+            (await import("../api/movies.api"))
+              .getStatus(tmdbId)
+              .catch(() => null),
+            (await import("../api/movies.api"))
+              .getSimilar(tmdbId, mediaType)
+              .catch(() => []),
+            (await import("../api/movies.api"))
+              .getFriendsWatched(tmdbId, mediaType)
+              .catch(() => []),
+            (await import("../api/movies.api"))
+              .getRatingHistory(tmdbId)
+              .catch(() => []),
+          ]);
         if (details) {
           setMovie(details);
           setStatus(statusRes ?? null);
           setRecommendations(recs ?? []);
           setFriendsWatched(friendsRes ?? []);
+          setRatingHistory(ratingHistoryRes ?? []);
         }
       } catch {
         setMovie(null);
@@ -195,15 +204,17 @@ export default function MovieDetails() {
 
   const fetchData = async (tmdbId: number) => {
     try {
-      const [details, statusRes, recs] = await Promise.all([
+      const [details, statusRes, recs, ratingHistoryRes] = await Promise.all([
         moviesApi.getMovieDetails(tmdbId, mediaType),
         moviesApi.getStatus(tmdbId).catch(() => null),
         moviesApi.getSimilar(tmdbId, mediaType).catch(() => []),
+        moviesApi.getRatingHistory(tmdbId).catch(() => []),
       ]);
       if (details) {
         setMovie(details);
         setStatus(statusRes ?? null);
         setRecommendations(recs ?? []);
+        setRatingHistory(ratingHistoryRes ?? []);
       }
     } catch {
       setMovie(null);
@@ -304,6 +315,21 @@ export default function MovieDetails() {
     }
   };
 
+  const handleRewatch = async (rating: number | null) => {
+    if (!movie) return;
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
+    try {
+      await moviesApi.rewatchMovie(movie.id, rating ?? undefined);
+      showToast(t("movie_rewatch_logged"));
+      fetchData(movie.id);
+    } catch {
+      showToast(t("movie_error"));
+    }
+  };
+
   const [progressSeason, setProgressSeason] = useState(1);
   const [progressEpisode, setProgressEpisode] = useState(1);
 
@@ -362,6 +388,8 @@ export default function MovieDetails() {
     else if (pendingAction === "update_watched") {
       if (rating !== null) await handleRate(rating);
       else await handleMarkWatched();
+    } else if (pendingAction === "rewatch") {
+      await handleRewatch(rating);
     }
     closeRatingModal();
   };
@@ -378,6 +406,16 @@ export default function MovieDetails() {
     }
     setPendingAction(status ? "update_watched" : "new_watched");
     setModalRating(status?.rating || 0);
+    setIsRatingModalOpen(true);
+  };
+
+  const openRewatchModal = () => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
+    setPendingAction("rewatch");
+    setModalRating(0); // чистий старт, а не стара оцінка
     setIsRatingModalOpen(true);
   };
 
@@ -566,14 +604,15 @@ export default function MovieDetails() {
             </p>
 
             <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-              {released && (
+              {released && status?.isWatched && (
+                <div className="flex items-center gap-2 py-3 font-bold text-[11.5px] tracking-[1.5px] uppercase text-[#d9ac54]">
+                  ✓ {t("watchlist_watched")}
+                </div>
+              )}
+              {released && !status?.isWatched && (
                 <button
                   onClick={openWatchedModal}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-full font-bold text-[11.5px] tracking-[1.5px] uppercase transition active:scale-95 ${
-                    status?.isWatched
-                      ? "bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c]"
-                      : "border border-white/[.18] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] text-[#c9c0ac]"
-                  }`}
+                  className="flex items-center gap-2 px-6 py-3 rounded-full font-bold text-[11.5px] tracking-[1.5px] uppercase transition active:scale-95 border border-white/[.18] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] text-[#c9c0ac]"
                 >
                   ✓ {t("watchlist_watched")}
                 </button>
@@ -625,15 +664,25 @@ export default function MovieDetails() {
                   <span className="font-mono-ui text-[10px] font-medium tracking-[2px] text-[#8f8574] uppercase">
                     {t("movie_your_rating")}
                   </span>
-                  <div className="w-[130px]">
-                    <StarRating size="sm" value={status.rating || 0} onRate={handleRate} />
+                  <div className="w-[180px]">
+                    <StarRating value={status.rating || 0} onRate={handleRate} />
                   </div>
                   <span className="font-semibold text-[13px] text-[#f2ead9]">
                     {status.rating || 0}/10
                   </span>
+                  <button
+                    onClick={openRewatchModal}
+                    className="flex items-center gap-1.5 px-3 py-1.5 border border-white/[.18] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] rounded-full font-semibold text-[10.5px] tracking-wide text-[#c9c0ac] uppercase transition active:scale-95"
+                  >
+                    🔁 {t("movie_rewatch")}
+                  </button>
                 </div>
               )}
             </div>
+
+            {released && status?.isWatched && (
+              <RatingHistoryBadges history={ratingHistory} />
+            )}
           </div>
         </div>
 
@@ -702,6 +751,8 @@ export default function MovieDetails() {
             onToggleFavorite={handleToggleFavorite}
             onRate={handleRate}
             onRemove={handleRemove}
+            onRewatch={openRewatchModal}
+            ratingHistory={ratingHistory}
             mediaType={mediaType}
             seasons={movie.seasons}
             progressSeason={progressSeason}
@@ -834,7 +885,10 @@ export default function MovieDetails() {
                 {t("movie_how_was_it")}
               </h3>
               <p className="text-sm text-[#8f8574] mb-6">
-                {t("movie_rate_desc")} "{movie?.title}"
+                {pendingAction === "rewatch"
+                  ? t("movie_rewatch_desc")
+                  : t("movie_rate_desc")}{" "}
+                "{movie?.title}"
               </p>
               <div className="mb-6">
                 <StarRating
@@ -882,6 +936,8 @@ function ActionPanel({
   onToggleFavorite,
   onRate,
   onRemove,
+  onRewatch,
+  ratingHistory,
   mediaType,
   seasons,
   progressSeason,
@@ -897,6 +953,8 @@ function ActionPanel({
   onToggleFavorite: () => void;
   onRate: (s: number) => void;
   onRemove: () => void;
+  onRewatch: () => void;
+  ratingHistory: moviesApi.RatingHistoryEntry[];
   mediaType: string;
   seasons?: SeasonInfoType[];
   progressSeason: number;
@@ -986,14 +1044,23 @@ function ActionPanel({
 
           {released && status.isWatched && (
             <div className="pt-4 border-t border-[rgba(217,172,84,.16)]">
-              <p className="font-mono-ui text-[10px] font-medium text-[#8f8574] mb-3 uppercase tracking-widest">
-                {t("movie_your_rating")}
-              </p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="font-mono-ui text-[10px] font-medium text-[#8f8574] uppercase tracking-widest">
+                  {t("movie_your_rating")}
+                </p>
+                <button
+                  onClick={onRewatch}
+                  className="flex items-center gap-1 font-mono-ui text-[10px] font-semibold text-[#8f8574] hover:text-[#d9ac54] uppercase tracking-wide transition"
+                >
+                  🔁 {t("movie_rewatch")}
+                </button>
+              </div>
               <StarRating
                 size="lg"
                 value={status.rating || 0}
                 onRate={onRate}
               />
+              <RatingHistoryBadges history={ratingHistory} />
             </div>
           )}
 
@@ -1065,6 +1132,43 @@ function ActionPanel({
             {t("watchlist_remove")}
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+const RATING_HISTORY_DISPLAY_LIMIT = 5;
+
+function RatingHistoryBadges({
+  history,
+}: {
+  history: moviesApi.RatingHistoryEntry[];
+}) {
+  const { t } = useLang();
+  if (history.length <= 1) return null;
+
+  const rewatchCount = history.filter((entry) => entry.isRewatch).length;
+  const visibleHistory = history.slice(-RATING_HISTORY_DISPLAY_LIMIT);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 mt-3">
+      <span className="font-mono-ui text-[9px] font-medium tracking-[2px] text-[#8f8574] uppercase">
+        {t("movie_rating_history")}
+      </span>
+      {visibleHistory.map((entry, i) => (
+        <span
+          key={i}
+          title={new Date(entry.createdAt).toLocaleDateString()}
+          className="font-mono-ui text-[10.5px] font-bold text-[#d9ac54] bg-[#d9ac54]/10 border border-[#d9ac54]/25 rounded-full px-2.5 py-1"
+        >
+          {entry.isRewatch ? "🔁 " : ""}
+          {entry.rating}/10
+        </span>
+      ))}
+      {rewatchCount > 0 && (
+        <span className="font-mono-ui text-[9px] font-medium text-[#8f8574] uppercase">
+          {t("movie_rewatch_count").replace("{count}", String(rewatchCount))}
+        </span>
       )}
     </div>
   );

@@ -12,7 +12,8 @@ export type ActivityType =
   | 'watched'
   | 'rated'
   | 'added_watchlist'
-  | 'favorited';
+  | 'favorited'
+  | 'rewatched';
 
 @Entity('activity')
 @Index('IDX_activity_userId_createdAt', ['user', 'createdAt'])

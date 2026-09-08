@@ -276,8 +276,10 @@ export default function Watchlist() {
       if (activeTab === "profile") fetchProfile();
     } catch {
       showToast(t("search_fav_error2"));
+      // Roll the optimistic update back by re-fetching whichever list it touched-
+      // every branch above except "profile" mutates `movies`.
       if (activeTab === "profile") fetchProfile();
-      if (activeTab === "favorites") fetchMovies();
+      else fetchMovies();
     }
   };
 
@@ -297,6 +299,7 @@ export default function Watchlist() {
       showToast(t("movie_removed"));
     } catch {
       showToast(t("search_remove_error"));
+      fetchMovies();
     }
   };
 
@@ -370,6 +373,7 @@ export default function Watchlist() {
       );
     } catch {
       showToast(t("watchlist_rating_error"));
+      fetchMovies();
     }
   };
 
@@ -898,7 +902,7 @@ interface SearchUser {
 
 interface FeedItem {
   id: number;
-  type: "watched" | "rated" | "added_watchlist" | "favorited";
+  type: "watched" | "rated" | "added_watchlist" | "favorited" | "rewatched";
   tmdbId: number;
   title: string;
   posterUrl: string | null;
@@ -1192,12 +1196,13 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                       <span className="font-semibold text-[#d9ac54]">
                         {item.title}
                       </span>
-                      {item.type === "rated" && item.rating != null && (
-                        <span className="text-[#8f8574]">
-                          {" "}
-                          ({item.rating}/10)
-                        </span>
-                      )}
+                      {(item.type === "rated" || item.type === "rewatched") &&
+                        item.rating != null && (
+                          <span className="text-[#8f8574]">
+                            {" "}
+                            ({item.rating}/10)
+                          </span>
+                        )}
                     </p>
                     <p className="font-mono-ui text-[10px] text-[#645c4d] uppercase tracking-wide mt-0.5">
                       {formatTimeAgo(item.createdAt, t)}
