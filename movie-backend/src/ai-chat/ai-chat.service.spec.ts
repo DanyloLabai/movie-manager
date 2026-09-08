@@ -37,6 +37,12 @@ jest.mock('@ai-sdk/deepseek', () => ({
   })),
 }));
 
+jest.mock('@ai-sdk/openai', () => ({
+  createOpenAI: jest.fn(() => ({
+    responses: (modelId: string) => ({ provider: 'openai', modelId }),
+  })),
+}));
+
 const mockGenerateObject = generateObject as jest.Mock;
 const mockGenerateText = generateText as jest.Mock;
 
@@ -62,6 +68,7 @@ describe('AiChatService', () => {
       if (key === 'GROQ_API_KEY') return 'test_groq_key';
       if (key === 'GEMINI_API_KEY') return 'test_gemini_key';
       if (key === 'DEEPSEEK_API_KEY') return 'test_deepseek_key';
+      if (key === 'OPEN_AI_API_KEY') return 'test_openai_key';
       return null;
     }),
   };
@@ -168,15 +175,19 @@ describe('AiChatService', () => {
 
     const baseAiObject = {
       message: 'Ось декілька варіантів для тебе.',
-      titles: [] as string[],
+      titles: [] as {
+        title: string;
+        mediaType: 'movie' | 'tv';
+        director?: string | null;
+      }[],
       concepts: [] as string[],
       force: false,
       excludeOwned: false,
     };
 
-    it('returns the DeepSeek response directly when the primary provider succeeds (happy path)', async () => {
+    it('returns the OpenAI response directly when the primary provider succeeds (happy path)', async () => {
       mockGenerateObject.mockResolvedValueOnce({
-        object: { ...baseAiObject, message: 'Привіт від DeepSeek!' },
+        object: { ...baseAiObject, message: 'Привіт від OpenAI!' },
         usage: { totalTokens: 111 },
       });
 
@@ -186,19 +197,19 @@ describe('AiChatService', () => {
 
       const result = await service.searchMovieByDescription(messages, userId);
 
-      expect(result.message).toBe('Привіт від DeepSeek!');
+      expect(result.message).toBe('Привіт від OpenAI!');
       expect(result.movies).toBeUndefined();
       expect(mockGenerateObject).toHaveBeenCalledTimes(1);
       expect(getGenerateObjectCallArgs(0).model).toMatchObject({
-        provider: 'deepseek',
-        modelId: 'deepseek-v4-pro',
+        provider: 'openai',
+        modelId: 'gpt-5.6-luna',
       });
 
       expect(mockAiUsageLogService.logUsage).toHaveBeenCalledTimes(1);
       expect(mockAiUsageLogService.logUsage).toHaveBeenCalledWith(
         expect.objectContaining({
           userId,
-          provider: 'deepseek',
+          provider: 'openai',
           wasFailover: false,
           requestType: 'chat',
           tokenCount: 111,
@@ -206,8 +217,47 @@ describe('AiChatService', () => {
       );
     });
 
-    it('falls back to Gemini when the primary DeepSeek call throws, and returns its response', async () => {
+    it('falls back to DeepSeek when the primary OpenAI call throws, and returns its response', async () => {
       mockGenerateObject
+        .mockRejectedValueOnce(new Error('OpenAI is down'))
+        .mockResolvedValueOnce({
+          object: { ...baseAiObject, message: 'Привіт від DeepSeek!' },
+          usage: { totalTokens: 200 },
+        });
+
+      const messages: ChatMessage[] = [
+        { role: 'user', content: 'Порадь щось цікаве' },
+      ];
+
+      const result = await service.searchMovieByDescription(messages, userId);
+
+      expect(result.message).toBe('Привіт від DeepSeek!');
+      expect(mockGenerateObject).toHaveBeenCalledTimes(2);
+      expect(getGenerateObjectCallArgs(0).model).toMatchObject({
+        provider: 'openai',
+        modelId: 'gpt-5.6-luna',
+      });
+      expect(getGenerateObjectCallArgs(1).model).toMatchObject({
+        provider: 'deepseek',
+        modelId: 'deepseek-v4-pro',
+      });
+
+      // Only the successful (failover) call is logged- the failed OpenAI attempt is not.
+      expect(mockAiUsageLogService.logUsage).toHaveBeenCalledTimes(1);
+      expect(mockAiUsageLogService.logUsage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId,
+          provider: 'deepseek',
+          wasFailover: true,
+          requestType: 'chat',
+          tokenCount: 200,
+        }),
+      );
+    });
+
+    it('falls back to Gemini when OpenAI and DeepSeek both throw, and returns its response', async () => {
+      mockGenerateObject
+        .mockRejectedValueOnce(new Error('OpenAI is down'))
         .mockRejectedValueOnce(new Error('DeepSeek is down'))
         .mockResolvedValueOnce({
           object: { ...baseAiObject, message: 'Привіт від Gemini!' },
@@ -221,17 +271,12 @@ describe('AiChatService', () => {
       const result = await service.searchMovieByDescription(messages, userId);
 
       expect(result.message).toBe('Привіт від Gemini!');
-      expect(mockGenerateObject).toHaveBeenCalledTimes(2);
-      expect(getGenerateObjectCallArgs(0).model).toMatchObject({
-        provider: 'deepseek',
-        modelId: 'deepseek-v4-pro',
-      });
-      expect(getGenerateObjectCallArgs(1).model).toMatchObject({
+      expect(mockGenerateObject).toHaveBeenCalledTimes(3);
+      expect(getGenerateObjectCallArgs(2).model).toMatchObject({
         provider: 'gemini',
         modelId: 'gemini-flash-latest',
       });
 
-      // Only the successful (failover) call is logged- the failed DeepSeek attempt is not.
       expect(mockAiUsageLogService.logUsage).toHaveBeenCalledTimes(1);
       expect(mockAiUsageLogService.logUsage).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -244,8 +289,9 @@ describe('AiChatService', () => {
       );
     });
 
-    it('falls back to Groq when both DeepSeek and Gemini throw, and returns its response', async () => {
+    it('falls back to Groq when OpenAI, DeepSeek and Gemini all throw, and returns its response', async () => {
       mockGenerateObject
+        .mockRejectedValueOnce(new Error('OpenAI is down'))
         .mockRejectedValueOnce(new Error('DeepSeek is down'))
         .mockRejectedValueOnce(new Error('Gemini is down too'))
         .mockResolvedValueOnce({
@@ -260,8 +306,8 @@ describe('AiChatService', () => {
       const result = await service.searchMovieByDescription(messages, userId);
 
       expect(result.message).toBe('Привіт від Groq!');
-      expect(mockGenerateObject).toHaveBeenCalledTimes(3);
-      expect(getGenerateObjectCallArgs(2).model).toMatchObject({
+      expect(mockGenerateObject).toHaveBeenCalledTimes(4);
+      expect(getGenerateObjectCallArgs(3).model).toMatchObject({
         provider: 'groq',
         modelId: 'openai/gpt-oss-120b',
       });
@@ -278,8 +324,9 @@ describe('AiChatService', () => {
       );
     });
 
-    it('throws InternalServerErrorException without crashing when DeepSeek, Gemini and Groq all fail', async () => {
+    it('throws InternalServerErrorException without crashing when OpenAI, DeepSeek, Gemini and Groq all fail', async () => {
       mockGenerateObject
+        .mockRejectedValueOnce(new Error('OpenAI is down'))
         .mockRejectedValueOnce(new Error('DeepSeek is down'))
         .mockRejectedValueOnce(new Error('Gemini is down too'))
         .mockRejectedValueOnce(new Error('Groq is down too'));
@@ -300,7 +347,7 @@ describe('AiChatService', () => {
         'All AI services are currently unavailable',
       );
 
-      expect(mockGenerateObject).toHaveBeenCalledTimes(3);
+      expect(mockGenerateObject).toHaveBeenCalledTimes(4);
       expect(mockAiUsageLogService.logUsage).not.toHaveBeenCalled();
     });
 
@@ -309,7 +356,7 @@ describe('AiChatService', () => {
     // What this service IS responsible for is feeding that guard accurate usage data, so
     // we verify the logUsage payload it produces on both the primary and failover paths.
     describe('usage logging (feeds AiDailyLimitGuard/AiUsageLogService)', () => {
-      it('logs provider=deepseek/wasFailover=false with the token count reported by generateObject on success', async () => {
+      it('logs provider=openai/wasFailover=false with the token count reported by generateObject on success', async () => {
         mockGenerateObject.mockResolvedValueOnce({
           object: baseAiObject,
           usage: { totalTokens: 77 },
@@ -322,7 +369,7 @@ describe('AiChatService', () => {
 
         expect(mockAiUsageLogService.logUsage).toHaveBeenCalledWith(
           expect.objectContaining({
-            provider: 'deepseek',
+            provider: 'openai',
             wasFailover: false,
             tokenCount: 77,
             latencyMs: expect.any(Number) as number,
@@ -330,9 +377,9 @@ describe('AiChatService', () => {
         );
       });
 
-      it('logs provider=gemini/wasFailover=true when DeepSeek failed over to Gemini', async () => {
+      it('logs provider=deepseek/wasFailover=true when OpenAI failed over to DeepSeek', async () => {
         mockGenerateObject
-          .mockRejectedValueOnce(new Error('DeepSeek is down'))
+          .mockRejectedValueOnce(new Error('OpenAI is down'))
           .mockResolvedValueOnce({
             object: baseAiObject,
             usage: { totalTokens: 88 },
@@ -345,7 +392,7 @@ describe('AiChatService', () => {
 
         expect(mockAiUsageLogService.logUsage).toHaveBeenCalledWith(
           expect.objectContaining({
-            provider: 'gemini',
+            provider: 'deepseek',
             wasFailover: true,
             tokenCount: 88,
             latencyMs: expect.any(Number) as number,

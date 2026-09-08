@@ -553,6 +553,41 @@ export default function Search() {
     }
   };
 
+  const handleMarkWatched = async (
+    movie: MovieResult,
+    rating?: number | null,
+  ) => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
+    try {
+      await moviesApi.addToWatchlist({
+        tmdbId: movie.id,
+        title: movie.title,
+        posterUrl: movie.posterUrl,
+        mediaType: movie.mediaType,
+        releaseDate: movie.releaseDate,
+      });
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status !== 400) {
+        showToast(t("search_add_error"));
+        return;
+      }
+    }
+    try {
+      await moviesApi.markWatched(movie.id);
+      if (rating) await moviesApi.rateMovie(movie.id, rating);
+      setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
+      setWatchedIds((prev) => Array.from(new Set([...prev, movie.id])));
+      localStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
+      showToast(t("search_added_toast"));
+    } catch {
+      showToast(t("search_add_error"));
+    }
+  };
+
   const handleRemove = async (movie: MovieResult) => {
     if (!isAuthenticated) {
       openAuthPrompt();
@@ -628,6 +663,7 @@ export default function Search() {
             addedIds={addedIds}
             onToggleFavorite={handleToggleFavorite}
             onAdd={handleAdd}
+            onMarkWatched={handleMarkWatched}
             onRemove={handleRemove}
             onFindSimilar={handleFindSimilar}
             watchedIds={watchedIds}
@@ -1013,6 +1049,7 @@ export default function Search() {
                 watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
+                onMarkWatched={handleMarkWatched}
                 onRemove={handleRemove}
                 onFindSimilar={handleFindSimilar}
               />
@@ -1046,6 +1083,7 @@ export default function Search() {
                 watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
+                onMarkWatched={handleMarkWatched}
                 onRemove={handleRemove}
                 onFindSimilar={handleFindSimilar}
               />
@@ -1068,6 +1106,7 @@ export default function Search() {
                 watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
+                onMarkWatched={handleMarkWatched}
                 onRemove={handleRemove}
                 onFindSimilar={handleFindSimilar}
               />
@@ -1090,6 +1129,7 @@ export default function Search() {
                 watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
+                onMarkWatched={handleMarkWatched}
                 onRemove={handleRemove}
                 onFindSimilar={handleFindSimilar}
               />
@@ -1121,6 +1161,7 @@ export default function Search() {
                     watchedIds={watchedIds}
                     onToggleFavorite={handleToggleFavorite}
                     onAdd={handleAdd}
+                    onMarkWatched={handleMarkWatched}
                     onRemove={handleRemove}
                     onFindSimilar={handleFindSimilar}
                   />
@@ -1135,6 +1176,7 @@ export default function Search() {
                         watchedIds={watchedIds}
                         onToggleFavorite={handleToggleFavorite}
                         onAdd={handleAdd}
+                        onMarkWatched={handleMarkWatched}
                         onRemove={handleRemove}
                         onFindSimilar={handleFindSimilar}
                       />

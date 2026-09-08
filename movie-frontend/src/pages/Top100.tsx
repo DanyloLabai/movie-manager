@@ -86,6 +86,41 @@ export default function Top100() {
     }
   };
 
+  const handleMarkWatched = async (
+    item: MovieResult,
+    rating?: number | null,
+  ) => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+    try {
+      await moviesApi.addToWatchlist({
+        tmdbId: item.id,
+        title: item.title,
+        posterUrl: item.posterUrl,
+        mediaType: item.mediaType,
+        releaseDate: item.releaseDate,
+      });
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status !== 400) {
+        showToast(t("top100_add_error"));
+        return;
+      }
+    }
+    try {
+      await moviesApi.markWatched(item.id);
+      if (rating) await moviesApi.rateMovie(item.id, rating);
+      setAddedIds((prev) => Array.from(new Set([...prev, item.id])));
+      setWatchedIds((prev) => Array.from(new Set([...prev, item.id])));
+      showToast(t("top100_added"));
+    } catch {
+      showToast(t("top100_add_error"));
+    }
+  };
+
   const handleRemove = async (item: MovieResult) => {
     try {
       await moviesApi.removeFromWatchlist(item.id);
@@ -191,6 +226,7 @@ export default function Top100() {
                   watchedIds={watchedIds}
                   onToggleFavorite={handleToggleFavorite}
                   onAdd={handleAdd}
+                  onMarkWatched={handleMarkWatched}
                   onRemove={handleRemove}
                 />
               </div>
