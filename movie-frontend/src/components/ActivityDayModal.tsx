@@ -85,11 +85,13 @@ export default function ActivityDayModal({
                 <span className="text-[9px] text-[#8f8574] flex items-center gap-1">
                   <span>{ACTIVITY_ACTION_ICONS[action.actionType]}</span>
                   {activityActionLabel(action.actionType, t)}
-                  {action.actionType === "rated" && action.rating != null && (
-                    <span className="text-[#d9ac54] font-bold">
-                      ({action.rating}/10)
-                    </span>
-                  )}
+                  {(action.actionType === "rated" ||
+                    action.actionType === "rewatched") &&
+                    action.rating != null && (
+                      <span className="text-[#d9ac54] font-bold">
+                        ({action.rating}/10)
+                      </span>
+                    )}
                 </span>
               </div>
             </Link>
