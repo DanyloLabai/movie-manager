@@ -11,6 +11,7 @@ import { generateText, generateObject } from 'ai';
 import { z } from 'zod';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createDeepSeek } from '@ai-sdk/deepseek';
+import { createOpenAI } from '@ai-sdk/openai';
 import { MoviesService } from '../movies/movies.service';
 import { MovieResultDto } from '../movies/dto/movie-result.dto';
 import { WatchlistItem } from '../movies/watchlist-entity';
@@ -20,6 +21,25 @@ import { createGroq } from '@ai-sdk/groq';
 import { AiUsageLogService } from './ai-usage-log.service';
 import { getErrorMessage } from '../common/utils/error.utils';
 
+const titleEntrySchema = z.object({
+  title: z
+    .string()
+    .describe(
+      'A real movie/show title to look up (e.g. "Rush", "The Dark Knight"). Add the year in parens ("Title (YYYY)") only when it actually helps disambiguate a remake/same-name entry.',
+    ),
+  mediaType: z
+    .enum(['movie', 'tv'])
+    .describe(
+      'Whether this specific title refers to a movie or a TV series. Critical when an unrelated movie and TV series share the exact same title (e.g. the 2019 Guy Ritchie film "The Gentlemen" vs the 2024 Netflix series of the same name)- pick whichever the user is actually asking about, never guess.',
+    ),
+  director: z
+    .string()
+    .nullable()
+    .describe(
+      "The director's (or, for a TV series, the creator's) name- ONLY when you actually know it and it would help tell apart two different real entries that happen to share the exact same title AND media type (e.g. two unrelated movies both simply called \"The Gentlemen\"). Set to null when not needed or unsure- never guess a director.",
+    ),
+});
+
 const aiResponseSchema = z.object({
   message: z
     .string()
@@ -27,9 +47,9 @@ const aiResponseSchema = z.object({
       'A short, friendly, natural conversational reply to the user (1-2 sentences), in the same language the user wrote in. Never empty.',
     ),
   titles: z
-    .array(z.string())
+    .array(titleEntrySchema)
     .describe(
-      'Concrete, real movie/show titles to look up directly (e.g. "Rush", "The Dark Knight"). Use this for BOTH exact franchise asks AND vibe/conceptual recommendations- always name real titles you know fit, rather than only a vague concept. Empty array if no search is needed for this reply.',
+      'Concrete, real movie/show titles to look up directly. Use this for BOTH exact franchise asks AND vibe/conceptual recommendations- always name real titles you know fit, rather than only a vague concept. Empty array if no search is needed for this reply.',
     ),
   concepts: z
     .array(z.string())
@@ -55,9 +75,9 @@ const watchTogetherSchema = z.object({
       'A short, friendly reply (1-2 sentences) explaining the pick for both friends, in Ukrainian.',
     ),
   titles: z
-    .array(z.string())
+    .array(titleEntrySchema)
     .describe(
-      'Up to 8 real movie/show titles both friends would genuinely enjoy together. Add year in parens ("Title (YYYY)") when it helps disambiguate. Never invent titles.',
+      'Up to 8 real movie/show titles both friends would genuinely enjoy together. Never invent titles.',
     ),
 });
 
@@ -75,23 +95,26 @@ export interface RecommendationReason {
   similarityScore: number;
 }
 
+interface TitleGuess {
+  title: string;
+  mediaType: 'movie' | 'tv';
+  director?: string | null;
+}
+
 export const DEFAULT_AI_PROVIDER_TIMEOUT_MS = 15000;
-// DeepSeek V4-Pro reasons ("thinking") before answering by default, which is
-// what gives it good recall on vague/niche plot descriptions- but measured
-// end-to-end latency for a single generateObject call was ~117s. Disabling
-// thinking drops that to ~4s but also drops recall to Groq's level, defeating
-// the point of using it as primary. So instead of disabling thinking, this
-// primary-only call gets its own much longer timeout.
 export const DEFAULT_DEEPSEEK_PROVIDER_TIMEOUT_MS = 150000;
+export const DEFAULT_OPENAI_PROVIDER_TIMEOUT_MS = 60000;
 
 @Injectable()
 export class AiChatService {
   private groqClient: ReturnType<typeof createGroq>;
   private geminiClient: ReturnType<typeof createGoogleGenerativeAI>;
   private deepseekClient: ReturnType<typeof createDeepSeek>;
+  private openaiClient: ReturnType<typeof createOpenAI>;
   private readonly logger = new Logger(AiChatService.name);
   private readonly providerTimeoutMs: number;
   private readonly deepseekProviderTimeoutMs: number;
+  private readonly openaiProviderTimeoutMs: number;
 
   constructor(
     private configService: ConfigService,
@@ -104,9 +127,12 @@ export class AiChatService {
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
     const deepseekApiKey =
       this.configService.get<string>('DEEPSEEK_API_KEY') || '';
+    const openaiApiKey =
+      this.configService.get<string>('OPEN_AI_API_KEY') || '';
     this.groqClient = createGroq({ apiKey: groqApiKey });
     this.geminiClient = createGoogleGenerativeAI({ apiKey: geminiApiKey });
     this.deepseekClient = createDeepSeek({ apiKey: deepseekApiKey });
+    this.openaiClient = createOpenAI({ apiKey: openaiApiKey });
     this.providerTimeoutMs = Number(
       this.configService.get<string>('AI_PROVIDER_TIMEOUT_MS') ??
         DEFAULT_AI_PROVIDER_TIMEOUT_MS,
@@ -114,6 +140,10 @@ export class AiChatService {
     this.deepseekProviderTimeoutMs = Number(
       this.configService.get<string>('DEEPSEEK_PROVIDER_TIMEOUT_MS') ??
         DEFAULT_DEEPSEEK_PROVIDER_TIMEOUT_MS,
+    );
+    this.openaiProviderTimeoutMs = Number(
+      this.configService.get<string>('OPENAI_PROVIDER_TIMEOUT_MS') ??
+        DEFAULT_OPENAI_PROVIDER_TIMEOUT_MS,
     );
   }
 
@@ -172,30 +202,23 @@ export class AiChatService {
     }));
 
     try {
-      // DeepSeek V4-Pro is primary here: with its default "thinking" mode it
-      // correctly identified a real test case (vague description -> Army of
-      // Thieves) that both Gemini-without-thinking-time-pressure and Groq
-      // struggled with. The cost of that recall is latency- a single call
-      // measured ~117s end-to-end- so it gets its own much longer timeout
-      // (deepseekProviderTimeoutMs) instead of sharing providerTimeoutMs with
-      // the fast fallbacks below. Disabling thinking would cut that to ~4s
-      // but also drops recall to Groq's level, which defeats the purpose.
-      this.logger.log('Calling DeepSeek with generateObject...');
+      this.logger.log('Calling OpenAI (gpt-5.6-luna) with generateObject...');
       const startedAt = Date.now();
       const { tokenCount, ...response } = await this.generateAiResponse(
-        this.deepseekClient('deepseek-v4-pro'),
+        this.openaiClient.responses('gpt-5.6-luna'),
         systemPrompt,
         formattedMessages,
         userContextData,
         alreadyShownIds,
         relevantPreferences,
-        this.deepseekProviderTimeoutMs,
+        this.openaiProviderTimeoutMs,
+        { openai: { reasoningEffort: 'medium' } },
       );
-      this.logger.log('Response served by DeepSeek (primary)');
+      this.logger.log('Response served by OpenAI (primary)');
       this.aiUsageLogService
         .logUsage({
           userId,
-          provider: 'deepseek',
+          provider: 'openai',
           wasFailover: false,
           requestType: 'chat',
           tokenCount,
@@ -205,26 +228,30 @@ export class AiChatService {
           this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
         );
       return response;
-    } catch (deepseekError: unknown) {
+    } catch (openaiError: unknown) {
       this.logger.error(
-        `DeepSeek failed: ${deepseekError instanceof Error ? deepseekError.message : String(deepseekError)}`,
+        `OpenAI failed: ${openaiError instanceof Error ? openaiError.message : String(openaiError)}`,
       );
-      this.logger.warn('Falling back to Gemini...');
+      this.logger.warn('Falling back to DeepSeek...');
       try {
+        this.logger.log('Calling DeepSeek with generateObject...');
         const startedAt = Date.now();
         const { tokenCount, ...response } = await this.generateAiResponse(
-          this.geminiClient('gemini-flash-latest'),
+          this.deepseekClient('deepseek-v4-pro'),
           systemPrompt,
           formattedMessages,
           userContextData,
           alreadyShownIds,
           relevantPreferences,
+          this.deepseekProviderTimeoutMs,
+          undefined,
+          0.5,
         );
-        this.logger.log('Response served by Gemini (1st fallback)');
+        this.logger.log('Response served by DeepSeek (1st fallback)');
         this.aiUsageLogService
           .logUsage({
             userId,
-            provider: 'gemini',
+            provider: 'deepseek',
             wasFailover: true,
             requestType: 'chat',
             tokenCount,
@@ -236,26 +263,29 @@ export class AiChatService {
             ),
           );
         return response;
-      } catch (geminiError: unknown) {
+      } catch (deepseekError: unknown) {
         this.logger.error(
-          `Gemini failed: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}`,
+          `DeepSeek failed: ${deepseekError instanceof Error ? deepseekError.message : String(deepseekError)}`,
         );
-        this.logger.warn('Falling back to Groq...');
+        this.logger.warn('Falling back to Gemini...');
         try {
           const startedAt = Date.now();
           const { tokenCount, ...response } = await this.generateAiResponse(
-            this.groqClient('openai/gpt-oss-120b'),
+            this.geminiClient('gemini-flash-latest'),
             systemPrompt,
             formattedMessages,
             userContextData,
             alreadyShownIds,
             relevantPreferences,
+            undefined,
+            undefined,
+            0.5,
           );
-          this.logger.log('Response served by Groq (2nd fallback)');
+          this.logger.log('Response served by Gemini (2nd fallback)');
           this.aiUsageLogService
             .logUsage({
               userId,
-              provider: 'groq',
+              provider: 'gemini',
               wasFailover: true,
               requestType: 'chat',
               tokenCount,
@@ -267,13 +297,50 @@ export class AiChatService {
               ),
             );
           return response;
-        } catch (groqError: unknown) {
-          const groqMessage =
-            groqError instanceof Error ? groqError.message : String(groqError);
-          throw new InternalServerErrorException(
-            'All AI services are currently unavailable',
-            groqMessage,
+        } catch (geminiError: unknown) {
+          this.logger.error(
+            `Gemini failed: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}`,
           );
+          this.logger.warn('Falling back to Groq...');
+          try {
+            const startedAt = Date.now();
+            const { tokenCount, ...response } = await this.generateAiResponse(
+              this.groqClient('openai/gpt-oss-120b'),
+              systemPrompt,
+              formattedMessages,
+              userContextData,
+              alreadyShownIds,
+              relevantPreferences,
+              undefined,
+              undefined,
+              0.5,
+            );
+            this.logger.log('Response served by Groq (3rd fallback)');
+            this.aiUsageLogService
+              .logUsage({
+                userId,
+                provider: 'groq',
+                wasFailover: true,
+                requestType: 'chat',
+                tokenCount,
+                latencyMs: Date.now() - startedAt,
+              })
+              .catch((err: unknown) =>
+                this.logger.warn(
+                  `AI usage logging failed: ${getErrorMessage(err)}`,
+                ),
+              );
+            return response;
+          } catch (groqError: unknown) {
+            const groqMessage =
+              groqError instanceof Error
+                ? groqError.message
+                : String(groqError);
+            throw new InternalServerErrorException(
+              'All AI services are currently unavailable',
+              groqMessage,
+            );
+          }
         }
       }
     }
@@ -287,6 +354,8 @@ export class AiChatService {
     alreadyShownIds: Set<number>,
     relevantPreferences: RecommendationReason[],
     timeoutMs?: number,
+    providerOptions?: Record<string, Record<string, string>>,
+    temperature?: number,
   ): Promise<{
     message: string;
     movies?: MovieResultDto[];
@@ -298,8 +367,9 @@ export class AiChatService {
       system: systemPrompt,
       messages,
       schema: aiResponseSchema,
-      temperature: 0.5,
       abortSignal: this.newProviderAbortSignal(timeoutMs),
+      ...(temperature !== undefined ? { temperature } : {}),
+      ...(providerOptions ? { providerOptions } : {}),
     });
 
     let foundMovies: MovieResultDto[] = [];
@@ -364,7 +434,7 @@ export class AiChatService {
   }
 
   private async executeSearchMovies(
-    titles: string[],
+    titles: TitleGuess[],
     concepts: string[],
     force: boolean,
     excludeOwned: boolean,
@@ -382,11 +452,16 @@ export class AiChatService {
     const MAX_RESULTS = 8;
 
     const titleLookups = await Promise.all(
-      titles.slice(0, MAX_RESULTS).map(async (rawTitle) => {
-        const { title, year } = this.parseTitleYear(rawTitle);
+      titles.slice(0, MAX_RESULTS).map(async (entry) => {
+        const { title, year } = this.parseTitleYear(entry.title);
         return {
           title,
-          mediaData: await this.moviesService.findMovieByTitle(title, year),
+          mediaData: await this.moviesService.findMovieByTitle(
+            title,
+            year,
+            entry.mediaType,
+            entry.director ?? undefined,
+          ),
         };
       }),
     );
@@ -453,7 +528,7 @@ export class AiChatService {
     }
 
     if (foundMoviesMap.size === 0) {
-      const fallbackQuery = titles[0] || concepts[0];
+      const fallbackQuery = titles[0]?.title || concepts[0];
       if (fallbackQuery) {
         this.logger.log(
           `Falling back to plain TMDB search for "${fallbackQuery}"`,
@@ -604,15 +679,25 @@ Set "excludeOwned": true ONLY when the user explicitly asks for titles they have
 (e.g. "які я ще не додав", "яких я ще не бачив", "not in my watchlist yet", "haven't seen")- this applies even for franchise/direct
 searches (force: true). Otherwise set "excludeOwned": false, including for RULE 2 watchlist picks (which must include watchlisted items).
 
+TITLES ARE OBJECTS, NOT PLAIN STRINGS: Each entry in "titles" is {title, mediaType, director}.
+- "title": the real title, with year in parens ("Title (YYYY)") only when it helps disambiguate.
+- "mediaType": "movie" or "tv"- ALWAYS set this to whichever the user actually means. Never guess "movie" by
+  default when you're not sure- think about it.
+- "director": set it ONLY when you know it AND it's needed to tell apart two different real entries that share
+  the exact same title AND the exact same mediaType (rare). Otherwise set it to null- never guess a director.
+
 TYPOS & SPELLING: Users often misspell or mistype titles/names, especially in Ukrainian ("проєк" instead of "проект",
 transliterated actor names, etc.). ALWAYS silently correct obvious typos and understand the intended title/name from
 context- never fail or refuse just because the user's spelling was off. Output the correctly-spelled real title.
 
-DISAMBIGUATION WITH YEAR: When a title could refer to multiple movies/shows (remakes, same name across decades, a
-movie vs. an unrelated older TV series with the same name), include the year in "titles" as "Title (YYYY)" to pick
-the right one- e.g. if the user mentions an actor or plot detail that identifies a specific version (e.g. "Batman
-with Robert Pattinson" = "The Batman (2022)", not the 2004 animated TV series), use that year. Only add a year when
-it actually helps disambiguate or when you're confident of it- don't guess randomly.
+DISAMBIGUATION: An unrelated movie and TV series (or two different movies) can share the EXACT same title- e.g. the
+2019 Guy Ritchie film "The Gentlemen" vs. the 2024 Netflix series of the same name, or "The Batman" the 2022 film
+vs. the 2004 animated TV series. This is common and easy to get wrong, so for every title, deliberately decide:
+1. Is the user asking about a movie or a TV series/show? Set "mediaType" accordingly- this alone resolves most
+   movie-vs-series name collisions.
+2. Would a remake/same-name entry across different decades or directors still be ambiguous even with the right
+   mediaType? If so, add the year in parens to "title" (e.g. "The Batman (2022)") when you're confident of it, and/or
+   set "director" when you know it. Only add year/director when they actually help- don't guess randomly.
 
 ---
 
@@ -623,10 +708,10 @@ If the user asks to find or show a SPECIFIC movie, actor filmography, franchise,
 character, or universe by name (e.g. "find Se7en", "other parts of Shrek", "movies with Keanu Reeves"):
 → Set "force": true.
 → IMPORTANT: Each entry in "titles" maps to exactly ONE result, so list as many real, distinct titles as you know (up to 8)- never just one or two when more genuinely exist. Leave "concepts" empty.
-→ Example: message: "Ось інші частини цієї чудової франшизи:", titles: ["Shrek 2", "Shrek the Third", "Shrek Forever After"], concepts: [], force: true, excludeOwned: false.
-→ Example for a broad character/franchise ask like "batman movies" or "give me more batman movies": list up to 8 distinct real titles across the franchise (different eras/actors count as distinct), e.g. titles: ["Batman Begins", "The Dark Knight", "The Dark Knight Rises", "Batman (1989)", "Batman Returns", "Batman Forever", "Batman & Robin", "The Batman"], concepts: [], force: true, excludeOwned: false.
+→ Example: message: "Ось інші частини цієї чудової франшизи:", titles: [{title: "Shrek 2", mediaType: "movie"}, {title: "Shrek the Third", mediaType: "movie"}, {title: "Shrek Forever After", mediaType: "movie"}], concepts: [], force: true, excludeOwned: false.
+→ Example for a broad character/franchise ask like "batman movies" or "give me more batman movies": list up to 8 distinct real titles across the franchise (different eras/actors count as distinct), e.g. titles: [{title: "Batman Begins", mediaType: "movie"}, {title: "The Dark Knight", mediaType: "movie"}, {title: "The Dark Knight Rises", mediaType: "movie"}, {title: "Batman (1989)", mediaType: "movie"}, {title: "Batman Returns", mediaType: "movie"}, {title: "Batman Forever", mediaType: "movie"}, {title: "Batman & Robin", mediaType: "movie"}, {title: "The Batman", mediaType: "movie"}], concepts: [], force: true, excludeOwned: false.
 → If the user adds a qualifier like "які я ще не бачив" / "не додав у список"- same as above but set excludeOwned: true, so already watched/watchlisted titles from that list get filtered out.
-→ CRITICAL: If the user names a SPECIFIC title (in any language, or a plot/actor description of a specific movie), and you are NOT fully certain it exists or don't personally recognize it (e.g. it's a very recent or upcoming release)- DO NOT refuse or say you can't find it. Still put your best-guess real title in "titles" (translate to its original/English title if you can- that's what the search index uses) and let the backend verify it. Only say you couldn't find something AFTER attempting a real title guess, never instead of one.
+→ CRITICAL: If the user names a SPECIFIC title (in any language, or a plot/actor description of a specific movie), and you are NOT fully certain it exists or don't personally recognize it (e.g. it's a very recent or upcoming release)- DO NOT refuse or say you can't find it. Still put your best-guess real title in "titles" (translate to its original/English title if you can- that's what the search index uses, and set "mediaType" to your best guess too) and let the backend verify it. Only say you couldn't find something AFTER attempting a real title guess, never instead of one.
 
 RULE 1B- PLOT RECALL ("what movie is this?"- part of RULE 1, force: true):
 Users often describe a SINGLE specific movie/show they're trying to identify by a scene, character detail, or
@@ -661,7 +746,7 @@ vague concept, since concept-only search misses niche topics. Draw on your own k
 → Optionally add ONE broader conceptual phrase to "concepts" (e.g. "epic space adventure sci-fi") to supplement with
 extra semantic-search variety- this is optional, "titles" is the priority.
 → If the user asks for MORE or DIFFERENT movies on the same topic- list a FRESH batch of titles not yet shown, and/or a different concept angle.
-→ Example: user asks "фільми про перегони Формула-1" → titles: ["Rush", "Ford v Ferrari", "Senna", "Gran Turismo", "Le Mans '66"], concepts: ["Formula 1 racing drama"], force: false, excludeOwned: false.
+→ Example: user asks "фільми про перегони Формула-1" → titles: [{title: "Rush", mediaType: "movie"}, {title: "Ford v Ferrari", mediaType: "movie"}, {title: "Senna", mediaType: "movie"}, {title: "Gran Turismo", mediaType: "movie"}, {title: "Le Mans '66", mediaType: "movie"}], concepts: ["Formula 1 racing drama"], force: false, excludeOwned: false.
 → The backend will automatically filter out already shown movies- you do NOT need to worry about repeats.
 
 RULE 5- NO INVENTED TITLES:
@@ -699,6 +784,10 @@ RESPONSE TONE:
     const runWith = async (
       model: ReturnType<typeof this.groqClient>,
       timeoutMs: number,
+      providerOptions?: Record<string, Record<string, string>>,
+      // gpt-5.6-luna (openai.responses) doesn't support temperature- omit it
+      // for that call to avoid an AI SDK warning log on every request.
+      temperature?: number,
     ): Promise<{
       message: string;
       movies?: MovieResultDto[];
@@ -711,15 +800,21 @@ RESPONSE TONE:
           { role: 'user', content: 'Suggest movies for us to watch together.' },
         ],
         schema: watchTogetherSchema,
-        temperature: 0.6,
         abortSignal: this.newProviderAbortSignal(timeoutMs),
+        ...(temperature !== undefined ? { temperature } : {}),
+        ...(providerOptions ? { providerOptions } : {}),
       });
 
       const movies: MovieResultDto[] = [];
-      for (const rawTitle of object.titles.slice(0, 8)) {
+      for (const entry of object.titles.slice(0, 8)) {
         if (movies.length >= 8) break;
-        const { title, year } = this.parseTitleYear(rawTitle);
-        const media = await this.moviesService.findMovieByTitle(title, year);
+        const { title, year } = this.parseTitleYear(entry.title);
+        const media = await this.moviesService.findMovieByTitle(
+          title,
+          year,
+          entry.mediaType,
+          entry.director ?? undefined,
+        );
         if (media && !excludeIds.has(Number(media.id))) {
           movies.push(media);
         }
@@ -735,22 +830,23 @@ RESPONSE TONE:
     };
 
     try {
-      // DeepSeek V4-Pro primary here too, same rationale as
-      // searchMovieByDescription: its "thinking" mode gives noticeably better
-      // taste-matching than Groq/Gemini, at the cost of ~117s latency- worth
-      // it for an on-demand, low-frequency action like this.
+      // gpt-5.6-luna primary here too, same rationale as
+      // searchMovieByDescription (see DEFAULT_OPENAI_PROVIDER_TIMEOUT_MS
+      // comment above): matched-or-better recall than DeepSeek V4-Pro at
+      // roughly 1/4 the latency.
       const startedAt = Date.now();
       const { tokenCount, ...response } = await runWith(
-        this.deepseekClient('deepseek-v4-pro'),
-        this.deepseekProviderTimeoutMs,
+        this.openaiClient.responses('gpt-5.6-luna'),
+        this.openaiProviderTimeoutMs,
+        { openai: { reasoningEffort: 'medium' } },
       );
-      this.logger.log('Watch-together response served by DeepSeek (primary)');
+      this.logger.log('Watch-together response served by OpenAI (primary)');
       this.aiUsageLogService
         .logUsage({
           userId: userIdA,
-          provider: 'deepseek',
+          provider: 'openai',
           wasFailover: false,
-          requestType: 'chat',
+          requestType: 'watch_together',
           tokenCount,
           latencyMs: Date.now() - startedAt,
         })
@@ -758,25 +854,27 @@ RESPONSE TONE:
           this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
         );
       return response;
-    } catch (deepseekError: unknown) {
+    } catch (openaiError: unknown) {
       this.logger.error(
-        `Watch-together DeepSeek failed: ${deepseekError instanceof Error ? deepseekError.message : String(deepseekError)}`,
+        `Watch-together OpenAI failed: ${openaiError instanceof Error ? openaiError.message : String(openaiError)}`,
       );
       try {
         const startedAt = Date.now();
         const { tokenCount, ...response } = await runWith(
-          this.geminiClient('gemini-flash-latest'),
-          this.providerTimeoutMs,
+          this.deepseekClient('deepseek-v4-pro'),
+          this.deepseekProviderTimeoutMs,
+          undefined,
+          0.6,
         );
         this.logger.log(
-          'Watch-together response served by Gemini (1st fallback)',
+          'Watch-together response served by DeepSeek (1st fallback)',
         );
         this.aiUsageLogService
           .logUsage({
             userId: userIdA,
-            provider: 'gemini',
+            provider: 'deepseek',
             wasFailover: true,
-            requestType: 'chat',
+            requestType: 'watch_together',
             tokenCount,
             latencyMs: Date.now() - startedAt,
           })
@@ -786,25 +884,27 @@ RESPONSE TONE:
             ),
           );
         return response;
-      } catch (geminiError: unknown) {
+      } catch (deepseekError: unknown) {
         this.logger.error(
-          `Watch-together Gemini failed: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}`,
+          `Watch-together DeepSeek failed: ${deepseekError instanceof Error ? deepseekError.message : String(deepseekError)}`,
         );
         try {
           const startedAt = Date.now();
           const { tokenCount, ...response } = await runWith(
-            this.groqClient('openai/gpt-oss-120b'),
+            this.geminiClient('gemini-flash-latest'),
             this.providerTimeoutMs,
+            undefined,
+            0.6,
           );
           this.logger.log(
-            'Watch-together response served by Groq (2nd fallback)',
+            'Watch-together response served by Gemini (2nd fallback)',
           );
           this.aiUsageLogService
             .logUsage({
               userId: userIdA,
-              provider: 'groq',
+              provider: 'gemini',
               wasFailover: true,
-              requestType: 'chat',
+              requestType: 'watch_together',
               tokenCount,
               latencyMs: Date.now() - startedAt,
             })
@@ -814,13 +914,46 @@ RESPONSE TONE:
               ),
             );
           return response;
-        } catch (groqError: unknown) {
-          const groqMessage =
-            groqError instanceof Error ? groqError.message : String(groqError);
-          throw new InternalServerErrorException(
-            'All AI services are currently unavailable',
-            groqMessage,
+        } catch (geminiError: unknown) {
+          this.logger.error(
+            `Watch-together Gemini failed: ${geminiError instanceof Error ? geminiError.message : String(geminiError)}`,
           );
+          try {
+            const startedAt = Date.now();
+            const { tokenCount, ...response } = await runWith(
+              this.groqClient('openai/gpt-oss-120b'),
+              this.providerTimeoutMs,
+              undefined,
+              0.6,
+            );
+            this.logger.log(
+              'Watch-together response served by Groq (3rd fallback)',
+            );
+            this.aiUsageLogService
+              .logUsage({
+                userId: userIdA,
+                provider: 'groq',
+                wasFailover: true,
+                requestType: 'watch_together',
+                tokenCount,
+                latencyMs: Date.now() - startedAt,
+              })
+              .catch((err: unknown) =>
+                this.logger.warn(
+                  `AI usage logging failed: ${getErrorMessage(err)}`,
+                ),
+              );
+            return response;
+          } catch (groqError: unknown) {
+            const groqMessage =
+              groqError instanceof Error
+                ? groqError.message
+                : String(groqError);
+            throw new InternalServerErrorException(
+              'All AI services are currently unavailable',
+              groqMessage,
+            );
+          }
         }
       }
     }
