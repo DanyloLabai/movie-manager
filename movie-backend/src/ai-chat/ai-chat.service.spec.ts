@@ -59,6 +59,23 @@ function getGenerateObjectCallArgs(callIndex = 0): CapturedGenerateObjectCall {
   return calls[callIndex][0];
 }
 
+interface CapturedVisionCall {
+  messages: Array<{
+    role: string;
+    content: Array<{ type: string; text?: string }>;
+  }>;
+}
+
+function getVisionPromptText(callIndex = 0): string {
+  const calls = mockGenerateObject.mock.calls as unknown as Array<
+    [CapturedVisionCall]
+  >;
+  const textPart = calls[callIndex][0].messages[0].content.find(
+    (part) => part.type === 'text',
+  );
+  return textPart?.text ?? '';
+}
+
 describe('AiChatService', () => {
   let service: AiChatService;
   let cacheManager: Cache;
@@ -495,6 +512,340 @@ describe('AiChatService', () => {
         const systemPrompt = getGenerateObjectCallArgs(0).system;
         expect(systemPrompt).toContain('FAVORITES: None');
       });
+    });
+  });
+
+  describe('identifyMovieFromPhoto', () => {
+    const userId = 42;
+    const imageBuffer = Buffer.from('fake-image-bytes');
+    const mimeType = 'image/jpeg';
+
+    const basePhotoObject = {
+      recognized: true,
+      candidates: [
+        {
+          actorOrCharacter: 'Leonardo DiCaprio as Cobb',
+          title: 'Inception',
+          year: 2010,
+          mediaType: 'movie' as const,
+        },
+      ],
+      message: 'Це "Початок" (2010).',
+    };
+
+    it('asks OpenAI for medium reasoning effort when it falls back there', async () => {
+      // Without this, gpt-5.6-luna falls back to its default (lower)
+      // reasoning effort and becomes noticeably more conservative- e.g.
+      // reporting recognized:false on a frame it can otherwise identify
+      // correctly at reasoningEffort:medium.
+      mockGenerateObject
+        .mockRejectedValueOnce(new Error('DeepSeek is down'))
+        .mockResolvedValueOnce({
+          object: basePhotoObject,
+          usage: { totalTokens: 10 },
+        });
+
+      await service.identifyMovieFromPhoto(userId, imageBuffer, mimeType);
+
+      const call = mockGenerateObject.mock.calls[1][0] as {
+        providerOptions?: Record<string, Record<string, string>>;
+      };
+      expect(call.providerOptions).toEqual({
+        openai: { reasoningEffort: 'medium' },
+      });
+    });
+
+    it('defaults to English when no lang is passed', async () => {
+      mockGenerateObject.mockResolvedValueOnce({
+        object: basePhotoObject,
+        usage: { totalTokens: 10 },
+      });
+
+      await service.identifyMovieFromPhoto(userId, imageBuffer, mimeType);
+
+      expect(getVisionPromptText(0)).toContain('Reply in English.');
+    });
+
+    it('asks for a Ukrainian reply when the frontend passes lang=uk', async () => {
+      mockGenerateObject.mockResolvedValueOnce({
+        object: basePhotoObject,
+        usage: { totalTokens: 10 },
+      });
+
+      await service.identifyMovieFromPhoto(
+        userId,
+        imageBuffer,
+        mimeType,
+        'uk',
+      );
+
+      expect(getVisionPromptText(0)).toContain('Reply in Ukrainian.');
+    });
+
+    it('identifies the movie via DeepSeek (primary) and attaches the found card', async () => {
+      mockGenerateObject.mockResolvedValueOnce({
+        object: basePhotoObject,
+        usage: { totalTokens: 55 },
+      });
+      mockMoviesService.findMovieByTitle.mockResolvedValueOnce({
+        id: 123,
+        title: 'Inception',
+      });
+
+      const result = await service.identifyMovieFromPhoto(
+        userId,
+        imageBuffer,
+        mimeType,
+      );
+
+      expect(result.message).toBe('Це "Початок" (2010).');
+      expect(result.movies).toEqual([{ id: 123, title: 'Inception' }]);
+      expect(mockGenerateObject).toHaveBeenCalledTimes(1);
+      expect(getGenerateObjectCallArgs(0).model).toMatchObject({
+        provider: 'deepseek',
+        modelId: 'deepseek-flash',
+      });
+      expect(mockMoviesService.findMovieByTitle).toHaveBeenCalledWith(
+        'Inception',
+        2010,
+        'movie',
+      );
+
+      expect(mockAiUsageLogService.logUsage).toHaveBeenCalledTimes(1);
+      expect(mockAiUsageLogService.logUsage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId,
+          provider: 'deepseek',
+          wasFailover: false,
+          requestType: 'photo_identify',
+          tokenCount: 55,
+        }),
+      );
+    });
+
+    it('attaches a card for each distinct candidate when the AI is torn between a few', async () => {
+      mockGenerateObject.mockResolvedValueOnce({
+        object: {
+          recognized: true,
+          candidates: [
+            {
+              actorOrCharacter: 'Matthew McConaughey as Rust Cohle',
+              title: 'True Detective',
+              year: 2014,
+              mediaType: 'tv' as const,
+            },
+            {
+              actorOrCharacter: 'Val Kilmer',
+              title: 'The Salton Sea',
+              year: 2002,
+              mediaType: 'movie' as const,
+            },
+          ],
+          message: 'Не певен, це або "Справжній детектив", або "The Salton Sea".',
+        },
+        usage: { totalTokens: 60 },
+      });
+      mockMoviesService.findMovieByTitle
+        .mockResolvedValueOnce({ id: 1, title: 'True Detective' })
+        .mockResolvedValueOnce({ id: 2, title: 'The Salton Sea' });
+
+      const result = await service.identifyMovieFromPhoto(
+        userId,
+        imageBuffer,
+        mimeType,
+      );
+
+      expect(result.movies).toEqual([
+        { id: 1, title: 'True Detective' },
+        { id: 2, title: 'The Salton Sea' },
+      ]);
+      expect(mockMoviesService.findMovieByTitle).toHaveBeenCalledTimes(2);
+      expect(mockMoviesService.findMovieByTitle).toHaveBeenNthCalledWith(
+        1,
+        'True Detective',
+        2014,
+        'tv',
+      );
+      expect(mockMoviesService.findMovieByTitle).toHaveBeenNthCalledWith(
+        2,
+        'The Salton Sea',
+        2002,
+        'movie',
+      );
+    });
+
+    it('de-duplicates candidates that resolve to the same movie', async () => {
+      mockGenerateObject.mockResolvedValueOnce({
+        object: {
+          recognized: true,
+          candidates: [
+            {
+              actorOrCharacter: 'Leonardo DiCaprio as Cobb',
+              title: 'Inception',
+              year: 2010,
+              mediaType: 'movie' as const,
+            },
+            {
+              actorOrCharacter: null,
+              title: 'Inception (2010 film)',
+              year: null,
+              mediaType: 'movie' as const,
+            },
+          ],
+          message: 'Це "Початок" (2010).',
+        },
+        usage: { totalTokens: 60 },
+      });
+      mockMoviesService.findMovieByTitle.mockResolvedValue({
+        id: 123,
+        title: 'Inception',
+      });
+
+      const result = await service.identifyMovieFromPhoto(
+        userId,
+        imageBuffer,
+        mimeType,
+      );
+
+      expect(result.movies).toEqual([{ id: 123, title: 'Inception' }]);
+    });
+
+    it('returns no movie card when the AI could not confidently recognize anything', async () => {
+      mockGenerateObject.mockResolvedValueOnce({
+        object: {
+          recognized: false,
+          candidates: [],
+          message: 'Не можу впевнено визначити, що це за фільм.',
+        },
+        usage: { totalTokens: 30 },
+      });
+
+      const result = await service.identifyMovieFromPhoto(
+        userId,
+        imageBuffer,
+        mimeType,
+      );
+
+      expect(result.message).toBe('Не можу впевнено визначити, що це за фільм.');
+      expect(result.movies).toBeUndefined();
+      expect(mockMoviesService.findMovieByTitle).not.toHaveBeenCalled();
+    });
+
+    it('returns no movie card when the AI names a title but it is not found on TMDB', async () => {
+      mockGenerateObject.mockResolvedValueOnce({
+        object: basePhotoObject,
+        usage: { totalTokens: 40 },
+      });
+      mockMoviesService.findMovieByTitle.mockResolvedValueOnce(null);
+
+      const result = await service.identifyMovieFromPhoto(
+        userId,
+        imageBuffer,
+        mimeType,
+      );
+
+      expect(result.message).toBe(basePhotoObject.message);
+      expect(result.movies).toBeUndefined();
+    });
+
+    it('falls back to OpenAI when DeepSeek throws, and returns its response', async () => {
+      mockGenerateObject
+        .mockRejectedValueOnce(new Error('DeepSeek is down'))
+        .mockResolvedValueOnce({
+          object: { ...basePhotoObject, message: 'Схоже на "Початок".' },
+          usage: { totalTokens: 66 },
+        });
+      mockMoviesService.findMovieByTitle.mockResolvedValueOnce({
+        id: 123,
+        title: 'Inception',
+      });
+
+      const result = await service.identifyMovieFromPhoto(
+        userId,
+        imageBuffer,
+        mimeType,
+      );
+
+      expect(result.message).toBe('Схоже на "Початок".');
+      expect(mockGenerateObject).toHaveBeenCalledTimes(2);
+      expect(getGenerateObjectCallArgs(0).model).toMatchObject({
+        provider: 'deepseek',
+        modelId: 'deepseek-flash',
+      });
+      expect(getGenerateObjectCallArgs(1).model).toMatchObject({
+        provider: 'openai',
+        modelId: 'gpt-5.6-luna',
+      });
+
+      expect(mockAiUsageLogService.logUsage).toHaveBeenCalledTimes(1);
+      expect(mockAiUsageLogService.logUsage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId,
+          provider: 'openai',
+          wasFailover: true,
+          requestType: 'photo_identify',
+          tokenCount: 66,
+        }),
+      );
+    });
+
+    it('falls back to Gemini as a last resort when both DeepSeek and OpenAI throw', async () => {
+      mockGenerateObject
+        .mockRejectedValueOnce(new Error('DeepSeek is down'))
+        .mockRejectedValueOnce(new Error('OpenAI is down'))
+        .mockResolvedValueOnce({
+          object: { ...basePhotoObject, message: 'Схоже на "Початок".' },
+          usage: { totalTokens: 66 },
+        });
+      mockMoviesService.findMovieByTitle.mockResolvedValueOnce({
+        id: 123,
+        title: 'Inception',
+      });
+
+      const result = await service.identifyMovieFromPhoto(
+        userId,
+        imageBuffer,
+        mimeType,
+      );
+
+      expect(result.message).toBe('Схоже на "Початок".');
+      expect(mockGenerateObject).toHaveBeenCalledTimes(3);
+      expect(getGenerateObjectCallArgs(2).model).toMatchObject({
+        provider: 'gemini',
+        modelId: 'gemini-flash-latest',
+      });
+
+      expect(mockAiUsageLogService.logUsage).toHaveBeenCalledTimes(1);
+      expect(mockAiUsageLogService.logUsage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId,
+          provider: 'gemini',
+          wasFailover: true,
+          requestType: 'photo_identify',
+          tokenCount: 66,
+        }),
+      );
+    });
+
+    it('throws InternalServerErrorException without crashing when DeepSeek, OpenAI and Gemini all fail', async () => {
+      mockGenerateObject
+        .mockRejectedValueOnce(new Error('DeepSeek is down'))
+        .mockRejectedValueOnce(new Error('OpenAI is down'))
+        .mockRejectedValueOnce(new Error('Gemini is down too'));
+
+      let caughtError: unknown;
+      try {
+        await service.identifyMovieFromPhoto(userId, imageBuffer, mimeType);
+      } catch (err) {
+        caughtError = err;
+      }
+
+      expect(caughtError).toBeInstanceOf(InternalServerErrorException);
+      expect((caughtError as InternalServerErrorException).message).toBe(
+        'Photo identification is currently unavailable',
+      );
+      expect(mockGenerateObject).toHaveBeenCalledTimes(3);
+      expect(mockAiUsageLogService.logUsage).not.toHaveBeenCalled();
     });
   });
 });

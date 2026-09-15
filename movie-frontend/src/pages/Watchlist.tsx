@@ -274,8 +274,13 @@ export default function Watchlist() {
       await moviesApi.toggleFavorite(tmdbId);
       showToast(t("search_fav_updated"));
       if (activeTab === "profile") fetchProfile();
-    } catch {
-      showToast(t("search_fav_error2"));
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      showToast(
+        apiError.response?.status === 400
+          ? t("search_fav_limit")
+          : t("search_fav_error2"),
+      );
       // Roll the optimistic update back by re-fetching whichever list it touched-
       // every branch above except "profile" mutates `movies`.
       if (activeTab === "profile") fetchProfile();

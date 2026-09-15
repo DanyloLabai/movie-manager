@@ -10,7 +10,8 @@ export type AiRequestType =
   | 'chat'
   | 'embedding'
   | 'recommendations'
-  | 'watch_together';
+  | 'watch_together'
+  | 'photo_identify';
 
 @Entity('ai_usage_log')
 export class AiUsageLog {

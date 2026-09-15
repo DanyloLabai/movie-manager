@@ -47,6 +47,7 @@ const mockWatchlistRepo = {
   save: jest.fn(),
   delete: jest.fn(),
   exist: jest.fn(),
+  count: jest.fn(),
 };
 
 const mockUsersRepo = {
@@ -430,6 +431,7 @@ describe('MoviesService', () => {
     it('should toggle isFavorite from false to true', async () => {
       const item = mockWatchlistItem({ isFavorite: false });
       mockWatchlistRepo.findOne.mockResolvedValue(item);
+      mockWatchlistRepo.count.mockResolvedValue(0);
       mockWatchlistRepo.save.mockResolvedValue({ ...item, isFavorite: true });
 
       const result = await service.toggleFavorite(1, 550);
@@ -453,6 +455,17 @@ describe('MoviesService', () => {
       await expect(service.toggleFavorite(1, 9999)).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('should throw BadRequestException when adding a favorite past the limit of 10', async () => {
+      const item = mockWatchlistItem({ isFavorite: false });
+      mockWatchlistRepo.findOne.mockResolvedValue(item);
+      mockWatchlistRepo.count.mockResolvedValue(10);
+
+      await expect(service.toggleFavorite(1, 550)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockWatchlistRepo.save).not.toHaveBeenCalled();
     });
   });
 

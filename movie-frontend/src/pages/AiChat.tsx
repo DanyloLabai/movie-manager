@@ -1,8 +1,15 @@
-import { useState, useRef, useEffect } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 import { useNavigate, Link } from "react-router-dom";
-import * as aiApi from "../api/ai.api";
-import type { AIMessage, RecommendationReason } from "../api/ai.api";
+import type { RecommendationReason } from "../api/ai.api";
 import * as moviesApi from "../api/movies.api";
+import * as aiChatStore from "../store/aiChatStore";
+import type { AiChatCopy } from "../store/aiChatStore";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import NotificationBell from "../components/NotificationBell";
@@ -16,13 +23,6 @@ type ProfileResponse = {
 };
 
 import type { MovieResult } from "../types/movie.types";
-
-interface Message {
-  role: "user" | "ai";
-  text: string;
-  movies?: MovieResult[];
-  reasoning?: RecommendationReason[];
-}
 
 const MOBILE_BREAKPOINT_PX = 640;
 const BOTTOM_NAV_CONTENT_PX = 60;
@@ -84,28 +84,36 @@ function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
   );
 }
 
-const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
 const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
-const CHAT_EXPIRATION_MS =
-  Number(import.meta.env.VITE_CHAT_EXPIRATION_MS) || 7 * 24 * 60 * 60 * 1000;
-const MAX_HISTORY = Number(import.meta.env.VITE_MAX_HISTORY) || 20;
-const COOLDOWN_SECONDS = 3;
+const MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024; // keep in sync with the backend
+const ALLOWED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export default function AiChat() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [input, setInput] = useState("");
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [addModalMovie, setAddModalMovie] = useState<MovieResult | null>(
     null,
   );
-  const [isLoading, setIsLoading] = useState(false);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [cooldownTime, setCooldownTime] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const [usage, setUsage] = useState<aiApi.AiUsage | null>(null);
   const [isUsageOpen, setIsUsageOpen] = useState(false);
+
+  // The conversation lives outside the component tree, so an in-flight AI
+  // request keeps running (and its answer keeps landing) when the user
+  // navigates away from this route mid-thought.
+  const { messages, isLoading, isHistoryLoading, cooldownUntil, usage } =
+    useSyncExternalStore(aiChatStore.subscribe, aiChatStore.getState);
+  // The cooldown is stored as a deadline so it keeps counting down correctly
+  // across unmounts. `now` only advances while a cooldown is running, so the
+  // clamp covers the first render after a deadline is set, before the first
+  // tick has refreshed it.
+  const [now, setNow] = useState(() => Date.now());
+  const cooldownTime = Math.min(
+    aiChatStore.COOLDOWN_SECONDS,
+    Math.max(0, Math.ceil((cooldownUntil - now) / 1000)),
+  );
 
   const [viewportHeight, setViewportHeight] = useState(
     () =>
@@ -118,30 +126,30 @@ export default function AiChat() {
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const isProgrammaticBlurRef = useRef(false);
   const caretNudgeDoneRef = useRef(false);
 
   const navigate = useNavigate();
 
-  const getWelcomeMessage = (): Message => ({
-    role: "ai",
-    text: t("chat_welcome"),
-  });
+  const copy = useMemo<AiChatCopy>(
+    () => ({
+      welcome: t("chat_welcome"),
+      cleared: t("chat_cleared"),
+      defaultFound: t("chat_default_found"),
+      dailyLimit: t("chat_daily_limit"),
+      error: t("chat_error"),
+      photoSent: t("chat_photo_sent"),
+      photoDailyLimit: t("chat_photo_daily_limit"),
+      photoError: t("chat_photo_error"),
+    }),
+    [t],
+  );
+  const copyRef = useRef(copy);
+  useEffect(() => {
+    copyRef.current = copy;
+  }, [copy]);
 
-  const loadSavedMessages = (): Message[] => {
-    const saved = localStorage.getItem(CHAT_STORAGE_KEY);
-    if (saved) {
-      try {
-        const { messages, timestamp } = JSON.parse(saved);
-        if (Date.now() - timestamp < CHAT_EXPIRATION_MS) return messages;
-      } catch (e) {
-        console.error("Error parsing chat history", e);
-      }
-    }
-    return [getWelcomeMessage()];
-  };
-
-  const [messages, setMessages] = useState<Message[]>([getWelcomeMessage()]);
   const isEmpty = messages.length <= 1;
 
   useEffect(() => {
@@ -177,61 +185,18 @@ export default function AiChat() {
   }, [viewportHeight]);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
-    if (cooldownTime > 0) {
-      timer = setInterval(() => setCooldownTime((p) => p - 1), 1000);
-    }
+    if (cooldownUntil <= Date.now()) return;
+    const timer = setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (cooldownUntil <= current) clearInterval(timer);
+    }, 250);
     return () => clearInterval(timer);
-  }, [cooldownTime]);
+  }, [cooldownUntil]);
 
   useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        const history = await aiApi.getHistory();
-        if (Array.isArray(history) && history.length > 0) {
-          setMessages(
-            history.map((m) => ({
-              role: m.role === "assistant" ? "ai" : "user",
-              text: m.content,
-              movies: m.movies,
-            })),
-          );
-        } else {
-          setMessages(loadSavedMessages());
-        }
-      } catch {
-        setMessages(loadSavedMessages());
-      } finally {
-        setIsHistoryLoading(false);
-      }
-    };
-    loadHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    aiChatStore.initAiChat(copyRef.current);
   }, []);
-
-  useEffect(() => {
-    if (messages.length <= 1) return;
-    const timer = setTimeout(async () => {
-      try {
-        const aiMsgs: AIMessage[] = messages.map((m) => ({
-          role: m.role === "ai" ? "assistant" : "user",
-          content: m.text,
-          ...(m.movies && m.movies.length > 0 && { movies: m.movies }),
-        }));
-        await aiApi.postHistory(aiMsgs);
-        localStorage.setItem(
-          CHAT_STORAGE_KEY,
-          JSON.stringify({ messages, timestamp: Date.now() }),
-        );
-      } catch {
-        localStorage.setItem(
-          CHAT_STORAGE_KEY,
-          JSON.stringify({ messages, timestamp: Date.now() }),
-        );
-      }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [messages]);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -253,7 +218,7 @@ export default function AiChat() {
   }, []);
 
   useEffect(() => {
-    aiApi.getUsage().then(setUsage).catch(() => void 0);
+    void aiChatStore.refreshUsage();
   }, []);
 
   const showToast = (message: string) => {
@@ -269,79 +234,53 @@ export default function AiChat() {
   };
 
   const handleClearChat = () => {
-    setMessages([{ role: "ai", text: t("chat_cleared") }]);
-    localStorage.removeItem(CHAT_STORAGE_KEY);
-    aiApi.postHistory([] as AIMessage[]).catch(() => void 0);
+    aiChatStore.clearChat(copy);
     showToast(t("chat_history_cleared"));
   };
 
-  const sendMessageToAi = async (userText: string) => {
+  const sendMessageToAi = (userText: string) => {
     if (isLoading || cooldownTime > 0) return;
     inputRef.current?.blur();
-
-    const userMsg: Message = { role: "user", text: userText };
-    const newMessages: Message[] = [...messages, userMsg];
-    setMessages((prev) => [...prev, userMsg]);
-    setIsLoading(true);
-
-    try {
-      const trimmedMessages = newMessages.slice(-MAX_HISTORY);
-
-      const shownMovieIds = trimmedMessages
-        .filter((m) => m.movies && m.movies.length > 0)
-        .flatMap((m) => m.movies!.map((movie) => movie.id));
-
-      const chatHistory: AIMessage[] = trimmedMessages.map((msg) => {
-        let content = msg.text;
-        if (msg.role === "ai" && msg.movies && msg.movies.length > 0) {
-          const shownMovies = msg.movies.map((m) => m.title).join(", ");
-          content += `\n[System note: I already showed these movies to the user: ${shownMovies}. Do not repeat them in next suggestions.]`;
-        }
-        return {
-          role: msg.role === "ai" ? "assistant" : "user",
-          content,
-        };
-      });
-
-      const response = await aiApi.aiSearch({
-        messages: chatHistory,
-        shownMovieIds,
-      });
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          text: response.message || t("chat_default_found"),
-          movies: response.movies,
-          reasoning: response.reasoning,
-        },
-      ]);
-    } catch (error: unknown) {
-      const apiError = error as { response?: { status?: number } };
-      const errorText =
-        apiError.response?.status === 429
-          ? t("chat_daily_limit")
-          : t("chat_error");
-      setMessages((prev) => [...prev, { role: "ai", text: errorText }]);
-    } finally {
-      setIsLoading(false);
-      setCooldownTime(COOLDOWN_SECONDS);
-      aiApi.getUsage().then(setUsage).catch(() => void 0);
-    }
+    void aiChatStore.sendMessage(userText, copy);
   };
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || cooldownTime > 0) return;
     const text = input;
     setInput("");
-    await sendMessageToAi(text);
+    sendMessageToAi(text);
   };
 
   const handleSuggestionClick = (text: string) => {
+    sendMessageToAi(text);
+  };
+
+  const handlePhotoButtonClick = () => {
     if (isLoading || cooldownTime > 0) return;
-    void sendMessageToAi(text);
+    photoInputRef.current?.click();
+  };
+
+  const sendPhotoToAi = (file: File) => {
+    if (isLoading || cooldownTime > 0) return;
+
+    if (!ALLOWED_PHOTO_TYPES.has(file.type)) {
+      showToast(t("chat_photo_invalid_type"));
+      return;
+    }
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      showToast(t("chat_photo_too_large"));
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    void aiChatStore.sendPhoto(file, previewUrl, copy, lang);
+  };
+
+  const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) sendPhotoToAi(file);
   };
 
   const handleAddFromChat = async (movie: MovieResult) => {
@@ -633,6 +572,13 @@ export default function AiChat() {
                   >
                     {msg.role === "user" ? (
                       <div className="max-w-full px-[18px] py-3 bg-[rgba(217,172,84,.13)] border border-[rgba(217,172,84,.25)] rounded-2xl rounded-tr-sm text-[14px] leading-relaxed text-[#f2ead9]">
+                        {msg.imageUrl && (
+                          <img
+                            src={msg.imageUrl}
+                            alt=""
+                            className="w-[160px] h-[160px] object-cover rounded-xl mb-2"
+                          />
+                        )}
                         <p className="whitespace-pre-wrap select-text cursor-text">
                           {msg.text}
                         </p>
@@ -760,6 +706,43 @@ export default function AiChat() {
                   strokeLinejoin="round"
                   strokeWidth="2"
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoFileChange}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={handlePhotoButtonClick}
+              disabled={isLoading || cooldownTime > 0}
+              title={t("chat_photo_button_title")}
+              className="shrink-0 w-10 h-10 text-[#8f8574] border border-white/[.12] rounded-full hover:text-[#d9ac54] hover:border-[#d9ac54]/40 transition disabled:opacity-30 flex items-center justify-center"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                />
+                <circle
+                  cx="12"
+                  cy="13"
+                  r="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
                 />
               </svg>
             </button>

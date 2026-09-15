@@ -48,6 +48,19 @@ export async function watchTogether(
   return res.data as { message?: string; movies?: MovieResult[] };
 }
 
+export async function identifyPhoto(
+  photo: File,
+  lang: string,
+): Promise<{ message?: string; movies?: MovieResult[] }> {
+  const formData = new FormData();
+  formData.append("photo", photo);
+  formData.append("lang", lang);
+  const res = await api.post("/ai/identify-photo", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data as { message?: string; movies?: MovieResult[] };
+}
+
 export type AiUsage = {
   requestCount: number;
   totalTokens: number;
@@ -60,4 +73,11 @@ export async function getUsage(): Promise<AiUsage> {
   return res.data as AiUsage;
 }
 
-export default { getHistory, postHistory, aiSearch, watchTogether, getUsage };
+export default {
+  getHistory,
+  postHistory,
+  aiSearch,
+  watchTogether,
+  identifyPhoto,
+  getUsage,
+};

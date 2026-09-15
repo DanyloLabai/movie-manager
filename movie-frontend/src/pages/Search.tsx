@@ -646,6 +646,8 @@ export default function Search() {
         } catch {
           showToast(t("search_fav_error"));
         }
+      } else if (apiError.response?.status === 400) {
+        showToast(t("search_fav_limit"));
       } else {
         showToast(t("search_fav_error2"));
       }

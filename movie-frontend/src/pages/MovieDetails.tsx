@@ -278,8 +278,13 @@ export default function MovieDetails() {
       await moviesApi.toggleFavorite(movie.id);
       updateStatusCache({ ...status, isFavorite: !status.isFavorite });
       showToast(t("movie_fav_updated"));
-    } catch {
-      showToast(t("movie_failed"));
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      showToast(
+        apiError.response?.status === 400
+          ? t("search_fav_limit")
+          : t("movie_failed"),
+      );
     }
   };
 
