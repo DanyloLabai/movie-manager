@@ -50,6 +50,7 @@ interface CapturedGenerateObjectCall {
   model: { provider: string; modelId: string };
   system: string;
   messages: Array<{ role: string; content: string }>;
+  providerOptions?: Record<string, Record<string, string>>;
 }
 
 function getGenerateObjectCallArgs(callIndex = 0): CapturedGenerateObjectCall {
@@ -547,10 +548,7 @@ describe('AiChatService', () => {
 
       await service.identifyMovieFromPhoto(userId, imageBuffer, mimeType);
 
-      const call = mockGenerateObject.mock.calls[1][0] as {
-        providerOptions?: Record<string, Record<string, string>>;
-      };
-      expect(call.providerOptions).toEqual({
+      expect(getGenerateObjectCallArgs(1).providerOptions).toEqual({
         openai: { reasoningEffort: 'medium' },
       });
     });
@@ -572,12 +570,7 @@ describe('AiChatService', () => {
         usage: { totalTokens: 10 },
       });
 
-      await service.identifyMovieFromPhoto(
-        userId,
-        imageBuffer,
-        mimeType,
-        'uk',
-      );
+      await service.identifyMovieFromPhoto(userId, imageBuffer, mimeType, 'uk');
 
       expect(getVisionPromptText(0)).toContain('Reply in Ukrainian.');
     });
@@ -641,7 +634,8 @@ describe('AiChatService', () => {
               mediaType: 'movie' as const,
             },
           ],
-          message: 'Не певен, це або "Справжній детектив", або "The Salton Sea".',
+          message:
+            'Не певен, це або "Справжній детектив", або "The Salton Sea".',
         },
         usage: { totalTokens: 60 },
       });
@@ -726,7 +720,9 @@ describe('AiChatService', () => {
         mimeType,
       );
 
-      expect(result.message).toBe('Не можу впевнено визначити, що це за фільм.');
+      expect(result.message).toBe(
+        'Не можу впевнено визначити, що це за фільм.',
+      );
       expect(result.movies).toBeUndefined();
       expect(mockMoviesService.findMovieByTitle).not.toHaveBeenCalled();
     });

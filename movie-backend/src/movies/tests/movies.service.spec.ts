@@ -420,10 +420,7 @@ describe('MoviesService', () => {
       const result = await service.getRatingHistory(1, 550);
 
       expect(result).toEqual(history);
-      expect(mockActivityService.getRatingHistory).toHaveBeenCalledWith(
-        1,
-        550,
-      );
+      expect(mockActivityService.getRatingHistory).toHaveBeenCalledWith(1, 550);
     });
   });
 

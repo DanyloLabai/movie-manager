@@ -120,8 +120,8 @@ describe('PhotoIdentifyDailyLimitGuard', () => {
       totalTokens: 0,
     });
 
-    await expect(
-      overriddenGuard.canActivate(buildContext(1)),
-    ).resolves.toBe(true);
+    await expect(overriddenGuard.canActivate(buildContext(1))).resolves.toBe(
+      true,
+    );
   });
 });
