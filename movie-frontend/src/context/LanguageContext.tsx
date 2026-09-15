@@ -131,6 +131,14 @@ const translations = {
     chat_error: "Oops, something went wrong. Please try again later.",
     chat_daily_limit:
       "You've reached today's AI request limit. Please come back tomorrow.",
+    chat_photo_button_title: "Identify a movie from a photo",
+    chat_photo_sent: "Which movie/show is this?",
+    chat_photo_invalid_type: "Please upload a JPEG, PNG, or WebP image.",
+    chat_photo_too_large: "That photo is too large (max 8MB).",
+    chat_photo_daily_limit:
+      "You've reached today's photo-identify limit (3/day). Please come back tomorrow.",
+    chat_photo_error:
+      "Couldn't process that photo right now. Please try again later.",
     chat_no_posters:
       "(P.S. I found some titles but couldn't load their posters from the database.)",
     chat_tv: "TV Show",
@@ -180,6 +188,7 @@ const translations = {
     search_fav_added: "Added to list and favorites",
     search_fav_error: "Failed to favorite movie",
     search_fav_error2: "Failed to update favorite status",
+    search_fav_limit: "You can have at most 10 favorites. Remove one before adding another.",
     search_all_time: "All-Time Classics",
     search_highest_rated: "Highest Rated",
     search_collection_tag: "Collection",
@@ -652,6 +661,13 @@ const translations = {
     chat_error: "Ой, щось пішло не так. Спробуй пізніше.",
     chat_daily_limit:
       "Ти вичерпав денний ліміт запитів до AI. Повертайся завтра.",
+    chat_photo_button_title: "Впізнати фільм за фото",
+    chat_photo_sent: "Що це за фільм/серіал?",
+    chat_photo_invalid_type: "Завантаж фото у форматі JPEG, PNG або WebP.",
+    chat_photo_too_large: "Це фото завелике (максимум 8МБ).",
+    chat_photo_daily_limit:
+      "Ти вичерпав денний ліміт розпізнавання фото (3/добу). Повертайся завтра.",
+    chat_photo_error: "Не вдалося обробити фото. Спробуй пізніше.",
     chat_no_posters:
       "(P.S. Знайшов кілька назв, але не зміг підтягнути постери з бази.)",
     chat_tv: "Серіал",
@@ -702,6 +718,8 @@ const translations = {
     search_fav_added: "Додано до списку та улюблених",
     search_fav_error: "Не вдалося додати до улюблених",
     search_fav_error2: "Не вдалося оновити статус улюбленого",
+    search_fav_limit:
+      "Можна мати не більше 10 улюблених. Спочатку видаліть один, щоб додати інший.",
     search_all_time: "Визнана класика",
     search_highest_rated: "Найвищий рейтинг",
     search_collection_tag: "Колекція",

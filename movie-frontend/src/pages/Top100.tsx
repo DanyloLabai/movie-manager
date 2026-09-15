@@ -164,6 +164,10 @@ export default function Top100() {
         } catch {
           showToast(t("top100_fav_error"));
         }
+      } else if (apiError.response?.status === 400) {
+        showToast(t("search_fav_limit"));
+      } else {
+        showToast(t("top100_fav_error"));
       }
     }
   };

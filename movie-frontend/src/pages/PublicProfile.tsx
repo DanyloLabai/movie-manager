@@ -476,7 +476,6 @@ export default function PublicProfile() {
             isReleased={isReleased}
             onToggleFavorite={() => {}}
             onOpenFriends={() => {}}
-            onViewAllFavorites={() => setActiveTab("favorites")}
             showFriends={false}
             readOnly
           />

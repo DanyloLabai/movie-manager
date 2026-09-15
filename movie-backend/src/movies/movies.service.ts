@@ -55,6 +55,8 @@ interface RecommendationsCacheEntry {
   generatedAt: string;
 }
 
+const FAVORITES_LIMIT = 10;
+
 @Injectable()
 export class MoviesService {
   private readonly logger = new Logger(MoviesService.name);
@@ -1448,6 +1450,17 @@ export class MoviesService {
     });
 
     if (!item) throw new NotFoundException('Media not found in your list');
+
+    if (!item.isFavorite) {
+      const favoritesCount = await this.watchlistRepo.count({
+        where: { user: { id: userId }, isFavorite: true },
+      });
+      if (favoritesCount >= FAVORITES_LIMIT) {
+        throw new BadRequestException(
+          `You can have at most ${FAVORITES_LIMIT} favorites. Remove one before adding another.`,
+        );
+      }
+    }
 
     item.isFavorite = !item.isFavorite;
     item.updatedAt = new Date();

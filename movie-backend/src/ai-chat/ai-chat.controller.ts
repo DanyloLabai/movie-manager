@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Post,
@@ -7,7 +8,10 @@ import {
   Param,
   ParseIntPipe,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,6 +22,7 @@ import {
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { AiChatService } from './ai-chat.service';
 import {
@@ -26,11 +31,19 @@ import {
   DEFAULT_DAILY_TOKEN_LIMIT,
 } from './ai-daily-limit.guard';
 import { TasteMatchDailyLimitGuard } from './taste-match-daily-limit.guard';
+import { PhotoIdentifyDailyLimitGuard } from './photo-identify-daily-limit.guard';
 import { AiUsageLogService } from './ai-usage-log.service';
 import type { ChatMessage } from './interfaces/chat-message.interface';
 import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
 import { APP_TIME_ZONE, startOfDayInTimeZone } from '../common/timezone.util';
 import { User } from '../users/users.entity';
+
+const MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_PHOTO_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
 
 @ApiTags('AI Chat')
 @Controller('api/ai')
@@ -121,6 +134,52 @@ export class AiChatController {
   ) {
     const userId = req.user.userId;
     return this.aiChatService.recommendForTwo(userId, friendId);
+  }
+
+  @Post('identify-photo')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @UseGuards(PhotoIdentifyDailyLimitGuard)
+  @UseInterceptors(
+    FileInterceptor('photo', { limits: { fileSize: MAX_PHOTO_SIZE_BYTES } }),
+  )
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Identify a movie/show from an uploaded screenshot',
+    description:
+      'Uploads a single screenshot/frame and asks AI to identify which movie or TV show it is from, returning a movie card when found. Limited per day (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'Identification result' })
+  @ApiResponse({
+    status: 400,
+    description: 'Missing photo or invalid file type',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 429,
+    description: 'Daily photo-identify limit reached',
+  })
+  async identifyPhoto(
+    @Req() req: AuthenticatedRequest,
+    @UploadedFile() photo?: Express.Multer.File,
+    @Body('lang') lang?: string,
+  ) {
+    if (!photo) {
+      throw new BadRequestException('No photo uploaded');
+    }
+    if (!ALLOWED_PHOTO_MIME_TYPES.has(photo.mimetype)) {
+      throw new BadRequestException(
+        'Unsupported file type. Please upload a JPEG, PNG, or WebP image.',
+      );
+    }
+
+    const userId = req.user.userId;
+    return this.aiChatService.identifyMovieFromPhoto(
+      userId,
+      photo.buffer,
+      photo.mimetype,
+      lang === 'uk' ? 'uk' : 'en',
+    );
   }
 
   @Get('history')

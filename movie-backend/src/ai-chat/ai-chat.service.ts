@@ -19,6 +19,7 @@ import { ChatMessage } from './interfaces/chat-message.interface';
 import { VectorService } from '../vector/vector.service';
 import { createGroq } from '@ai-sdk/groq';
 import { AiUsageLogService } from './ai-usage-log.service';
+import { AiProvider } from './ai-usage-log.entity';
 import { getErrorMessage } from '../common/utils/error.utils';
 
 const titleEntrySchema = z.object({
@@ -36,7 +37,7 @@ const titleEntrySchema = z.object({
     .string()
     .nullable()
     .describe(
-      "The director's (or, for a TV series, the creator's) name- ONLY when you actually know it and it would help tell apart two different real entries that happen to share the exact same title AND media type (e.g. two unrelated movies both simply called \"The Gentlemen\"). Set to null when not needed or unsure- never guess a director.",
+      'The director\'s (or, for a TV series, the creator\'s) name- ONLY when you actually know it and it would help tell apart two different real entries that happen to share the exact same title AND media type (e.g. two unrelated movies both simply called "The Gentlemen"). Set to null when not needed or unsure- never guess a director.',
     ),
 });
 
@@ -81,6 +82,48 @@ const watchTogetherSchema = z.object({
     ),
 });
 
+const photoIdentifyCandidateSchema = z.object({
+  actorOrCharacter: z
+    .string()
+    .nullable()
+    .describe(
+      'The specific actor and/or character you recognize in the frame (e.g. "Matthew McConaughey as Mickey Pearson"). Name them FIRST, then base the title guess on who they actually are- do not jump straight to a title from vibes alone. Null only when no specific person is identifiable (e.g. an animated character, a landscape, on-screen text only).',
+    ),
+  title: z
+    .string()
+    .describe(
+      'The real title (original/English, since that is what the search index uses).',
+    ),
+  year: z
+    .number()
+    .nullable()
+    .describe(
+      'Release year- only when it helps disambiguate a remake/same-name entry or you are confident of it. Null otherwise.',
+    ),
+  mediaType: z
+    .enum(['movie', 'tv'])
+    .describe('Whether this specific candidate is a movie or a TV series.'),
+});
+
+const photoIdentifySchema = z.object({
+  recognized: z
+    .boolean()
+    .describe(
+      'True if you have real evidence for at least one specific title- e.g. you recognize an actor, a distinctive shot/scene, on-screen text, or credits, even if you are not 100% certain. Go with your best identification(s) when you have a genuine reason to think them, the same way you would answer a friend who casually asked "what movie is this?". False only when you are purely guessing from generic vibes (genre, setting, lighting) with no actual identifying evidence.',
+    ),
+  candidates: z
+    .array(photoIdentifyCandidateSchema)
+    .max(3)
+    .describe(
+      "1-3 candidate titles, ranked most-likely first. Give more than one ONLY when you are genuinely torn between a small number of real possibilities (e.g. two actors you could be confusing, or a scene reused across a franchise's entries)- do not pad with filler guesses just to reach 3. Empty array when recognized is false.",
+    ),
+  message: z
+    .string()
+    .describe(
+      'A short, friendly 1-2 sentence reply to the user. If there is one confident candidate, state it plainly. If there are multiple, briefly say you are not fully sure which and name the possibilities. If none, say you could not confidently identify it. Reply in the language specified in the prompt.',
+    ),
+});
+
 export interface UserContextData {
   favorites: WatchlistItem[];
   watchlistItems: WatchlistItem[];
@@ -104,6 +147,16 @@ interface TitleGuess {
 export const DEFAULT_AI_PROVIDER_TIMEOUT_MS = 15000;
 export const DEFAULT_DEEPSEEK_PROVIDER_TIMEOUT_MS = 150000;
 export const DEFAULT_OPENAI_PROVIDER_TIMEOUT_MS = 60000;
+// Vision calls (uploading + processing image bytes) routinely take longer
+// than the plain-text providerTimeoutMs (15s)- that timeout is tuned for
+// JSON chat replies, not photo identification.
+export const DEFAULT_PHOTO_IDENTIFY_TIMEOUT_MS = 30000;
+// deepseek-flash (primary for photo-identify) answered in 3-35s in testing,
+// so this gets its own, much shorter timeout instead of reusing
+// DEEPSEEK_PROVIDER_TIMEOUT_MS (150s)- that one is tuned for the reasoning
+// model used in text chat, and waiting 150s before failing over to OpenAI on
+// a slow/degraded DeepSeek made an already-slow request feel broken.
+export const DEFAULT_DEEPSEEK_PHOTO_IDENTIFY_TIMEOUT_MS = 45000;
 
 @Injectable()
 export class AiChatService {
@@ -115,6 +168,8 @@ export class AiChatService {
   private readonly providerTimeoutMs: number;
   private readonly deepseekProviderTimeoutMs: number;
   private readonly openaiProviderTimeoutMs: number;
+  private readonly photoIdentifyTimeoutMs: number;
+  private readonly deepseekPhotoIdentifyTimeoutMs: number;
 
   constructor(
     private configService: ConfigService,
@@ -144,6 +199,14 @@ export class AiChatService {
     this.openaiProviderTimeoutMs = Number(
       this.configService.get<string>('OPENAI_PROVIDER_TIMEOUT_MS') ??
         DEFAULT_OPENAI_PROVIDER_TIMEOUT_MS,
+    );
+    this.photoIdentifyTimeoutMs = Number(
+      this.configService.get<string>('PHOTO_IDENTIFY_TIMEOUT_MS') ??
+        DEFAULT_PHOTO_IDENTIFY_TIMEOUT_MS,
+    );
+    this.deepseekPhotoIdentifyTimeoutMs = Number(
+      this.configService.get<string>('DEEPSEEK_PHOTO_IDENTIFY_TIMEOUT_MS') ??
+        DEFAULT_DEEPSEEK_PHOTO_IDENTIFY_TIMEOUT_MS,
     );
   }
 
@@ -396,6 +459,133 @@ export class AiChatService {
         tokenCount: usage.totalTokens,
       }),
     };
+  }
+
+  async identifyMovieFromPhoto(
+    userId: number,
+    imageBuffer: Buffer,
+    mimeType: string,
+    lang: 'en' | 'uk' = 'en',
+  ): Promise<{ message: string; movies?: MovieResultDto[] }> {
+    // A photo upload carries no user text, so (unlike text chat, which reads
+    // the reply language off the user's own message) there is nothing to
+    // detect the language from- the frontend passes its current UI language
+    // instead.
+    const replyLanguage = lang === 'uk' ? 'Ukrainian' : 'English';
+    const imageMessage = {
+      role: 'user' as const,
+      content: [
+        {
+          type: 'text' as const,
+          text:
+            'You are an expert at recognizing movies and TV shows from a single screenshot or frame. ' +
+            'Look at this image and identify which movie or TV show it is from- go with your best guess ' +
+            'whenever you have real evidence for it (recognizing an actor, a distinctive scene, on-screen ' +
+            'text/subtitles, or credits), even if you are not fully certain. First name the specific actor ' +
+            'and/or character you recognize, then derive the title from who they actually are- do not jump ' +
+            'straight to a title from generic vibes. If you are genuinely torn between a couple of real ' +
+            'possibilities (e.g. two actors you could be confusing, or a scene reused across a franchise), ' +
+            'list up to 3 ranked candidates instead of forcing a single answer. Only decline when you would ' +
+            `truly be inventing a title from generic genre/lighting/vibes alone. Reply in ${replyLanguage}.`,
+        },
+        {
+          type: 'image' as const,
+          image: imageBuffer,
+          mediaType: mimeType,
+        },
+      ],
+    };
+
+    const callVision = async (
+      model: ReturnType<typeof this.groqClient>,
+      provider: AiProvider,
+      timeoutMs?: number,
+      providerOptions?: Record<string, Record<string, string>>,
+    ): Promise<{ message: string; movies?: MovieResultDto[] }> => {
+      const startedAt = Date.now();
+      const { object, usage } = await generateObject({
+        model,
+        messages: [imageMessage],
+        schema: photoIdentifySchema,
+        abortSignal: this.newProviderAbortSignal(timeoutMs),
+        ...(providerOptions ? { providerOptions } : {}),
+      });
+
+      let movies: MovieResultDto[] | undefined;
+      if (object.recognized && object.candidates.length > 0) {
+        const seenIds = new Set<number>();
+        const found: MovieResultDto[] = [];
+        for (const candidate of object.candidates) {
+          const match = await this.moviesService.findMovieByTitle(
+            candidate.title,
+            candidate.year ?? undefined,
+            candidate.mediaType,
+          );
+          if (match && !seenIds.has(match.id)) {
+            seenIds.add(match.id);
+            found.push(match);
+          }
+        }
+        if (found.length > 0) movies = found;
+      }
+
+      this.aiUsageLogService
+        .logUsage({
+          userId,
+          provider,
+          wasFailover: provider !== 'deepseek',
+          requestType: 'photo_identify',
+          tokenCount: usage?.totalTokens ?? null,
+          latencyMs: Date.now() - startedAt,
+        })
+        .catch((err: unknown) =>
+          this.logger.warn(`AI usage logging failed: ${getErrorMessage(err)}`),
+        );
+
+      return { message: object.message, ...(movies && { movies }) };
+    };
+
+    try {
+      this.logger.log(
+        'Identifying photo with DeepSeek (deepseek-flash, primary)...',
+      );
+      return await callVision(
+        this.deepseekClient('deepseek-flash'),
+        'deepseek',
+        this.deepseekPhotoIdentifyTimeoutMs,
+      );
+    } catch (deepseekError: unknown) {
+      this.logger.error(
+        `DeepSeek photo-identify failed: ${getErrorMessage(deepseekError)}`,
+      );
+      this.logger.warn('Falling back to OpenAI...');
+      try {
+        return await callVision(
+          this.openaiClient.responses('gpt-5.6-luna'),
+          'openai',
+          this.openaiProviderTimeoutMs,
+          { openai: { reasoningEffort: 'medium' } },
+        );
+      } catch (openaiError: unknown) {
+        this.logger.error(
+          `OpenAI photo-identify failed: ${getErrorMessage(openaiError)}`,
+        );
+        this.logger.warn('Falling back to Gemini...');
+        try {
+          return await callVision(
+            this.geminiClient('gemini-flash-latest'),
+            'gemini',
+            this.photoIdentifyTimeoutMs,
+          );
+        } catch (geminiError: unknown) {
+          const message = getErrorMessage(geminiError);
+          throw new InternalServerErrorException(
+            'Photo identification is currently unavailable',
+            message,
+          );
+        }
+      }
+    }
   }
 
   private async getUserContextData(
