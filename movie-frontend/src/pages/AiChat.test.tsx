@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import AiChat from "./AiChat";
@@ -55,6 +55,8 @@ describe("AiChat", () => {
       totalTokens: 100,
       requestLimit: 20,
       tokenLimit: 10000,
+      photoRequestCount: 0,
+      photoRequestLimit: 3,
     });
     mockedGetProfile.mockReset().mockResolvedValue({ favorites: [], recent: [] });
     mockedGetNotifications.mockReset().mockResolvedValue([]);
@@ -199,7 +201,7 @@ describe("AiChat", () => {
       const user = userEvent.setup();
       renderAiChat();
 
-      await screen.findByPlaceholderText("Ask about a movie...");
+      const input = await screen.findByPlaceholderText("Ask about a movie...");
       const fileInput = document.querySelector(
         'input[type="file"]',
       ) as HTMLInputElement;
@@ -208,11 +210,46 @@ describe("AiChat", () => {
       });
       await user.upload(fileInput, file);
 
-      expect(mockedIdentifyPhoto).toHaveBeenCalledWith(file, "en");
+      // The photo isn't sent on attach- it waits for the user to (optionally)
+      // add a note and submit, just like a typed message.
+      expect(mockedIdentifyPhoto).not.toHaveBeenCalled();
+      fireEvent.submit(input.closest("form")!);
+
+      expect(mockedIdentifyPhoto).toHaveBeenCalledWith(file, "", "en");
       expect(
         await screen.findByText("This looks like Inception (2010)."),
       ).toBeInTheDocument();
       expect(screen.getByText("Inception")).toBeInTheDocument();
+    });
+
+    it("sends the typed note along with the attached photo", async () => {
+      mockedIdentifyPhoto.mockResolvedValue({
+        message: "This looks like Inception (2010).",
+      });
+      const user = userEvent.setup();
+      renderAiChat();
+
+      const input = await screen.findByPlaceholderText("Ask about a movie...");
+      const fileInput = document.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      const file = new File(["fake"], "screenshot.jpg", {
+        type: "image/jpeg",
+      });
+      await user.upload(fileInput, file);
+      // fireEvent.change instead of user.type: this input's onFocus schedules
+      // a one-off blur/refocus (an iOS caret-position workaround) that races
+      // with userEvent's per-keystroke typing and can drop characters.
+      fireEvent.change(input, {
+        target: { value: "is this a christopher nolan movie?" },
+      });
+      fireEvent.submit(input.closest("form")!);
+
+      expect(mockedIdentifyPhoto).toHaveBeenCalledWith(
+        file,
+        "is this a christopher nolan movie?",
+        "en",
+      );
     });
 
     it("rejects an unsupported file type without calling the API", async () => {
@@ -242,7 +279,7 @@ describe("AiChat", () => {
       const user = userEvent.setup();
       renderAiChat();
 
-      await screen.findByPlaceholderText("Ask about a movie...");
+      const input = await screen.findByPlaceholderText("Ask about a movie...");
       const fileInput = document.querySelector(
         'input[type="file"]',
       ) as HTMLInputElement;
@@ -250,6 +287,7 @@ describe("AiChat", () => {
         type: "image/png",
       });
       await user.upload(fileInput, file);
+      fireEvent.submit(input.closest("form")!);
 
       expect(
         await screen.findByText(

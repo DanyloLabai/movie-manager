@@ -156,11 +156,28 @@ input[type="number"]::-webkit-inner-spin-button {
   animation: sheet-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+@keyframes pulse-ring {
+  0%,
+  100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(1.18);
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-in,
   .animate-modal-in,
   .animate-page-in,
-  .animate-sheet-in {
+  .animate-sheet-in,
+  .animate-pulse-ring {
     animation: none;
   }
 }

@@ -192,7 +192,25 @@ export class UsersService {
       ...profileStats,
       isFriend,
       requestPending,
+      friendsCount: user.friends?.length ?? 0,
     };
+  }
+
+  async getPublicFriends(targetUserId: number): Promise<FriendDto[]> {
+    const user = await this.usersRepository.findOne({
+      where: { id: targetUserId },
+      relations: ['friends'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('Profile not found');
+    }
+
+    return (user.friends || []).map((friend) => ({
+      id: friend.id,
+      username: friend.username,
+      avatarUrl: friend.avatarUrl,
+    }));
   }
 
   async getPublicWatched(targetUserId: number, limit: number, offset: number) {

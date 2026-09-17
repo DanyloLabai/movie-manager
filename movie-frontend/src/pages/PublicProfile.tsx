@@ -4,13 +4,14 @@ import * as usersApi from "../api/users.api";
 import * as aiApi from "../api/ai.api";
 import * as moviesApi from "../api/movies.api";
 import { useLang } from "../context/LanguageContext";
-import { getUserRank, getAchievementsList } from "../utils/achievements";
-import ProfileHero from "../components/profile/ProfileHero";
+import { getUserRank } from "../utils/achievements";
+import ProfileHero, { FriendsPill } from "../components/profile/ProfileHero";
 import ProfileSection from "../components/profile/ProfileSection";
 import ProfileStatsStrip from "../components/profile/ProfileStatsStrip";
 import ProfileFavoritesPanel from "../components/profile/ProfileFavoritesPanel";
 import ProfileWrappedPanel from "../components/profile/ProfileWrappedPanel";
 import ProfileChartsPanel from "../components/profile/ProfileChartsPanel";
+import PublicFriendsModal from "../components/profile/PublicFriendsModal";
 import LogoIcon from "../components/LogoIcon";
 import type { MovieResult, WatchlistItem } from "../types/movie.types";
 
@@ -35,6 +36,7 @@ type PublicProfileData = {
   recent?: PublicMovieRef[];
   isFriend?: boolean;
   requestPending?: boolean;
+  friendsCount?: number;
   stats?: {
     genreDistribution?: Array<{ name: string; value: number }>;
     ratingDistribution?: Array<{ name: string; value: number }>;
@@ -121,6 +123,7 @@ export default function PublicProfile() {
   const [dailyLimitReached, setDailyLimitReached] = useState(false);
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [requestSent, setRequestSent] = useState(false);
+  const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -335,11 +338,6 @@ export default function PublicProfile() {
       profileData.stats.genreDistribution.length > 0,
   );
 
-  const achievementsList = getAchievementsList(
-    { favoritesCount, watchedCount, totalCount },
-    t,
-  );
-
   const favorites = (profileData.favorites || []).map((m) =>
     toWatchlistItem(m, { isFavorite: true, isWatched: true }),
   );
@@ -349,6 +347,11 @@ export default function PublicProfile() {
 
   const friendActionSlot = (
     <>
+      <FriendsPill
+        friendsCount={profileData.friendsCount || 0}
+        friendsLabel={t("profile_friends")}
+        onOpenFriends={() => setIsFriendsModalOpen(true)}
+      />
       {profileData.isFriend ? (
         <div className="flex items-center justify-center gap-2 px-5 py-2.5 border border-[#d9ac54]/45 rounded-full font-ui font-semibold text-[11px] md:text-[12px] tracking-[1.5px] text-[#d9ac54] uppercase">
           ✓ {t("profile_friends")}
@@ -470,14 +473,11 @@ export default function PublicProfile() {
         <ProfileSection noBorder={!hasStats}>
           <ProfileFavoritesPanel
             favorites={favorites}
-            achievements={achievementsList}
-            friends={[]}
-            friendsCount={0}
+            totalCount={totalCount}
             isReleased={isReleased}
             onToggleFavorite={() => {}}
-            onOpenFriends={() => {}}
-            showFriends={false}
             readOnly
+            journeyOwnerName={profileData.username}
           />
         </ProfileSection>
 
@@ -738,6 +738,14 @@ export default function PublicProfile() {
             )}
           </div>
         </div>
+      )}
+
+      {isFriendsModalOpen && (
+        <PublicFriendsModal
+          userId={profileData.id}
+          username={profileData.username}
+          onClose={() => setIsFriendsModalOpen(false)}
+        />
       )}
 
       {toastMessage && (

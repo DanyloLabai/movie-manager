@@ -22,7 +22,7 @@ function getLastWatched(recent: WatchlistItem[]) {
   return item ? { title: item.title, updatedAt: item.updatedAt! } : null;
 }
 
-function FriendsPill({
+export function FriendsPill({
   className = "",
   friendsCount,
   friendsLabel,

@@ -50,10 +50,12 @@ export async function watchTogether(
 
 export async function identifyPhoto(
   photo: File,
+  note: string,
   lang: string,
 ): Promise<{ message?: string; movies?: MovieResult[] }> {
   const formData = new FormData();
   formData.append("photo", photo);
+  if (note) formData.append("note", note);
   formData.append("lang", lang);
   const res = await api.post("/ai/identify-photo", formData, {
     headers: { "Content-Type": "multipart/form-data" },
@@ -66,6 +68,8 @@ export type AiUsage = {
   totalTokens: number;
   requestLimit: number;
   tokenLimit: number;
+  photoRequestCount: number;
+  photoRequestLimit: number;
 };
 
 export async function getUsage(): Promise<AiUsage> {

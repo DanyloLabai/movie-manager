@@ -7,7 +7,7 @@ import type { FriendRequest } from "../api/users.api";
 import * as quizApi from "../api/quiz.api";
 import type { QuizStats } from "../api/quiz.api";
 import { useLang } from "../context/LanguageContext";
-import { getUserRank, getAchievementsList } from "../utils/achievements";
+import { getUserRank } from "../utils/achievements";
 import { formatTimeAgo } from "../utils/time";
 import NotificationBell from "../components/NotificationBell";
 import LogoIcon from "../components/LogoIcon";
@@ -398,26 +398,12 @@ export default function Watchlist() {
 
   const renderProfileTab = () => {
     const totalCount = profileData?.totalCount || 0;
-    const favoritesCount =
-      profileData?.totalFavorites ?? profileData?.favorites?.length ?? 0;
     const watchedCount = profileData?.watchedCount || 0;
 
     const hasStats = Boolean(
       profileData?.stats &&
       profileData.stats.genreDistribution &&
       profileData.stats.genreDistribution.length > 0,
-    );
-
-    const achievementsList = getAchievementsList(
-      {
-        favoritesCount,
-        watchedCount,
-        totalCount,
-        quizSolvedCount: quizStats?.totalSolved,
-        quizPerfectCount: quizStats?.perfectSolves,
-        quizCurrentStreak: quizStats?.currentStreak,
-      },
-      t,
     );
 
     return (
@@ -456,12 +442,9 @@ export default function Watchlist() {
         <ProfileSection noBorder={!hasStats}>
           <ProfileFavoritesPanel
             favorites={profileData?.favorites || []}
-            achievements={achievementsList}
-            friends={friends}
-            friendsCount={friends.length}
+            totalCount={totalCount}
             isReleased={isReleased}
             onToggleFavorite={handleToggleFavorite}
-            onOpenFriends={() => setIsFriendsModalOpen(true)}
             onViewAllFavorites={() => setActiveTab("favorites")}
             onMovieLinkClick={handleMovieLinkClick}
           />

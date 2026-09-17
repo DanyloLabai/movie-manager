@@ -47,8 +47,14 @@ export class AiDailyLimitGuard implements CanActivate {
       select: ['timezone'],
     });
     const since = startOfDayInTimeZone(user?.timezone || APP_TIME_ZONE);
+    // Photo-identify requests draw from the same daily request/token budget
+    // as regular chat- they just also carry their own, tighter per-day cap
+    // (see PhotoIdentifyDailyLimitGuard).
     const { requestCount, totalTokens } =
-      await this.aiUsageLogService.getUserUsageSince(userId, since, 'chat');
+      await this.aiUsageLogService.getUserUsageSince(userId, since, [
+        'chat',
+        'photo_identify',
+      ]);
 
     if (requestCount >= this.requestLimit) {
       throw new HttpException(

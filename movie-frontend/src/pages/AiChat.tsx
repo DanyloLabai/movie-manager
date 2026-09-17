@@ -71,7 +71,10 @@ function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
       {isOpen && (
         <ul className="mt-1.5 flex flex-col gap-1 border-l border-[#d9ac54]/20 pl-2.5">
           {reasoning.map((reason, idx) => (
-            <li key={idx} className="font-ui text-[10px] leading-snug text-[#8f8574]">
+            <li
+              key={idx}
+              className="font-ui text-[10px] leading-snug text-[#8f8574]"
+            >
               {reason.preferenceText}{" "}
               <span className="text-[#d9ac54]/70 font-semibold">
                 ({Math.round(reason.similarityScore * 100)}%)
@@ -93,22 +96,18 @@ export default function AiChat() {
   const [input, setInput] = useState("");
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
-  const [addModalMovie, setAddModalMovie] = useState<MovieResult | null>(
-    null,
-  );
+  const [addModalMovie, setAddModalMovie] = useState<MovieResult | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [isUsageOpen, setIsUsageOpen] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<{
+    file: File;
+    previewUrl: string;
+  } | null>(null);
 
-  // The conversation lives outside the component tree, so an in-flight AI
-  // request keeps running (and its answer keeps landing) when the user
-  // navigates away from this route mid-thought.
   const { messages, isLoading, isHistoryLoading, cooldownUntil, usage } =
     useSyncExternalStore(aiChatStore.subscribe, aiChatStore.getState);
-  // The cooldown is stored as a deadline so it keeps counting down correctly
-  // across unmounts. `now` only advances while a cooldown is running, so the
-  // clamp covers the first render after a deadline is set, before the first
-  // tick has refreshed it.
+
   const [now, setNow] = useState(() => Date.now());
   const cooldownTime = Math.min(
     aiChatStore.COOLDOWN_SECONDS,
@@ -246,7 +245,19 @@ export default function AiChat() {
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || cooldownTime > 0) return;
+    if (isLoading || cooldownTime > 0) return;
+
+    if (pendingPhoto) {
+      const { file, previewUrl } = pendingPhoto;
+      const note = input.trim();
+      setInput("");
+      setPendingPhoto(null);
+      inputRef.current?.blur();
+      void aiChatStore.sendPhoto(file, previewUrl, note, copy, lang);
+      return;
+    }
+
+    if (!input.trim()) return;
     const text = input;
     setInput("");
     sendMessageToAi(text);
@@ -261,7 +272,7 @@ export default function AiChat() {
     photoInputRef.current?.click();
   };
 
-  const sendPhotoToAi = (file: File) => {
+  const attachPhoto = (file: File) => {
     if (isLoading || cooldownTime > 0) return;
 
     if (!ALLOWED_PHOTO_TYPES.has(file.type)) {
@@ -273,15 +284,49 @@ export default function AiChat() {
       return;
     }
 
-    const previewUrl = URL.createObjectURL(file);
-    void aiChatStore.sendPhoto(file, previewUrl, copy, lang);
+    setPendingPhoto((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return { file, previewUrl: URL.createObjectURL(file) };
+    });
+    inputRef.current?.focus();
+  };
+
+  const removePendingPhoto = () => {
+    setPendingPhoto((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
   };
 
   const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (file) sendPhotoToAi(file);
+    if (file) attachPhoto(file);
   };
+
+  const attachPhotoRef = useRef(attachPhoto);
+  useEffect(() => {
+    attachPhotoRef.current = attachPhoto;
+  });
+
+  useEffect(() => {
+    const handleWindowPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            attachPhotoRef.current(file);
+          }
+          return;
+        }
+      }
+    };
+    window.addEventListener("paste", handleWindowPaste);
+    return () => window.removeEventListener("paste", handleWindowPaste);
+  }, []);
 
   const handleAddFromChat = async (movie: MovieResult) => {
     try {
@@ -456,6 +501,25 @@ export default function AiChat() {
                   />
                 </div>
               </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-mono-ui text-[9.5px] tracking-[2px] text-[#8f8574] uppercase">
+                    {t("chat_usage_photo_label")}
+                  </span>
+                  <span className="font-semibold text-[12px] text-[#f2ead9]">
+                    {usage.photoRequestCount}/{usage.photoRequestLimit}
+                  </span>
+                </div>
+                <div className="h-[5px] bg-white/[.08] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (usage.photoRequestCount / usage.photoRequestLimit) * 100)}%`,
+                      background: "linear-gradient(90deg, #a87c2e, #d9ac54)",
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -477,6 +541,10 @@ export default function AiChat() {
               {t("chat_usage_tokens")
                 .replace("[USED]", formatTokenCount(usage.totalTokens))
                 .replace("[LIMIT]", formatTokenCount(usage.tokenLimit))}
+              {" · "}
+              {t("chat_usage_photo")
+                .replace("[USED]", String(usage.photoRequestCount))
+                .replace("[LIMIT]", String(usage.photoRequestLimit))}
             </span>
           )}
           <button
@@ -533,7 +601,11 @@ export default function AiChat() {
             ) : isEmpty ? (
               <div className="flex flex-col items-center text-center gap-5 px-4 py-2">
                 <div className="w-16 h-16 rounded-full border border-[#d9ac54]/45 flex items-center justify-center">
-                  <img src={LogoImg} alt="" className="w-8 h-8 object-contain" />
+                  <img
+                    src={LogoImg}
+                    alt=""
+                    className="w-8 h-8 object-contain"
+                  />
                 </div>
                 <div className="flex flex-col gap-2 items-center">
                   <span className="font-ui font-bold text-[26px] tracking-[5px] text-[#f2ead9]">
@@ -564,7 +636,11 @@ export default function AiChat() {
                 >
                   {msg.role === "ai" && (
                     <div className="w-[30px] h-[30px] rounded-full border border-[#d9ac54]/45 flex items-center justify-center shrink-0 mt-0.5">
-                      <img src={LogoImg} alt="" className="w-3.5 h-3.5 object-contain" />
+                      <img
+                        src={LogoImg}
+                        alt=""
+                        className="w-3.5 h-3.5 object-contain"
+                      />
                     </div>
                   )}
                   <div
@@ -602,7 +678,9 @@ export default function AiChat() {
                               <div
                                 className="w-[86px] h-[128px] rounded-[5px] bg-[#1c1a14] shrink-0 overflow-hidden cursor-pointer"
                                 onClick={() =>
-                                  navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
+                                  navigate(
+                                    `/movie/${movie.id}?type=${movie.mediaType}`,
+                                  )
                                 }
                               >
                                 {movie.posterUrl ? (
@@ -622,7 +700,9 @@ export default function AiChat() {
                                   <h4
                                     className="font-bold text-[16px] text-[#f2ead9] truncate cursor-pointer"
                                     onClick={() =>
-                                      navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
+                                      navigate(
+                                        `/movie/${movie.id}?type=${movie.mediaType}`,
+                                      )
                                     }
                                   >
                                     {movie.title}
@@ -656,7 +736,9 @@ export default function AiChat() {
                                   )}
                                   <button
                                     onClick={() =>
-                                      navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
+                                      navigate(
+                                        `/movie/${movie.id}?type=${movie.mediaType}`,
+                                      )
                                     }
                                     className="px-[18px] py-2 border border-white/[.15] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] rounded-full font-semibold text-[10.5px] tracking-[1.5px] text-[#c9c0ac] uppercase transition shrink-0 whitespace-nowrap"
                                   >
@@ -680,7 +762,11 @@ export default function AiChat() {
             {isLoading && (
               <div className="flex items-start gap-3.5">
                 <div className="w-[30px] h-[30px] rounded-full border border-[#d9ac54]/45 flex items-center justify-center shrink-0">
-                  <img src={LogoImg} alt="" className="w-3.5 h-3.5 object-contain" />
+                  <img
+                    src={LogoImg}
+                    alt=""
+                    className="w-3.5 h-3.5 object-contain"
+                  />
                 </div>
                 <div className="flex gap-1.5 pt-2.5">
                   <div className="w-1.5 h-1.5 bg-[#d9ac54] rounded-full animate-bounce" />
@@ -693,6 +779,28 @@ export default function AiChat() {
         </div>
 
         <div className="shrink-0 px-3 pt-3 pb-2.5 z-40 border-t border-[rgba(217,172,84,.16)] sm:border-t-0">
+          {pendingPhoto && (
+            <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl w-full mx-auto flex items-center gap-2.5 mb-2 px-1">
+              <div className="relative w-12 h-12 shrink-0 rounded-lg overflow-hidden border border-[#d9ac54]/40">
+                <img
+                  src={pendingPhoto.previewUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={removePendingPhoto}
+                  title={t("chat_photo_remove_title")}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/80 text-white flex items-center justify-center text-[9px] leading-none"
+                >
+                  ✕
+                </button>
+              </div>
+              <span className="text-[11px] text-[#8f8574] truncate">
+                {t("chat_photo_attached_hint")}
+              </span>
+            </div>
+          )}
           <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl w-full mx-auto flex items-center gap-2">
             <button
               onClick={handleClearChat}
@@ -700,7 +808,12 @@ export default function AiChat() {
               title={t("chat_clear_title")}
               className="sm:hidden shrink-0 w-10 h-10 text-[#8f8574] border border-white/[.12] rounded-full hover:text-red-400 hover:border-red-500/40 transition disabled:opacity-30 flex items-center justify-center"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -793,13 +906,19 @@ export default function AiChat() {
                           "[X]",
                           String(cooldownTime),
                         )
-                      : t("chat_placeholder")
+                      : pendingPhoto
+                        ? t("chat_photo_placeholder")
+                        : t("chat_placeholder")
                 }
                 className="w-full bg-transparent border-none text-[#f2ead9] placeholder-[#8f8574] focus:outline-none focus:ring-0 transition disabled:opacity-50 text-sm"
               />
               <button
                 type="submit"
-                disabled={isLoading || !input.trim() || cooldownTime > 0}
+                disabled={
+                  isLoading ||
+                  (!input.trim() && !pendingPhoto) ||
+                  cooldownTime > 0
+                }
                 className="shrink-0 w-10 h-10 rounded-full bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] flex items-center justify-center font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {isLoading ? (
