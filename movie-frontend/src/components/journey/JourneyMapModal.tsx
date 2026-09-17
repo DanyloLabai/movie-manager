@@ -21,6 +21,11 @@ export default function JourneyMapModal({
   const cardRef = useRef<HTMLDivElement>(null);
   const [fitScale, setFitScale] = useState<number | null>(null);
   const [scale, setScale] = useState<number | null>(null);
+  const [prevFitScale, setPrevFitScale] = useState<number | null>(null);
+  if (fitScale !== prevFitScale) {
+    setPrevFitScale(fitScale);
+    setScale(fitScale);
+  }
   const zoomedIn =
     fitScale !== null && scale !== null && scale > fitScale * 1.35;
 
@@ -39,10 +44,6 @@ export default function JourneyMapModal({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-
-  useEffect(() => {
-    if (fitScale !== null) setScale(fitScale);
-  }, [fitScale]);
 
   return (
     <div

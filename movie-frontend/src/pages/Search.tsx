@@ -251,7 +251,7 @@ export default function Search() {
       .finally(() => setIsSearching(false));
 
     navigate(location.pathname, { replace: true, state: null });
-  }, [location.state]);
+  }, [location.state, location.pathname, navigate]);
 
   const visibleRecommendations = recommendations
     .filter((movie) => !addedIds.includes(movie.id))
