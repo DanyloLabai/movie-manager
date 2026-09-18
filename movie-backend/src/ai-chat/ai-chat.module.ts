@@ -6,10 +6,11 @@ import { AiUsageModule } from './ai-usage.module';
 import { MoviesModule } from 'src/movies/movies.module';
 import { VectorModule } from 'src/vector/vector.module';
 import { User } from 'src/users/users.entity';
+import { WatchTogetherPick } from './watch-together-pick.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, WatchTogetherPick]),
     MoviesModule,
     VectorModule,
     AiUsageModule,

@@ -44,8 +44,12 @@ export default function JourneyMapGlimpse({
   const stops = LOTR_STOPS;
   const currentIndex = Math.max(0, getCurrentStopIndex(totalCount, stops));
   const current = stops[currentIndex];
-  const fx = (current.x / JOURNEY_VIEWBOX.w) * 100;
-  const fy = (current.y / JOURNEY_VIEWBOX.h) * 100;
+  const PAN_MIN_PCT = 50 / ZOOM;
+  const PAN_MAX_PCT = 100 - PAN_MIN_PCT;
+  const clampPan = (pct: number) =>
+    Math.min(Math.max(pct, PAN_MIN_PCT), PAN_MAX_PCT);
+  const fx = clampPan((current.x / JOURNEY_VIEWBOX.w) * 100);
+  const fy = clampPan((current.y / JOURNEY_VIEWBOX.h) * 100);
 
   const routeD = useMemo(
     () => buildRoutePath(stops.map((s) => ({ x: s.x, y: s.y }))),

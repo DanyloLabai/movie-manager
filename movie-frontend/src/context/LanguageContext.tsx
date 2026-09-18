@@ -254,7 +254,6 @@ const translations = {
     journey_expand_hint: "Explore the map",
     journey_zoom_reset: "Reset",
     journey_realm_lotr: "Middle-earth",
-    journey_open_map: "Open Full Map",
     journey_zoom_hint: "Pinch, scroll, or drag inside the full map to zoom.",
     journey_how_it_works:
       "Every movie you add to your watchlist (watched or planned) moves you forward.",
@@ -832,7 +831,6 @@ const translations = {
     journey_expand_hint: "Роздивитись карту",
     journey_zoom_reset: "Скинути",
     journey_realm_lotr: "Середзем'я",
-    journey_open_map: "Відкрити карту",
     journey_zoom_hint: "Щоб наблизити карту — використайте pinch, колесо миші або перетягування.",
     journey_how_it_works:
       "Кожен фільм, доданий у твій список (переглянутий чи запланований), просуває тебе вперед.",

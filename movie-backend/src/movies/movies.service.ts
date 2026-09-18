@@ -672,9 +672,11 @@ export class MoviesService {
       ]);
 
       const trendingMovies = (movieRes?.data.results || [])
+        .filter((media) => media.original_language !== 'ru')
         .slice(0, this.TRENDING_LIMIT)
         .map((media) => this.mapMediaToDto(media, 'movie'));
       const trendingTv = (tvRes?.data.results || [])
+        .filter((media) => media.original_language !== 'ru')
         .slice(0, this.TRENDING_LIMIT)
         .map((media) => this.mapMediaToDto(media, 'tv'));
 
@@ -714,6 +716,7 @@ export class MoviesService {
                 'primary_release_date.gte': today,
                 'primary_release_date.lte': futureDate,
                 with_release_type: '2|3',
+                without_original_language: 'ru',
               },
               headers: { Authorization: `Bearer ${this.tmdbToken}` },
             },
@@ -729,6 +732,7 @@ export class MoviesService {
                 sort_by: 'popularity.desc',
                 'first_air_date.gte': today,
                 'first_air_date.lte': futureDate,
+                without_original_language: 'ru',
               },
               headers: { Authorization: `Bearer ${this.tmdbToken}` },
             },
@@ -739,7 +743,10 @@ export class MoviesService {
       const upcomingMovies = (movieRes?.data.results || [])
         .filter(
           (media: TmdbMultiSearchResultDto) =>
-            media.poster_path && media.overview && media.title,
+            media.poster_path &&
+            media.overview &&
+            media.title &&
+            media.original_language !== 'ru',
         )
         .slice(0, this.UPCOMING_LIMIT)
         .map((media) => this.mapMediaToDto(media, 'movie'));
@@ -747,7 +754,10 @@ export class MoviesService {
       const upcomingTv = (tvRes?.data.results || [])
         .filter(
           (media: TmdbMultiSearchResultDto) =>
-            media.poster_path && media.overview && media.name,
+            media.poster_path &&
+            media.overview &&
+            media.name &&
+            media.original_language !== 'ru',
         )
         .slice(0, this.UPCOMING_LIMIT)
         .map((media) => this.mapMediaToDto(media, 'tv'));
@@ -897,6 +907,7 @@ export class MoviesService {
       if (!data.results) return [];
 
       const results = data.results
+        .filter((media) => media.original_language !== 'ru')
         .slice(0, this.SIMILAR_LIMIT)
         .map((media: TmdbMultiSearchResultDto) =>
           this.mapMediaToDto(media, type as 'movie' | 'tv'),
@@ -936,6 +947,9 @@ export class MoviesService {
       const knownFor = credits
         .filter((media) => {
           if (media.media_type !== 'movie' && media.media_type !== 'tv') {
+            return false;
+          }
+          if (media.original_language === 'ru') {
             return false;
           }
           if (
