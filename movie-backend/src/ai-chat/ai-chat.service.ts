@@ -7,6 +7,8 @@ import {
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { generateText, generateObject } from 'ai';
 import { z } from 'zod';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -20,6 +22,7 @@ import { VectorService } from '../vector/vector.service';
 import { createGroq } from '@ai-sdk/groq';
 import { AiUsageLogService } from './ai-usage-log.service';
 import { AiProvider } from './ai-usage-log.entity';
+import { WatchTogetherPick } from './watch-together-pick.entity';
 import { getErrorMessage } from '../common/utils/error.utils';
 
 const titleEntrySchema = z.object({
@@ -78,7 +81,7 @@ const watchTogetherSchema = z.object({
   titles: z
     .array(titleEntrySchema)
     .describe(
-      'Up to 8 real movie/show titles both friends would genuinely enjoy together. Never invent titles.',
+      '8 to 12 real movie/show titles both friends would genuinely enjoy together- suggest a generous, varied list rather than just one or two, since some may get filtered out as duplicates. Never invent titles.',
     ),
 });
 
@@ -176,6 +179,8 @@ export class AiChatService {
     private moviesService: MoviesService,
     private vectorService: VectorService,
     private aiUsageLogService: AiUsageLogService,
+    @InjectRepository(WatchTogetherPick)
+    private watchTogetherPickRepository: Repository<WatchTogetherPick>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     const groqApiKey = this.configService.get<string>('GROQ_API_KEY') || '';
@@ -962,15 +967,31 @@ RESPONSE TONE:
     userIdA: number,
     userIdB: number,
   ): Promise<{ message: string; movies?: MovieResultDto[] }> {
-    const [ctxA, ctxB, excludeIdsA, excludeIdsB] = await Promise.all([
-      this.getUserContextData(userIdA),
-      this.getUserContextData(userIdB),
-      this.moviesService.getWatchedAndPlannedTmdbIds(userIdA),
-      this.moviesService.getWatchedAndPlannedTmdbIds(userIdB),
-    ]);
+    const userIdLow = Math.min(userIdA, userIdB);
+    const userIdHigh = Math.max(userIdA, userIdB);
 
-    const excludeIds = new Set<number>([...excludeIdsA, ...excludeIdsB]);
-    const systemPrompt = this.buildWatchTogetherPrompt(ctxA, ctxB);
+    const [ctxA, ctxB, excludeIdsA, excludeIdsB, previousPicks] =
+      await Promise.all([
+        this.getUserContextData(userIdA),
+        this.getUserContextData(userIdB),
+        this.moviesService.getWatchedAndPlannedTmdbIds(userIdA),
+        this.moviesService.getWatchedAndPlannedTmdbIds(userIdB),
+        this.watchTogetherPickRepository.find({
+          where: { userIdLow, userIdHigh },
+        }),
+      ]);
+
+    const excludeIds = new Set<number>([
+      ...excludeIdsA,
+      ...excludeIdsB,
+      ...previousPicks.map((p) => p.tmdbId),
+    ]);
+    const previousTitles = previousPicks.map((p) => p.title);
+    const systemPrompt = this.buildWatchTogetherPrompt(
+      ctxA,
+      ctxB,
+      previousTitles,
+    );
 
     const runWith = async (
       model: ReturnType<typeof this.groqClient>,
@@ -997,7 +1018,8 @@ RESPONSE TONE:
       });
 
       const movies: MovieResultDto[] = [];
-      for (const entry of object.titles.slice(0, 8)) {
+      const seenTmdbIds = new Set<number>();
+      for (const entry of object.titles.slice(0, 12)) {
         if (movies.length >= 8) break;
         const { title, year } = this.parseTitleYear(entry.title);
         const media = await this.moviesService.findMovieByTitle(
@@ -1006,9 +1028,36 @@ RESPONSE TONE:
           entry.mediaType,
           entry.director ?? undefined,
         );
-        if (media && !excludeIds.has(Number(media.id))) {
+        if (
+          media &&
+          !excludeIds.has(Number(media.id)) &&
+          !seenTmdbIds.has(Number(media.id))
+        ) {
+          seenTmdbIds.add(Number(media.id));
           movies.push(media);
         }
+      }
+
+      if (movies.length > 0) {
+        await this.watchTogetherPickRepository
+          .createQueryBuilder()
+          .insert()
+          .values(
+            movies.map((m) => ({
+              userIdLow,
+              userIdHigh,
+              tmdbId: m.id,
+              mediaType: m.mediaType,
+              title: m.title,
+            })),
+          )
+          .orIgnore()
+          .execute()
+          .catch((err: unknown) =>
+            this.logger.warn(
+              `Failed to record watch-together picks: ${getErrorMessage(err)}`,
+            ),
+          );
       }
 
       return {
@@ -1153,6 +1202,7 @@ RESPONSE TONE:
   private buildWatchTogetherPrompt(
     ctxA: Omit<UserContextData, 'longTermMemory'>,
     ctxB: Omit<UserContextData, 'longTermMemory'>,
+    previousTitles: string[] = [],
   ): string {
     const favA = ctxA.favorites.map((f) => f.title).join(', ') || 'None';
     const favB = ctxB.favorites.map((f) => f.title).join(', ') || 'None';
@@ -1166,6 +1216,10 @@ RESPONSE TONE:
         .slice(0, 10)
         .map((w) => w.title)
         .join(', ') || 'None';
+    const avoidBlock =
+      previousTitles.length > 0
+        ? `\n\nThese titles were already suggested to this pair before- do NOT suggest them again, pick fresh ones: ${previousTitles.join(', ')}.`
+        : '';
 
     return `You are a movie recommendation engine picking something for TWO friends to watch TOGETHER.
 
@@ -1173,8 +1227,9 @@ Friend A's favorites: ${favA}. Recently watched: ${recentA}.
 Friend B's favorites: ${favB}. Recently watched: ${recentB}.
 
 Find real common ground between their tastes (shared genres, moods, themes, actors/directors)- do not just
-alternate between their individual preferences. Suggest up to 8 real, existing movies/shows both would genuinely
-enjoy together. Never recommend Russian or Soviet films/shows. Never invent titles.
+alternate between their individual preferences. Suggest 8 to 12 real, existing movies/shows both would genuinely
+enjoy together- a generous, varied list, not just one or two. Never recommend Russian or Soviet films/shows.
+Never invent titles.${avoidBlock}
 
 Respond in Ukrainian. Keep "message" to 1-2 friendly sentences.`;
   }

@@ -4,8 +4,8 @@ import { LOTR_STOPS, JOURNEY_VIEWBOX } from "../../data/journeyLotr";
 import { getCurrentStopIndex, isStopRevealed } from "../../utils/journey";
 import lotrMapImg from "../../assets/journey/lotr-map.jpg";
 
-const TORCH_D =
-  "M12 2c1.5 2 2.5 3.6 2.5 5.2A2.5 2.5 0 0112 9.7a2.5 2.5 0 01-2.5-2.5C9.5 5.6 10.5 4 12 2zM8 22h8M12 9.7V22";
+const WAYPOINT_D =
+  "M11.48 3.5a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.562.562 0 00-.586 0l-4.725 2.885a.562.562 0 01-.84-.61l1.285-5.385a.563.563 0 00-.182-.557L2.043 10.386a.562.562 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z";
 const LANDMARK_D =
   "M4 21h16M5 21V9l3-3 3 3v12M13 21V6l3-3 3 3v3M8 12h.01M8 16h.01M16 10h.01M16 14h.01";
 const LOCK_D =
@@ -116,12 +116,12 @@ export default function JourneyMap({
           : stop.isFinale
             ? 14
             : 9;
-        const iconD =
-          !revealed || !isUnlocked
-            ? LOCK_D
-            : stop.isFinale
-              ? LANDMARK_D
-              : TORCH_D;
+        const isWaypointIcon = revealed && isUnlocked && !stop.isFinale;
+        const iconD = !revealed || !isUnlocked
+          ? LOCK_D
+          : stop.isFinale
+            ? LANDMARK_D
+            : WAYPOINT_D;
         const isOpen = isExpanded && openStopId === stop.id;
         const iconColor = isUnlocked ? "#14110c" : "rgba(242,234,217,.4)";
         const nameOrHidden: TranslationKey = revealed
@@ -169,7 +169,7 @@ export default function JourneyMap({
               width={iconSize}
               height={iconSize}
               viewBox="0 0 24 24"
-              fill="none"
+              fill={isWaypointIcon ? iconColor : "none"}
               stroke={iconColor}
               strokeWidth={1.5}
               strokeLinecap="round"

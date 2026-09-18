@@ -25,22 +25,13 @@ export default function JourneyPath({
 
   return (
     <div className="rounded-2xl border border-[rgba(217,172,84,.18)] bg-[linear-gradient(180deg,#141210_0%,#100e0b_100%)] p-5 shadow-[0_8px_24px_rgba(0,0,0,.35)] font-ui">
-      <div className="flex items-end justify-between gap-3 mb-3.5">
-        <div>
-          <span className="font-mono-ui text-[11px] font-bold tracking-[2.5px] text-[#d9ac54] uppercase">
-            {title}
-          </span>
-          <div className="text-[12px] text-[#8f8574] mt-0.5">
-            {t("journey_realm_lotr")} &middot; {revealed} / {LOTR_STOPS.length}
-          </div>
+      <div className="mb-3.5">
+        <span className="font-mono-ui text-[11px] font-bold tracking-[2.5px] text-[#d9ac54] uppercase">
+          {title}
+        </span>
+        <div className="text-[12px] text-[#8f8574] mt-0.5">
+          {t("journey_realm_lotr")} &middot; {revealed} / {LOTR_STOPS.length}
         </div>
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className="font-semibold text-[11px] tracking-wide text-[#d9ac54] hover:text-[#e8c377] transition shrink-0"
-        >
-          {t("journey_open_map")} &#10530;
-        </button>
       </div>
 
       <p className="text-[11px] text-[#6b6459] mb-2.5">

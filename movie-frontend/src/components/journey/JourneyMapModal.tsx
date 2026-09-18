@@ -52,7 +52,8 @@ export default function JourneyMapModal({
     >
       <div
         ref={cardRef}
-        className="relative w-full h-full max-w-[1400px] bg-[#0f0d0a] border border-[#d9ac54]/30 rounded-2xl shadow-2xl overflow-hidden animate-modal-in"
+        className="relative w-full max-w-[1400px] max-h-full sm:max-h-[90vh] bg-[#0f0d0a] border border-[#d9ac54]/30 rounded-2xl shadow-2xl overflow-hidden animate-modal-in"
+        style={{ aspectRatio: `${MAP_W} / ${MAP_H}` }}
         onClick={(e) => e.stopPropagation()}
       >
         <button
