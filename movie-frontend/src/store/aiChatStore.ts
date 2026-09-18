@@ -293,14 +293,10 @@ export async function sendMessage(
   }
 }
 
-/**
- * Identifies a movie/show from an uploaded screenshot. Separate from
- * sendMessage: it hits a different endpoint and daily limit, but shares the
- * same conversation, loading/cooldown gating, and persistence.
- */
 export async function sendPhoto(
   file: File,
   previewUrl: string,
+  note: string,
   copy: AiChatCopy,
   lang: string,
 ): Promise<void> {
@@ -311,14 +307,14 @@ export async function sendPhoto(
   setState({
     messages: [
       ...state.messages,
-      { role: "user", text: copy.photoSent, imageUrl: previewUrl },
+      { role: "user", text: note || copy.photoSent, imageUrl: previewUrl },
     ],
     isLoading: true,
   });
   schedulePersist();
 
   try {
-    const response = await aiApi.identifyPhoto(file, lang);
+    const response = await aiApi.identifyPhoto(file, note, lang);
     if (token !== sessionToken) return;
     setState({
       messages: [

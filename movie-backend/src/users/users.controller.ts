@@ -149,6 +149,21 @@ export class UsersController {
     );
   }
 
+  @Get('public/:id/friends')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Get another user's friends list",
+    description:
+      "List of a user's friends, for display on their public profile (requires authentication)",
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Friends list' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getPublicFriends(@Param('id', ParseIntPipe) targetUserId: number) {
+    return this.usersService.getPublicFriends(targetUserId);
+  }
+
   @Get('public/:id/compatibility')
   @ApiBearerAuth()
   @ApiOperation({

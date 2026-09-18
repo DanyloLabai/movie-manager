@@ -66,7 +66,7 @@ export class AiUsageLogService {
   async getUserUsageSince(
     userId: number,
     since: Date,
-    requestType?: AiRequestType,
+    requestType?: AiRequestType | AiRequestType[],
   ): Promise<{ requestCount: number; totalTokens: number }> {
     const qb = this.aiUsageLogRepo
       .createQueryBuilder('log')
@@ -75,7 +75,11 @@ export class AiUsageLogService {
       .where('log.userId = :userId', { userId })
       .andWhere('log.createdAt >= :since', { since });
 
-    if (requestType) {
+    if (Array.isArray(requestType)) {
+      if (requestType.length > 0) {
+        qb.andWhere('log.requestType IN (:...requestType)', { requestType });
+      }
+    } else if (requestType) {
       qb.andWhere('log.requestType = :requestType', { requestType });
     }
 

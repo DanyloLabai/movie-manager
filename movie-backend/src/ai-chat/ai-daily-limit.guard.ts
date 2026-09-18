@@ -48,7 +48,10 @@ export class AiDailyLimitGuard implements CanActivate {
     });
     const since = startOfDayInTimeZone(user?.timezone || APP_TIME_ZONE);
     const { requestCount, totalTokens } =
-      await this.aiUsageLogService.getUserUsageSince(userId, since, 'chat');
+      await this.aiUsageLogService.getUserUsageSince(userId, since, [
+        'chat',
+        'photo_identify',
+      ]);
 
     if (requestCount >= this.requestLimit) {
       throw new HttpException(

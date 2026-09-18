@@ -58,6 +58,11 @@ export async function getPublicFavorites(
   return res.data;
 }
 
+export async function getPublicFriends(userId: string | number) {
+  const res = await api.get(`/users/public/${userId}/friends`);
+  return res.data;
+}
+
 export type FriendRequest = {
   id: number;
   createdAt: string;
@@ -159,6 +164,7 @@ export default {
   getTasteCompatibility,
   getPublicWatched,
   getPublicFavorites,
+  getPublicFriends,
   getFriendRequests,
   acceptFriendRequest,
   declineFriendRequest,

@@ -31,7 +31,10 @@ import {
   DEFAULT_DAILY_TOKEN_LIMIT,
 } from './ai-daily-limit.guard';
 import { TasteMatchDailyLimitGuard } from './taste-match-daily-limit.guard';
-import { PhotoIdentifyDailyLimitGuard } from './photo-identify-daily-limit.guard';
+import {
+  PhotoIdentifyDailyLimitGuard,
+  DEFAULT_PHOTO_IDENTIFY_DAILY_LIMIT,
+} from './photo-identify-daily-limit.guard';
 import { AiUsageLogService } from './ai-usage-log.service';
 import type { ChatMessage } from './interfaces/chat-message.interface';
 import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
@@ -50,6 +53,7 @@ const ALLOWED_PHOTO_MIME_TYPES = new Set([
 export class AiChatController {
   private readonly requestLimit: number;
   private readonly tokenLimit: number;
+  private readonly photoRequestLimit: number;
 
   constructor(
     private readonly aiChatService: AiChatService,
@@ -65,6 +69,10 @@ export class AiChatController {
     this.tokenLimit = Number(
       this.configService.get<string>('AI_DAILY_TOKEN_LIMIT') ??
         DEFAULT_DAILY_TOKEN_LIMIT,
+    );
+    this.photoRequestLimit = Number(
+      this.configService.get<string>('PHOTO_IDENTIFY_DAILY_LIMIT') ??
+        DEFAULT_PHOTO_IDENTIFY_DAILY_LIMIT,
     );
   }
 
@@ -84,13 +92,25 @@ export class AiChatController {
       select: ['timezone'],
     });
     const since = startOfDayInTimeZone(user?.timezone || APP_TIME_ZONE);
-    const { requestCount, totalTokens } =
-      await this.aiUsageLogService.getUserUsageSince(userId, since, 'chat');
+    const [{ requestCount, totalTokens }, { requestCount: photoRequestCount }] =
+      await Promise.all([
+        this.aiUsageLogService.getUserUsageSince(userId, since, [
+          'chat',
+          'photo_identify',
+        ]),
+        this.aiUsageLogService.getUserUsageSince(
+          userId,
+          since,
+          'photo_identify',
+        ),
+      ]);
     return {
       requestCount,
       totalTokens,
       requestLimit: this.requestLimit,
       tokenLimit: this.tokenLimit,
+      photoRequestCount,
+      photoRequestLimit: this.photoRequestLimit,
     };
   }
 
@@ -138,7 +158,7 @@ export class AiChatController {
 
   @Post('identify-photo')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @UseGuards(PhotoIdentifyDailyLimitGuard)
+  @UseGuards(AiDailyLimitGuard, PhotoIdentifyDailyLimitGuard)
   @UseInterceptors(
     FileInterceptor('photo', { limits: { fileSize: MAX_PHOTO_SIZE_BYTES } }),
   )
@@ -163,6 +183,7 @@ export class AiChatController {
     @Req() req: AuthenticatedRequest,
     @UploadedFile() photo?: Express.Multer.File,
     @Body('lang') lang?: string,
+    @Body('note') note?: string,
   ) {
     if (!photo) {
       throw new BadRequestException('No photo uploaded');
@@ -179,6 +200,7 @@ export class AiChatController {
       photo.buffer,
       photo.mimetype,
       lang === 'uk' ? 'uk' : 'en',
+      note,
     );
   }
 

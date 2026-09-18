@@ -466,12 +466,10 @@ export class AiChatService {
     imageBuffer: Buffer,
     mimeType: string,
     lang: 'en' | 'uk' = 'en',
+    note?: string,
   ): Promise<{ message: string; movies?: MovieResultDto[] }> {
-    // A photo upload carries no user text, so (unlike text chat, which reads
-    // the reply language off the user's own message) there is nothing to
-    // detect the language from- the frontend passes its current UI language
-    // instead.
     const replyLanguage = lang === 'uk' ? 'Ukrainian' : 'English';
+    const trimmedNote = note?.trim();
     const imageMessage = {
       role: 'user' as const,
       content: [
@@ -486,7 +484,10 @@ export class AiChatService {
             'straight to a title from generic vibes. If you are genuinely torn between a couple of real ' +
             'possibilities (e.g. two actors you could be confusing, or a scene reused across a franchise), ' +
             'list up to 3 ranked candidates instead of forcing a single answer. Only decline when you would ' +
-            `truly be inventing a title from generic genre/lighting/vibes alone. Reply in ${replyLanguage}.`,
+            `truly be inventing a title from generic genre/lighting/vibes alone. Reply in ${replyLanguage}.` +
+            (trimmedNote
+              ? ` The user also added this note about the photo- use it as a hint: "${trimmedNote}"`
+              : ''),
         },
         {
           type: 'image' as const,
