@@ -1,12 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import type { Cache } from 'cache-manager';
 import { InternalServerErrorException } from '@nestjs/common';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { generateObject, generateText } from 'ai';
 import { AiChatService } from './ai-chat.service';
 import { ConfigService } from '@nestjs/config';
 import { MoviesService } from '../movies/movies.service';
 import { VectorService } from '../vector/vector.service';
 import { AiUsageLogService } from './ai-usage-log.service';
+import { WatchTogetherPick } from './watch-together-pick.entity';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ChatMessage } from './interfaces/chat-message.interface';
 import { WatchlistItem } from '../movies/watchlist-entity';
@@ -116,6 +118,16 @@ describe('AiChatService', () => {
     set: jest.fn(),
   };
 
+  const mockWatchTogetherPickRepository = {
+    find: jest.fn(),
+    createQueryBuilder: jest.fn(() => ({
+      insert: jest.fn().mockReturnThis(),
+      values: jest.fn().mockReturnThis(),
+      orIgnore: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue(undefined),
+    })),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -124,6 +136,7 @@ describe('AiChatService', () => {
     mockMoviesService.getWatchedMovies.mockResolvedValue([]);
     mockMoviesService.getUpcomingMovies.mockResolvedValue([]);
     mockVectorService.getRelevantUserFactsWithScores.mockResolvedValue([]);
+    mockWatchTogetherPickRepository.find.mockResolvedValue([]);
     // Background fact-extraction call; resolving to 'NO' keeps it a no-op.
     mockGenerateText.mockResolvedValue({ text: 'NO' });
 
@@ -134,6 +147,10 @@ describe('AiChatService', () => {
         { provide: MoviesService, useValue: mockMoviesService },
         { provide: VectorService, useValue: mockVectorService },
         { provide: AiUsageLogService, useValue: mockAiUsageLogService },
+        {
+          provide: getRepositoryToken(WatchTogetherPick),
+          useValue: mockWatchTogetherPickRepository,
+        },
         { provide: CACHE_MANAGER, useValue: mockCacheManager },
       ],
     }).compile();
