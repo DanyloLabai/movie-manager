@@ -59,7 +59,6 @@ export interface QuizStats {
 }
 
 export interface QuizMonthlyStatsEntry {
-  /** 'YYYY-MM' */
   month: string;
   solvedCount: number;
   totalAttempts: number;

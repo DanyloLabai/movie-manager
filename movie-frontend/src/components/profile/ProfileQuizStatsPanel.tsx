@@ -5,10 +5,7 @@ import type { QuizMonthlyStatsEntry } from "../../api/quiz.api";
 
 interface ProfileQuizStatsPanelProps {
   username: string;
-  /** Omit to fetch the signed-in user's own history. */
   userId?: number;
-  /** Reports whether there's any monthly history to show, once known- lets
-   * the parent skip rendering an empty bordered section around this panel. */
   onAvailabilityChange?: (hasData: boolean) => void;
 }
 

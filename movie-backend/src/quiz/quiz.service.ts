@@ -100,7 +100,6 @@ export interface QuizStatsDto {
 }
 
 export interface QuizMonthlyStatsEntryDto {
-  /** 'YYYY-MM' in APP_TIME_ZONE */
   month: string;
   solvedCount: number;
   totalAttempts: number;
@@ -246,7 +245,6 @@ export class QuizService {
     };
   }
 
-  /** Per-month history so past months stay visible after the leaderboard resets. */
   async getMonthlyStats(userId: number): Promise<QuizMonthlyStatsEntryDto[]> {
     const rows = await this.attemptRepo
       .createQueryBuilder('a')

@@ -103,10 +103,6 @@ export class SwipeService {
       select: ['tmdbId', 'isWatched', 'isFavorite'],
     });
 
-    // Movies the user has ever watched stay excluded even after they're
-    // later removed from the watchlist (e.g. un-marking as watched deletes
-    // the watchlist row entirely) - the activity log is the permanent
-    // record, so re-querying the watchlist alone would let them reappear.
     const everWatched = await this.activityRepo
       .createQueryBuilder('a')
       .select('DISTINCT a."tmdbId"', 'tmdbId')
