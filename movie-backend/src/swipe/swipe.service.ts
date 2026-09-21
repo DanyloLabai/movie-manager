@@ -3,10 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SwipeAction } from './swipe-action.entity';
 import { WatchlistItem } from '../movies/watchlist-entity';
+import { User } from '../users/users.entity';
+import { Activity } from '../activity/activity.entity';
 import { MoviesService } from '../movies/movies.service';
 import { DiscoveryCandidate, VectorService } from '../vector/vector.service';
 import { SwipeActionDto } from './dto/swipe-action.dto';
 import { SwipeCardDto, SwipeFeedResponseDto } from './dto/swipe-card.dto';
+import {
+  APP_TIME_ZONE,
+  nextStartOfDayInTimeZone,
+  startOfDayInTimeZone,
+} from '../common/timezone.util';
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -28,6 +35,10 @@ export class SwipeService {
     private readonly swipeActionRepo: Repository<SwipeAction>,
     @InjectRepository(WatchlistItem)
     private readonly watchlistRepo: Repository<WatchlistItem>,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
+    @InjectRepository(Activity)
+    private readonly activityRepo: Repository<Activity>,
     private readonly moviesService: MoviesService,
     private readonly vectorService: VectorService,
   ) {}
@@ -35,30 +46,23 @@ export class SwipeService {
   private async getUsage(
     userId: number,
   ): Promise<{ count: number; resetAt: string | null }> {
-    const since = new Date(Date.now() - ONE_DAY_MS);
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      select: ['timezone'],
+    });
+    const timeZone = user?.timezone || APP_TIME_ZONE;
+
+    const since = startOfDayInTimeZone(timeZone);
     const count = await this.swipeActionRepo
       .createQueryBuilder('a')
       .where('a."userId" = :userId', { userId })
       .andWhere('a."createdAt" >= :since', { since })
       .getCount();
 
-    let resetAt: string | null = null;
-    if (count >= this.DAILY_LIMIT) {
-      const oldest = await this.swipeActionRepo
-        .createQueryBuilder('a')
-        .select('a."createdAt"', 'createdAt')
-        .where('a."userId" = :userId', { userId })
-        .orderBy('a."createdAt"', 'DESC')
-        .limit(this.DAILY_LIMIT)
-        .getRawMany<{ createdAt: Date }>();
-
-      const oldestOfWindow = oldest[oldest.length - 1]?.createdAt;
-      if (oldestOfWindow) {
-        resetAt = new Date(
-          new Date(oldestOfWindow).getTime() + ONE_DAY_MS,
-        ).toISOString();
-      }
-    }
+    const resetAt =
+      count >= this.DAILY_LIMIT
+        ? nextStartOfDayInTimeZone(timeZone).toISOString()
+        : null;
 
     return { count, resetAt };
   }
@@ -99,7 +103,22 @@ export class SwipeService {
       select: ['tmdbId', 'isWatched', 'isFavorite'],
     });
 
-    const permanentExcludeIds = watchlistItems.map((w) => w.tmdbId);
+    const everWatched = await this.activityRepo
+      .createQueryBuilder('a')
+      .select('DISTINCT a."tmdbId"', 'tmdbId')
+      .where('a."userId" = :userId', { userId })
+      .andWhere('a.type IN (:...types)', {
+        types: ['watched', 'rated', 'rewatched'],
+      })
+      .andWhere('a."mediaType" = :mediaType', { mediaType: 'movie' })
+      .getRawMany<{ tmdbId: number }>();
+
+    const permanentExcludeIds = Array.from(
+      new Set([
+        ...watchlistItems.map((w) => w.tmdbId),
+        ...everWatched.map((w) => w.tmdbId),
+      ]),
+    );
     const likedTmdbIds = watchlistItems
       .filter((w) => w.isWatched || w.isFavorite)
       .map((w) => w.tmdbId);

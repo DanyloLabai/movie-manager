@@ -42,6 +42,27 @@ export async function getTasteCompatibility(userId: string | number) {
   return res.data;
 }
 
+export async function getPublicWatched(
+  userId: string | number,
+  params?: { limit?: number; offset?: number },
+) {
+  const res = await api.get(`/users/public/${userId}/watched`, { params });
+  return res.data;
+}
+
+export async function getPublicFavorites(
+  userId: string | number,
+  params?: { limit?: number; offset?: number },
+) {
+  const res = await api.get(`/users/public/${userId}/favorites`, { params });
+  return res.data;
+}
+
+export async function getPublicFriends(userId: string | number) {
+  const res = await api.get(`/users/public/${userId}/friends`);
+  return res.data;
+}
+
 export type FriendRequest = {
   id: number;
   createdAt: string;
@@ -72,7 +93,8 @@ export type ActivityActionType =
   | "watched"
   | "rated"
   | "added_watchlist"
-  | "favorited";
+  | "favorited"
+  | "rewatched";
 
 export type ActivityDayAction = {
   tmdbId: number;
@@ -126,6 +148,11 @@ export async function getFriendsLastWatched(): Promise<FriendLastWatched[]> {
   return res.data;
 }
 
+export async function updateTimezone(timezone: string) {
+  const res = await api.patch(`/users/me/timezone`, { timezone });
+  return res.data;
+}
+
 export default {
   getPublicProfile,
   updateProfile,
@@ -135,6 +162,9 @@ export default {
   searchUsers,
   getFriendsFeed,
   getTasteCompatibility,
+  getPublicWatched,
+  getPublicFavorites,
+  getPublicFriends,
   getFriendRequests,
   acceptFriendRequest,
   declineFriendRequest,
@@ -143,4 +173,5 @@ export default {
   getSearchHistory,
   clearSearchHistory,
   getFriendsLastWatched,
+  updateTimezone,
 };

@@ -13,7 +13,8 @@ export type NotificationType =
   | 'achievement'
   | 'friend_request'
   | 'friend_accepted'
-  | 'quiz';
+  | 'quiz'
+  | 'inactivity';
 
 @Entity('notification')
 @Index('IDX_notification_userId_createdAt', ['user', 'createdAt'])

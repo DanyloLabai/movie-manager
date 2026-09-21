@@ -9,6 +9,7 @@ export interface TmdbCombinedCreditsCastDto {
   character?: string;
   popularity?: number;
   genre_ids?: number[];
+  original_language?: string;
 }
 
 export interface TmdbPersonRecordDto {

@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import {
   ApiBearerAuth,
@@ -113,5 +122,29 @@ export class QuizController {
   @ApiResponse({ status: 200, description: 'Quiz stats' })
   async getMyStats(@Req() req: RequestWithUser) {
     return this.quizService.getMyStats(req.user.userId);
+  }
+
+  @Get('monthly-stats')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get your own quiz stats broken down by month',
+    description:
+      'The friends leaderboard resets every month, so this is where past months stay visible: solved count, average score and perfect solves per month.',
+  })
+  @ApiResponse({ status: 200, description: 'Monthly quiz stats' })
+  async getMyMonthlyStats(@Req() req: RequestWithUser) {
+    return this.quizService.getMonthlyStats(req.user.userId);
+  }
+
+  @Get('monthly-stats/:userId')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Get another user's quiz stats broken down by month",
+    description:
+      'Public, like the rest of a profile page- scores carry no private information.',
+  })
+  @ApiResponse({ status: 200, description: 'Monthly quiz stats' })
+  async getUserMonthlyStats(@Param('userId') userId: string) {
+    return this.quizService.getMonthlyStats(Number(userId));
   }
 }

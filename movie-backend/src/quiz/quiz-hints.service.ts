@@ -11,6 +11,16 @@ const HINT_COUNT = 5;
 const GROQ_HINTS_MODEL = 'openai/gpt-oss-120b';
 const GEMINI_HINTS_MODEL = 'gemini-flash-latest';
 
+// generateObject() previously had no timeout at all here, so a hung Groq/
+// Gemini call could stall getOrCreateTodayQuiz() (lazily triggered by
+// whichever user hits the quiz endpoint first each day) indefinitely.
+// DeepSeek was tried as primary too, but this task doesn't actually
+// benefit from DeepSeek's stronger recall- the movie's title/year/director/
+// cast/overview are already handed to the model in the prompt, there's
+// nothing to identify- so it wasn't worth the ~117s "thinking" latency for
+// that unlucky first user, and Groq stayed primary.
+const DEFAULT_PROVIDER_TIMEOUT_MS = 15000;
+
 const hintSetSchema = z
   .array(z.object({ text: z.string() }))
   .length(HINT_COUNT);
@@ -58,12 +68,17 @@ export class QuizHintsService {
   private readonly logger = new Logger(QuizHintsService.name);
   private groqClient: ReturnType<typeof createGroq>;
   private geminiClient: ReturnType<typeof createGoogleGenerativeAI>;
+  private readonly providerTimeoutMs: number;
 
   constructor(private readonly configService: ConfigService) {
     const groqApiKey = this.configService.get<string>('GROQ_API_KEY') || '';
     const geminiApiKey = this.configService.get<string>('GEMINI_API_KEY') || '';
     this.groqClient = createGroq({ apiKey: groqApiKey });
     this.geminiClient = createGoogleGenerativeAI({ apiKey: geminiApiKey });
+    this.providerTimeoutMs = Number(
+      this.configService.get<string>('AI_PROVIDER_TIMEOUT_MS') ??
+        DEFAULT_PROVIDER_TIMEOUT_MS,
+    );
   }
 
   async generateHints(pool: QuizMoviePool): Promise<QuizHintsByLanguage> {
@@ -140,6 +155,7 @@ Overview (for your own understanding only- hint 2 must NOT closely paraphrase th
       messages: [{ role: 'user', content: 'Generate the hints now.' }],
       schema: hintsSchema,
       temperature: 0.8,
+      abortSignal: AbortSignal.timeout(this.providerTimeoutMs),
     });
     return object;
   }

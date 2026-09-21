@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Post,
@@ -7,15 +8,21 @@ import {
   Param,
   ParseIntPipe,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { AiChatService } from './ai-chat.service';
 import {
@@ -23,22 +30,37 @@ import {
   DEFAULT_DAILY_REQUEST_LIMIT,
   DEFAULT_DAILY_TOKEN_LIMIT,
 } from './ai-daily-limit.guard';
+import { TasteMatchDailyLimitGuard } from './taste-match-daily-limit.guard';
+import {
+  PhotoIdentifyDailyLimitGuard,
+  DEFAULT_PHOTO_IDENTIFY_DAILY_LIMIT,
+} from './photo-identify-daily-limit.guard';
 import { AiUsageLogService } from './ai-usage-log.service';
 import type { ChatMessage } from './interfaces/chat-message.interface';
 import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
+import { APP_TIME_ZONE, startOfDayInTimeZone } from '../common/timezone.util';
+import { User } from '../users/users.entity';
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_PHOTO_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+]);
 
 @ApiTags('AI Chat')
 @Controller('api/ai')
 export class AiChatController {
   private readonly requestLimit: number;
   private readonly tokenLimit: number;
+  private readonly photoRequestLimit: number;
 
   constructor(
     private readonly aiChatService: AiChatService,
     private readonly aiUsageLogService: AiUsageLogService,
     private readonly configService: ConfigService,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
   ) {
     this.requestLimit = Number(
       this.configService.get<string>('AI_DAILY_REQUEST_LIMIT') ??
@@ -48,6 +70,10 @@ export class AiChatController {
       this.configService.get<string>('AI_DAILY_TOKEN_LIMIT') ??
         DEFAULT_DAILY_TOKEN_LIMIT,
     );
+    this.photoRequestLimit = Number(
+      this.configService.get<string>('PHOTO_IDENTIFY_DAILY_LIMIT') ??
+        DEFAULT_PHOTO_IDENTIFY_DAILY_LIMIT,
+    );
   }
 
   @Get('usage')
@@ -55,20 +81,36 @@ export class AiChatController {
   @ApiOperation({
     summary: 'Get current user AI usage',
     description:
-      "Get the current user's AI request/token usage for the rolling 24h window, plus the daily limits (requires authentication)",
+      "Get the current user's AI request/token usage since their local midnight (Kyiv by default, or the user's own reported timezone), plus the daily limits (requires authentication)",
   })
   @ApiResponse({ status: 200, description: 'User AI usage stats' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getUsage(@Req() req: AuthenticatedRequest) {
     const userId = req.user.userId;
-    const since = new Date(Date.now() - ONE_DAY_MS);
-    const { requestCount, totalTokens } =
-      await this.aiUsageLogService.getUserUsageSince(userId, since);
+    const user = await this.usersRepo.findOne({
+      where: { id: userId },
+      select: ['timezone'],
+    });
+    const since = startOfDayInTimeZone(user?.timezone || APP_TIME_ZONE);
+    const [{ requestCount, totalTokens }, { requestCount: photoRequestCount }] =
+      await Promise.all([
+        this.aiUsageLogService.getUserUsageSince(userId, since, [
+          'chat',
+          'photo_identify',
+        ]),
+        this.aiUsageLogService.getUserUsageSince(
+          userId,
+          since,
+          'photo_identify',
+        ),
+      ]);
     return {
       requestCount,
       totalTokens,
       requestLimit: this.requestLimit,
       tokenLimit: this.tokenLimit,
+      photoRequestCount,
+      photoRequestLimit: this.photoRequestLimit,
     };
   }
 
@@ -96,7 +138,7 @@ export class AiChatController {
 
   @Post('watch-together/:friendId')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @UseGuards(AiDailyLimitGuard)
+  @UseGuards(TasteMatchDailyLimitGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Get AI movie picks for watching with a friend',
@@ -112,6 +154,54 @@ export class AiChatController {
   ) {
     const userId = req.user.userId;
     return this.aiChatService.recommendForTwo(userId, friendId);
+  }
+
+  @Post('identify-photo')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @UseGuards(AiDailyLimitGuard, PhotoIdentifyDailyLimitGuard)
+  @UseInterceptors(
+    FileInterceptor('photo', { limits: { fileSize: MAX_PHOTO_SIZE_BYTES } }),
+  )
+  @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({
+    summary: 'Identify a movie/show from an uploaded screenshot',
+    description:
+      'Uploads a single screenshot/frame and asks AI to identify which movie or TV show it is from, returning a movie card when found. Limited per day (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'Identification result' })
+  @ApiResponse({
+    status: 400,
+    description: 'Missing photo or invalid file type',
+  })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({
+    status: 429,
+    description: 'Daily photo-identify limit reached',
+  })
+  async identifyPhoto(
+    @Req() req: AuthenticatedRequest,
+    @UploadedFile() photo?: Express.Multer.File,
+    @Body('lang') lang?: string,
+    @Body('note') note?: string,
+  ) {
+    if (!photo) {
+      throw new BadRequestException('No photo uploaded');
+    }
+    if (!ALLOWED_PHOTO_MIME_TYPES.has(photo.mimetype)) {
+      throw new BadRequestException(
+        'Unsupported file type. Please upload a JPEG, PNG, or WebP image.',
+      );
+    }
+
+    const userId = req.user.userId;
+    return this.aiChatService.identifyMovieFromPhoto(
+      userId,
+      photo.buffer,
+      photo.mimetype,
+      lang === 'uk' ? 'uk' : 'en',
+      note,
+    );
   }
 
   @Get('history')

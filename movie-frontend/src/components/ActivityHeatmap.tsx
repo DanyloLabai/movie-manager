@@ -25,7 +25,7 @@ const SQUARE_CLASS = `${SQUARE_W_CLASS} ${SQUARE_H_CLASS}`;
 const MONTH_ROW_H_CLASS = "h-[14px] lg:h-[16px]";
 const GAP_CLASS = "gap-[3px] sm:gap-[3px] lg:gap-[4px]";
 const TOOLTIP_WIDTH = 220;
-const TOOLTIP_HEIGHT_ESTIMATE = 150;
+const MIN_HEADROOM = 100;
 
 function getWeekdayLabels(lang: string): string[] {
   const dateLocale = lang === "uk" ? "uk-UA" : "en-US";
@@ -131,22 +131,22 @@ export default function ActivityHeatmap({
     if (!day.inYear || day.count === 0) return;
     const rect = e.currentTarget.getBoundingClientRect();
     const anchorCenterX = rect.left + rect.width / 2;
-    const above = rect.top >= TOOLTIP_HEIGHT_ESTIMATE + 8;
+    const above = rect.top >= MIN_HEADROOM;
     let left = anchorCenterX - TOOLTIP_WIDTH / 2;
     left = Math.max(8, Math.min(left, window.innerWidth - TOOLTIP_WIDTH - 8));
-    const top = above
-      ? rect.top - TOOLTIP_HEIGHT_ESTIMATE - 8
-      : rect.bottom + 8;
-    setHovered({
-      day,
-      style: {
-        position: "fixed",
-        left,
-        top,
-        width: TOOLTIP_WIDTH,
-        zIndex: 9999,
-      },
-    });
+    const style: CSSProperties = {
+      position: "fixed",
+      left,
+      width: TOOLTIP_WIDTH,
+      zIndex: 9999,
+    };
+
+    if (above) {
+      style.bottom = window.innerHeight - rect.top + 8;
+    } else {
+      style.top = rect.bottom + 8;
+    }
+    setHovered({ day, style });
   };
 
   return (

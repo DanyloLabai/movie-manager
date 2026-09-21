@@ -10,6 +10,7 @@ export const STORAGE_KEYS = {
   SEARCH_TIMESTAMP: "search_timestamp_",
   ADDED_CACHE: "added_cache_",
   WATCHED_CACHE: "watched_cache_",
+  FEEDBACK_PROMPT: "feedback_prompt_state",
 } as const;
 
 export const CACHE_EXPIRATION_MS =

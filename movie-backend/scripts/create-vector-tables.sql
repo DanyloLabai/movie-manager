@@ -24,8 +24,8 @@ CREATE TABLE IF NOT EXISTS user_memory_embeddings (
 );
 
 -- No ivfflat/hnsw index: both pgvector index types cap out at 2000
--- dimensions, and gemini-embedding-2 produces 3072-dim vectors. At this
--- table size (hundreds of rows), a sequential scan for
+-- dimensions, and gemini-embedding-001 produces 3072-dim vectors by default.
+-- At this table size (hundreds of rows), a sequential scan for
 -- `ORDER BY embedding <=> ... LIMIT k` is plenty fast without one.
 
 -- Sanity check

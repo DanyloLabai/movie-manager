@@ -23,6 +23,7 @@ interface ProfileChartsPanelProps {
    * *your own* watched list (the backend endpoint the modal calls is always
    * scoped to the signed-in user). Only the owner's own profile passes true. */
   interactiveRating?: boolean;
+  onMovieLinkClick?: () => void;
 }
 
 interface ChartTooltipProps {
@@ -128,7 +129,13 @@ function GenreDonut({
   );
 }
 
-function TopMasterpieces({ topRated }: { topRated: WatchlistItem[] }) {
+function TopMasterpieces({
+  topRated,
+  onMovieLinkClick,
+}: {
+  topRated: WatchlistItem[];
+  onMovieLinkClick?: () => void;
+}) {
   const { t } = useLang();
   if (topRated.length === 0) return null;
   return (
@@ -140,6 +147,7 @@ function TopMasterpieces({ topRated }: { topRated: WatchlistItem[] }) {
         <Link
           key={item.id}
           to={`/movie/${item.tmdbId}?type=${item.mediaType}&fromTab=profile`}
+          onClick={onMovieLinkClick}
           className="flex items-center gap-2.5 md:gap-3 hover:opacity-80 transition"
         >
           <span className="font-mono-ui font-bold text-[11px] md:text-[12px] text-[#d9ac54] shrink-0">
@@ -163,6 +171,7 @@ export default function ProfileChartsPanel({
   averageRating,
   topRated,
   interactiveRating = false,
+  onMovieLinkClick,
 }: ProfileChartsPanelProps) {
   const { t } = useLang();
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
@@ -188,7 +197,7 @@ export default function ProfileChartsPanel({
             </span>
           </div>
           <ProfileRatingBars data={ratingDistribution} maxHeightPx={120} onBarClick={onBarClick} />
-          <TopMasterpieces topRated={topRated} />
+          <TopMasterpieces topRated={topRated} onMovieLinkClick={onMovieLinkClick} />
         </div>
       </div>
 
@@ -210,7 +219,7 @@ export default function ProfileChartsPanel({
           </div>
           <ProfileRatingBars data={ratingDistribution} maxHeightPx={80} onBarClick={onBarClick} />
         </div>
-        <TopMasterpieces topRated={topRated} />
+        <TopMasterpieces topRated={topRated} onMovieLinkClick={onMovieLinkClick} />
       </div>
 
       {interactiveRating ? (

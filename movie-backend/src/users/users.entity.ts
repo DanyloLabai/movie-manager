@@ -60,6 +60,9 @@ export class User {
   @Column({ type: 'timestamptz', nullable: true })
   lastReminderSentAt: Date | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  timezone: string | null;
+
   @OneToMany('WatchlistItem', 'user')
   watchlist: WatchlistItem[];
 

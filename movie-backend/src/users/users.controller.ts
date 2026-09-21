@@ -49,6 +49,24 @@ export class UsersController {
     return this.usersService.updateUserProfile(userId, newUsername, file);
   }
 
+  @Patch('me/timezone')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Update the current user's timezone",
+    description:
+      "Client-reported IANA timezone (e.g. from Intl.DateTimeFormat().resolvedOptions().timeZone on web, or the device timezone on mobile), used to anchor daily-limit resets to the user's own midnight. Call on login/app-start (requires authentication).",
+  })
+  @ApiResponse({ status: 200, description: 'Timezone updated' })
+  @ApiResponse({ status: 400, description: 'Invalid timezone' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async updateTimezone(
+    @Req() req: AuthenticatedRequest,
+    @Body('timezone') timezone: string,
+  ) {
+    const userId = req.user.userId;
+    return this.usersService.updateTimezone(userId, timezone);
+  }
+
   @Delete('me')
   @ApiBearerAuth()
   @ApiOperation({
@@ -79,6 +97,71 @@ export class UsersController {
   ) {
     const currentUserId = req.user.userId;
     return this.usersService.getPublicProfile(targetUserId, currentUserId);
+  }
+
+  @Get('public/:id/watched')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Get another user's watched movies",
+    description:
+      'Paginated list of movies/TV shows a user has marked as watched (requires authentication)',
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Watched movies' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getPublicWatched(
+    @Param('id', ParseIntPipe) targetUserId: number,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.usersService.getPublicWatched(
+      targetUserId,
+      limit !== undefined ? Number(limit) : 30,
+      offset !== undefined ? Number(offset) : 0,
+    );
+  }
+
+  @Get('public/:id/favorites')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Get another user's favorite movies",
+    description:
+      "Paginated list of a user's favorited movies/TV shows (requires authentication)",
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Favorite movies' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getPublicFavorites(
+    @Param('id', ParseIntPipe) targetUserId: number,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.usersService.getPublicFavorites(
+      targetUserId,
+      limit !== undefined ? Number(limit) : 30,
+      offset !== undefined ? Number(offset) : 0,
+    );
+  }
+
+  @Get('public/:id/friends')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Get another user's friends list",
+    description:
+      "List of a user's friends, for display on their public profile (requires authentication)",
+  })
+  @ApiParam({ name: 'id', type: 'number', description: 'User ID' })
+  @ApiResponse({ status: 200, description: 'Friends list' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getPublicFriends(@Param('id', ParseIntPipe) targetUserId: number) {
+    return this.usersService.getPublicFriends(targetUserId);
   }
 
   @Get('public/:id/compatibility')

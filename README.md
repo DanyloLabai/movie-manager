@@ -1,6 +1,6 @@
 # Movie Manager
 
-A full-featured app for movie search, watchlist management, AI recommendations, and social features around movies. A monorepo with a NestJS backend and a React frontend, deployed on a self-hosted VPS via Docker Compose and Caddy.
+A full-featured app for movie search, watchlist management, AI recommendations, and social features around movies. A monorepo with a NestJS backend and a React frontend, deployed on Railway (backend + Redis), Vercel (frontend), and Supabase (PostgreSQL + pgvector).
 
 ## Stack
 
@@ -20,11 +20,10 @@ A full-featured app for movie search, watchlist management, AI recommendations, 
 - React Router, Tailwind CSS, Recharts
 - Vitest + Testing Library
 
-**Infrastructure** - `docker/`
+**Infrastructure**
 
-- `docker-compose.yml`: `db` (pgvector), `redis`, `backend`, `frontend`, `caddy`
-- Caddy as reverse proxy and TLS certificate issuer on the custom domain
-- Secrets/URLs are passed via `docker/.env` (see `docker/.env.example`)
+- Production: Railway (backend + Redis), Vercel (frontend), Supabase (managed PostgreSQL with `pgvector`)
+- `docker/` - an alternative self-hosted setup (Docker Compose + Caddy) with its own `db`/`redis` containers; not what's currently deployed, but usable for local Docker runs or self-hosting
 
 ## Key features
 
@@ -67,7 +66,14 @@ The frontend reads `VITE_API_BASE_URL` and `VITE_RECAPTCHA_SITE_KEY` from `.env`
 
 ## Production deployment
 
-The app is deployed on a self-hosted VPS, not on Railway/Vercel/Neon. All services come up together via Docker Compose; only Caddy accepts external traffic (80/443), while the other containers communicate over the internal docker network.
+- **Backend + Redis**: Railway, auto-deployed from `main`. Railway keeps the service always-on, which `@nestjs/schedule` cron jobs (watchlist reminders, etc.) depend on.
+- **Frontend**: Vercel, auto-deployed from `main`. `VITE_*` variables are set as Vercel project env vars and get baked in at build time.
+- **Database**: Supabase-managed PostgreSQL with the `pgvector` extension, reached via `DATABASE_URL`.
+- Secrets/API keys (JWT, AI providers, Cloudinary, Resend, VAPID, etc.) are configured directly in the Railway/Vercel project settings, not via a committed `.env`.
+
+### Alternative: self-hosted via Docker Compose
+
+The `docker/` setup (its own Postgres+pgvector, Redis, and Caddy as reverse proxy/TLS) is kept as a self-hosting option but isn't what currently serves production:
 
 ```bash
 cd docker
@@ -80,13 +86,11 @@ docker compose up -d --build
 - `frontend` is built with its `VITE_*` variables at `docker build` time (they get baked into the static assets).
 - Postgres and Redis don't publish ports externally - they're only reachable by other containers via service name.
 
-Cron jobs (watchlist reminders, etc.) run inside the `backend` process via `@nestjs/schedule`, so the container needs to stay always-on.
-
 ## Repository structure
 
 ```
 movie-manager/
-├── docker/            # docker-compose, Caddyfile, .env for production deployment
+├── docker/            # docker-compose, Caddyfile, .env for self-hosted deployment (not used in production)
 ├── movie-backend/     # NestJS API
 │   └── src/
 │       ├── ai-chat/   # AI chat and recommendations

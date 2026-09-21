@@ -28,6 +28,7 @@ export const ACTIVITY_ACTION_ICONS: Record<ActivityActionType, string> = {
   added_watchlist: "➕",
   rated: "⭐",
   favorited: "❤️",
+  rewatched: "🔁",
 };
 
 export function activityActionLabel(
@@ -43,5 +44,7 @@ export function activityActionLabel(
       return t("feed_rated");
     case "favorited":
       return t("feed_favorited");
+    case "rewatched":
+      return t("feed_rewatched");
   }
 }

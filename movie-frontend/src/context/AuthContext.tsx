@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useReducer } from "react";
 import type { ReactNode } from "react";
 import { api } from "../api/index";
+import { updateTimezone } from "../api/users.api";
 
 export interface AuthUser {
   id: number;
@@ -69,6 +70,15 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
   }
 }
 
+function reportTimezone() {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (timezone) updateTimezone(timezone).catch(() => {});
+  } catch {
+    /* empty */
+  }
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -86,6 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           payload: { user, token },
         });
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        reportTimezone();
       } catch (error) {
         console.error("Failed to parse user from storage:", error);
         localStorage.removeItem("token");
@@ -111,6 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       type: "SET_USER",
       payload: { user, token },
     });
+    reportTimezone();
   };
 
   const logout = () => {

@@ -43,6 +43,7 @@ export interface ProfileData {
   memberSince?: string;
   watchedCount?: number;
   totalCount?: number;
+  totalFavorites?: number;
   stats?: {
     totalMinutes?: number;
     topGenre?: string;
@@ -54,8 +55,14 @@ export interface ProfileData {
     favoriteDecade?: string;
     ratingDistribution?: { name: string; value: number }[];
     completionRate?: number;
-    longestMovie?: { title: string; runtime?: number };
+    longestMovie?: {
+      title: string;
+      runtime?: number;
+      tmdbId?: number;
+      mediaType?: string;
+    };
     topActor?: {
+      id?: number;
       name: string;
       count: number;
       profileUrl: string | null;
@@ -133,6 +140,7 @@ export interface MovieCardProps {
   watchedIds: number[];
   onToggleFavorite: (item: MovieResult) => void;
   onAdd: (item: MovieResult) => void;
+  onMarkWatched: (item: MovieResult, rating?: number | null) => void;
   onRemove: (item: MovieResult) => void;
   onFindSimilar?: (item: MovieResult) => void;
 }

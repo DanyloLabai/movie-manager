@@ -37,5 +37,6 @@ describe("activityActionLabel", () => {
     );
     expect(activityActionLabel("rated", t)).toBe("feed_rated");
     expect(activityActionLabel("favorited", t)).toBe("feed_favorited");
+    expect(activityActionLabel("rewatched", t)).toBe("feed_rewatched");
   });
 });

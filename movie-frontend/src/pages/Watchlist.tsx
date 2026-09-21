@@ -1,12 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { saveScrollState, consumeScrollState } from "../utils/scrollRestoration";
 import * as moviesApi from "../api/movies.api";
 import * as usersApi from "../api/users.api";
 import type { FriendRequest } from "../api/users.api";
 import * as quizApi from "../api/quiz.api";
 import type { QuizStats } from "../api/quiz.api";
 import { useLang } from "../context/LanguageContext";
-import { getUserRank, getAchievementsList } from "../utils/achievements";
+import { getUserRank } from "../utils/achievements";
 import { formatTimeAgo } from "../utils/time";
 import NotificationBell from "../components/NotificationBell";
 import LogoIcon from "../components/LogoIcon";
@@ -18,6 +19,7 @@ import ProfileSection from "../components/profile/ProfileSection";
 import ProfileStatsStrip from "../components/profile/ProfileStatsStrip";
 import ProfileFavoritesPanel from "../components/profile/ProfileFavoritesPanel";
 import ProfileWrappedPanel from "../components/profile/ProfileWrappedPanel";
+import ProfileQuizStatsPanel from "../components/profile/ProfileQuizStatsPanel";
 import ProfileChartsPanel from "../components/profile/ProfileChartsPanel";
 import type {
   WatchlistItem as WatchlistItemType,
@@ -47,17 +49,22 @@ export default function Watchlist() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialTab =
-    (searchParams.get("tab") as "profile" | "watchlist" | "watched") ||
-    "profile";
+    (searchParams.get("tab") as
+      | "profile"
+      | "watchlist"
+      | "watched"
+      | "favorites") || "profile";
   const [activeTab, setActiveTab] = useState<
-    "profile" | "watchlist" | "watched"
+    "profile" | "watchlist" | "watched" | "favorites"
   >(initialTab);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreMovies, setHasMoreMovies] = useState(false);
   const [mediaFilter, setMediaFilter] = useState<"all" | "movie" | "tv">("all");
   const [sortDesc, setSortDesc] = useState(true);
-  const [watchedSearchQuery, setWatchedSearchQuery] = useState("");
+  const [watchedSortBy, setWatchedSortBy] = useState<"rating" | "addedAt">(
+    "rating",
+  );
 
   useEffect(() => {
     navigate(`?tab=${activeTab}`, { replace: true });
@@ -66,6 +73,7 @@ export default function Watchlist() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [username, setUsername] = useState<string>("");
+  const [hasQuizStats, setHasQuizStats] = useState(false);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -113,16 +121,45 @@ export default function Watchlist() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  const fetchMoviesPage = useCallback(
+    (offset: number, limit: number = WATCHLIST_PAGE_SIZE) => {
+      const sortDir = sortDesc ? "desc" : "asc";
+      if (activeTab === "favorites") {
+        return moviesApi.getFavorites({
+          limit,
+          offset,
+          sortBy: "updatedAt",
+          sortDir,
+        });
+      }
+      const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
+      return moviesApi.getWatchlist(endpointName, {
+        limit,
+        offset,
+        sortBy: activeTab === "watched" ? watchedSortBy : "addedAt",
+        sortDir,
+      });
+    },
+    [activeTab, sortDesc, watchedSortBy],
+  );
+
+  // Restoring scroll position after returning from a movie's details page needs
+  // the same number of items re-loaded first (pagination is offset-based), so we
+  // stash the target scrollY here and only apply it once that data has rendered.
+  const pendingScrollYRef = useRef<number | null>(null);
+
   const fetchMovies = useCallback(async () => {
     setIsLoading(true);
     try {
-      const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
-      const response = await moviesApi.getWatchlist(endpointName, {
-        limit: WATCHLIST_PAGE_SIZE,
-        offset: 0,
-      });
+      const savedScroll = consumeScrollState(activeTab);
+      const initialLimit =
+        savedScroll?.itemCount && savedScroll.itemCount > WATCHLIST_PAGE_SIZE
+          ? savedScroll.itemCount
+          : WATCHLIST_PAGE_SIZE;
+      const response = await fetchMoviesPage(0, initialLimit);
       setMovies(response || []);
-      setHasMoreMovies((response?.length || 0) === WATCHLIST_PAGE_SIZE);
+      setHasMoreMovies((response?.length || 0) === initialLimit);
+      if (savedScroll) pendingScrollYRef.current = savedScroll.scrollY;
     } catch (error: unknown) {
       const apiError = error as { response?: { status?: number } };
       if (apiError.response?.status === 401) {
@@ -132,17 +169,13 @@ export default function Watchlist() {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTab, navigate]);
+  }, [activeTab, fetchMoviesPage, navigate]);
 
   const loadMoreMovies = useCallback(async () => {
     if (isLoadingMore || !hasMoreMovies) return;
     setIsLoadingMore(true);
     try {
-      const endpointName = activeTab === "watchlist" ? "watchlist" : "watched";
-      const response = await moviesApi.getWatchlist(endpointName, {
-        limit: WATCHLIST_PAGE_SIZE,
-        offset: movies.length,
-      });
+      const response = await fetchMoviesPage(movies.length);
       setMovies((prev) => [...prev, ...(response || [])]);
       setHasMoreMovies((response?.length || 0) === WATCHLIST_PAGE_SIZE);
     } catch (error) {
@@ -150,7 +183,7 @@ export default function Watchlist() {
     } finally {
       setIsLoadingMore(false);
     }
-  }, [activeTab, movies.length, isLoadingMore, hasMoreMovies]);
+  }, [fetchMoviesPage, movies.length, isLoadingMore, hasMoreMovies]);
 
   const fetchProfile = useCallback(async () => {
     setIsLoading(true);
@@ -164,6 +197,8 @@ export default function Watchlist() {
       if (data.avatarUrl !== undefined) {
         setAvatarUrl(data.avatarUrl ?? null);
       }
+      const savedScroll = consumeScrollState("profile");
+      if (savedScroll) pendingScrollYRef.current = savedScroll.scrollY;
     } catch (error: unknown) {
       const apiError = error as { response?: { status?: number } };
       if (apiError.response?.status === 401) {
@@ -176,12 +211,25 @@ export default function Watchlist() {
   }, [navigate]);
 
   useEffect(() => {
-    if (activeTab === "watchlist" || activeTab === "watched") {
+    if (
+      activeTab === "watchlist" ||
+      activeTab === "watched" ||
+      activeTab === "favorites"
+    ) {
       fetchMovies();
     } else if (activeTab === "profile") {
       fetchProfile();
     }
   }, [activeTab, fetchMovies, fetchProfile]);
+
+  useEffect(() => {
+    if (isLoading || pendingScrollYRef.current === null) return;
+    const targetY = pendingScrollYRef.current;
+    pendingScrollYRef.current = null;
+    // Wait a frame so the just-rendered content has been painted/laid out
+    // before we scroll to a position that depends on its height.
+    requestAnimationFrame(() => window.scrollTo({ top: targetY }));
+  }, [isLoading, movies, profileData]);
 
   const activityHeatmap = useActivityHeatmap(activeTab === "profile");
 
@@ -213,6 +261,8 @@ export default function Watchlist() {
         }
         return { ...prev, favorites: newFavorites, recent: newRecent };
       });
+    } else if (activeTab === "favorites") {
+      setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
     } else {
       setMovies((prev) =>
         prev.map((item) =>
@@ -226,9 +276,17 @@ export default function Watchlist() {
       await moviesApi.toggleFavorite(tmdbId);
       showToast(t("search_fav_updated"));
       if (activeTab === "profile") fetchProfile();
-    } catch {
-      showToast(t("search_fav_error2"));
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      showToast(
+        apiError.response?.status === 400
+          ? t("search_fav_limit")
+          : t("search_fav_error2"),
+      );
+      // Roll the optimistic update back by re-fetching whichever list it touched-
+      // every branch above except "profile" mutates `movies`.
       if (activeTab === "profile") fetchProfile();
+      else fetchMovies();
     }
   };
 
@@ -248,6 +306,7 @@ export default function Watchlist() {
       showToast(t("movie_removed"));
     } catch {
       showToast(t("search_remove_error"));
+      fetchMovies();
     }
   };
 
@@ -263,7 +322,17 @@ export default function Watchlist() {
   };
 
   const confirmMarkWatched = async (tmdbId: number, rating: number | null) => {
-    setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
+    if (activeTab === "favorites") {
+      setMovies((prev) =>
+        prev.map((item) =>
+          item.tmdbId === tmdbId
+            ? { ...item, isWatched: true, rating: rating ?? item.rating }
+            : item,
+        ),
+      );
+    } else {
+      setMovies((prev) => prev.filter((item) => item.tmdbId !== tmdbId));
+    }
     try {
       await moviesApi.markWatched(tmdbId);
       if (rating !== null) await moviesApi.rateMovie(tmdbId, rating);
@@ -311,6 +380,7 @@ export default function Watchlist() {
       );
     } catch {
       showToast(t("watchlist_rating_error"));
+      fetchMovies();
     }
   };
 
@@ -330,25 +400,12 @@ export default function Watchlist() {
 
   const renderProfileTab = () => {
     const totalCount = profileData?.totalCount || 0;
-    const favoritesCount = profileData?.favorites?.length || 0;
     const watchedCount = profileData?.watchedCount || 0;
 
     const hasStats = Boolean(
       profileData?.stats &&
       profileData.stats.genreDistribution &&
       profileData.stats.genreDistribution.length > 0,
-    );
-
-    const achievementsList = getAchievementsList(
-      {
-        favoritesCount,
-        watchedCount,
-        totalCount,
-        quizSolvedCount: quizStats?.totalSolved,
-        quizPerfectCount: quizStats?.perfectSolves,
-        quizCurrentStreak: quizStats?.currentStreak,
-      },
-      t,
     );
 
     return (
@@ -387,12 +444,11 @@ export default function Watchlist() {
         <ProfileSection noBorder={!hasStats}>
           <ProfileFavoritesPanel
             favorites={profileData?.favorites || []}
-            achievements={achievementsList}
-            friends={friends}
-            friendsCount={friends.length}
+            totalCount={totalCount}
             isReleased={isReleased}
             onToggleFavorite={handleToggleFavorite}
-            onOpenFriends={() => setIsFriendsModalOpen(true)}
+            onViewAllFavorites={() => setActiveTab("favorites")}
+            onMovieLinkClick={handleMovieLinkClick}
           />
         </ProfileSection>
 
@@ -405,6 +461,19 @@ export default function Watchlist() {
           </ProfileSection>
         )}
 
+        <div
+          className={
+            hasQuizStats
+              ? "-mx-4 sm:-mx-8 px-5 md:px-14 py-5 md:py-[30px] border-b border-[rgba(217,172,84,.16)]"
+              : ""
+          }
+        >
+          <ProfileQuizStatsPanel
+            username={username}
+            onAvailabilityChange={setHasQuizStats}
+          />
+        </div>
+
         {hasStats && profileData?.stats && (
           <ProfileSection noBorder>
             <ProfileChartsPanel
@@ -413,6 +482,7 @@ export default function Watchlist() {
               averageRating={profileData.stats.averageRating || "0.0"}
               topRated={profileData.stats.topRated || []}
               interactiveRating
+              onMovieLinkClick={handleMovieLinkClick}
             />
           </ProfileSection>
         )}
@@ -420,22 +490,11 @@ export default function Watchlist() {
     );
   };
 
-  const displayedMovies = movies
-    .filter((item) => mediaFilter === "all" || item.mediaType === mediaFilter)
-    .filter(
-      (item) =>
-        activeTab !== "watched" ||
-        watchedSearchQuery.trim() === "" ||
-        item.title.toLowerCase().includes(watchedSearchQuery.trim().toLowerCase()),
-    )
-    .slice()
-    .sort((a, b) => {
-      const diff =
-        activeTab === "watched"
-          ? (a.rating || 0) - (b.rating || 0)
-          : new Date(a.addedAt || 0).getTime() - new Date(b.addedAt || 0).getTime();
-      return sortDesc ? -diff : diff;
-    });
+  const displayedMovies = movies.filter(
+    (item) => mediaFilter === "all" || item.mediaType === mediaFilter,
+  );
+
+  const handleMovieLinkClick = () => saveScrollState(activeTab, movies.length);
 
   return (
     <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
@@ -474,42 +533,46 @@ export default function Watchlist() {
         </div>
 
         <div className="flex items-center gap-1 mb-8 border-b border-[rgba(217,172,84,.16)] overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide">
-          {(["profile", "watchlist", "watched"] as const).map((tab) => {
-            const watchedCount = profileData?.watchedCount ?? null;
-            const watchlistCount =
-              profileData?.totalCount != null && watchedCount != null
-                ? profileData.totalCount - watchedCount
-                : null;
-            const tabCount =
-              tab === "watchlist"
-                ? watchlistCount
-                : tab === "watched"
-                  ? watchedCount
+          {(["profile", "watchlist", "watched", "favorites"] as const).map(
+            (tab) => {
+              const watchedCount = profileData?.watchedCount ?? null;
+              const watchlistCount =
+                profileData?.totalCount != null && watchedCount != null
+                  ? profileData.totalCount - watchedCount
                   : null;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`relative px-4 py-4 shrink-0 font-ui font-semibold text-[11.5px] uppercase tracking-[2px] transition-colors ${
-                  activeTab === tab
-                    ? "text-[#d9ac54]"
-                    : "text-[#8f8574] hover:text-[#c9c0ac]"
-                }`}
-              >
-                {tab === "watchlist"
-                  ? t("watchlist_planned")
-                  : tab === "profile"
-                    ? t("nav_profile")
-                    : t("watchlist_watched")}
-                {tabCount != null && (
-                  <span className="text-[#645c4d]"> · {tabCount}</span>
-                )}
-                {activeTab === tab && (
-                  <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-[#d9ac54]" />
-                )}
-              </button>
-            );
-          })}
+              const tabCount =
+                tab === "watchlist"
+                  ? watchlistCount
+                  : tab === "watched"
+                    ? watchedCount
+                    : null;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`relative px-4 py-4 shrink-0 font-ui font-semibold text-[11.5px] uppercase tracking-[2px] transition-colors ${
+                    activeTab === tab
+                      ? "text-[#d9ac54]"
+                      : "text-[#8f8574] hover:text-[#c9c0ac]"
+                  }`}
+                >
+                  {tab === "watchlist"
+                    ? t("watchlist_planned")
+                    : tab === "profile"
+                      ? t("nav_profile")
+                      : tab === "favorites"
+                        ? t("watchlist_favorites")
+                        : t("watchlist_watched")}
+                  {tabCount != null && (
+                    <span className="text-[#645c4d]"> · {tabCount}</span>
+                  )}
+                  {activeTab === tab && (
+                    <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-[#d9ac54]" />
+                  )}
+                </button>
+              );
+            },
+          )}
 
           {activeTab === "watchlist" && (
             <div className="ml-auto flex items-center gap-1.5 py-2">
@@ -540,24 +603,27 @@ export default function Watchlist() {
           )}
 
           {activeTab === "watched" && (
-            <div className="ml-auto flex items-center gap-2 py-2">
-              <div className="flex items-center gap-2 px-3.5 py-1.5 border border-white/[.12] rounded-full text-[#8f8574] focus-within:border-[#d9ac54]/45 transition">
-                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-4.35-4.35M19 11a8 8 0 11-16 0 8 8 0 0116 0z" />
-                </svg>
-                <input
-                  type="text"
-                  value={watchedSearchQuery}
-                  onChange={(e) => setWatchedSearchQuery(e.target.value)}
-                  placeholder={t("watchlist_search_placeholder")}
-                  className="bg-transparent text-[11px] text-[#f2ead9] placeholder-[#8f8574] focus:outline-none w-24 sm:w-36"
-                />
-              </div>
+            <div className="ml-auto flex items-center gap-1.5 py-2">
+              {(["rating", "addedAt"] as const).map((field) => (
+                <button
+                  key={field}
+                  onClick={() => setWatchedSortBy(field)}
+                  className={`px-3.5 py-1.5 rounded-full font-ui font-bold text-[10px] uppercase tracking-[1px] transition ${
+                    watchedSortBy === field
+                      ? "bg-[#d9ac54] text-[#14110c]"
+                      : "border border-white/[.15] text-[#8f8574] hover:text-[#c9c0ac]"
+                  }`}
+                >
+                  {field === "rating"
+                    ? t("watchlist_sort_by_rating")
+                    : t("watchlist_sort_by_date")}
+                </button>
+              ))}
               <button
                 onClick={() => setSortDesc((v) => !v)}
-                className="text-[11px] text-[#8f8574] hover:text-[#d9ac54] transition whitespace-nowrap"
+                className="ml-2.5 text-[11px] text-[#8f8574] hover:text-[#d9ac54] transition whitespace-nowrap"
               >
-                {t("watchlist_sort_rating")} {sortDesc ? "↓" : "↑"}
+                {sortDesc ? "↓" : "↑"}
               </button>
             </div>
           )}
@@ -596,6 +662,7 @@ export default function Watchlist() {
                       <div className="relative w-full aspect-[2/3] rounded-[6px] overflow-hidden bg-[#0f0d0a]">
                         <Link
                           to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}&fromTab=${activeTab}`}
+                          onClick={handleMovieLinkClick}
                           className="block w-full h-full"
                         >
                           {item.posterUrl ? (
@@ -611,7 +678,9 @@ export default function Watchlist() {
                           )}
                         </Link>
 
-                        {activeTab === "watchlist" && !released && (
+                        {(activeTab === "watchlist" ||
+                          (activeTab === "favorites" && !item.isWatched)) &&
+                          !released && (
                           <div className="absolute top-1.5 left-1.5 font-mono-ui text-[8px] font-semibold tracking-[1px] text-[#d9ac54] bg-[rgba(15,13,10,.75)] px-1.5 py-0.5 rounded-full uppercase">
                             {t("umcoming")}
                           </div>
@@ -668,20 +737,22 @@ export default function Watchlist() {
 
                       <Link
                         to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
+                        onClick={handleMovieLinkClick}
                         className="flex items-center justify-between gap-2"
                         title={item.title}
                       >
                         <span className="text-[13px] font-semibold text-[#f2ead9] truncate hover:text-[#d9ac54] transition">
                           {item.title}
                         </span>
-                        {activeTab === "watched" && (
+                        {item.isWatched && (
                           <span className="font-mono-ui text-[11px] font-bold text-[#d9ac54] shrink-0">
                             {(item.rating || 0).toFixed(1).replace(/\.0$/, "")}/10
                           </span>
                         )}
                       </Link>
 
-                      {activeTab === "watched" ? (
+                      {activeTab === "watched" ||
+                      (activeTab === "favorites" && item.isWatched) ? (
                         <div className="-mt-1">
                           <StarRating
                             size="sm"
@@ -699,7 +770,8 @@ export default function Watchlist() {
                       )}
 
                       <div className="flex justify-between items-center gap-1 pt-[9px] border-t border-[rgba(217,172,84,.16)]">
-                        {activeTab === "watchlist" ? (
+                        {activeTab === "watchlist" ||
+                        (activeTab === "favorites" && !item.isWatched) ? (
                           released ? (
                             <button
                               onClick={() => handleMarkWatched(item.tmdbId)}
@@ -715,6 +787,7 @@ export default function Watchlist() {
                         ) : (
                           <Link
                             to={`/movie/${item.tmdbId}?type=${item.mediaType || "movie"}`}
+                            onClick={handleMovieLinkClick}
                             className="font-semibold text-[10px] tracking-[1.5px] text-[#d9ac54] hover:text-[#e8c377] transition uppercase"
                           >
                             {t("details")}
@@ -833,7 +906,7 @@ interface SearchUser {
 
 interface FeedItem {
   id: number;
-  type: "watched" | "rated" | "added_watchlist" | "favorited";
+  type: "watched" | "rated" | "added_watchlist" | "favorited" | "rewatched";
   tmdbId: number;
   title: string;
   posterUrl: string | null;
@@ -1127,12 +1200,13 @@ function FriendsModal({ onClose }: FriendsModalProps) {
                       <span className="font-semibold text-[#d9ac54]">
                         {item.title}
                       </span>
-                      {item.type === "rated" && item.rating != null && (
-                        <span className="text-[#8f8574]">
-                          {" "}
-                          ({item.rating}/10)
-                        </span>
-                      )}
+                      {(item.type === "rated" || item.type === "rewatched") &&
+                        item.rating != null && (
+                          <span className="text-[#8f8574]">
+                            {" "}
+                            ({item.rating}/10)
+                          </span>
+                        )}
                     </p>
                     <p className="font-mono-ui text-[10px] text-[#645c4d] uppercase tracking-wide mt-0.5">
                       {formatTimeAgo(item.createdAt, t)}

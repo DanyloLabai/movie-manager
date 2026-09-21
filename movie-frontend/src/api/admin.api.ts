@@ -4,7 +4,7 @@ export interface AiUsageWindowStats {
   totalRequests: number;
   failoverRequests: number;
   failoverRate: number;
-  byProvider: Array<{ provider: "groq" | "gemini"; count: number }>;
+  byProvider: Array<{ provider: "groq" | "gemini" | "deepseek"; count: number }>;
 }
 
 export interface AiUsageStats {
@@ -18,6 +18,24 @@ export async function getAiUsageStats(): Promise<AiUsageStats> {
   return res.data;
 }
 
+export interface FeedbackEntry {
+  id: number;
+  rating: number;
+  message: string | null;
+  createdAt: string;
+  user: {
+    id: number;
+    username: string;
+    email: string;
+  };
+}
+
+export async function getFeedback(): Promise<FeedbackEntry[]> {
+  const res = await api.get("/admin/feedback");
+  return res.data;
+}
+
 export default {
   getAiUsageStats,
+  getFeedback,
 };

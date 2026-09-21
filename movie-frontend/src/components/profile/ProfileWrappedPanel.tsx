@@ -6,8 +6,6 @@ interface WrappedStats {
   favoriteDecade?: string;
   moviesCount?: number;
   tvCount?: number;
-  longestMovie?: { title: string; runtime?: number };
-  topActor?: { name: string; count: number; profileUrl: string | null } | null;
 }
 
 interface ProfileWrappedPanelProps {
@@ -26,7 +24,6 @@ export default function ProfileWrappedPanel({
   const { t } = useLang();
   const hours = Math.floor((stats.totalMinutes || 0) / 60);
   const minutes = (stats.totalMinutes || 0) % 60;
-  const hasMarathon = (stats.longestMovie?.runtime ?? 0) > 0;
 
   return (
     <div className="font-ui flex flex-col gap-4 md:gap-[22px]">
@@ -77,59 +74,6 @@ export default function ProfileWrappedPanel({
           </span>
         </div>
       </div>
-
-      {(hasMarathon || stats.topActor) && (
-        <div className="flex flex-col gap-3 md:flex-row md:gap-[60px] md:pt-1.5">
-          {hasMarathon && (
-            <div className="flex flex-col gap-0.5 md:flex-row md:items-center md:gap-3">
-              <span className="hidden md:inline text-[#d9ac54] text-base">
-                ◷
-              </span>
-              <div className="flex flex-col gap-0.5">
-                <span className="font-mono-ui text-[9px] md:text-[10px] font-medium tracking-[1.5px] md:tracking-[2px] text-[#8f8574] uppercase">
-                  {t("stats_marathon")}
-                </span>
-                <span className="text-[13px] md:text-[13.5px] font-semibold text-[#f2ead9]">
-                  {stats.longestMovie?.title} ·{" "}
-                  <span className="text-[#d9ac54]">
-                    {stats.longestMovie?.runtime} {t("stats_min")}
-                  </span>
-                </span>
-              </div>
-            </div>
-          )}
-          {stats.topActor && (
-            <div className="flex flex-col gap-0.5 md:flex-row md:items-center md:gap-3">
-              <div className="hidden md:block w-8 h-8 rounded-full overflow-hidden shrink-0 border border-[#d9ac54]/30">
-                {stats.topActor.profileUrl ? (
-                  <img
-                    src={stats.topActor.profileUrl}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-[#1c1a14]" />
-                )}
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="font-mono-ui text-[9px] md:text-[10px] font-medium tracking-[1.5px] md:tracking-[2px] text-[#8f8574] uppercase">
-                  {t("stats_actor")}
-                </span>
-                <span className="text-[13px] md:text-[13.5px] font-semibold text-[#f2ead9]">
-                  {stats.topActor.name}{" "}
-                  <span className="text-[#8f8574] font-normal">
-                    ·{" "}
-                    {t("stats_actor_count").replace(
-                      "[X]",
-                      String(stats.topActor.count),
-                    )}
-                  </span>
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

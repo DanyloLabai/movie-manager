@@ -19,7 +19,7 @@ export default function ActivityDayTooltip({
     dateLocale,
     { month: "short", day: "numeric", timeZone: "UTC" },
   );
-  const visible = day.actions.slice(0, MAX_VISIBLE);
+  const visible = day.actions.slice(-MAX_VISIBLE).reverse();
   const remaining = day.actions.length - visible.length;
 
   return (

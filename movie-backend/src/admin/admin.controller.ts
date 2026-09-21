@@ -7,13 +7,17 @@ import {
 } from '@nestjs/swagger';
 import { AdminGuard } from './guards/admin.guard';
 import { AiUsageLogService } from '../ai-chat/ai-usage-log.service';
+import { FeedbackService } from '../feedback/feedback.service';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
 @UseGuards(AdminGuard)
 @Controller('api/admin')
 export class AdminController {
-  constructor(private readonly aiUsageLogService: AiUsageLogService) {}
+  constructor(
+    private readonly aiUsageLogService: AiUsageLogService,
+    private readonly feedbackService: FeedbackService,
+  ) {}
 
   @Get('ai-usage/stats')
   @ApiOperation({
@@ -26,5 +30,18 @@ export class AdminController {
   @ApiResponse({ status: 403, description: 'Admin access required' })
   async getAiUsageStats() {
     return this.aiUsageLogService.getStats();
+  }
+
+  @Get('feedback')
+  @ApiOperation({
+    summary: 'List user feedback',
+    description:
+      'Most recent 200 feedback submissions, newest first (admin only)',
+  })
+  @ApiResponse({ status: 200, description: 'Feedback list' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Admin access required' })
+  async getFeedback() {
+    return this.feedbackService.findAll();
   }
 }

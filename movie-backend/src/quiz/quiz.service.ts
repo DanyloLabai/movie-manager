@@ -20,6 +20,11 @@ import { QuizHintsService } from './quiz-hints.service';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/users.entity';
 import { AchievementsService } from '../achievements/achievements.service';
+import {
+  APP_TIME_ZONE,
+  dateStringInTimeZone,
+  startOfDayInTimeZone,
+} from '../common/timezone.util';
 
 const POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -30,6 +35,7 @@ const FREE_HINTS = 1;
 const HINT_COSTS = [10, 15, 20, 25];
 const WRONG_GUESS_PENALTY = 5;
 const MAX_GUESSES = 5;
+const MONTHLY_STATS_LIMIT = 12;
 
 /** Server-side blur applied to the poster while the quiz is unsolved, so the
  * sharp original never reaches the client- mirrors the hint-based easing
@@ -91,6 +97,15 @@ export interface QuizStatsDto {
   perfectSolves: number;
   currentStreak: number;
   bestStreak: number;
+}
+
+export interface QuizMonthlyStatsEntryDto {
+  month: string;
+  solvedCount: number;
+  totalAttempts: number;
+  avgScore: number;
+  perfectSolves: number;
+  totalScore: number;
 }
 
 @Injectable()
@@ -230,6 +245,48 @@ export class QuizService {
     };
   }
 
+  async getMonthlyStats(userId: number): Promise<QuizMonthlyStatsEntryDto[]> {
+    const rows = await this.attemptRepo
+      .createQueryBuilder('a')
+      .select(`to_char(a."quizDate", 'YYYY-MM')`, 'month')
+      .addSelect('COUNT(*) FILTER (WHERE a."isSolved")', 'solvedCount')
+      .addSelect('COUNT(*)', 'totalAttempts')
+      .addSelect(
+        'COALESCE(AVG(a.score) FILTER (WHERE a."isSolved"), 0)',
+        'avgScore',
+      )
+      .addSelect(
+        'COUNT(*) FILTER (WHERE a."isSolved" AND a.score = :perfectScore)',
+        'perfectSolves',
+      )
+      .addSelect(
+        'COALESCE(SUM(a.score) FILTER (WHERE a."isSolved"), 0)',
+        'totalScore',
+      )
+      .where('a."userId" = :userId', { userId })
+      .setParameter('perfectScore', STARTING_SCORE)
+      .groupBy('month')
+      .orderBy('month', 'DESC')
+      .limit(MONTHLY_STATS_LIMIT)
+      .getRawMany<{
+        month: string;
+        solvedCount: string;
+        totalAttempts: string;
+        avgScore: string;
+        perfectSolves: string;
+        totalScore: string;
+      }>();
+
+    return rows.map((r) => ({
+      month: r.month,
+      solvedCount: Number(r.solvedCount),
+      totalAttempts: Number(r.totalAttempts),
+      avgScore: Math.round(Number(r.avgScore) * 10) / 10,
+      perfectSolves: Number(r.perfectSolves),
+      totalScore: Number(r.totalScore),
+    }));
+  }
+
   async getFriendsLeaderboard(
     userId: number,
   ): Promise<QuizLeaderboardEntryDto[]> {
@@ -253,6 +310,9 @@ export class QuizService {
         .addSelect('COALESCE(SUM(a.score), 0)', 'totalScore')
         .where('a."userId" IN (:...userIds)', { userIds })
         .andWhere('a."isSolved" = true')
+        .andWhere(`to_char(a."quizDate", 'YYYY-MM') = :month`, {
+          month: this.currentMonthPrefix(),
+        })
         .groupBy('a."userId"')
         .getRawMany<{ userId: number; totalScore: string }>(),
       this.attemptRepo.find({
@@ -508,10 +568,18 @@ export class QuizService {
   }
 
   private dateStringDaysAgo(days: number): string {
-    return new Date(Date.now() - days * MS_PER_DAY).toISOString().slice(0, 10);
+    const startOfToday = startOfDayInTimeZone(APP_TIME_ZONE);
+    return dateStringInTimeZone(
+      APP_TIME_ZONE,
+      new Date(startOfToday.getTime() - days * MS_PER_DAY),
+    );
   }
 
   private todayDateString(): string {
-    return new Date().toISOString().slice(0, 10);
+    return dateStringInTimeZone(APP_TIME_ZONE);
+  }
+
+  private currentMonthPrefix(): string {
+    return this.todayDateString().slice(0, 7);
   }
 }

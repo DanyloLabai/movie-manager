@@ -24,6 +24,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@ai-sdk/deepseek": "^3.0.39",
     "@ai-sdk/google": "^4.0.0",
     "@ai-sdk/groq": "^4.0.0",
     "@ai-sdk/openai": "^4.0.0",

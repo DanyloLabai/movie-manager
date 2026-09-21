@@ -11,7 +11,6 @@ import {
   Query,
   Req,
   Logger,
-  UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
@@ -30,10 +29,16 @@ import { SmartSearchQueryDto } from './dto/smart-search-query.dto';
 import { MovieFilterQueryDto } from './dto/movie-filter-query.dto';
 import { BecauseYouWatchedResponseDto } from './dto/because-you-watched-response.dto';
 import { VectorService } from '../vector/vector.service';
-import { AiDailyLimitGuard } from '../ai-chat/ai-daily-limit.guard';
 
 interface RequestWithUser extends Request {
   user: {
+    userId: number;
+    username: string;
+  };
+}
+
+interface RequestWithOptionalUser extends Request {
+  user?: {
     userId: number;
     username: string;
   };
@@ -131,11 +136,12 @@ export class MoviesController {
     return this.moviesService.getTop100(type);
   }
 
+  @Public()
   @Get('search')
-  @ApiBearerAuth()
   @ApiOperation({
     summary: 'Search movies',
-    description: 'Search for movies by title (requires authentication)',
+    description:
+      'Search for movies by title. Works without authentication; search history is only logged for signed-in users.',
   })
   @ApiQuery({
     name: 'title',
@@ -153,13 +159,12 @@ export class MoviesController {
     description: 'List of matching movies',
     type: [MovieResultDto],
   })
-  @ApiResponse({ status: 401, description: 'Unauthorized' })
   async searchByTitle(
-    @Req() req: RequestWithUser,
+    @Req() req: RequestWithOptionalUser,
     @Query('title') title: string,
     @Query('skipHistory') skipHistory?: string,
   ): Promise<MovieResultDto[] | null> {
-    return this.moviesService.searchMovies(title, req.user.userId, {
+    return this.moviesService.searchMovies(title, req.user?.userId, {
       skipHistory: skipHistory === 'true',
     });
   }
@@ -222,18 +227,53 @@ export class MoviesController {
   })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiQuery({ name: 'sortBy', required: false, enum: ['addedAt', 'rating'] })
+  @ApiQuery({ name: 'sortDir', required: false, enum: ['asc', 'desc'] })
   @ApiResponse({ status: 200, description: 'User watchlist' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getWatchlist(
     @Req() req: RequestWithUser,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
   ) {
     const userId = req.user.userId;
     return this.moviesService.getWatchlist(
       userId,
       limit !== undefined ? Number(limit) : DEFAULT_PAGE_SIZE,
       offset !== undefined ? Number(offset) : 0,
+      sortBy === 'rating' ? 'rating' : 'addedAt',
+      sortDir === 'asc' ? 'ASC' : 'DESC',
+    );
+  }
+
+  @Get('favorites')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get favorites',
+    description: 'Get user favorite movies/TV shows (requires authentication)',
+  })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiQuery({ name: 'sortBy', required: false, enum: ['updatedAt', 'rating'] })
+  @ApiQuery({ name: 'sortDir', required: false, enum: ['asc', 'desc'] })
+  @ApiResponse({ status: 200, description: 'User favorites' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getFavorites(
+    @Req() req: RequestWithUser,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.getFavorites(
+      userId,
+      limit !== undefined ? Number(limit) : DEFAULT_PAGE_SIZE,
+      offset !== undefined ? Number(offset) : 0,
+      sortBy === 'rating' ? 'rating' : 'updatedAt',
+      sortDir === 'asc' ? 'ASC' : 'DESC',
     );
   }
 
@@ -267,6 +307,8 @@ export class MoviesController {
   })
   @ApiQuery({ name: 'limit', required: false, type: Number })
   @ApiQuery({ name: 'offset', required: false, type: Number })
+  @ApiQuery({ name: 'sortBy', required: false, enum: ['addedAt', 'rating'] })
+  @ApiQuery({ name: 'sortDir', required: false, enum: ['asc', 'desc'] })
   @ApiQuery({
     name: 'rating',
     required: false,
@@ -279,6 +321,8 @@ export class MoviesController {
     @Req() req: RequestWithUser,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortDir') sortDir?: string,
     @Query('rating') rating?: string,
   ) {
     const userId = req.user.userId;
@@ -286,6 +330,8 @@ export class MoviesController {
       userId,
       limit !== undefined ? Number(limit) : DEFAULT_PAGE_SIZE,
       offset !== undefined ? Number(offset) : 0,
+      sortBy === 'rating' ? 'rating' : 'addedAt',
+      sortDir === 'asc' ? 'ASC' : 'DESC',
       rating !== undefined ? Number(rating) : undefined,
     );
   }
@@ -307,6 +353,29 @@ export class MoviesController {
   ) {
     const userId = req.user.userId;
     return this.moviesService.rateMovie(userId, tmdbId, rating);
+  }
+
+  @Patch('watchlist/:tmdbId/rewatch')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Log a rewatch',
+    description:
+      'Marks a rewatch of an already-watched title, bumping its last-watched date and optionally recording a new rating without losing the old one (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'Rewatch logged' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 404, description: 'Media not found in watchlist' })
+  async rewatchMovie(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+    @Body() body: { rating?: number },
+  ) {
+    const userId = req.user.userId;
+    const rating =
+      body?.rating !== undefined && body.rating !== null
+        ? Number(body.rating)
+        : undefined;
+    return this.moviesService.rewatchMovie(userId, tmdbId, rating);
   }
 
   @Patch('watchlist/:tmdbId/progress')
@@ -348,11 +417,13 @@ export class MoviesController {
     return this.moviesService.getProfileData(userId);
   }
 
+  @Public()
   @Get('trending')
   async getTrendingMovies(): Promise<MovieResultDto[]> {
     return this.moviesService.getTrendingMovies();
   }
 
+  @Public()
   @Get(':tmdbId/details')
   async getMovieDetails(
     @Param('tmdbId', ParseIntPipe) tmdbId: number,
@@ -384,9 +455,24 @@ export class MoviesController {
     );
   }
 
+  @Get(':tmdbId/rating-history')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get rating history',
+    description:
+      'Chronological list of every rating the user has given this title, across the original watch and any rewatches (requires authentication)',
+  })
+  @ApiResponse({ status: 200, description: 'Rating history' })
+  async getRatingHistory(
+    @Req() req: RequestWithUser,
+    @Param('tmdbId', ParseIntPipe) tmdbId: number,
+  ) {
+    const userId = req.user.userId;
+    return this.moviesService.getRatingHistory(userId, tmdbId);
+  }
+
   @Get('recommendations')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
-  @UseGuards(AiDailyLimitGuard)
   async getRecommendations(@Req() req: RequestWithUser) {
     const userId = Number(req.user.userId);
     return this.moviesService.getRecommendationsForUser(userId);
@@ -408,6 +494,7 @@ export class MoviesController {
     );
   }
 
+  @Public()
   @Get(':id/similar')
   async getSimilar(@Param('id') id: string, @Query('type') type: string) {
     return this.moviesService.getSimilarMovies(+id, type);

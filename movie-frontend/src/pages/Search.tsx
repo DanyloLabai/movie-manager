@@ -6,6 +6,8 @@ import * as swipeApi from "../api/swipe.api";
 import type { SwipeStatus } from "../api/swipe.api";
 
 import { useLang } from "../context/LanguageContext";
+import { useAuth } from "../context/AuthContext";
+import { useAuthPrompt } from "../context/AuthPromptContext";
 import { MovieCarousel } from "../components/movie/MovieCarousel";
 import { BecauseYouWatchedCarousel } from "../components/movie/BecauseYouWatchedCarousel";
 import { FriendActivityCarousel } from "../components/movie/FriendActivityCarousel";
@@ -203,6 +205,8 @@ export default function Search() {
   const { t } = useLang();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
+  const { open: openAuthPrompt } = useAuthPrompt();
 
   const [visibleCount, setVisibleCount] = useState(20);
 
@@ -212,6 +216,10 @@ export default function Search() {
   const searchBarRef = useRef<HTMLDivElement>(null);
 
   const handleFindSimilar = (movie: MovieResult) => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     navigate("/search", {
       state: {
         similarTo: {
@@ -243,7 +251,7 @@ export default function Search() {
       .finally(() => setIsSearching(false));
 
     navigate(location.pathname, { replace: true, state: null });
-  }, [location.state]);
+  }, [location.state, location.pathname, navigate]);
 
   const visibleRecommendations = recommendations
     .filter((movie) => !addedIds.includes(movie.id))
@@ -479,6 +487,10 @@ export default function Search() {
 
     const query = queryOverride ?? searchQuery;
     if (!query.trim()) return;
+    if (hasActiveFilters && !isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     if (queryOverride !== undefined) setSearchQuery(queryOverride);
 
     setShowLiveDropdown(false);
@@ -515,6 +527,10 @@ export default function Search() {
   };
 
   const handleAdd = async (movie: MovieResult) => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     try {
       await moviesApi.addToWatchlist({
         tmdbId: movie.id,
@@ -537,7 +553,46 @@ export default function Search() {
     }
   };
 
+  const handleMarkWatched = async (
+    movie: MovieResult,
+    rating?: number | null,
+  ) => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
+    try {
+      await moviesApi.addToWatchlist({
+        tmdbId: movie.id,
+        title: movie.title,
+        posterUrl: movie.posterUrl,
+        mediaType: movie.mediaType,
+        releaseDate: movie.releaseDate,
+      });
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status !== 400) {
+        showToast(t("search_add_error"));
+        return;
+      }
+    }
+    try {
+      await moviesApi.markWatched(movie.id);
+      if (rating) await moviesApi.rateMovie(movie.id, rating);
+      setAddedIds((prev) => Array.from(new Set([...prev, movie.id])));
+      setWatchedIds((prev) => Array.from(new Set([...prev, movie.id])));
+      localStorage.removeItem(RECOMMENDATIONS_CACHE_KEY);
+      showToast(t("search_added_toast"));
+    } catch {
+      showToast(t("search_add_error"));
+    }
+  };
+
   const handleRemove = async (movie: MovieResult) => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     try {
       await moviesApi.removeFromWatchlist(movie.id);
       setAddedIds((prev) => prev.filter((id) => id !== movie.id));
@@ -553,6 +608,10 @@ export default function Search() {
   };
 
   const handleToggleFavorite = async (movie: MovieResult) => {
+    if (!isAuthenticated) {
+      openAuthPrompt();
+      return;
+    }
     if (!isReleased(movie)) {
       showToast(t("search_fav_unreleased"));
       return;
@@ -587,6 +646,8 @@ export default function Search() {
         } catch {
           showToast(t("search_fav_error"));
         }
+      } else if (apiError.response?.status === 400) {
+        showToast(t("search_fav_limit"));
       } else {
         showToast(t("search_fav_error2"));
       }
@@ -604,6 +665,7 @@ export default function Search() {
             addedIds={addedIds}
             onToggleFavorite={handleToggleFavorite}
             onAdd={handleAdd}
+            onMarkWatched={handleMarkWatched}
             onRemove={handleRemove}
             onFindSimilar={handleFindSimilar}
             watchedIds={watchedIds}
@@ -771,6 +833,12 @@ export default function Search() {
           <Link
             to="/discover"
             title={t("nav_discover")}
+            onClick={(e) => {
+              if (!isAuthenticated) {
+                e.preventDefault();
+                openAuthPrompt();
+              }
+            }}
             className="relative shrink-0 w-11 h-11 sm:w-auto sm:h-12 sm:pl-3.5 sm:pr-5 rounded-full border border-[#d9ac54]/45 hover:bg-[#d9ac54]/10 flex items-center justify-center sm:justify-start gap-2.5 transition"
           >
             <DiscoverStackIcon />
@@ -983,6 +1051,7 @@ export default function Search() {
                 watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
+                onMarkWatched={handleMarkWatched}
                 onRemove={handleRemove}
                 onFindSimilar={handleFindSimilar}
               />
@@ -1016,6 +1085,7 @@ export default function Search() {
                 watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
+                onMarkWatched={handleMarkWatched}
                 onRemove={handleRemove}
                 onFindSimilar={handleFindSimilar}
               />
@@ -1038,6 +1108,7 @@ export default function Search() {
                 watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
+                onMarkWatched={handleMarkWatched}
                 onRemove={handleRemove}
                 onFindSimilar={handleFindSimilar}
               />
@@ -1060,6 +1131,7 @@ export default function Search() {
                 watchedIds={watchedIds}
                 onToggleFavorite={handleToggleFavorite}
                 onAdd={handleAdd}
+                onMarkWatched={handleMarkWatched}
                 onRemove={handleRemove}
                 onFindSimilar={handleFindSimilar}
               />
@@ -1091,6 +1163,7 @@ export default function Search() {
                     watchedIds={watchedIds}
                     onToggleFavorite={handleToggleFavorite}
                     onAdd={handleAdd}
+                    onMarkWatched={handleMarkWatched}
                     onRemove={handleRemove}
                     onFindSimilar={handleFindSimilar}
                   />
@@ -1105,6 +1178,7 @@ export default function Search() {
                         watchedIds={watchedIds}
                         onToggleFavorite={handleToggleFavorite}
                         onAdd={handleAdd}
+                        onMarkWatched={handleMarkWatched}
                         onRemove={handleRemove}
                         onFindSimilar={handleFindSimilar}
                       />
@@ -1116,8 +1190,8 @@ export default function Search() {
                   <>
                     <div className="hidden lg:block w-px bg-[rgba(217,172,84,.16)]" />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3.5 mb-4">
-                        <span className="font-mono-ui text-[11px] sm:text-[11.5px] font-semibold tracking-[3px] text-[#d9ac54] uppercase whitespace-nowrap">
+                      <div className="flex items-center gap-3.5 mb-4 min-w-0">
+                        <span className="font-mono-ui text-[11px] sm:text-[11.5px] font-semibold tracking-[3px] text-[#d9ac54] uppercase truncate min-w-0 shrink">
                           {t("search_friends_activity")}
                         </span>
                         <div className="flex-1 h-px bg-[rgba(217,172,84,.14)]" />

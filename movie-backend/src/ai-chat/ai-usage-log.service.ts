@@ -66,14 +66,27 @@ export class AiUsageLogService {
   async getUserUsageSince(
     userId: number,
     since: Date,
+    requestType?: AiRequestType | AiRequestType[],
   ): Promise<{ requestCount: number; totalTokens: number }> {
-    const row = await this.aiUsageLogRepo
+    const qb = this.aiUsageLogRepo
       .createQueryBuilder('log')
       .select('COUNT(*)', 'requestCount')
       .addSelect('COALESCE(SUM(log.tokenCount), 0)', 'totalTokens')
       .where('log.userId = :userId', { userId })
-      .andWhere('log.createdAt >= :since', { since })
-      .getRawOne<{ requestCount: string; totalTokens: string }>();
+      .andWhere('log.createdAt >= :since', { since });
+
+    if (Array.isArray(requestType)) {
+      if (requestType.length > 0) {
+        qb.andWhere('log.requestType IN (:...requestType)', { requestType });
+      }
+    } else if (requestType) {
+      qb.andWhere('log.requestType = :requestType', { requestType });
+    }
+
+    const row = await qb.getRawOne<{
+      requestCount: string;
+      totalTokens: string;
+    }>();
 
     return {
       requestCount: Number(row?.requestCount ?? 0),

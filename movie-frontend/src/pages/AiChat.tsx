@@ -1,12 +1,20 @@
-import { useState, useRef, useEffect } from "react";
+import {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useSyncExternalStore,
+} from "react";
 import { useNavigate, Link } from "react-router-dom";
-import * as aiApi from "../api/ai.api";
-import type { AIMessage, RecommendationReason } from "../api/ai.api";
+import type { RecommendationReason } from "../api/ai.api";
 import * as moviesApi from "../api/movies.api";
+import * as aiChatStore from "../store/aiChatStore";
+import type { AiChatCopy } from "../store/aiChatStore";
 import LogoImg from "../assets/logo.png";
 import { useLang } from "../context/LanguageContext";
 import NotificationBell from "../components/NotificationBell";
 import LogoIcon from "../components/LogoIcon";
+import AddMovieModal from "../components/movie/AddMovieModal";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
@@ -15,13 +23,6 @@ type ProfileResponse = {
 };
 
 import type { MovieResult } from "../types/movie.types";
-
-interface Message {
-  role: "user" | "ai";
-  text: string;
-  movies?: MovieResult[];
-  reasoning?: RecommendationReason[];
-}
 
 const MOBILE_BREAKPOINT_PX = 640;
 const BOTTOM_NAV_CONTENT_PX = 60;
@@ -70,7 +71,10 @@ function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
       {isOpen && (
         <ul className="mt-1.5 flex flex-col gap-1 border-l border-[#d9ac54]/20 pl-2.5">
           {reasoning.map((reason, idx) => (
-            <li key={idx} className="font-ui text-[10px] leading-snug text-[#8f8574]">
+            <li
+              key={idx}
+              className="font-ui text-[10px] leading-snug text-[#8f8574]"
+            >
               {reason.preferenceText}{" "}
               <span className="text-[#d9ac54]/70 font-semibold">
                 ({Math.round(reason.similarityScore * 100)}%)
@@ -83,25 +87,32 @@ function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
   );
 }
 
-const CHAT_STORAGE_KEY = "movie_tracker_chat_history";
 const FAVORITES_CACHE_KEY = "movie_tracker_favorites_cache";
-const CHAT_EXPIRATION_MS =
-  Number(import.meta.env.VITE_CHAT_EXPIRATION_MS) || 7 * 24 * 60 * 60 * 1000;
-const MAX_HISTORY = Number(import.meta.env.VITE_MAX_HISTORY) || 20;
-const COOLDOWN_SECONDS = 3;
+const MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024; // keep in sync with the backend
+const ALLOWED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 export default function AiChat() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [input, setInput] = useState("");
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [addModalMovie, setAddModalMovie] = useState<MovieResult | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [cooldownTime, setCooldownTime] = useState(0);
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const [usage, setUsage] = useState<aiApi.AiUsage | null>(null);
   const [isUsageOpen, setIsUsageOpen] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<{
+    file: File;
+    previewUrl: string;
+  } | null>(null);
+
+  const { messages, isLoading, isHistoryLoading, cooldownUntil, usage } =
+    useSyncExternalStore(aiChatStore.subscribe, aiChatStore.getState);
+
+  const [now, setNow] = useState(() => Date.now());
+  const cooldownTime = Math.min(
+    aiChatStore.COOLDOWN_SECONDS,
+    Math.max(0, Math.ceil((cooldownUntil - now) / 1000)),
+  );
 
   const [viewportHeight, setViewportHeight] = useState(
     () =>
@@ -114,30 +125,30 @@ export default function AiChat() {
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
   const isProgrammaticBlurRef = useRef(false);
   const caretNudgeDoneRef = useRef(false);
 
   const navigate = useNavigate();
 
-  const getWelcomeMessage = (): Message => ({
-    role: "ai",
-    text: t("chat_welcome"),
-  });
+  const copy = useMemo<AiChatCopy>(
+    () => ({
+      welcome: t("chat_welcome"),
+      cleared: t("chat_cleared"),
+      defaultFound: t("chat_default_found"),
+      dailyLimit: t("chat_daily_limit"),
+      error: t("chat_error"),
+      photoSent: t("chat_photo_sent"),
+      photoDailyLimit: t("chat_photo_daily_limit"),
+      photoError: t("chat_photo_error"),
+    }),
+    [t],
+  );
+  const copyRef = useRef(copy);
+  useEffect(() => {
+    copyRef.current = copy;
+  }, [copy]);
 
-  const loadSavedMessages = (): Message[] => {
-    const saved = localStorage.getItem(CHAT_STORAGE_KEY);
-    if (saved) {
-      try {
-        const { messages, timestamp } = JSON.parse(saved);
-        if (Date.now() - timestamp < CHAT_EXPIRATION_MS) return messages;
-      } catch (e) {
-        console.error("Error parsing chat history", e);
-      }
-    }
-    return [getWelcomeMessage()];
-  };
-
-  const [messages, setMessages] = useState<Message[]>([getWelcomeMessage()]);
   const isEmpty = messages.length <= 1;
 
   useEffect(() => {
@@ -173,61 +184,18 @@ export default function AiChat() {
   }, [viewportHeight]);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setInterval>;
-    if (cooldownTime > 0) {
-      timer = setInterval(() => setCooldownTime((p) => p - 1), 1000);
-    }
+    if (cooldownUntil <= Date.now()) return;
+    const timer = setInterval(() => {
+      const current = Date.now();
+      setNow(current);
+      if (cooldownUntil <= current) clearInterval(timer);
+    }, 250);
     return () => clearInterval(timer);
-  }, [cooldownTime]);
+  }, [cooldownUntil]);
 
   useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        const history = await aiApi.getHistory();
-        if (Array.isArray(history) && history.length > 0) {
-          setMessages(
-            history.map((m) => ({
-              role: m.role === "assistant" ? "ai" : "user",
-              text: m.content,
-              movies: m.movies,
-            })),
-          );
-        } else {
-          setMessages(loadSavedMessages());
-        }
-      } catch {
-        setMessages(loadSavedMessages());
-      } finally {
-        setIsHistoryLoading(false);
-      }
-    };
-    loadHistory();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    aiChatStore.initAiChat(copyRef.current);
   }, []);
-
-  useEffect(() => {
-    if (messages.length <= 1) return;
-    const timer = setTimeout(async () => {
-      try {
-        const aiMsgs: AIMessage[] = messages.map((m) => ({
-          role: m.role === "ai" ? "assistant" : "user",
-          content: m.text,
-          ...(m.movies && m.movies.length > 0 && { movies: m.movies }),
-        }));
-        await aiApi.postHistory(aiMsgs);
-        localStorage.setItem(
-          CHAT_STORAGE_KEY,
-          JSON.stringify({ messages, timestamp: Date.now() }),
-        );
-      } catch {
-        localStorage.setItem(
-          CHAT_STORAGE_KEY,
-          JSON.stringify({ messages, timestamp: Date.now() }),
-        );
-      }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [messages]);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -249,7 +217,7 @@ export default function AiChat() {
   }, []);
 
   useEffect(() => {
-    aiApi.getUsage().then(setUsage).catch(() => void 0);
+    void aiChatStore.refreshUsage();
   }, []);
 
   const showToast = (message: string) => {
@@ -265,80 +233,100 @@ export default function AiChat() {
   };
 
   const handleClearChat = () => {
-    setMessages([{ role: "ai", text: t("chat_cleared") }]);
-    localStorage.removeItem(CHAT_STORAGE_KEY);
-    aiApi.postHistory([] as AIMessage[]).catch(() => void 0);
+    aiChatStore.clearChat(copy);
     showToast(t("chat_history_cleared"));
   };
 
-  const sendMessageToAi = async (userText: string) => {
+  const sendMessageToAi = (userText: string) => {
     if (isLoading || cooldownTime > 0) return;
     inputRef.current?.blur();
-
-    const userMsg: Message = { role: "user", text: userText };
-    const newMessages: Message[] = [...messages, userMsg];
-    setMessages((prev) => [...prev, userMsg]);
-    setIsLoading(true);
-
-    try {
-      const trimmedMessages = newMessages.slice(-MAX_HISTORY);
-
-      const shownMovieIds = trimmedMessages
-        .filter((m) => m.movies && m.movies.length > 0)
-        .flatMap((m) => m.movies!.map((movie) => movie.id));
-
-      const chatHistory: AIMessage[] = trimmedMessages.map((msg) => {
-        let content = msg.text;
-        if (msg.role === "ai" && msg.movies && msg.movies.length > 0) {
-          const shownMovies = msg.movies.map((m) => m.title).join(", ");
-          content += `\n[System note: I already showed these movies to the user: ${shownMovies}. Do not repeat them in next suggestions.]`;
-        }
-        return {
-          role: msg.role === "ai" ? "assistant" : "user",
-          content,
-        };
-      });
-
-      const response = await aiApi.aiSearch({
-        messages: chatHistory,
-        shownMovieIds,
-      });
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          text: response.message || t("chat_default_found"),
-          movies: response.movies,
-          reasoning: response.reasoning,
-        },
-      ]);
-    } catch (error: unknown) {
-      const apiError = error as { response?: { status?: number } };
-      const errorText =
-        apiError.response?.status === 429
-          ? t("chat_daily_limit")
-          : t("chat_error");
-      setMessages((prev) => [...prev, { role: "ai", text: errorText }]);
-    } finally {
-      setIsLoading(false);
-      setCooldownTime(COOLDOWN_SECONDS);
-      aiApi.getUsage().then(setUsage).catch(() => void 0);
-    }
+    void aiChatStore.sendMessage(userText, copy);
   };
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || cooldownTime > 0) return;
+    if (isLoading || cooldownTime > 0) return;
+
+    if (pendingPhoto) {
+      const { file, previewUrl } = pendingPhoto;
+      const note = input.trim();
+      setInput("");
+      setPendingPhoto(null);
+      inputRef.current?.blur();
+      void aiChatStore.sendPhoto(file, previewUrl, note, copy, lang);
+      return;
+    }
+
+    if (!input.trim()) return;
     const text = input;
     setInput("");
-    await sendMessageToAi(text);
+    sendMessageToAi(text);
   };
 
   const handleSuggestionClick = (text: string) => {
-    if (isLoading || cooldownTime > 0) return;
-    void sendMessageToAi(text);
+    sendMessageToAi(text);
   };
+
+  const handlePhotoButtonClick = () => {
+    if (isLoading || cooldownTime > 0) return;
+    photoInputRef.current?.click();
+  };
+
+  const attachPhoto = (file: File) => {
+    if (isLoading || cooldownTime > 0) return;
+
+    if (!ALLOWED_PHOTO_TYPES.has(file.type)) {
+      showToast(t("chat_photo_invalid_type"));
+      return;
+    }
+    if (file.size > MAX_PHOTO_SIZE_BYTES) {
+      showToast(t("chat_photo_too_large"));
+      return;
+    }
+
+    setPendingPhoto((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return { file, previewUrl: URL.createObjectURL(file) };
+    });
+    inputRef.current?.focus();
+  };
+
+  const removePendingPhoto = () => {
+    setPendingPhoto((prev) => {
+      if (prev) URL.revokeObjectURL(prev.previewUrl);
+      return null;
+    });
+  };
+
+  const handlePhotoFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (file) attachPhoto(file);
+  };
+
+  const attachPhotoRef = useRef(attachPhoto);
+  useEffect(() => {
+    attachPhotoRef.current = attachPhoto;
+  });
+
+  useEffect(() => {
+    const handleWindowPaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            attachPhotoRef.current(file);
+          }
+          return;
+        }
+      }
+    };
+    window.addEventListener("paste", handleWindowPaste);
+    return () => window.removeEventListener("paste", handleWindowPaste);
+  }, []);
 
   const handleAddFromChat = async (movie: MovieResult) => {
     try {
@@ -357,6 +345,35 @@ export default function AiChat() {
         setAddedIds((prev) => [...prev, movie.id]);
         showToast(t("chat_added"));
       } else showToast(t("chat_add_error"));
+    }
+  };
+
+  const handleMarkWatchedFromChat = async (
+    movie: MovieResult,
+    rating: number | null,
+  ) => {
+    try {
+      await moviesApi.addToWatchlist({
+        tmdbId: movie.id,
+        title: movie.title,
+        posterUrl: movie.posterUrl,
+        mediaType: movie.mediaType,
+        releaseDate: movie.releaseDate,
+      });
+    } catch (error: unknown) {
+      const apiError = error as { response?: { status?: number } };
+      if (apiError.response?.status !== 400) {
+        showToast(t("chat_add_error"));
+        return;
+      }
+    }
+    try {
+      await moviesApi.markWatched(movie.id);
+      if (rating) await moviesApi.rateMovie(movie.id, rating);
+      setAddedIds((prev) => [...prev, movie.id]);
+      showToast(rating ? t("movie_added_rated") : t("movie_marked_watched"));
+    } catch {
+      showToast(t("chat_add_error"));
     }
   };
 
@@ -484,6 +501,25 @@ export default function AiChat() {
                   />
                 </div>
               </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-mono-ui text-[9.5px] tracking-[2px] text-[#8f8574] uppercase">
+                    {t("chat_usage_photo_label")}
+                  </span>
+                  <span className="font-semibold text-[12px] text-[#f2ead9]">
+                    {usage.photoRequestCount}/{usage.photoRequestLimit}
+                  </span>
+                </div>
+                <div className="h-[5px] bg-white/[.08] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, (usage.photoRequestCount / usage.photoRequestLimit) * 100)}%`,
+                      background: "linear-gradient(90deg, #a87c2e, #d9ac54)",
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -505,6 +541,10 @@ export default function AiChat() {
               {t("chat_usage_tokens")
                 .replace("[USED]", formatTokenCount(usage.totalTokens))
                 .replace("[LIMIT]", formatTokenCount(usage.tokenLimit))}
+              {" · "}
+              {t("chat_usage_photo")
+                .replace("[USED]", String(usage.photoRequestCount))
+                .replace("[LIMIT]", String(usage.photoRequestLimit))}
             </span>
           )}
           <button
@@ -561,7 +601,11 @@ export default function AiChat() {
             ) : isEmpty ? (
               <div className="flex flex-col items-center text-center gap-5 px-4 py-2">
                 <div className="w-16 h-16 rounded-full border border-[#d9ac54]/45 flex items-center justify-center">
-                  <img src={LogoImg} alt="" className="w-8 h-8 object-contain" />
+                  <img
+                    src={LogoImg}
+                    alt=""
+                    className="w-8 h-8 object-contain"
+                  />
                 </div>
                 <div className="flex flex-col gap-2 items-center">
                   <span className="font-ui font-bold text-[26px] tracking-[5px] text-[#f2ead9]">
@@ -592,7 +636,11 @@ export default function AiChat() {
                 >
                   {msg.role === "ai" && (
                     <div className="w-[30px] h-[30px] rounded-full border border-[#d9ac54]/45 flex items-center justify-center shrink-0 mt-0.5">
-                      <img src={LogoImg} alt="" className="w-3.5 h-3.5 object-contain" />
+                      <img
+                        src={LogoImg}
+                        alt=""
+                        className="w-3.5 h-3.5 object-contain"
+                      />
                     </div>
                   )}
                   <div
@@ -600,6 +648,13 @@ export default function AiChat() {
                   >
                     {msg.role === "user" ? (
                       <div className="max-w-full px-[18px] py-3 bg-[rgba(217,172,84,.13)] border border-[rgba(217,172,84,.25)] rounded-2xl rounded-tr-sm text-[14px] leading-relaxed text-[#f2ead9]">
+                        {msg.imageUrl && (
+                          <img
+                            src={msg.imageUrl}
+                            alt=""
+                            className="w-[160px] h-[160px] object-cover rounded-xl mb-2"
+                          />
+                        )}
                         <p className="whitespace-pre-wrap select-text cursor-text">
                           {msg.text}
                         </p>
@@ -623,7 +678,9 @@ export default function AiChat() {
                               <div
                                 className="w-[86px] h-[128px] rounded-[5px] bg-[#1c1a14] shrink-0 overflow-hidden cursor-pointer"
                                 onClick={() =>
-                                  navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
+                                  navigate(
+                                    `/movie/${movie.id}?type=${movie.mediaType}`,
+                                  )
                                 }
                               >
                                 {movie.posterUrl ? (
@@ -643,7 +700,9 @@ export default function AiChat() {
                                   <h4
                                     className="font-bold text-[16px] text-[#f2ead9] truncate cursor-pointer"
                                     onClick={() =>
-                                      navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
+                                      navigate(
+                                        `/movie/${movie.id}?type=${movie.mediaType}`,
+                                      )
                                     }
                                   >
                                     {movie.title}
@@ -669,7 +728,7 @@ export default function AiChat() {
                                     </div>
                                   ) : (
                                     <button
-                                      onClick={() => handleAddFromChat(movie)}
+                                      onClick={() => setAddModalMovie(movie)}
                                       className="px-[18px] py-2 bg-[#d9ac54] hover:bg-[#e8c377] rounded-full font-bold text-[10.5px] tracking-[1.5px] text-[#14110c] uppercase transition active:scale-95 shrink-0 whitespace-nowrap"
                                     >
                                       {t("chat_add_btn")}
@@ -677,7 +736,9 @@ export default function AiChat() {
                                   )}
                                   <button
                                     onClick={() =>
-                                      navigate(`/movie/${movie.id}?type=${movie.mediaType}`)
+                                      navigate(
+                                        `/movie/${movie.id}?type=${movie.mediaType}`,
+                                      )
                                     }
                                     className="px-[18px] py-2 border border-white/[.15] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] rounded-full font-semibold text-[10.5px] tracking-[1.5px] text-[#c9c0ac] uppercase transition shrink-0 whitespace-nowrap"
                                   >
@@ -701,7 +762,11 @@ export default function AiChat() {
             {isLoading && (
               <div className="flex items-start gap-3.5">
                 <div className="w-[30px] h-[30px] rounded-full border border-[#d9ac54]/45 flex items-center justify-center shrink-0">
-                  <img src={LogoImg} alt="" className="w-3.5 h-3.5 object-contain" />
+                  <img
+                    src={LogoImg}
+                    alt=""
+                    className="w-3.5 h-3.5 object-contain"
+                  />
                 </div>
                 <div className="flex gap-1.5 pt-2.5">
                   <div className="w-1.5 h-1.5 bg-[#d9ac54] rounded-full animate-bounce" />
@@ -714,6 +779,28 @@ export default function AiChat() {
         </div>
 
         <div className="shrink-0 px-3 pt-3 pb-2.5 z-40 border-t border-[rgba(217,172,84,.16)] sm:border-t-0">
+          {pendingPhoto && (
+            <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl w-full mx-auto flex items-center gap-2.5 mb-2 px-1">
+              <div className="relative w-12 h-12 shrink-0 rounded-lg overflow-hidden border border-[#d9ac54]/40">
+                <img
+                  src={pendingPhoto.previewUrl}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={removePendingPhoto}
+                  title={t("chat_photo_remove_title")}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-black/80 text-white flex items-center justify-center text-[9px] leading-none"
+                >
+                  ✕
+                </button>
+              </div>
+              <span className="text-[11px] text-[#8f8574] truncate">
+                {t("chat_photo_attached_hint")}
+              </span>
+            </div>
+          )}
           <div className="max-w-2xl lg:max-w-3xl xl:max-w-4xl w-full mx-auto flex items-center gap-2">
             <button
               onClick={handleClearChat}
@@ -721,12 +808,54 @@ export default function AiChat() {
               title={t("chat_clear_title")}
               className="sm:hidden shrink-0 w-10 h-10 text-[#8f8574] border border-white/[.12] rounded-full hover:text-red-400 hover:border-red-500/40 transition disabled:opacity-30 flex items-center justify-center"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
+
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoFileChange}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={handlePhotoButtonClick}
+              disabled={isLoading || cooldownTime > 0}
+              title={t("chat_photo_button_title")}
+              className="shrink-0 w-10 h-10 text-[#8f8574] border border-white/[.12] rounded-full hover:text-[#d9ac54] hover:border-[#d9ac54]/40 transition disabled:opacity-30 flex items-center justify-center"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                />
+                <circle
+                  cx="12"
+                  cy="13"
+                  r="3.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
                 />
               </svg>
             </button>
@@ -777,13 +906,19 @@ export default function AiChat() {
                           "[X]",
                           String(cooldownTime),
                         )
-                      : t("chat_placeholder")
+                      : pendingPhoto
+                        ? t("chat_photo_placeholder")
+                        : t("chat_placeholder")
                 }
                 className="w-full bg-transparent border-none text-[#f2ead9] placeholder-[#8f8574] focus:outline-none focus:ring-0 transition disabled:opacity-50 text-sm"
               />
               <button
                 type="submit"
-                disabled={isLoading || !input.trim() || cooldownTime > 0}
+                disabled={
+                  isLoading ||
+                  (!input.trim() && !pendingPhoto) ||
+                  cooldownTime > 0
+                }
                 className="shrink-0 w-10 h-10 rounded-full bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] flex items-center justify-center font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {isLoading ? (
@@ -825,6 +960,21 @@ export default function AiChat() {
         <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-[#0f0d0a] border border-[#d9ac54]/50 text-[#d9ac54] px-4 py-3 rounded-xl shadow-2xl z-50 uppercase tracking-widest font-bold text-[10px] whitespace-nowrap animate-fade-in">
           {toastMessage}
         </div>
+      )}
+
+      {addModalMovie && (
+        <AddMovieModal
+          title={addModalMovie.title}
+          onClose={() => setAddModalMovie(null)}
+          onAddToWatchlist={() => {
+            handleAddFromChat(addModalMovie);
+            setAddModalMovie(null);
+          }}
+          onMarkWatched={(rating) => {
+            handleMarkWatchedFromChat(addModalMovie, rating);
+            setAddModalMovie(null);
+          }}
+        />
       )}
     </div>
   );

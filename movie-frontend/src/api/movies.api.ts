@@ -92,9 +92,25 @@ export async function toggleFavorite(id: number): Promise<void> {
 
 export async function getWatchlist(
   endpoint: "watchlist" | "watched",
-  params?: { limit?: number; offset?: number; rating?: number },
+  params?: {
+    limit?: number;
+    offset?: number;
+    sortBy?: "addedAt" | "rating";
+    sortDir?: "asc" | "desc";
+    rating?: number;
+  },
 ): Promise<WatchlistItem[]> {
   const res = await api.get(`/movies/${endpoint}`, { params });
+  return res.data as WatchlistItem[];
+}
+
+export async function getFavorites(params?: {
+  limit?: number;
+  offset?: number;
+  sortBy?: "updatedAt" | "rating";
+  sortDir?: "asc" | "desc";
+}): Promise<WatchlistItem[]> {
+  const res = await api.get(`/movies/favorites`, { params });
   return res.data as WatchlistItem[];
 }
 
@@ -135,6 +151,23 @@ export async function rateMovie(id: number, rating: number): Promise<void> {
 
 export async function markWatched(id: number): Promise<void> {
   await api.post(`/movies/watchlist/${id}/watched`);
+}
+
+export async function rewatchMovie(id: number, rating?: number): Promise<void> {
+  await api.patch(`/movies/watchlist/${id}/rewatch`, { rating });
+}
+
+export interface RatingHistoryEntry {
+  rating: number;
+  isRewatch: boolean;
+  createdAt: string;
+}
+
+export async function getRatingHistory(
+  id: number,
+): Promise<RatingHistoryEntry[]> {
+  const res = await api.get(`/movies/${id}/rating-history`);
+  return res.data;
 }
 
 export async function updateEpisodeProgress(
@@ -209,6 +242,7 @@ export default {
   removeFromWatchlist,
   toggleFavorite,
   getWatchlist,
+  getFavorites,
   getProfile,
   getTop100,
   getMovieDetails,
@@ -216,6 +250,8 @@ export default {
   getActor,
   rateMovie,
   markWatched,
+  rewatchMovie,
+  getRatingHistory,
   updateEpisodeProgress,
   getStatus,
   getFriendsWatched,
