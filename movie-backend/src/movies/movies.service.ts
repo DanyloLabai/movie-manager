@@ -1048,16 +1048,6 @@ export class MoviesService {
 
     let totalMinutes = 0;
     const genreCounts: Record<string, number> = {};
-    let longestMovie: {
-      title: string;
-      runtime: number;
-      tmdbId?: number;
-      mediaType?: string;
-    } = { title: 'None', runtime: 0 };
-    const actorCounts: Record<
-      string,
-      { id: number; count: number; name: string; profileUrl: string | null }
-    > = {};
 
     // Most-recently-watched slice (watchedItems is ordered watchedAt DESC)
     // analyzed to bound the number of TMDB detail lookups per profile load.
@@ -1069,39 +1059,13 @@ export class MoviesService {
       ),
     );
 
-    detailsResults.forEach((detail, index) => {
+    detailsResults.forEach((detail) => {
       if (!detail) return;
-      const sourceItem = itemsToAnalyze[index];
 
       totalMinutes += detail.runtime || 0;
       detail.genres?.forEach((g: GenreDto) => {
         genreCounts[g.name] = (genreCounts[g.name] || 0) + 1;
       });
-
-      if (detail.runtime && detail.runtime > longestMovie.runtime) {
-        longestMovie = {
-          title: detail.title,
-          runtime: detail.runtime,
-          tmdbId: sourceItem.tmdbId,
-          mediaType: sourceItem.mediaType,
-        };
-      }
-
-      if (detail.cast && Array.isArray(detail.cast)) {
-        detail.cast.slice(0, 5).forEach((actor: CastMemberDto) => {
-          if (!actorCounts[actor.id]) {
-            actorCounts[actor.id] = {
-              id: actor.id,
-              count: 0,
-              name: actor.name,
-              profileUrl: actor.profile_path
-                ? `https://image.tmdb.org/t/p/w185${actor.profile_path}`
-                : null,
-            };
-          }
-          actorCounts[actor.id].count += 1;
-        });
-      }
     });
 
     const genreDistribution = Object.entries(genreCounts)
@@ -1147,14 +1111,6 @@ export class MoviesService {
         ? Math.round((watchedItems.length / totalWatchlist) * 100)
         : 0;
 
-    const sortedActors = Object.values(actorCounts).sort(
-      (a, b) => b.count - a.count,
-    );
-    const topActor =
-      sortedActors.length > 0 && sortedActors[0].count > 1
-        ? sortedActors[0]
-        : null;
-
     const moviesCount = watchedItems.filter(
       (item) => item.mediaType === 'movie',
     ).length;
@@ -1199,8 +1155,6 @@ export class MoviesService {
         favoriteDecade,
         ratingDistribution,
         completionRate,
-        longestMovie,
-        topActor,
       },
     };
   }

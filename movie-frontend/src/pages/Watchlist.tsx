@@ -19,6 +19,7 @@ import ProfileSection from "../components/profile/ProfileSection";
 import ProfileStatsStrip from "../components/profile/ProfileStatsStrip";
 import ProfileFavoritesPanel from "../components/profile/ProfileFavoritesPanel";
 import ProfileWrappedPanel from "../components/profile/ProfileWrappedPanel";
+import ProfileQuizStatsPanel from "../components/profile/ProfileQuizStatsPanel";
 import ProfileChartsPanel from "../components/profile/ProfileChartsPanel";
 import type {
   WatchlistItem as WatchlistItemType,
@@ -72,6 +73,7 @@ export default function Watchlist() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [username, setUsername] = useState<string>("");
+  const [hasQuizStats, setHasQuizStats] = useState(false);
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
@@ -458,6 +460,19 @@ export default function Watchlist() {
             />
           </ProfileSection>
         )}
+
+        <div
+          className={
+            hasQuizStats
+              ? "-mx-4 sm:-mx-8 px-5 md:px-14 py-5 md:py-[30px] border-b border-[rgba(217,172,84,.16)]"
+              : ""
+          }
+        >
+          <ProfileQuizStatsPanel
+            username={username}
+            onAvailabilityChange={setHasQuizStats}
+          />
+        </div>
 
         {hasStats && profileData?.stats && (
           <ProfileSection noBorder>
