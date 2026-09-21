@@ -69,7 +69,8 @@
       "userWatched": "{{username}} watched",
       "movie": "Movie",
       "tvShow": "TV Show"
-    }
+    },
+    "favoriteLimit": "You can have at most 10 favorites. Remove one before adding another."
   },
   "filterBar": {
     "genre": "Genre",

@@ -30,7 +30,8 @@
     "updateFailed": "Could not update.",
     "updateRating": "Could not update rating.",
     "loadPublicProfile": "Could not load this profile.",
-    "sendFriendRequest": "Could not send friend request."
+    "sendFriendRequest": "Could not send friend request.",
+    "favoriteLimit": "You can have at most 10 favorites. Remove one before adding another."
   },
   "toasts": {
     "removed": "Removed.",
@@ -96,5 +97,11 @@
     "friends": "Friends",
     "requestSent": "Request sent",
     "addFriend": "Add friend"
+  },
+  "sort": {
+    "rating": "Rating",
+    "added": "Date added",
+    "asc": "Ascending",
+    "desc": "Descending"
   }
 }

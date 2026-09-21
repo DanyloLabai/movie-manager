@@ -12,7 +12,7 @@ export type AppTabsParamList = {
   AiChat: undefined;
   Search: undefined;
   Quiz: undefined;
-  Profile: { tab?: 'profile' | 'watchlist' | 'watched' } | undefined;
+  Profile: { tab?: 'profile' | 'watchlist' | 'watched' | 'favorites' } | undefined;
   Settings: undefined;
 };
 

@@ -15,6 +15,8 @@ interface ProfileFavoritesPanelProps {
   onToggleFavorite: (tmdbId: number) => void;
   onOpenFriends: () => void;
   onPressMovie: (item: WatchlistItem) => void;
+  /** Jumps to the full Favorites tab (web: "View all" next to the title). */
+  onViewAllFavorites?: () => void;
   /** Viewing someone else's profile — hides the favorite-toggle control. */
   readOnly?: boolean;
   /** Hides the friends-avatar row (public profile pages don't show it). */
@@ -35,6 +37,7 @@ export default function ProfileFavoritesPanel({
   onToggleFavorite,
   onOpenFriends,
   onPressMovie,
+  onViewAllFavorites,
   readOnly = false,
   showFriends = true,
 }: ProfileFavoritesPanelProps) {
@@ -45,7 +48,14 @@ export default function ProfileFavoritesPanel({
 
   return (
     <View>
-      <Text style={styles.sectionTitle}>{t('favorites.topFavorites').toUpperCase()}</Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.sectionTitle, styles.titleFlex]}>{t('favorites.topFavorites').toUpperCase()}</Text>
+        {onViewAllFavorites && favorites.length > 0 ? (
+          <Pressable onPress={onViewAllFavorites} hitSlop={8}>
+            <Text style={styles.viewAllText}>{t('favorites.viewAll')}</Text>
+          </Pressable>
+        ) : null}
+      </View>
       {topFavorites.length === 0 ? (
         <Text style={styles.emptyText}>{t('favorites.noFavorites')}</Text>
       ) : (
@@ -169,6 +179,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: spacing.sm + 2,
   },
+  titleRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  titleFlex: { flexShrink: 1 },
   achievementsTitle: { marginTop: spacing.lg },
   emptyText: {
     color: colors.textMuted,

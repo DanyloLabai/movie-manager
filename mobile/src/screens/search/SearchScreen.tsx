@@ -20,6 +20,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MovieResult } from '@movie-manager/shared';
 import {
   addToWatchlist,
+  markAsWatched,
+  rateMovie,
   getBecauseYouWatched,
   getProfile,
   getRecommendations,
@@ -46,6 +48,7 @@ import ScreenHeader from '../../components/ScreenHeader';
 import MoviePosterCard from '../../components/MoviePosterCard';
 import SearchFilterBar from '../../components/SearchFilterBar';
 import Toast from '../../components/Toast';
+import AddMovieModal from '../../components/AddMovieModal';
 import { colors, spacing, radius, fontWeight } from '../../theme';
 import type { AppTabsParamList } from '../../navigation/AppTabs';
 import type { MainStackParamList } from '../../navigation/MainStack';
@@ -185,6 +188,7 @@ export default function SearchScreen({ navigation }: Props) {
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [addedIds, setAddedIds] = useState<Set<number>>(new Set());
   const [watchedIds, setWatchedIds] = useState<Set<number>>(new Set());
+  const [addTarget, setAddTarget] = useState<MovieResult | null>(null);
 
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [swipeStatus, setSwipeStatus] = useState<SwipeStatus | null>(null);
@@ -275,7 +279,11 @@ export default function SearchScreen({ navigation }: Props) {
     }
   };
 
-  const handleAdd = async (item: MovieResult) => {
+  // Tapping "+" opens AddMovieModal (watchlist vs already-watched + rating),
+  // mirroring movie-frontend's Search.tsx.
+  const handleAdd = (item: MovieResult) => setAddTarget(item);
+
+  const addToWatchlistOnly = async (item: MovieResult) => {
     setAddedIds((prev) => new Set(prev).add(item.id));
     try {
       await addToWatchlist({
@@ -296,6 +304,33 @@ export default function SearchScreen({ navigation }: Props) {
         });
         showToast(getErrorMessage(err, t('search.addToWatchlistError')));
       }
+    }
+  };
+
+  const handleMarkWatched = async (item: MovieResult, rating: number | null) => {
+    try {
+      await addToWatchlist({
+        tmdbId: item.id,
+        title: item.title,
+        posterUrl: item.posterUrl,
+        mediaType: item.mediaType,
+        releaseDate: item.releaseDate,
+      });
+    } catch (err) {
+      const apiError = err as { response?: { status?: number } };
+      if (apiError.response?.status !== 400) {
+        showToast(getErrorMessage(err, t('search.addToWatchlistError')));
+        return;
+      }
+    }
+    try {
+      await markAsWatched(item.id);
+      if (rating) await rateMovie(item.id, rating);
+      setAddedIds((prev) => new Set(prev).add(item.id));
+      setWatchedIds((prev) => new Set(prev).add(item.id));
+      showToast(t('search.addedToWatchlist'));
+    } catch (err) {
+      showToast(getErrorMessage(err, t('search.addToWatchlistError')));
     }
   };
 
@@ -348,6 +383,8 @@ export default function SearchScreen({ navigation }: Props) {
         } catch {
           showToast(t('search.favoriteUpdateError'));
         }
+      } else if (apiError.response?.status === 400) {
+        showToast(t('search.favoriteLimit'));
       } else {
         showToast('Could not update favorite.');
       }
@@ -661,6 +698,22 @@ export default function SearchScreen({ navigation }: Props) {
           ) : null}
         </ScrollView>
       )}
+
+      <AddMovieModal
+        visible={addTarget !== null}
+        title={addTarget?.title ?? ''}
+        onClose={() => setAddTarget(null)}
+        onAddToWatchlist={() => {
+          const item = addTarget;
+          setAddTarget(null);
+          if (item) void addToWatchlistOnly(item);
+        }}
+        onMarkWatched={(rating) => {
+          const item = addTarget;
+          setAddTarget(null);
+          if (item) void handleMarkWatched(item, rating);
+        }}
+      />
 
       <Toast message={toastMessage} />
     </SafeAreaView>

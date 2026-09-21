@@ -6,7 +6,10 @@
     "updateFavorite": "Could not update favorite.",
     "updateRating": "Could not update rating.",
     "loadActor": "Could not load this actor.",
-    "actorNotFound": "Not found."
+    "actorNotFound": "Not found.",
+    "rewatch": "Could not log the rewatch.",
+    "progress": "Could not save progress.",
+    "favoriteLimit": "You can have at most 10 favorites. Remove one before adding another."
   },
   "mediaType": {
     "movie": "Movie",
@@ -27,5 +30,29 @@
   "ratingModal": {
     "title": "How was it?",
     "subtitle": "Rate \"{{title}}\""
+  },
+  "rewatch": {
+    "button": "Rewatch",
+    "title": "Rewatch",
+    "subtitle": "Logging a rewatch of \"{{title}}\"",
+    "logged": "Rewatch logged!",
+    "history": "Rating history",
+    "count": "Rewatched {{count}}x"
+  },
+  "progress": {
+    "title": "Episode Progress",
+    "season": "Season",
+    "episode": "Episode",
+    "save": "Save progress",
+    "saved": "Progress saved!"
+  },
+  "addModal": {
+    "choiceDesc": "Add it to your watchlist, or mark it as already watched?",
+    "toWatchlist": "To watchlist",
+    "watched": "Watched"
+  },
+  "toasts": {
+    "ratingSaved": "Rating saved!",
+    "ratingCleared": "Rating cleared."
   }
 }

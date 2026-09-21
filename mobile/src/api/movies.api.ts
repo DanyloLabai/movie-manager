@@ -9,13 +9,38 @@ import type {
 } from '@movie-manager/shared';
 import { api } from './client';
 
-export async function getWatchlist(limit = 30, offset = 0): Promise<WatchlistItem[]> {
-  const res = await api.get('/movies/watchlist', { params: { limit, offset } });
+export interface ListSortParams {
+  sortBy?: 'addedAt' | 'rating';
+  sortDir?: 'asc' | 'desc';
+}
+
+export async function getWatchlist(
+  limit = 30,
+  offset = 0,
+  sort: ListSortParams = {},
+): Promise<WatchlistItem[]> {
+  const res = await api.get('/movies/watchlist', { params: { limit, offset, ...sort } });
   return res.data as WatchlistItem[];
 }
 
-export async function getWatched(limit = 30, offset = 0, rating?: number): Promise<WatchlistItem[]> {
-  const res = await api.get('/movies/watched', { params: { limit, offset, rating } });
+export async function getWatched(
+  limit = 30,
+  offset = 0,
+  rating?: number,
+  sort: ListSortParams = {},
+): Promise<WatchlistItem[]> {
+  const res = await api.get('/movies/watched', { params: { limit, offset, rating, ...sort } });
+  return res.data as WatchlistItem[];
+}
+
+// Favorites are capped at 10 server-side; toggling an 11th returns a 400 whose
+// message the UI surfaces (see toggleFavorite callers).
+export async function getFavorites(
+  limit = 30,
+  offset = 0,
+  sort: { sortBy?: 'updatedAt' | 'rating'; sortDir?: 'asc' | 'desc' } = {},
+): Promise<WatchlistItem[]> {
+  const res = await api.get('/movies/favorites', { params: { limit, offset, ...sort } });
   return res.data as WatchlistItem[];
 }
 
@@ -41,6 +66,30 @@ export async function markAsWatched(tmdbId: number): Promise<WatchlistItem> {
 
 export async function rateMovie(tmdbId: number, rating: number): Promise<void> {
   await api.patch(`/movies/watchlist/${tmdbId}/rate`, { rating });
+}
+
+export async function rewatchMovie(tmdbId: number, rating?: number): Promise<void> {
+  await api.patch(`/movies/watchlist/${tmdbId}/rewatch`, { rating });
+}
+
+export interface RatingHistoryEntry {
+  rating: number;
+  isRewatch: boolean;
+  createdAt: string;
+}
+
+export async function getRatingHistory(tmdbId: number): Promise<RatingHistoryEntry[]> {
+  const res = await api.get(`/movies/${tmdbId}/rating-history`);
+  return (res.data as RatingHistoryEntry[]) ?? [];
+}
+
+export async function updateEpisodeProgress(
+  tmdbId: number,
+  season: number,
+  episode: number,
+): Promise<WatchlistItem> {
+  const res = await api.patch(`/movies/watchlist/${tmdbId}/progress`, { season, episode });
+  return res.data as WatchlistItem;
 }
 
 export async function toggleFavorite(tmdbId: number): Promise<WatchlistItem> {

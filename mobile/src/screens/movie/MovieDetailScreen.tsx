@@ -22,16 +22,22 @@ import {
   getFriendsWatched,
   getMovieDetails,
   getMovieStatus,
+  getRatingHistory,
   getSimilar,
   markAsWatched,
   rateMovie,
   removeFromWatchlist,
+  rewatchMovie,
   toggleFavorite,
+  updateEpisodeProgress,
+  type RatingHistoryEntry,
 } from '../../api/movies.api';
 import type { FriendWatched } from '@movie-manager/shared';
 import { getErrorMessage } from '../../utils/getErrorMessage';
 import StarRating from '../../components/StarRating';
 import MoviePosterCard from '../../components/MoviePosterCard';
+import Toast from '../../components/Toast';
+import { useToast } from '../../hooks/useToast';
 import { colors, spacing, radius, fontWeight } from '../../theme';
 import type { MainStackParamList } from '../../navigation/MainStack';
 
@@ -65,6 +71,8 @@ const isReleased = (dateStr?: string | null): boolean => {
   return new Date(dateStr) <= new Date();
 };
 
+const RATING_HISTORY_DISPLAY_LIMIT = 6;
+
 export default function MovieDetailScreen({ route, navigation }: Props) {
   const { t } = useTranslation('movie');
   const { movieId, mediaType = 'movie' } = route.params;
@@ -78,6 +86,11 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
 
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [modalRating, setModalRating] = useState(0);
+  const [modalAction, setModalAction] = useState<'watched' | 'rewatch'>('watched');
+  const [ratingHistory, setRatingHistory] = useState<RatingHistoryEntry[]>([]);
+  const [progressSeason, setProgressSeason] = useState(1);
+  const [progressEpisode, setProgressEpisode] = useState(1);
+  const { toastMessage, showToast } = useToast();
 
   const scrollViewRef = useRef<ScrollView>(null);
   const trailerY = useRef(0);
@@ -94,6 +107,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       setStatus(statusResult);
       getSimilar(movieId, mediaType).then(setSimilar).catch(() => {});
       getFriendsWatched(movieId, mediaType).then(setFriendsWatched).catch(() => {});
+      getRatingHistory(movieId).then(setRatingHistory).catch(() => {});
     } catch (err) {
       setError(getErrorMessage(err, t('errors.loadTitle')));
     } finally {
@@ -104,6 +118,15 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    setProgressSeason(status?.currentSeason || 1);
+    setProgressEpisode(status?.currentEpisode || 1);
+  }, [status?.currentSeason, status?.currentEpisode]);
+
+  const refreshHistory = () => {
+    getRatingHistory(movieId).then(setRatingHistory).catch(() => {});
+  };
 
   const handleAddWatchlist = async () => {
     if (!details || status) return;
@@ -125,7 +148,16 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
   };
 
   const openWatchedModal = () => {
+    setModalAction('watched');
     setModalRating(status?.rating ?? 0);
+    setIsRatingModalOpen(true);
+  };
+
+  // A rewatch starts from a clean rating rather than the previous one, same
+  // as movie-frontend's openRewatchModal.
+  const openRewatchModal = () => {
+    setModalAction('rewatch');
+    setModalRating(0);
     setIsRatingModalOpen(true);
   };
 
@@ -137,8 +169,27 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
   // Mirrors movie-frontend's MovieDetails.tsx handleModalConfirm: marking
   // watched works even without a prior watchlist entry — it adds one first
   // if needed, matching web's "new_watched" path.
+  const handleConfirmRewatch = async () => {
+    setIsActionPending(true);
+    try {
+      await rewatchMovie(movieId, modalRating > 0 ? modalRating : undefined);
+      showToast(t('rewatch.logged'));
+      setStatus(await getMovieStatus(movieId));
+      refreshHistory();
+    } catch (err) {
+      setError(getErrorMessage(err, t('errors.rewatch')));
+    } finally {
+      setIsActionPending(false);
+      closeRatingModal();
+    }
+  };
+
   const handleConfirmWatched = async () => {
     if (!details) return;
+    if (modalAction === 'rewatch') {
+      await handleConfirmRewatch();
+      return;
+    }
     setIsActionPending(true);
     try {
       if (!status) {
@@ -153,6 +204,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       const watched = await markAsWatched(movieId);
       if (modalRating > 0) await rateMovie(movieId, modalRating);
       setStatus({ ...watched, rating: modalRating > 0 ? modalRating : watched.rating });
+      refreshHistory();
     } catch (err) {
       setError(getErrorMessage(err, t('errors.markWatched')));
     } finally {
@@ -167,7 +219,12 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
     try {
       setStatus(await toggleFavorite(movieId));
     } catch (err) {
-      setError(getErrorMessage(err, t('errors.updateFavorite')));
+      const httpStatus = (err as { response?: { status?: number } }).response?.status;
+      setError(
+        httpStatus === 400
+          ? t('errors.favoriteLimit')
+          : getErrorMessage(err, t('errors.updateFavorite')),
+      );
     } finally {
       setIsActionPending(false);
     }
@@ -179,6 +236,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
     try {
       await rateMovie(movieId, rating);
       setStatus({ ...status, rating });
+      refreshHistory();
     } catch (err) {
       setError(getErrorMessage(err, t('errors.updateRating')));
     } finally {
@@ -193,6 +251,20 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       setStatus(null);
     } catch (err) {
       setError(getErrorMessage(err, t('errors.updateWatchlist')));
+    } finally {
+      setIsActionPending(false);
+    }
+  };
+
+  const handleSaveProgress = async () => {
+    if (!status) return;
+    setIsActionPending(true);
+    try {
+      await updateEpisodeProgress(movieId, progressSeason, progressEpisode);
+      setStatus({ ...status, currentSeason: progressSeason, currentEpisode: progressEpisode });
+      showToast(t('progress.saved'));
+    } catch (err) {
+      setError(getErrorMessage(err, t('errors.progress')));
     } finally {
       setIsActionPending(false);
     }
@@ -334,6 +406,85 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
         <View style={styles.ratingRow}>
           <Text style={styles.ratingLabel}>{t('yourRating').toUpperCase()}</Text>
           <StarRating size="sm" value={status.rating ?? 0} onRate={(r) => void handleRate(r)} />
+        </View>
+      ) : null}
+
+      {status?.isWatched ? (
+        <View style={styles.rewatchBlock}>
+          <Pressable style={styles.rewatchButton} onPress={openRewatchModal} disabled={isActionPending}>
+            <Text style={styles.rewatchButtonText}>🔁 {t('rewatch.button').toUpperCase()}</Text>
+          </Pressable>
+          {ratingHistory.length > 1 ? (
+            <View style={styles.historyRow}>
+              <Text style={styles.historyLabel}>{t('rewatch.history').toUpperCase()}</Text>
+              {ratingHistory.slice(-RATING_HISTORY_DISPLAY_LIMIT).map((entry, i) => (
+                <View key={`${entry.createdAt}-${i}`} style={styles.historyBadge}>
+                  <Text style={styles.historyBadgeText}>
+                    {entry.isRewatch ? '🔁 ' : ''}
+                    {entry.rating}/10
+                  </Text>
+                </View>
+              ))}
+              {ratingHistory.some((e) => e.isRewatch) ? (
+                <Text style={styles.historyCount}>
+                  {t('rewatch.count', { count: ratingHistory.filter((e) => e.isRewatch).length })}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
+
+      {mediaType === 'tv' && status && details.seasons && details.seasons.length > 0 ? (
+        <View style={styles.progressBlock}>
+          <Text style={styles.sectionTitleInline}>{t('progress.title').toUpperCase()}</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+            {details.seasons.map((s) => (
+              <Pressable
+                key={s.seasonNumber}
+                style={[styles.chip, progressSeason === s.seasonNumber && styles.chipActive]}
+                onPress={() => {
+                  setProgressSeason(s.seasonNumber);
+                  setProgressEpisode(1);
+                }}
+              >
+                <Text style={[styles.chipText, progressSeason === s.seasonNumber && styles.chipTextActive]}>
+                  {s.name || `${t('progress.season')} ${s.seasonNumber}`}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+            {Array.from(
+              { length: details.seasons.find((s) => s.seasonNumber === progressSeason)?.episodeCount || 1 },
+              (_, i) => i + 1,
+            ).map((ep) => (
+              <Pressable
+                key={ep}
+                style={[styles.chip, progressEpisode === ep && styles.chipActive]}
+                onPress={() => setProgressEpisode(ep)}
+              >
+                <Text style={[styles.chipText, progressEpisode === ep && styles.chipTextActive]}>
+                  {t('progress.episode')} {ep}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+          <Pressable
+            style={[
+              styles.primaryButton,
+              progressSeason === status.currentSeason &&
+                progressEpisode === status.currentEpisode &&
+                styles.progressSaveDisabled,
+            ]}
+            onPress={() => void handleSaveProgress()}
+            disabled={
+              isActionPending ||
+              (progressSeason === status.currentSeason && progressEpisode === status.currentEpisode)
+            }
+          >
+            <Text style={styles.primaryButtonText}>{t('progress.save').toUpperCase()}</Text>
+          </Pressable>
         </View>
       ) : null}
 
@@ -486,8 +637,14 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       <Modal visible={isRatingModalOpen} transparent animationType="fade" onRequestClose={closeRatingModal}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{t('ratingModal.title')}</Text>
-            <Text style={styles.modalSubtitle}>{t('ratingModal.subtitle', { title: details.title })}</Text>
+            <Text style={styles.modalTitle}>
+              {modalAction === 'rewatch' ? t('rewatch.title') : t('ratingModal.title')}
+            </Text>
+            <Text style={styles.modalSubtitle}>
+              {modalAction === 'rewatch'
+                ? t('rewatch.subtitle', { title: details.title })
+                : t('ratingModal.subtitle', { title: details.title })}
+            </Text>
             <View style={styles.modalStars}>
               <StarRating size="lg" value={modalRating} onRate={setModalRating} />
             </View>
@@ -506,6 +663,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
           </View>
         </View>
       </Modal>
+      <Toast message={toastMessage} />
     </ScrollView>
   );
 }
@@ -587,6 +745,49 @@ const styles = StyleSheet.create({
   heartButtonActive: { borderColor: 'rgba(224,85,77,.6)', backgroundColor: 'rgba(224,85,77,.1)' },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: spacing.md },
   ratingLabel: { color: colors.textMuted, fontSize: 9.5, fontWeight: fontWeight.medium, letterSpacing: 1.5 },
+  rewatchBlock: { paddingHorizontal: spacing.lg, marginTop: spacing.md, gap: spacing.sm },
+  rewatchButton: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,.18)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 3,
+  },
+  rewatchButtonText: { color: colors.textSubtle, fontSize: 10.5, fontWeight: fontWeight.semibold, letterSpacing: 1 },
+  historyRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs + 2 },
+  historyLabel: { color: colors.textMuted, fontSize: 9, fontWeight: fontWeight.medium, letterSpacing: 1.5 },
+  historyBadge: {
+    backgroundColor: 'rgba(217,172,84,.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(217,172,84,.25)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+  },
+  historyBadgeText: { color: colors.accentBright, fontSize: 10.5, fontWeight: fontWeight.bold },
+  historyCount: { color: colors.textMuted, fontSize: 9, fontWeight: fontWeight.medium, textTransform: 'uppercase' },
+  progressBlock: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+    gap: spacing.sm,
+  },
+  sectionTitleInline: { color: colors.textMuted, fontSize: 10, fontWeight: fontWeight.medium, letterSpacing: 2 },
+  chipRow: { gap: spacing.xs + 2 },
+  chip: {
+    borderWidth: 1,
+    borderColor: 'rgba(217,172,84,.3)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.xs + 2,
+  },
+  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  chipText: { color: colors.textSubtle, fontSize: 11.5, fontWeight: fontWeight.semibold },
+  chipTextActive: { color: colors.textOnAccent },
+  progressSaveDisabled: { opacity: 0.3 },
   removeButton: { marginHorizontal: spacing.lg, marginTop: spacing.md, alignItems: 'center' },
   removeButtonText: { color: colors.danger, fontSize: 10, fontWeight: fontWeight.semibold, letterSpacing: 1, opacity: 0.8 },
   overview: {

@@ -17,6 +17,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { ProfileData, WatchlistItem } from '@movie-manager/shared';
 import {
+  getFavorites,
   getProfile,
   getWatchlist,
   getWatched,
@@ -65,9 +66,14 @@ const isReleased = (item: WatchlistItem): boolean => {
 };
 
 export default function ProfileScreen({ route, navigation }: Props) {
-  const [activeTab, setActiveTab] = useState<'profile' | 'watchlist' | 'watched'>(
+  const { t } = useTranslation('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'watchlist' | 'watched' | 'favorites'>(
     route.params?.tab ?? 'profile',
   );
+  // Same defaults as movie-frontend's Watchlist.tsx: newest/highest first,
+  // and Watched sorts by rating unless switched to date added.
+  const [sortDesc, setSortDesc] = useState(true);
+  const [watchedSortBy, setWatchedSortBy] = useState<'rating' | 'addedAt'>('rating');
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [movies, setMovies] = useState<WatchlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,20 +109,33 @@ export default function ProfileScreen({ route, navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const fetchPage = useCallback(
+    (offset: number) => {
+      const sortDir = sortDesc ? 'desc' : 'asc';
+      if (activeTab === 'favorites') {
+        return getFavorites(PAGE_SIZE, offset, { sortBy: 'updatedAt', sortDir });
+      }
+      if (activeTab === 'watchlist') {
+        return getWatchlist(PAGE_SIZE, offset, { sortBy: 'addedAt', sortDir });
+      }
+      return getWatched(PAGE_SIZE, offset, undefined, { sortBy: watchedSortBy, sortDir });
+    },
+    [activeTab, sortDesc, watchedSortBy],
+  );
+
   const fetchMovies = useCallback(async () => {
     setIsLoading(true);
     try {
-      const fetcher = activeTab === 'watchlist' ? getWatchlist : getWatched;
-      const data = await fetcher(PAGE_SIZE, 0);
+      const data = await fetchPage(0);
       setMovies(data);
       setHasMore(data.length === PAGE_SIZE);
     } catch (err) {
-      showToast(getErrorMessage(err, 'Could not load your list.'));
+      showToast(getErrorMessage(err, t('errors.loadList')));
     } finally {
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [fetchPage]);
 
   useFocusEffect(
     useCallback(() => {
@@ -133,8 +152,7 @@ export default function ProfileScreen({ route, navigation }: Props) {
     if (isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
     try {
-      const fetcher = activeTab === 'watchlist' ? getWatchlist : getWatched;
-      const data = await fetcher(PAGE_SIZE, movies.length);
+      const data = await fetchPage(movies.length);
       setMovies((prev) => [...prev, ...data]);
       setHasMore(data.length === PAGE_SIZE);
     } finally {
@@ -143,13 +161,18 @@ export default function ProfileScreen({ route, navigation }: Props) {
   };
 
   const handleToggleFavorite = async (tmdbId: number) => {
+    // On the Favorites tab an un-favorite drops the row; elsewhere it flips
+    // the heart in place.
     setMovies((prev) =>
-      prev.map((m) => (m.tmdbId === tmdbId ? { ...m, isFavorite: !m.isFavorite } : m)),
+      activeTab === 'favorites'
+        ? prev.filter((m) => m.tmdbId !== tmdbId)
+        : prev.map((m) => (m.tmdbId === tmdbId ? { ...m, isFavorite: !m.isFavorite } : m)),
     );
     try {
       await toggleFavorite(tmdbId);
-    } catch {
-      showToast('Could not update favorite.');
+    } catch (err) {
+      const httpStatus = (err as { response?: { status?: number } }).response?.status;
+      showToast(httpStatus === 400 ? t('errors.favoriteLimit') : t('errors.updateFavorite'));
       void fetchMovies();
     }
   };
@@ -189,7 +212,17 @@ export default function ProfileScreen({ route, navigation }: Props) {
   const confirmMarkWatched = async () => {
     if (!ratingTarget) return;
     const { tmdbId } = ratingTarget;
-    setMovies((prev) => prev.filter((m) => m.tmdbId !== tmdbId));
+    // Favorites can hold unwatched items too — mark them watched in place
+    // rather than removing the row (matches web's favorites tab).
+    setMovies((prev) =>
+      activeTab === 'favorites'
+        ? prev.map((m) =>
+            m.tmdbId === tmdbId
+              ? { ...m, isWatched: true, rating: modalRating > 0 ? modalRating : m.rating }
+              : m,
+          )
+        : prev.filter((m) => m.tmdbId !== tmdbId),
+    );
     setRatingTarget(null);
     try {
       await markAsWatched(tmdbId);
@@ -282,6 +315,7 @@ export default function ProfileScreen({ route, navigation }: Props) {
             onToggleFavorite={(tmdbId) => void handleToggleFavoriteInProfile(tmdbId)}
             onOpenFriends={() => setIsFriendsModalOpen(true)}
             onPressMovie={goToMovie}
+            onViewAllFavorites={() => setActiveTab('favorites')}
           />
         </View>
 
@@ -320,12 +354,13 @@ export default function ProfileScreen({ route, navigation }: Props) {
             count: totalCount ? totalCount - watchedCount : null,
           },
           { key: 'watched', label: 'Watched', count: watchedCount || null },
+          { key: 'favorites', label: t('tabs.favorites') },
         ]}
         activeKey={activeTab}
         onChange={(key) => setActiveTab(key as typeof activeTab)}
       />
 
-      {activeTab === 'watchlist' ? (
+      {activeTab !== 'profile' ? (
         <View style={styles.filterRow}>
           {(['all', 'movie', 'tv'] as const).map((f) => (
             <Pressable
@@ -336,10 +371,34 @@ export default function ProfileScreen({ route, navigation }: Props) {
               <Text
                 style={[styles.filterText, mediaFilter === f && styles.filterTextActive]}
               >
-                {f === 'all' ? 'All' : f === 'movie' ? 'Movies' : 'TV'}
+                {f === 'all' ? t('filters.all') : f === 'movie' ? t('filters.movies') : t('filters.tv')}
               </Text>
             </Pressable>
           ))}
+          <View style={styles.sortGroup}>
+            {activeTab === 'watched'
+              ? (['rating', 'addedAt'] as const).map((field) => (
+                  <Pressable
+                    key={field}
+                    style={[styles.filterPill, watchedSortBy === field && styles.filterPillActive]}
+                    onPress={() => setWatchedSortBy(field)}
+                  >
+                    <Text
+                      style={[styles.filterText, watchedSortBy === field && styles.filterTextActive]}
+                    >
+                      {field === 'rating' ? t('sort.rating') : t('sort.added')}
+                    </Text>
+                  </Pressable>
+                ))
+              : null}
+            <Pressable
+              style={styles.filterPill}
+              onPress={() => setSortDesc((v) => !v)}
+              accessibilityLabel={sortDesc ? t('sort.desc') : t('sort.asc')}
+            >
+              <Text style={styles.filterText}>{sortDesc ? '↓' : '↑'}</Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
 
@@ -375,12 +434,13 @@ export default function ProfileScreen({ route, navigation }: Props) {
           }
           renderItem={({ item }) => {
             const released = isReleased(item);
+            const showRating = activeTab === 'watched' || (activeTab === 'favorites' && item.isWatched);
             return (
               <MoviePosterCard
                 posterUrl={item.posterUrl}
                 title={item.title}
                 subtitle={
-                  activeTab === 'watched'
+                  showRating
                     ? `★ ${(item.rating ?? 0).toFixed(1)}`
                     : item.releaseDate
                       ? new Date(item.releaseDate).getFullYear().toString()
@@ -392,7 +452,7 @@ export default function ProfileScreen({ route, navigation }: Props) {
                 onPress={() => goToMovie(item)}
                 footer={
                   <View style={styles.cardFooter}>
-                    {activeTab === 'watched' ? (
+                    {showRating ? (
                       <StarRating
                         size="sm"
                         value={item.rating ?? 0}
@@ -483,6 +543,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderSubtle,
   },
   filterPillActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  sortGroup: { flexDirection: 'row', gap: spacing.sm, marginLeft: 'auto' },
   filterText: { color: colors.textMuted, fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
   filterTextActive: { color: colors.textOnAccent },
   section: {
