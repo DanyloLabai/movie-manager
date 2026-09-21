@@ -1,5 +1,6 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import AppTabs from './AppTabs';
+import AppTabs, { type AppTabsParamList } from './AppTabs';
 import MovieDetailScreen from '../screens/movie/MovieDetailScreen';
 import ActorDetailScreen from '../screens/actor/ActorDetailScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
@@ -10,7 +11,7 @@ import ChangePasswordScreen from '../screens/settings/ChangePasswordScreen';
 import { colors } from '../theme';
 
 export type MainStackParamList = {
-  Tabs: undefined;
+  Tabs: NavigatorScreenParams<AppTabsParamList> | undefined;
   MovieDetail: { movieId: number; title?: string; mediaType?: 'movie' | 'tv' };
   ActorDetail: { actorId: number; name?: string };
   Notifications: undefined;

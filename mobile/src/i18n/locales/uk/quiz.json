@@ -1,1 +1,140 @@
-{}
+{
+  "quizScreen": {
+    "headerTitle": "Квіз",
+    "headerSubtitle": "Вгадай сьогоднішній фільм за підказками",
+    "loadError": "Не вдалося завантажити сьогоднішній квіз.",
+    "correctToast": "Правильно!",
+    "incorrectToast": "Не зовсім — спробуй ще.",
+    "submitGuessError": "Не вдалося надіслати відповідь.",
+    "buyHintError": "Не вдалося купити підказку.",
+    "addWatchlistError": "Не вдалося додати до списку перегляду.",
+    "noQuizAvailable": "Зараз квіз недоступний.",
+    "points": "Бали",
+    "dayStreak": "Днів поспіль",
+    "best": "Рекорд",
+    "hintUnlockCost": "{{cost}} балів, щоб відкрити наступну підказку",
+    "correct": "Вірно",
+    "failed": "Невдача",
+    "triesUsed": "{{used}}/{{total}} спроб",
+    "guessesLeft": "Залишилось спроб: {{count}}",
+    "guessInputPlaceholder": "Введи назву фільму…",
+    "guessButton": "Вгадати",
+    "guessedHeadline": "Вгадано!",
+    "notGuessedHeadline": "Не вгадано",
+    "finalScore": "Підсумковий рахунок",
+    "attemptsUsed": "Використано спроб",
+    "hintsUsed": "Використано підказок",
+    "viewMovie": "Переглянути фільм",
+    "added": "Додано",
+    "watchlist": "Список перегляду",
+    "newMovieIn": "Новий фільм через",
+    "shareResult": "Поділитися результатом →",
+    "hintsSectionTitle": "Підказки",
+    "hintsAllOpened": "усі відкриті після завершення",
+    "hintsOpenedCount": "відкрито {{revealed}} з {{total}}",
+    "lockedHint": "Закрита підказка",
+    "hintBuyCost": "−{{cost}} балів",
+    "friendsLeaderboard": "Рейтинг друзів",
+    "you": "Ти",
+    "statusSolved": "Розгадано за {{score}}",
+    "statusFailed": "Сьогодні не вгадано",
+    "statusInProgress": "У процесі",
+    "statusNotPlayed": "Ще не грав",
+    "shareSolved": "LUMEN Денний квіз — вгадано «{{title}}» за {{used}}/{{total}} · {{score}} балів",
+    "shareFailedWithTitle": "LUMEN Денний квіз — сьогодні не вгадано «{{title}}»",
+    "shareFailedNoTitle": "LUMEN Денний квіз — сьогодні не вгадано"
+  },
+  "aiChatScreen": {
+    "headerTitle": "Lumen AI",
+    "emptyTitle": "Lumen AI",
+    "emptyMessage": "Попроси в мене рекомендацію фільму.",
+    "suggestion1": "Порадь фільм-мозколом у жанрі наукової фантастики",
+    "suggestion2": "Що подивитися сьогодні ввечері?",
+    "suggestion3": "Фільми, схожі на «Початок»",
+    "suggestion4": "Що подивитися з мого списку перегляду?",
+    "whyThis": "Чому це",
+    "loadHistoryError": "Не вдалося завантажити історію чату.",
+    "sendError": "Не вдалося отримати відповідь.",
+    "chatCleared": "Історію чату очищено.",
+    "addedToWatchlist": "Додано до списку перегляду.",
+    "addWatchlistError": "Не вдалося додати до списку перегляду.",
+    "inputPlaceholder": "Запитай про фільм…",
+    "disclaimer": "Lumen AI може помилятися. Перевіряй важливу інформацію.",
+    "usageTitle": "Використання сьогодні",
+    "requests": "Запити",
+    "tokens": "Токени",
+    "added": "Додано",
+    "add": "Додати",
+    "details": "Деталі",
+    "dailyLimit": "Ти вичерпав денний ліміт запитів до AI. Повертайся завтра.",
+    "error": "Ой, щось пішло не так. Спробуй пізніше.",
+    "photoButton": "Впізнати фільм за фото",
+    "photoSent": "Що це за фільм/серіал?",
+    "photoInvalidType": "Завантаж фото у форматі JPEG, PNG або WebP.",
+    "photoTooLarge": "Це фото завелике (максимум 8МБ).",
+    "photoDailyLimit": "Ти вичерпав денний ліміт розпізнавання фото (3/добу). Повертайся завтра.",
+    "photoError": "Не вдалося обробити фото. Спробуй пізніше.",
+    "photoPlaceholder": "Додай коментар до фото (необов'язково)...",
+    "photoAttachedHint": "Фото додано - напиши коментар або надішли",
+    "photoRemove": "Прибрати фото",
+    "photoPermission": "Дозволь доступ до фото, щоб впізнати фільм за зображенням.",
+    "photoIds": "Розпізнавання фото"
+  },
+  "ranks": {
+    "filmLegend": "Легенда кіно",
+    "cinemaCurator": "Кінокуратор",
+    "cinephile": "Кінофіл",
+    "movieEnthusiast": "Кіноентузіаст",
+    "cinemaGuest": "Гість кінозалу"
+  },
+  "achievements": {
+    "first_blood": {
+      "text": "Перша кров",
+      "requirement": "Додай 1 фільм до списку перегляду або познач переглянутим"
+    },
+    "critic": {
+      "text": "Критик",
+      "requirement": "Додай 5 фільмів до улюблених"
+    },
+    "cinephile": {
+      "text": "Кінофіл",
+      "requirement": "Познач 10 фільмів переглянутими"
+    },
+    "collector": {
+      "text": "Колекціонер",
+      "requirement": "Збери 20 фільмів загалом (переглянуті + список перегляду)"
+    },
+    "tastemaker": {
+      "text": "Законодавець смаку",
+      "requirement": "Додай 20 фільмів до улюблених"
+    },
+    "filmbuff": {
+      "text": "Кінознавець",
+      "requirement": "Познач 50 фільмів переглянутими"
+    },
+    "librarian": {
+      "text": "Бібліотекар",
+      "requirement": "Збери 100 фільмів загалом (переглянуті + список перегляду)"
+    },
+    "quiz_first_win": {
+      "text": "Новачок квізу",
+      "requirement": "Вгадай 1 денний кіноквіз"
+    },
+    "quiz_perfectionist": {
+      "text": "Перфекціоніст",
+      "requirement": "Вгадай квіз без жодної купленої підказки"
+    },
+    "quiz_streak_7": {
+      "text": "Тиждень поспіль",
+      "requirement": "Вгадуй квіз 7 днів поспіль"
+    },
+    "quiz_streak_30": {
+      "text": "Місяць поспіль",
+      "requirement": "Вгадуй квіз 30 днів поспіль"
+    },
+    "quiz_veteran": {
+      "text": "Ветеран квізу",
+      "requirement": "Вгадай 50 денних квізів загалом"
+    }
+  }
+}

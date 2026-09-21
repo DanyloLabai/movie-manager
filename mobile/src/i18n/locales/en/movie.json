@@ -54,5 +54,6 @@
   "toasts": {
     "ratingSaved": "Rating saved!",
     "ratingCleared": "Rating cleared."
-  }
+  },
+  "findSimilar": "Find similar"
 }

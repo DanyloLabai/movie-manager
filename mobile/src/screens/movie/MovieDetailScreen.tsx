@@ -488,6 +488,19 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
         </View>
       ) : null}
 
+      <Pressable
+        style={styles.findSimilarButton}
+        onPress={() =>
+          navigation.navigate('Tabs', {
+            screen: 'Search',
+            params: { similarTo: { tmdbId: movieId, title: details.title } },
+          })
+        }
+      >
+        <Ionicons name="sparkles-outline" size={13} color={colors.textSubtle} />
+        <Text style={styles.rewatchButtonText}>{t('findSimilar').toUpperCase()}</Text>
+      </Pressable>
+
       {status ? (
         <Pressable style={styles.removeButton} onPress={() => void handleRemove()} disabled={isActionPending}>
           <Text style={styles.removeButtonText}>{t('removeFromWatchlist').toUpperCase()}</Text>
@@ -745,6 +758,19 @@ const styles = StyleSheet.create({
   heartButtonActive: { borderColor: 'rgba(224,85,77,.6)', backgroundColor: 'rgba(224,85,77,.1)' },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, marginTop: spacing.md },
   ratingLabel: { color: colors.textMuted, fontSize: 9.5, fontWeight: fontWeight.medium, letterSpacing: 1.5 },
+  findSimilarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,.18)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 3,
+  },
   rewatchBlock: { paddingHorizontal: spacing.lg, marginTop: spacing.md, gap: spacing.sm },
   rewatchButton: {
     alignSelf: 'flex-start',

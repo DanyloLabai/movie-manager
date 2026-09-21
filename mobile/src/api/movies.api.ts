@@ -118,6 +118,15 @@ export async function getRecommendations(): Promise<MovieResult[]> {
   return (res.data as MovieResult[]) ?? [];
 }
 
+// Vector-similarity picks for a given title (the web's "Find similar" action).
+export async function findSimilarMoviesSemantic(
+  tmdbId: number,
+  filters: SmartSearchFilters = {},
+): Promise<MovieResult[]> {
+  const res = await api.get(`/movies/${tmdbId}/similar/semantic`, { params: filters });
+  return (res.data as MovieResult[]) ?? [];
+}
+
 export interface BecauseYouWatchedResponse {
   basedOnMovie: { id: number; title: string; posterUrl: string | null };
   similarMovies: MovieResult[];

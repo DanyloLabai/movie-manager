@@ -30,4 +30,13 @@ export interface AiUsage {
   totalTokens: number;
   requestLimit: number;
   tokenLimit: number;
+  photoRequestCount: number;
+  photoRequestLimit: number;
+}
+
+// Response shape shared by POST /ai/identify-photo and
+// POST /ai/watch-together/:friendId — a message plus candidate movies.
+export interface AiMoviesResponse {
+  message?: string;
+  movies?: MovieResult[];
 }

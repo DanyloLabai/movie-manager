@@ -65,7 +65,20 @@
     "tokens": "Tokens",
     "added": "Added",
     "add": "Add",
-    "details": "Details"
+    "details": "Details",
+    "dailyLimit": "You've reached today's AI request limit. Please come back tomorrow.",
+    "error": "Oops, something went wrong. Please try again later.",
+    "photoButton": "Identify a movie from a photo",
+    "photoSent": "Which movie/show is this?",
+    "photoInvalidType": "Please upload a JPEG, PNG, or WebP image.",
+    "photoTooLarge": "That photo is too large (max 8MB).",
+    "photoDailyLimit": "You've reached today's photo-identify limit (3/day). Please come back tomorrow.",
+    "photoError": "Couldn't process that photo right now. Please try again later.",
+    "photoPlaceholder": "Add a note about the photo (optional)...",
+    "photoAttachedHint": "Photo attached - add a note or hit send",
+    "photoRemove": "Remove photo",
+    "photoPermission": "Allow photo access to identify a movie from a picture.",
+    "photoIds": "Photo IDs"
   },
   "ranks": {
     "filmLegend": "Film Legend",

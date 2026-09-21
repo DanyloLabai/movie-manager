@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -26,6 +26,7 @@ import {
   getProfile,
   getRecommendations,
   getTrending,
+  findSimilarMoviesSemantic,
   getUpcomingMovies,
   removeFromWatchlist,
   searchMovies,
@@ -171,7 +172,7 @@ function Carousel({
   );
 }
 
-export default function SearchScreen({ navigation }: Props) {
+export default function SearchScreen({ navigation, route }: Props) {
   const { t } = useTranslation('discover');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<MovieResult[]>([]);
@@ -194,6 +195,9 @@ export default function SearchScreen({ navigation }: Props) {
   const [swipeStatus, setSwipeStatus] = useState<SwipeStatus | null>(null);
   const [filters, setFilters] = useState<SmartSearchFilters>({});
   const [showFilters, setShowFilters] = useState(false);
+  // Set when results come from a "Find similar" action rather than a typed query.
+  const [similarToTitle, setSimilarToTitle] = useState<string | null>(null);
+  const similarActiveRef = useRef(false);
   const { toastMessage, showToast } = useToast();
 
   const hasActiveFilters = Object.values(filters).some((v) => v !== undefined && v !== false);
@@ -247,14 +251,36 @@ export default function SearchScreen({ navigation }: Props) {
   useEffect(() => {
     const trimmed = query.trim();
     if (trimmed.length < 2) {
-      setResults([]);
-      setError(null);
+      if (!similarActiveRef.current) {
+        setResults([]);
+        setError(null);
+      }
       return;
     }
+    similarActiveRef.current = false;
+    setSimilarToTitle(null);
     const timeout = setTimeout(() => runSearch(trimmed), 350);
     return () => clearTimeout(timeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
+
+  const similarTo = route.params?.similarTo;
+  useEffect(() => {
+    if (!similarTo) return;
+    similarActiveRef.current = true;
+    setFilters({});
+    setShowFilters(false);
+    setQuery('');
+    setSimilarToTitle(similarTo.title);
+    setIsSearching(true);
+    setError(null);
+    findSimilarMoviesSemantic(similarTo.tmdbId)
+      .then(setResults)
+      .catch((err) => setError(getErrorMessage(err, t('search.searchFailed'))))
+      .finally(() => setIsSearching(false));
+    navigation.setParams({ similarTo: undefined });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [similarTo]);
 
   const goToMovie = (item: MovieResult) => {
     navigation.navigate('MovieDetail', {
@@ -265,6 +291,8 @@ export default function SearchScreen({ navigation }: Props) {
   };
 
   const handleClearSearch = () => {
+    similarActiveRef.current = false;
+    setSimilarToTitle(null);
     setQuery('');
     setResults([]);
     setError(null);
@@ -391,7 +419,7 @@ export default function SearchScreen({ navigation }: Props) {
     }
   };
 
-  const isSearchMode = query.trim().length >= 2;
+  const isSearchMode = query.trim().length >= 2 || similarToTitle !== null;
   const isIdle = !isSearchMode && !isSearching;
   const visibleRecommendations = recommendations.filter((m) => !addedIds.has(m.id)).slice(0, 20);
   const visibleBecauseYouWatched = becauseYouWatched
@@ -486,7 +514,12 @@ export default function SearchScreen({ navigation }: Props) {
             ListHeaderComponent={
               results.length > 0 ? (
                 <View style={styles.resultsHeader}>
-                  <Text style={styles.resultsHeaderTitle}>{t('search.resultsTitle').toUpperCase()}</Text>
+                  <Text style={styles.resultsHeaderTitle}>
+                    {(similarToTitle
+                      ? `${t('search.similarTo')} "${similarToTitle}"`
+                      : t('search.resultsTitle')
+                    ).toUpperCase()}
+                  </Text>
                   <Pressable onPress={handleClearSearch}>
                     <Text style={styles.resultsHeaderBack}>← {t('search.goBack').toUpperCase()}</Text>
                   </Pressable>

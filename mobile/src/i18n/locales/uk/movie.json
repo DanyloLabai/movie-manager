@@ -54,5 +54,6 @@
   "toasts": {
     "ratingSaved": "Оцінку збережено!",
     "ratingCleared": "Оцінку скасовано."
-  }
+  },
+  "findSimilar": "Знайти схожі"
 }

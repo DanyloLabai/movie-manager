@@ -17,12 +17,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useTranslation } from 'react-i18next';
 import type { AiUsage, MovieResult, RecommendationReason } from '@movie-manager/shared';
-import { aiSearch, getHistory, getUsage, postHistory } from '../../api/ai.api';
-import { addToWatchlist, getProfile } from '../../api/movies.api';
+import { aiSearch, getHistory, getUsage, identifyPhoto, postHistory } from '../../api/ai.api';
+import { addToWatchlist, getProfile, markAsWatched, rateMovie } from '../../api/movies.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
 import { useToast } from '../../hooks/useToast';
+import AddMovieModal from '../../components/AddMovieModal';
 import ScreenHeader from '../../components/ScreenHeader';
 import Toast from '../../components/Toast';
 import { colors, spacing, radius, fontWeight } from '../../theme';
@@ -39,7 +41,31 @@ interface Message {
   content: string;
   movies?: MovieResult[];
   reasoning?: RecommendationReason[];
+  /** Local preview of a photo the user sent — never persisted server-side. */
+  imageUrl?: string;
 }
+
+interface PendingPhoto {
+  uri: string;
+  name: string;
+  type: string;
+}
+
+// Keep in sync with the backend (ALLOWED_PHOTO_MIME_TYPES / MAX_PHOTO_SIZE_BYTES)
+// and movie-frontend's AiChat.tsx.
+const MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+// Same 3s pause between turns as movie-frontend's aiChatStore.
+const COOLDOWN_MS = 3000;
+// Only the tail of the conversation is sent to the model.
+const MAX_HISTORY = 20;
+
+const guessMimeType = (name: string): string => {
+  const ext = name.split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  return 'image/jpeg';
+};
 
 // getProfileData() returns more than the shared ProfileData type declares
 // (movie-frontend's AiChat.tsx casts the same way, see its local
@@ -73,7 +99,7 @@ function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
 }
 
 export default function AiChatScreen({ navigation }: Props) {
-  const { t } = useTranslation('quiz');
+  const { t, i18n } = useTranslation('quiz');
   const SUGGESTIONS = [
     t('aiChatScreen.suggestion1'),
     t('aiChatScreen.suggestion2'),
@@ -87,7 +113,15 @@ export default function AiChatScreen({ navigation }: Props) {
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [usage, setUsage] = useState<AiUsage | null>(null);
   const [isUsageOpen, setIsUsageOpen] = useState(false);
+  const [isCoolingDown, setIsCoolingDown] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
+  const [addTarget, setAddTarget] = useState<MovieResult | null>(null);
   const { toastMessage, showToast } = useToast();
+
+  const startCooldown = () => {
+    setIsCoolingDown(true);
+    setTimeout(() => setIsCoolingDown(false), COOLDOWN_MS);
+  };
 
   useEffect(() => {
     (async () => {
@@ -114,9 +148,17 @@ export default function AiChatScreen({ navigation }: Props) {
     getUsage().then(setUsage).catch(() => {});
   }, []);
 
+  const persist = (list: Message[]) => {
+    void postHistory(list.map((m) => ({ role: m.role, content: m.content, movies: m.movies }))).catch(() => {});
+  };
+
   const handleSend = async (text: string) => {
+    if (pendingPhoto) {
+      await handleSendPhoto(text.trim());
+      return;
+    }
     const trimmed = text.trim();
-    if (!trimmed || isSending) return;
+    if (!trimmed || isSending || isCoolingDown) return;
     setDraft('');
 
     const userMessage: Message = { role: 'user', content: trimmed };
@@ -125,8 +167,21 @@ export default function AiChatScreen({ navigation }: Props) {
     setIsSending(true);
 
     try {
+      const recent = nextMessages.slice(-MAX_HISTORY);
+      const shownMovieIds = recent.flatMap((m) => (m.movies ?? []).map((movie) => movie.id));
+      // Mirrors movie-frontend's aiChatStore: tell the model which titles it
+      // already showed so it doesn't repeat them.
       const response = await aiSearch({
-        messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
+        messages: recent.map((m) => {
+          let content = m.content;
+          if (m.role === 'assistant' && m.movies && m.movies.length > 0) {
+            content += `\n[System note: I already showed these movies to the user: ${m.movies
+              .map((movie) => movie.title)
+              .join(', ')}. Do not repeat them in next suggestions.]`;
+          }
+          return { role: m.role, content };
+        }),
+        shownMovieIds,
       });
       const assistantMessage: Message = {
         role: 'assistant',
@@ -136,13 +191,82 @@ export default function AiChatScreen({ navigation }: Props) {
       };
       const withReply = [...nextMessages, assistantMessage];
       setMessages(withReply);
-      void postHistory(withReply.map((m) => ({ role: m.role, content: m.content, movies: m.movies }))).catch(
-        () => {},
-      );
+      persist(withReply);
     } catch (err) {
-      showToast(getErrorMessage(err, t('aiChatScreen.sendError')));
+      const httpStatus = (err as { response?: { status?: number } }).response?.status;
+      if (httpStatus === 429) {
+        setMessages([...nextMessages, { role: 'assistant', content: t('aiChatScreen.dailyLimit') }]);
+      } else {
+        showToast(getErrorMessage(err, t('aiChatScreen.sendError')));
+      }
     } finally {
       setIsSending(false);
+      startCooldown();
+      getUsage().then(setUsage).catch(() => {});
+    }
+  };
+
+  const handlePickPhoto = async () => {
+    if (isSending || isCoolingDown) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      showToast(t('aiChatScreen.photoPermission'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const name = asset.fileName ?? asset.uri.split('/').pop() ?? 'photo.jpg';
+    const type = asset.mimeType ?? guessMimeType(name);
+    if (!ALLOWED_PHOTO_TYPES.has(type)) {
+      showToast(t('aiChatScreen.photoInvalidType'));
+      return;
+    }
+    if (asset.fileSize && asset.fileSize > MAX_PHOTO_SIZE_BYTES) {
+      showToast(t('aiChatScreen.photoTooLarge'));
+      return;
+    }
+    setPendingPhoto({ uri: asset.uri, name, type });
+  };
+
+  const handleSendPhoto = async (note: string) => {
+    if (!pendingPhoto || isSending || isCoolingDown) return;
+    const photo = pendingPhoto;
+    setPendingPhoto(null);
+    setDraft('');
+
+    const userMessage: Message = {
+      role: 'user',
+      content: note || t('aiChatScreen.photoSent'),
+      imageUrl: photo.uri,
+    };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    setIsSending(true);
+
+    try {
+      const response = await identifyPhoto(photo, note, i18n.language);
+      const withReply: Message[] = [
+        ...nextMessages,
+        { role: 'assistant', content: response.message ?? '', movies: response.movies },
+      ];
+      setMessages(withReply);
+      persist(withReply);
+    } catch (err) {
+      const httpStatus = (err as { response?: { status?: number } }).response?.status;
+      setMessages([
+        ...nextMessages,
+        {
+          role: 'assistant',
+          content: httpStatus === 429 ? t('aiChatScreen.photoDailyLimit') : t('aiChatScreen.photoError'),
+        },
+      ]);
+    } finally {
+      setIsSending(false);
+      startCooldown();
       getUsage().then(setUsage).catch(() => {});
     }
   };
@@ -151,6 +275,29 @@ export default function AiChatScreen({ navigation }: Props) {
     setMessages([]);
     void postHistory([]).catch(() => {});
     showToast(t('aiChatScreen.chatCleared'));
+  };
+
+  const handleMarkWatchedFromChat = async (movie: MovieResult, rating: number | null) => {
+    try {
+      try {
+        await addToWatchlist({
+          tmdbId: movie.id,
+          title: movie.title,
+          posterUrl: movie.posterUrl,
+          mediaType: movie.mediaType,
+          releaseDate: movie.releaseDate,
+        });
+      } catch (err) {
+        // 400 = already on the list; carry on and mark it watched.
+        if ((err as { response?: { status?: number } }).response?.status !== 400) throw err;
+      }
+      await markAsWatched(movie.id);
+      if (rating) await rateMovie(movie.id, rating);
+      setAddedIds((prev) => [...prev, movie.id]);
+      showToast(t('aiChatScreen.addedToWatchlist'));
+    } catch (err) {
+      showToast(getErrorMessage(err, t('aiChatScreen.addWatchlistError')));
+    }
   };
 
   const handleAddFromChat = async (movie: MovieResult) => {
@@ -226,6 +373,7 @@ export default function AiChatScreen({ navigation }: Props) {
           renderItem={({ item }) =>
             item.role === 'user' ? (
               <View style={[styles.bubble, styles.bubbleUser]}>
+                {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.bubbleImage} /> : null}
                 <Text style={[styles.bubbleText, styles.bubbleTextUser]}>{item.content}</Text>
               </View>
             ) : (
@@ -274,7 +422,7 @@ export default function AiChatScreen({ navigation }: Props) {
                                   <Text style={styles.addedPillText}>✓ {t('aiChatScreen.added').toUpperCase()}</Text>
                                 </View>
                               ) : (
-                                <Pressable style={styles.addButton} onPress={() => void handleAddFromChat(movie)}>
+                                <Pressable style={styles.addButton} onPress={() => setAddTarget(movie)}>
                                   <Text style={styles.addButtonText}>+ {t('aiChatScreen.add').toUpperCase()}</Text>
                                 </Pressable>
                               )}
@@ -304,6 +452,22 @@ export default function AiChatScreen({ navigation }: Props) {
           }
         />
 
+        {pendingPhoto ? (
+          <View style={styles.pendingPhotoRow}>
+            <Image source={{ uri: pendingPhoto.uri }} style={styles.pendingPhotoThumb} />
+            <Text style={styles.pendingPhotoHint} numberOfLines={2}>
+              {t('aiChatScreen.photoAttachedHint')}
+            </Text>
+            <Pressable
+              onPress={() => setPendingPhoto(null)}
+              hitSlop={8}
+              accessibilityLabel={t('aiChatScreen.photoRemove')}
+            >
+              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+            </Pressable>
+          </View>
+        ) : null}
+
         <View style={styles.inputRow}>
           <Pressable style={styles.clearButton} onPress={handleClearChat} disabled={messages.length === 0}>
             <Ionicons
@@ -312,16 +476,32 @@ export default function AiChatScreen({ navigation }: Props) {
               color={messages.length === 0 ? colors.textFaint : colors.danger}
             />
           </Pressable>
+          <Pressable
+            style={styles.clearButton}
+            onPress={() => void handlePickPhoto()}
+            disabled={isSending || isCoolingDown}
+            accessibilityLabel={t('aiChatScreen.photoButton')}
+          >
+            <Ionicons
+              name="image-outline"
+              size={16}
+              color={isSending || isCoolingDown ? colors.textFaint : colors.textSubtle}
+            />
+          </Pressable>
           <TextInput
             style={styles.input}
-            placeholder={t('aiChatScreen.inputPlaceholder')}
+            placeholder={pendingPhoto ? t('aiChatScreen.photoPlaceholder') : t('aiChatScreen.inputPlaceholder')}
             placeholderTextColor={colors.textMuted}
             value={draft}
             onChangeText={setDraft}
             onSubmitEditing={() => void handleSend(draft)}
             editable={!isSending}
           />
-          <Pressable style={styles.sendButton} onPress={() => void handleSend(draft)} disabled={isSending}>
+          <Pressable
+            style={[styles.sendButton, isCoolingDown && styles.sendButtonDisabled]}
+            onPress={() => void handleSend(draft)}
+            disabled={isSending || isCoolingDown}
+          >
             {isSending ? (
               <ActivityIndicator color={colors.textOnAccent} size="small" />
             ) : (
@@ -370,11 +550,47 @@ export default function AiChatScreen({ navigation }: Props) {
                     />
                   </View>
                 </View>
+                {usage.photoRequestLimit ? (
+                  <View style={styles.usageRow}>
+                    <View style={styles.usageRowHeader}>
+                      <Text style={styles.usageRowLabel}>{t('aiChatScreen.photoIds').toUpperCase()}</Text>
+                      <Text style={styles.usageRowValue}>
+                        {usage.photoRequestCount}/{usage.photoRequestLimit}
+                      </Text>
+                    </View>
+                    <View style={styles.usageTrack}>
+                      <View
+                        style={[
+                          styles.usageFill,
+                          {
+                            width: `${Math.min(100, (usage.photoRequestCount / usage.photoRequestLimit) * 100)}%`,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                ) : null}
               </View>
             ) : null}
           </Pressable>
         </Pressable>
       </Modal>
+
+      <AddMovieModal
+        visible={addTarget !== null}
+        title={addTarget?.title ?? ''}
+        onClose={() => setAddTarget(null)}
+        onAddToWatchlist={() => {
+          const movie = addTarget;
+          setAddTarget(null);
+          if (movie) void handleAddFromChat(movie);
+        }}
+        onMarkWatched={(rating) => {
+          const movie = addTarget;
+          setAddTarget(null);
+          if (movie) void handleMarkWatchedFromChat(movie, rating);
+        }}
+      />
 
       <Toast message={toastMessage} />
     </SafeAreaView>
@@ -425,6 +641,17 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(217,172,84,.25)',
     alignSelf: 'flex-end',
   },
+  bubbleImage: { width: 180, height: 180, borderRadius: radius.sm, marginBottom: spacing.xs + 2 },
+  pendingPhotoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  pendingPhotoThumb: { width: 44, height: 44, borderRadius: radius.sm },
+  pendingPhotoHint: { flex: 1, color: colors.textMuted, fontSize: 12 },
+  sendButtonDisabled: { opacity: 0.4 },
   bubbleText: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
   bubbleTextUser: { color: colors.textPrimary },
   assistantBlock: { gap: spacing.sm },

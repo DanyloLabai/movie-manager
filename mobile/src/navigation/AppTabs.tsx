@@ -10,7 +10,7 @@ import { colors } from '../theme';
 
 export type AppTabsParamList = {
   AiChat: undefined;
-  Search: undefined;
+  Search: { similarTo?: { tmdbId: number; title: string } } | undefined;
   Quiz: undefined;
   Profile: { tab?: 'profile' | 'watchlist' | 'watched' | 'favorites' } | undefined;
   Settings: undefined;
