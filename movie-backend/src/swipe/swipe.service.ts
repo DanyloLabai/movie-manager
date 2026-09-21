@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { SwipeAction } from './swipe-action.entity';
 import { WatchlistItem } from '../movies/watchlist-entity';
 import { User } from '../users/users.entity';
+import { Activity } from '../activity/activity.entity';
 import { MoviesService } from '../movies/movies.service';
 import { DiscoveryCandidate, VectorService } from '../vector/vector.service';
 import { SwipeActionDto } from './dto/swipe-action.dto';
@@ -36,6 +37,8 @@ export class SwipeService {
     private readonly watchlistRepo: Repository<WatchlistItem>,
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    @InjectRepository(Activity)
+    private readonly activityRepo: Repository<Activity>,
     private readonly moviesService: MoviesService,
     private readonly vectorService: VectorService,
   ) {}
@@ -100,7 +103,26 @@ export class SwipeService {
       select: ['tmdbId', 'isWatched', 'isFavorite'],
     });
 
-    const permanentExcludeIds = watchlistItems.map((w) => w.tmdbId);
+    // Movies the user has ever watched stay excluded even after they're
+    // later removed from the watchlist (e.g. un-marking as watched deletes
+    // the watchlist row entirely) - the activity log is the permanent
+    // record, so re-querying the watchlist alone would let them reappear.
+    const everWatched = await this.activityRepo
+      .createQueryBuilder('a')
+      .select('DISTINCT a."tmdbId"', 'tmdbId')
+      .where('a."userId" = :userId', { userId })
+      .andWhere('a.type IN (:...types)', {
+        types: ['watched', 'rated', 'rewatched'],
+      })
+      .andWhere('a."mediaType" = :mediaType', { mediaType: 'movie' })
+      .getRawMany<{ tmdbId: number }>();
+
+    const permanentExcludeIds = Array.from(
+      new Set([
+        ...watchlistItems.map((w) => w.tmdbId),
+        ...everWatched.map((w) => w.tmdbId),
+      ]),
+    );
     const likedTmdbIds = watchlistItems
       .filter((w) => w.isWatched || w.isFavorite)
       .map((w) => w.tmdbId);

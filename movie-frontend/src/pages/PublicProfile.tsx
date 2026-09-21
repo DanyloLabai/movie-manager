@@ -10,6 +10,7 @@ import ProfileSection from "../components/profile/ProfileSection";
 import ProfileStatsStrip from "../components/profile/ProfileStatsStrip";
 import ProfileFavoritesPanel from "../components/profile/ProfileFavoritesPanel";
 import ProfileWrappedPanel from "../components/profile/ProfileWrappedPanel";
+import ProfileQuizStatsPanel from "../components/profile/ProfileQuizStatsPanel";
 import ProfileChartsPanel from "../components/profile/ProfileChartsPanel";
 import PublicFriendsModal from "../components/profile/PublicFriendsModal";
 import LogoIcon from "../components/LogoIcon";
@@ -48,18 +49,6 @@ type PublicProfileData = {
     tvCount?: number;
     favoriteDecade?: string;
     completionRate?: number;
-    longestMovie?: {
-      title: string;
-      runtime: number;
-      tmdbId?: number;
-      mediaType?: string;
-    };
-    topActor?: {
-      id?: number;
-      name: string;
-      count: number;
-      profileUrl: string | null;
-    } | null;
   };
 };
 
@@ -108,6 +97,7 @@ export default function PublicProfile() {
     "favorites",
   );
 
+  const [hasQuizStats, setHasQuizStats] = useState(false);
   const [tabMovies, setTabMovies] = useState<WatchlistItem[]>([]);
   const [tabLoading, setTabLoading] = useState(true);
   const [tabLoadingMore, setTabLoadingMore] = useState(false);
@@ -489,6 +479,20 @@ export default function PublicProfile() {
             />
           </ProfileSection>
         )}
+
+        <div
+          className={
+            hasQuizStats
+              ? "-mx-4 sm:-mx-8 px-5 md:px-14 py-5 md:py-[30px] border-b border-[rgba(217,172,84,.16)]"
+              : ""
+          }
+        >
+          <ProfileQuizStatsPanel
+            username={profileData.username}
+            userId={profileData.id}
+            onAvailabilityChange={setHasQuizStats}
+          />
+        </div>
 
         {hasStats && profileData?.stats && (
           <ProfileSection noBorder>

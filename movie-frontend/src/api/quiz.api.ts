@@ -58,6 +58,16 @@ export interface QuizStats {
   bestStreak: number;
 }
 
+export interface QuizMonthlyStatsEntry {
+  /** 'YYYY-MM' */
+  month: string;
+  solvedCount: number;
+  totalAttempts: number;
+  avgScore: number;
+  perfectSolves: number;
+  totalScore: number;
+}
+
 export async function getTodayQuiz(lang: QuizLanguage): Promise<QuizState> {
   const res = await api.get("/quiz/today", { params: { lang } });
   return res.data as QuizState;
@@ -92,4 +102,13 @@ export async function getFriendsLeaderboard(): Promise<QuizLeaderboardEntry[]> {
 export async function getMyStats(): Promise<QuizStats> {
   const res = await api.get("/quiz/my-stats");
   return res.data as QuizStats;
+}
+
+export async function getMonthlyStats(
+  userId?: number,
+): Promise<QuizMonthlyStatsEntry[]> {
+  const res = await api.get(
+    userId ? `/quiz/monthly-stats/${userId}` : "/quiz/monthly-stats",
+  );
+  return res.data as QuizMonthlyStatsEntry[];
 }
