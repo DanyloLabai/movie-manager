@@ -42,7 +42,10 @@
     "statusNotPlayed": "Ще не грав",
     "shareSolved": "LUMEN Денний квіз — вгадано «{{title}}» за {{used}}/{{total}} · {{score}} балів",
     "shareFailedWithTitle": "LUMEN Денний квіз — сьогодні не вгадано «{{title}}»",
-    "shareFailedNoTitle": "LUMEN Денний квіз — сьогодні не вгадано"
+    "shareFailedNoTitle": "LUMEN Денний квіз — сьогодні не вгадано",
+    "watched": "Переглянуто",
+    "markedWatched": "Позначено як переглянуто!",
+    "addedRated": "Додано та оцінено!"
   },
   "aiChatScreen": {
     "headerTitle": "Lumen AI",

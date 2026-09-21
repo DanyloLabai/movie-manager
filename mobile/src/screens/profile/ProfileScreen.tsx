@@ -45,6 +45,7 @@ import ProfileStatsStrip from '../../components/profile/ProfileStatsStrip';
 import ProfileFavoritesPanel from '../../components/profile/ProfileFavoritesPanel';
 import ProfileWrappedPanel from '../../components/profile/ProfileWrappedPanel';
 import ProfileChartsPanel from '../../components/profile/ProfileChartsPanel';
+import ProfileQuizStatsPanel from '../../components/profile/ProfileQuizStatsPanel';
 import { colors, spacing, radius } from '../../theme';
 import type { AppTabsParamList } from '../../navigation/AppTabs';
 import type { MainStackParamList } from '../../navigation/MainStack';
@@ -82,6 +83,7 @@ export default function ProfileScreen({ route, navigation }: Props) {
   const [mediaFilter, setMediaFilter] = useState<'all' | 'movie' | 'tv'>('all');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
+  const [hasQuizStats, setHasQuizStats] = useState(false);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
   const [ratingTarget, setRatingTarget] = useState<{ tmdbId: number; title: string } | null>(
     null,
@@ -316,6 +318,13 @@ export default function ProfileScreen({ route, navigation }: Props) {
             onOpenFriends={() => setIsFriendsModalOpen(true)}
             onPressMovie={goToMovie}
             onViewAllFavorites={() => setActiveTab('favorites')}
+          />
+        </View>
+
+        <View style={hasQuizStats ? styles.section : undefined}>
+          <ProfileQuizStatsPanel
+            username={profileData?.username ?? ''}
+            onAvailabilityChange={setHasQuizStats}
           />
         </View>
 

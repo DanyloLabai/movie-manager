@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import AuthStack from './AuthStack';
 import MainStack from './MainStack';
+import FeedbackPrompt from '../components/FeedbackPrompt';
 import { colors } from '../theme';
 
 // Extends React Navigation's DarkTheme (not building a theme from scratch)
@@ -38,9 +39,12 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={navigationTheme}>
-      {isAuthenticated ? <MainStack /> : <AuthStack />}
-    </NavigationContainer>
+    <>
+      <NavigationContainer theme={navigationTheme}>
+        {isAuthenticated ? <MainStack /> : <AuthStack />}
+      </NavigationContainer>
+      {isAuthenticated ? <FeedbackPrompt /> : null}
+    </>
   );
 }
 

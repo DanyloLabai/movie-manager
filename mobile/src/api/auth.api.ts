@@ -39,6 +39,11 @@ export async function changePassword(body: {
   return res.data as { message: string };
 }
 
+export async function resendVerification(email: string): Promise<{ message: string }> {
+  const res = await api.post('/auth/resend-verification', { email });
+  return res.data as { message: string };
+}
+
 export async function forgotPassword(email: string): Promise<{ message: string }> {
   const res = await api.post('/auth/forgot-password', { email });
   return res.data as { message: string };

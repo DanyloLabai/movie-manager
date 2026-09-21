@@ -9,6 +9,7 @@ const ACTION_ICONS: Record<ActivityActionType, keyof typeof Ionicons.glyphMap> =
   added_watchlist: 'add-circle-outline',
   rated: 'star',
   favorited: 'heart',
+  rewatched: 'repeat',
 };
 
 const ACTION_LABEL_KEYS: Record<ActivityActionType, string> = {
@@ -16,6 +17,7 @@ const ACTION_LABEL_KEYS: Record<ActivityActionType, string> = {
   added_watchlist: 'activityDayModal.actions.addedWatchlist',
   rated: 'activityDayModal.actions.rated',
   favorited: 'activityDayModal.actions.favorited',
+  rewatched: 'activityDayModal.actions.rewatched',
 };
 
 interface ActivityDayModalProps {

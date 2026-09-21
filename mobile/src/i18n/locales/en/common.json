@@ -14,5 +14,15 @@
   "no": "No",
   "error": {
     "generic": "Something went wrong. Please try again."
+  },
+  "feedback": {
+    "title": "How are we doing?",
+    "subtitle": "Rate the app and leave a comment if you'd like.",
+    "placeholder": "What could be better? (optional)",
+    "submit": "Send feedback",
+    "sending": "Sending...",
+    "skip": "Not now",
+    "thanks": "Thanks for the feedback!",
+    "error": "Couldn't send feedback. Try again later."
   }
 }

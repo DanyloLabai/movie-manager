@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { fontWeight } from '@movie-manager/shared';
 import { useAuth } from '../../context/AuthContext';
-import { signIn } from '../../api/auth.api';
+import { resendVerification, signIn } from '../../api/auth.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
 import { useAuthBackdrop } from '../../hooks/useAuthBackdrop';
 import { colors, spacing, radius, fontFamily } from '../../theme';
@@ -34,9 +34,14 @@ export default function LoginScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showResend, setShowResend] = useState(false);
+  const [resendStatus, setResendStatus] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
 
   const handleLogin = async () => {
     setError(null);
+    setShowResend(false);
+    setResendStatus(null);
     setIsSubmitting(true);
     try {
       const result = await signIn({ email, password });
@@ -48,9 +53,26 @@ export default function LoginScreen({ navigation }: Props) {
       // No manual navigation call needed — RootNavigator swaps to MainStack
       // as soon as isAuthenticated flips true.
     } catch (err) {
-      setError(getErrorMessage(err, t('login.error')));
+      const message = getErrorMessage(err, t('login.error'));
+      setError(message);
+      // The backend rejects unverified accounts with a "…verify your email…"
+      // message — offer to resend the link, like movie-frontend's Login.tsx.
+      if (message.toLowerCase().includes('verify')) setShowResend(true);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setIsResending(true);
+    setResendStatus(null);
+    try {
+      await resendVerification(email);
+      setResendStatus(t('login.resend'));
+    } catch {
+      setResendStatus(t('login.resendError'));
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -116,6 +138,14 @@ export default function LoginScreen({ navigation }: Props) {
             </View>
 
             {error ? <Text style={styles.error}>{error}</Text> : null}
+            {showResend ? (
+              <Pressable onPress={() => void handleResendVerification()} disabled={isResending}>
+                <Text style={styles.resendLink}>
+                  {isResending ? '…' : t('login.resendAction')}
+                </Text>
+              </Pressable>
+            ) : null}
+            {resendStatus ? <Text style={styles.resendStatus}>{resendStatus}</Text> : null}
 
             <Pressable
               style={[styles.button, isSubmitting && styles.buttonDisabled]}
@@ -226,6 +256,21 @@ const styles = StyleSheet.create({
     top: 0,
     bottom: spacing.md,
     justifyContent: 'center',
+  },
+  resendLink: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 1,
+    marginBottom: spacing.md,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  resendStatus: {
+    color: colors.textSubtle,
+    fontSize: 12,
+    marginBottom: spacing.md,
+    textAlign: 'center',
   },
   error: {
     color: colors.danger,

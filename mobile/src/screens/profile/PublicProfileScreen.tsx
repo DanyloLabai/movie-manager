@@ -1,22 +1,38 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { WatchlistItem } from '@movie-manager/shared';
-import { getPublicProfile, addFriend, type PublicProfile } from '../../api/users.api';
+import type { MovieResult, WatchlistItem } from '@movie-manager/shared';
+import {
+  addFriend,
+  getPublicFavorites,
+  getPublicProfile,
+  getPublicWatched,
+  getTasteCompatibility,
+  type PublicProfile,
+  type TasteCompatibility,
+} from '../../api/users.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
 import { getAchievementsList } from '../../utils/achievements';
+import { useToast } from '../../hooks/useToast';
 import MoviePosterCard from '../../components/MoviePosterCard';
 import SegmentedTabs from '../../components/SegmentedTabs';
+import Toast from '../../components/Toast';
 import ProfileHero from '../../components/profile/ProfileHero';
 import ProfileStatsStrip from '../../components/profile/ProfileStatsStrip';
 import ProfileFavoritesPanel from '../../components/profile/ProfileFavoritesPanel';
 import ProfileWrappedPanel from '../../components/profile/ProfileWrappedPanel';
 import ProfileChartsPanel from '../../components/profile/ProfileChartsPanel';
+import ProfileQuizStatsPanel from '../../components/profile/ProfileQuizStatsPanel';
+import PublicFriendsModal from '../../components/profile/PublicFriendsModal';
+import TasteMatchModal from '../../components/profile/TasteMatchModal';
 import { colors, spacing, fontWeight } from '../../theme';
 import type { MainStackParamList } from '../../navigation/MainStack';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PublicProfile'>;
+
+const PUBLIC_TAB_PAGE_SIZE = 30;
 
 export default function PublicProfileScreen({ route, navigation }: Props) {
   const { t } = useTranslation('profile');
@@ -26,6 +42,19 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [isAddingFriend, setIsAddingFriend] = useState(false);
   const [activeTab, setActiveTab] = useState<'favorites' | 'watched'>('favorites');
+  const [hasQuizStats, setHasQuizStats] = useState(false);
+  const { toastMessage, showToast } = useToast();
+
+  // Favorites/watched are paged from their own endpoints rather than read off
+  // the truncated `favorites`/`recent` arrays on the profile payload.
+  const [tabMovies, setTabMovies] = useState<WatchlistItem[]>([]);
+  const [tabLoading, setTabLoading] = useState(true);
+  const [tabLoadingMore, setTabLoadingMore] = useState(false);
+  const [tabHasMore, setTabHasMore] = useState(false);
+
+  const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
+  const [compat, setCompat] = useState<TasteCompatibility | null>(null);
+  const [isCompatOpen, setIsCompatOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,13 +76,66 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  const isLoaded = profile !== null;
+  useEffect(() => {
+    if (!isLoaded) return;
+    let cancelled = false;
+    setTabLoading(true);
+    const fetcher = activeTab === 'favorites' ? getPublicFavorites : getPublicWatched;
+    fetcher(userId, { limit: PUBLIC_TAB_PAGE_SIZE, offset: 0 })
+      .then((data) => {
+        if (cancelled) return;
+        setTabMovies(data);
+        setTabHasMore(data.length === PUBLIC_TAB_PAGE_SIZE);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setTabMovies([]);
+        setTabHasMore(false);
+      })
+      .finally(() => {
+        if (!cancelled) setTabLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, userId, isLoaded]);
+
+  const loadMoreTabMovies = async () => {
+    if (tabLoading || tabLoadingMore || !tabHasMore) return;
+    setTabLoadingMore(true);
+    try {
+      const fetcher = activeTab === 'favorites' ? getPublicFavorites : getPublicWatched;
+      const data = await fetcher(userId, { limit: PUBLIC_TAB_PAGE_SIZE, offset: tabMovies.length });
+      setTabMovies((prev) => [...prev, ...data]);
+      setTabHasMore(data.length === PUBLIC_TAB_PAGE_SIZE);
+    } catch {
+      // Leave the list as is; the user can scroll again to retry.
+    } finally {
+      setTabLoadingMore(false);
+    }
+  };
+
+  const isFriend = profile?.isFriend ?? false;
+  useEffect(() => {
+    if (!isFriend) return;
+    getTasteCompatibility(userId)
+      .then(setCompat)
+      .catch(() => setCompat(null));
+  }, [userId, isFriend]);
+
   const handleAddFriend = async () => {
     setIsAddingFriend(true);
     try {
-      await addFriend(userId);
-      setProfile((prev) => (prev ? { ...prev, isFriend: true, requestPending: false } : prev));
+      const result = await addFriend(userId);
+      if (result?.status === 'accepted') {
+        setProfile((prev) => (prev ? { ...prev, isFriend: true, requestPending: false } : prev));
+        showToast(t('publicProfile.friendAdded'));
+      } else {
+        setProfile((prev) => (prev ? { ...prev, requestPending: true } : prev));
+      }
     } catch (err) {
-      setError(getErrorMessage(err, t('errors.sendFriendRequest')));
+      showToast(getErrorMessage(err, t('errors.sendFriendRequest')));
     } finally {
       setIsAddingFriend(false);
     }
@@ -67,9 +149,19 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
     });
   };
 
+  const goToSuggestedMovie = (movie: MovieResult) => {
+    setIsCompatOpen(false);
+    navigation.push('MovieDetail', {
+      movieId: movie.id,
+      title: movie.title,
+      mediaType: movie.mediaType === 'tv' ? 'tv' : 'movie',
+    });
+  };
+
   const favoritesCount = profile?.favorites?.length ?? 0;
   const watchedCount = profile?.watchedCount ?? 0;
   const totalCount = profile?.totalCount ?? 0;
+  const friendsCount = profile?.friendsCount ?? 0;
   const stats = profile?.stats;
   const hasStats = Boolean(stats?.genreDistribution && stats.genreDistribution.length > 0);
 
@@ -77,12 +169,6 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
     () => getAchievementsList({ favoritesCount, watchedCount, totalCount }),
     [favoritesCount, watchedCount, totalCount],
   );
-
-  const watchedRecent = useMemo(
-    () => (profile?.recent ?? []).filter((m) => m.isWatched),
-    [profile?.recent],
-  );
-  const displayedMovies = activeTab === 'favorites' ? (profile?.favorites ?? []) : watchedRecent;
 
   if (isLoading) {
     return (
@@ -100,116 +186,186 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
     );
   }
 
-  const friendRightSlot = profile.isFriend ? (
-    <View style={[styles.pill, styles.friendsPill]}>
-      <Text style={styles.friendsPillText}>✓ {t('publicProfile.friends').toUpperCase()}</Text>
-    </View>
-  ) : profile.requestPending ? (
-    <View style={[styles.pill, styles.mutedPill]}>
-      <Text style={styles.mutedPillText}>{t('publicProfile.requestSent').toUpperCase()}</Text>
-    </View>
-  ) : (
-    <Pressable
-      style={[styles.pill, styles.addPill]}
-      onPress={() => void handleAddFriend()}
-      disabled={isAddingFriend}
-    >
-      <Text style={styles.addPillText}>{isAddingFriend ? '…' : t('publicProfile.addFriend').toUpperCase()}</Text>
-    </Pressable>
+  const friendActionSlot = (
+    <>
+      <Pressable style={[styles.pill, styles.friendsPill]} onPress={() => setIsFriendsModalOpen(true)}>
+        <Ionicons name="people-outline" size={13} color={colors.accentBright} />
+        <Text style={styles.friendsPillText}>
+          {t('hero.friendsCount', { count: friendsCount }).toUpperCase()}
+        </Text>
+      </Pressable>
+      {profile.isFriend ? (
+        <View style={[styles.pill, styles.friendsPill]}>
+          <Text style={styles.friendsPillText}>✓ {t('publicProfile.friends').toUpperCase()}</Text>
+        </View>
+      ) : profile.requestPending ? (
+        <View style={[styles.pill, styles.mutedPill]}>
+          <Text style={styles.mutedPillText}>{t('publicProfile.requestSent').toUpperCase()}</Text>
+        </View>
+      ) : (
+        <Pressable
+          style={[styles.pill, styles.addPill]}
+          onPress={() => void handleAddFriend()}
+          disabled={isAddingFriend}
+        >
+          <Text style={styles.addPillText}>
+            {isAddingFriend ? '…' : t('publicProfile.addFriend').toUpperCase()}
+          </Text>
+        </Pressable>
+      )}
+    </>
   );
 
   return (
-    <FlatList
-      style={styles.container}
-      data={displayedMovies}
-      key={`grid-${activeTab}`}
-      numColumns={2}
-      keyExtractor={(item, index) => `${item.id}-${index}`}
-      contentContainerStyle={styles.grid}
-      columnWrapperStyle={styles.gridColumn}
-      ListEmptyComponent={
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>{t('empty')}</Text>
-        </View>
-      }
-      renderItem={({ item }) => (
-        <MoviePosterCard
-          posterUrl={item.posterUrl}
-          title={item.title}
-          subtitle={activeTab === 'watched' ? `★ ${(item.rating ?? 0).toFixed(1)}` : undefined}
-          onPress={() => goToMovie(item)}
-        />
-      )}
-      ListHeaderComponent={
-        <View>
-          <ProfileHero
-            username={profile.username ?? ''}
-            avatarUrl={profile.avatarUrl ?? null}
-            watchedCount={watchedCount}
-            memberSince={profile.memberSince}
-            friendsCount={0}
-            onOpenFriends={() => {}}
-            rightSlot={friendRightSlot}
-          />
-
-          <View style={styles.section}>
-            <ProfileStatsStrip
-              stats={[
-                { value: watchedCount, label: t('stats.watched').toUpperCase() },
-                { value: stats?.averageRating ?? '0.0', label: t('stats.avg').toUpperCase() },
-                { value: favoritesCount, label: t('stats.favorites').toUpperCase() },
-              ]}
-              watchedCount={watchedCount}
-              completionRate={stats?.completionRate ?? 0}
-              totalCount={totalCount}
-            />
-          </View>
-
-          <View style={styles.section}>
-            <ProfileFavoritesPanel
-              favorites={profile.favorites ?? []}
-              achievements={achievements}
-              friends={[]}
-              friendsCount={0}
-              onToggleFavorite={() => {}}
-              onOpenFriends={() => {}}
-              onPressMovie={goToMovie}
-              readOnly
-              showFriends={false}
-            />
-          </View>
-
-          {hasStats && stats ? (
-            <View style={styles.section}>
-              <ProfileWrappedPanel username={profile.username ?? ''} stats={stats} />
+    <View style={styles.container}>
+      <FlatList
+        style={styles.container}
+        data={tabLoading ? [] : tabMovies}
+        key={`grid-${activeTab}`}
+        numColumns={2}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
+        contentContainerStyle={styles.grid}
+        columnWrapperStyle={styles.gridColumn}
+        onEndReached={() => void loadMoreTabMovies()}
+        onEndReachedThreshold={0.4}
+        ListEmptyComponent={
+          tabLoading ? (
+            <ActivityIndicator color={colors.accent} style={styles.tabSpinner} />
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>{t('empty')}</Text>
             </View>
-          ) : null}
+          )
+        }
+        ListFooterComponent={
+          tabLoadingMore ? <ActivityIndicator color={colors.accent} style={styles.tabSpinner} /> : null
+        }
+        renderItem={({ item }) => (
+          <MoviePosterCard
+            posterUrl={item.posterUrl}
+            title={item.title}
+            subtitle={
+              (item.rating ?? 0) > 0 ? `★ ${Number(item.rating).toFixed(1)}` : undefined
+            }
+            onPress={() => goToMovie(item)}
+          />
+        )}
+        ListHeaderComponent={
+          <View>
+            <ProfileHero
+              username={profile.username ?? ''}
+              avatarUrl={profile.avatarUrl ?? null}
+              watchedCount={watchedCount}
+              memberSince={profile.memberSince}
+              friendsCount={friendsCount}
+              onOpenFriends={() => setIsFriendsModalOpen(true)}
+              rightSlot={friendActionSlot}
+            />
 
-          {hasStats && stats ? (
+            {profile.isFriend && compat && compat.score !== null ? (
+              <View style={styles.section}>
+                <Pressable style={styles.compatTeaser} onPress={() => setIsCompatOpen(true)}>
+                  <View style={styles.compatLabelRow}>
+                    <Ionicons name="bulb-outline" size={16} color={colors.accentBright} />
+                    <Text style={styles.compatLabel}>{t('compat.title').toUpperCase()}</Text>
+                  </View>
+                  <Text style={styles.compatScore}>
+                    {Math.round(Math.max(0, Math.min(1, compat.score)) * 100)}%
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+
             <View style={styles.section}>
-              <ProfileChartsPanel
-                genreDistribution={stats.genreDistribution ?? []}
-                ratingDistribution={stats.ratingDistribution ?? []}
-                averageRating={stats.averageRating ?? '0.0'}
-                topRated={stats.topRated ?? []}
-                onPressMovie={goToMovie}
+              <ProfileStatsStrip
+                stats={[
+                  { value: watchedCount, label: t('stats.watched').toUpperCase() },
+                  { value: stats?.averageRating ?? '0.0', label: t('stats.avg').toUpperCase() },
+                  { value: favoritesCount, label: t('stats.favorites').toUpperCase() },
+                ]}
+                watchedCount={watchedCount}
+                completionRate={stats?.completionRate ?? 0}
+                totalCount={totalCount}
               />
             </View>
-          ) : null}
 
-          <View style={styles.tabsWrap}>
-            <SegmentedTabs
-              options={[
-                { key: 'favorites', label: t('tabs.favorites') },
-                { key: 'watched', label: t('tabs.watched') },
-              ]}
-              activeKey={activeTab}
-              onChange={(key) => setActiveTab(key as typeof activeTab)}
-            />
+            <View style={styles.section}>
+              <ProfileFavoritesPanel
+                favorites={profile.favorites ?? []}
+                achievements={achievements}
+                friends={[]}
+                friendsCount={0}
+                onToggleFavorite={() => {}}
+                onOpenFriends={() => {}}
+                onPressMovie={goToMovie}
+                readOnly
+                showFriends={false}
+              />
+            </View>
+
+            {hasStats && stats ? (
+              <View style={styles.section}>
+                <ProfileWrappedPanel username={profile.username ?? ''} stats={stats} />
+              </View>
+            ) : null}
+
+            {hasStats && stats ? (
+              <View style={styles.section}>
+                <ProfileChartsPanel
+                  genreDistribution={stats.genreDistribution ?? []}
+                  ratingDistribution={stats.ratingDistribution ?? []}
+                  averageRating={stats.averageRating ?? '0.0'}
+                  topRated={stats.topRated ?? []}
+                  onPressMovie={goToMovie}
+                />
+              </View>
+            ) : null}
+
+            <View style={hasQuizStats ? styles.section : undefined}>
+              <ProfileQuizStatsPanel
+                username={profile.username ?? ''}
+                userId={profile.id ?? userId}
+                onAvailabilityChange={setHasQuizStats}
+              />
+            </View>
+
+            <View style={styles.tabsWrap}>
+              <SegmentedTabs
+                options={[
+                  { key: 'favorites', label: t('tabs.favorites') },
+                  { key: 'watched', label: t('tabs.watched') },
+                ]}
+                activeKey={activeTab}
+                onChange={(key) => setActiveTab(key as typeof activeTab)}
+              />
+            </View>
           </View>
-        </View>
-      }
-    />
+        }
+      />
+
+      <PublicFriendsModal
+        visible={isFriendsModalOpen}
+        userId={profile.id ?? userId}
+        username={profile.username ?? ''}
+        onClose={() => setIsFriendsModalOpen(false)}
+        onPressFriend={(friend) => {
+          setIsFriendsModalOpen(false);
+          navigation.push('PublicProfile', { userId: friend.id, username: friend.username });
+        }}
+      />
+
+      {compat ? (
+        <TasteMatchModal
+          visible={isCompatOpen}
+          friendId={userId}
+          compat={compat}
+          onClose={() => setIsCompatOpen(false)}
+          onOpenMovie={goToSuggestedMovie}
+        />
+      ) : null}
+
+      <Toast message={toastMessage} />
+    </View>
   );
 }
 
@@ -236,6 +392,7 @@ const styles = StyleSheet.create({
   tabsWrap: {
     marginTop: spacing.lg,
   },
+  tabSpinner: { marginVertical: spacing.lg },
   grid: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xl,
@@ -254,10 +411,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontStyle: 'italic',
   },
+  compatTeaser: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: 'rgba(217,172,84,.25)',
+    borderRadius: 10,
+    paddingHorizontal: spacing.md + 2,
+    paddingVertical: spacing.md,
+  },
+  compatLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  compatLabel: {
+    color: colors.textMuted,
+    fontSize: 10.5,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: 2,
+  },
+  compatScore: { color: colors.accentBright, fontSize: 18, fontWeight: fontWeight.bold },
   pill: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 4,
     paddingVertical: spacing.sm + 2,
     borderRadius: 999,
     borderWidth: 1,

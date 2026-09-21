@@ -1,4 +1,4 @@
-import type { ProfileData } from '@movie-manager/shared';
+import type { ProfileData, WatchlistItem } from '@movie-manager/shared';
 import { api } from './client';
 
 export interface Friend {
@@ -34,7 +34,12 @@ export async function searchUsers(query: string): Promise<SearchUser[]> {
   return (res.data as SearchUser[]) ?? [];
 }
 
-export type ActivityActionType = 'watched' | 'rated' | 'added_watchlist' | 'favorited';
+export type ActivityActionType =
+  | 'watched'
+  | 'rated'
+  | 'added_watchlist'
+  | 'favorited'
+  | 'rewatched';
 
 export interface ActivityDayAction {
   tmdbId: number;
@@ -97,11 +102,57 @@ export async function declineFriendRequest(requestId: number): Promise<void> {
 export type PublicProfile = ProfileData & {
   isFriend: boolean;
   requestPending: boolean;
+  friendsCount?: number;
 };
 
 export async function getPublicProfile(userId: number): Promise<PublicProfile> {
   const res = await api.get(`/users/public/${userId}`);
   return res.data as PublicProfile;
+}
+
+// Watched/favorites are paginated separately on public profiles (web
+// PublicProfile.tsx) instead of relying on the truncated `recent` list.
+export async function getPublicWatched(
+  userId: number,
+  params?: { limit?: number; offset?: number },
+): Promise<WatchlistItem[]> {
+  const res = await api.get(`/users/public/${userId}/watched`, { params });
+  return (res.data as WatchlistItem[]) ?? [];
+}
+
+export async function getPublicFavorites(
+  userId: number,
+  params?: { limit?: number; offset?: number },
+): Promise<WatchlistItem[]> {
+  const res = await api.get(`/users/public/${userId}/favorites`, { params });
+  return (res.data as WatchlistItem[]) ?? [];
+}
+
+export async function getPublicFriends(userId: number): Promise<Friend[]> {
+  const res = await api.get(`/users/public/${userId}/friends`);
+  return (res.data as Friend[]) ?? [];
+}
+
+export interface TasteCompatibility {
+  score: number | null;
+  commonWatchedCount: number;
+  commonWatched: Array<{
+    tmdbId: number;
+    title: string;
+    posterUrl?: string | null;
+    mediaType: string;
+  }>;
+}
+
+export async function getTasteCompatibility(userId: number): Promise<TasteCompatibility> {
+  const res = await api.get(`/users/public/${userId}/compatibility`);
+  return res.data as TasteCompatibility;
+}
+
+// Reported on login/session restore so daily resets follow the user's own
+// midnight (see backend per-user timezone support).
+export async function updateTimezone(timezone: string): Promise<void> {
+  await api.patch('/users/me/timezone', { timezone });
 }
 
 export async function deleteAccount(): Promise<void> {

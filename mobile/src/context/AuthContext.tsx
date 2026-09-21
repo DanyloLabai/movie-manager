@@ -11,6 +11,7 @@ import type { AuthUser } from '@movie-manager/shared';
 import { secureTokenStorage } from '../storage/secureTokenStorage';
 import { setForceLogoutHandler } from '../api/client';
 import { logout as logoutRequest } from '../api/auth.api';
+import { updateTimezone } from '../api/users.api';
 
 interface LoginParams {
   accessToken: string;
@@ -28,6 +29,17 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Same as movie-frontend's AuthContext: tell the backend the device timezone on
+// login and session restore so daily resets follow the user's own midnight.
+function reportTimezone() {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (timezone) updateTimezone(timezone).catch(() => {});
+  } catch {
+    // Best-effort — a missing timezone just leaves the server default.
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   // Starts true — RootNavigator waits for this before rendering Auth vs Main,
@@ -43,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ]);
       if (storedToken && storedUser) {
         setUser(storedUser);
+        reportTimezone();
       }
       setIsLoading(false);
     })();
@@ -53,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (refreshToken) await secureTokenStorage.setRefreshToken(refreshToken);
     await secureTokenStorage.setUser(newUser);
     setUser(newUser);
+    reportTimezone();
   }, []);
 
   const logout = useCallback(async () => {

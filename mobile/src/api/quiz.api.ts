@@ -105,3 +105,18 @@ export async function getMyStats(): Promise<QuizStats> {
   const res = await api.get('/quiz/my-stats');
   return res.data as QuizStats;
 }
+
+export interface QuizMonthlyStatsEntry {
+  month: string; // "YYYY-MM"
+  solvedCount: number;
+  totalAttempts: number;
+  avgScore: number;
+  perfectSolves: number;
+  totalScore: number;
+}
+
+// No userId = the signed-in user's own history.
+export async function getMonthlyStats(userId?: number): Promise<QuizMonthlyStatsEntry[]> {
+  const res = await api.get(userId ? `/quiz/monthly-stats/${userId}` : '/quiz/monthly-stats');
+  return (res.data as QuizMonthlyStatsEntry[]) ?? [];
+}

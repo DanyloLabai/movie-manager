@@ -1,4 +1,4 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { ProfileData } from '@movie-manager/shared';
 import { colors, spacing, fontWeight } from '../../theme';
@@ -9,11 +9,12 @@ interface ProfileWrappedPanelProps {
 }
 
 // Ported from movie-frontend's ProfileWrappedPanel.tsx (mobile grid variant).
+// Longest-marathon and most-watched-actor rows were dropped on web, so they're
+// gone here too.
 export default function ProfileWrappedPanel({ username, stats }: ProfileWrappedPanelProps) {
   const { t } = useTranslation('profile');
   const hours = Math.floor((stats.totalMinutes ?? 0) / 60);
   const minutes = (stats.totalMinutes ?? 0) % 60;
-  const hasMarathon = (stats.longestMovie?.runtime ?? 0) > 0;
 
   return (
     <View>
@@ -44,42 +45,6 @@ export default function ProfileWrappedPanel({ username, stats }: ProfileWrappedP
           <Text style={styles.tileLabel}>{t('wrapped.moviesTv').toUpperCase()}</Text>
         </View>
       </View>
-
-      {hasMarathon || stats.topActor ? (
-        <View style={styles.detailRows}>
-          {hasMarathon ? (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>{t('wrapped.longestMarathon').toUpperCase()}</Text>
-              <Text style={styles.detailValue} numberOfLines={1}>
-                {stats.longestMovie?.title} ·{' '}
-                <Text style={styles.detailAccent}>
-                  {t('wrapped.runtimeMinutes', { count: stats.longestMovie?.runtime })}
-                </Text>
-              </Text>
-            </View>
-          ) : null}
-          {stats.topActor ? (
-            <View style={styles.detailRow}>
-              <View style={styles.actorRow}>
-                {stats.topActor.profileUrl ? (
-                  <Image source={{ uri: stats.topActor.profileUrl }} style={styles.actorPhoto} />
-                ) : (
-                  <View style={[styles.actorPhoto, styles.actorPhotoPlaceholder]} />
-                )}
-                <View style={styles.detailTextGroup}>
-                  <Text style={styles.detailLabel}>{t('wrapped.mostWatchedActor').toUpperCase()}</Text>
-                  <Text style={styles.detailValue} numberOfLines={1}>
-                    {stats.topActor.name}{' '}
-                    <Text style={styles.detailMuted}>
-                      · {t('wrapped.inMoviesCount', { count: stats.topActor.count })}
-                    </Text>
-                  </Text>
-                </View>
-              </View>
-            </View>
-          ) : null}
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -108,26 +73,4 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
-  detailRows: { marginTop: spacing.md, gap: spacing.sm + 2 },
-  detailRow: { gap: 2 },
-  detailLabel: {
-    color: colors.textMuted,
-    fontSize: 9,
-    fontWeight: fontWeight.medium,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase',
-  },
-  detailValue: { color: colors.textPrimary, fontSize: 13, fontWeight: fontWeight.semibold },
-  detailAccent: { color: colors.accentBright },
-  detailMuted: { color: colors.textMuted, fontWeight: fontWeight.medium },
-  actorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  actorPhoto: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(217,172,84,.3)',
-  },
-  actorPhotoPlaceholder: { backgroundColor: colors.backgroundElevated },
-  detailTextGroup: { gap: 2 },
 });

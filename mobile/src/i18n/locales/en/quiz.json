@@ -42,7 +42,10 @@
     "statusNotPlayed": "Hasn't played yet",
     "shareSolved": "LUMEN Daily Quiz — guessed \"{{title}}\" in {{used}}/{{total}} · {{score}} pts",
     "shareFailedWithTitle": "LUMEN Daily Quiz — didn't guess \"{{title}}\" today",
-    "shareFailedNoTitle": "LUMEN Daily Quiz — didn't guess it today"
+    "shareFailedNoTitle": "LUMEN Daily Quiz — didn't guess it today",
+    "watched": "Watched",
+    "markedWatched": "Marked as Watched!",
+    "addedRated": "Added and rated!"
   },
   "aiChatScreen": {
     "headerTitle": "Lumen AI",

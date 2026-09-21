@@ -89,19 +89,46 @@
       "watched": "Watched",
       "addedWatchlist": "Added to watchlist",
       "rated": "Rated",
-      "favorited": "Favorited"
+      "favorited": "Favorited",
+      "rewatched": "Rewatched"
     }
   },
   "publicProfile": {
     "notFound": "Not found.",
     "friends": "Friends",
     "requestSent": "Request sent",
-    "addFriend": "Add friend"
+    "addFriend": "Add friend",
+    "friendAdded": "Added to friends!",
+    "loadMore": "Load more"
   },
   "sort": {
     "rating": "Rating",
     "added": "Date added",
     "asc": "Ascending",
     "desc": "Descending"
+  },
+  "compat": {
+    "title": "Taste Match",
+    "commonWatched": "You both watched {{count}} of the same titles",
+    "generate": "Find something to watch together",
+    "generating": "Thinking...",
+    "regenerate": "Try different picks",
+    "dailyLimit": "You've used all 3 taste-match tries for today. Come back tomorrow for new picks!",
+    "triesHint": "3 tries per day",
+    "error": "Something went wrong. Please try again.",
+    "added": "Added to watchlist.",
+    "addError": "Could not add to watchlist."
+  },
+  "publicFriends": {
+    "title": "{{name}}'s Friends",
+    "empty": "No friends to show yet.",
+    "loadError": "Could not load friends."
+  },
+  "quizStats": {
+    "title": "{{username}}'s Quiz Stats",
+    "avgScore": "Avg Score",
+    "solved": "Solved",
+    "perfect": "Perfect",
+    "monthTotal": "Month Total"
   }
 }

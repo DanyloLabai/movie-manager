@@ -28,11 +28,12 @@ import {
   type QuizLeaderboardEntry,
   type QuizState,
 } from '../../api/quiz.api';
-import { searchMovies, addToWatchlist } from '../../api/movies.api';
+import { searchMovies, addToWatchlist, markAsWatched, rateMovie } from '../../api/movies.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
 import { useToast } from '../../hooks/useToast';
 import ScreenHeader from '../../components/ScreenHeader';
 import Toast from '../../components/Toast';
+import AddMovieModal from '../../components/AddMovieModal';
 import { colors, spacing, radius, fontWeight } from '../../theme';
 import type { AppTabsParamList } from '../../navigation/AppTabs';
 import type { MainStackParamList } from '../../navigation/MainStack';
@@ -72,6 +73,8 @@ export default function QuizScreen({ navigation }: Props) {
   const [isBuyingHint, setIsBuyingHint] = useState(false);
   const [leaderboard, setLeaderboard] = useState<QuizLeaderboardEntry[]>([]);
   const [watchlistAdded, setWatchlistAdded] = useState(false);
+  const [watchedAdded, setWatchedAdded] = useState(false);
+  const [isWatchedModalOpen, setIsWatchedModalOpen] = useState(false);
   const [countdownMs, setCountdownMs] = useState(() => msUntilNextUtcMidnight());
   const { toastMessage, showToast } = useToast();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -173,6 +176,35 @@ export default function QuizScreen({ navigation }: Props) {
       const apiError = err as { response?: { status?: number } };
       if (apiError.response?.status === 400) setWatchlistAdded(true);
       else showToast(getErrorMessage(err, t('quizScreen.addWatchlistError')));
+    }
+  };
+
+  // Mirrors movie-frontend's DailyQuiz handleMarkWatched: add (tolerating
+  // "already on the list"), mark watched, then optionally rate.
+  const handleMarkWatched = async (rating: number | null) => {
+    if (!quiz?.answer) return;
+    try {
+      await addToWatchlist({
+        tmdbId: quiz.answer.tmdbId,
+        title: quiz.answer.title,
+        posterUrl: quiz.answer.posterUrl,
+        mediaType: 'movie',
+      });
+    } catch (err) {
+      const apiError = err as { response?: { status?: number } };
+      if (apiError.response?.status !== 400) {
+        showToast(getErrorMessage(err, t('quizScreen.addWatchlistError')));
+        return;
+      }
+    }
+    try {
+      await markAsWatched(quiz.answer.tmdbId);
+      if (rating) await rateMovie(quiz.answer.tmdbId, rating);
+      setWatchlistAdded(true);
+      setWatchedAdded(true);
+      showToast(rating ? t('quizScreen.addedRated') : t('quizScreen.markedWatched'));
+    } catch (err) {
+      showToast(getErrorMessage(err, t('quizScreen.addWatchlistError')));
     }
   };
 
@@ -377,6 +409,17 @@ export default function QuizScreen({ navigation }: Props) {
                     {watchlistAdded ? `✓ ${t('quizScreen.added').toUpperCase()}` : `+ ${t('quizScreen.watchlist').toUpperCase()}`}
                   </Text>
                 </Pressable>
+                {watchedAdded ? (
+                  <View style={styles.watchlistButton}>
+                    <Text style={[styles.watchlistButtonText, styles.watchedDoneText]}>
+                      ✓ {t('quizScreen.watched').toUpperCase()}
+                    </Text>
+                  </View>
+                ) : (
+                  <Pressable style={styles.watchlistButton} onPress={() => setIsWatchedModalOpen(true)}>
+                    <Text style={styles.watchlistButtonText}>✓ {t('quizScreen.watched').toUpperCase()}</Text>
+                  </Pressable>
+                )}
               </View>
             ) : null}
 
@@ -479,6 +522,23 @@ export default function QuizScreen({ navigation }: Props) {
           </View>
         ) : null}
       </ScrollView>
+      {quiz?.answer ? (
+        <AddMovieModal
+          visible={isWatchedModalOpen}
+          title={quiz.answer.title}
+          initialStep="rating"
+          onClose={() => setIsWatchedModalOpen(false)}
+          onAddToWatchlist={() => {
+            setIsWatchedModalOpen(false);
+            void handleAddWatchlist();
+          }}
+          onMarkWatched={(rating) => {
+            setIsWatchedModalOpen(false);
+            void handleMarkWatched(rating);
+          }}
+        />
+      ) : null}
+
       <Toast message={toastMessage} />
     </SafeAreaView>
   );
@@ -606,7 +666,8 @@ const styles = StyleSheet.create({
   doneStatItem: { gap: 2 },
   doneStatValue: { color: colors.accentBright, fontSize: 18, fontWeight: fontWeight.bold },
   doneStatLabel: { color: colors.textMuted, fontSize: 8.5, letterSpacing: 1 },
-  doneActionsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  doneActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.xs },
+  watchedDoneText: { color: colors.accentBright },
   viewMovieButton: {
     backgroundColor: colors.accentBright,
     borderRadius: radius.full,
