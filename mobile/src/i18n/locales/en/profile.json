@@ -130,5 +130,42 @@
     "solved": "Solved",
     "perfect": "Perfect",
     "monthTotal": "Month Total"
+  },
+  "journey": {
+    "sectionTitle": "Your Journey",
+    "someoneTitle": "{{name}}'s Journey",
+    "youAreHere": "You",
+    "lockedName": "???",
+    "oneMovieToGo": "movie to go",
+    "moviesToGo": "movies to go",
+    "expandHint": "Explore the map",
+    "zoomReset": "Reset",
+    "realmLotr": "Middle-earth",
+    "zoomHint": "Pinch or drag inside the full map to zoom.",
+    "howItWorks": "Every movie you add to your watchlist (watched or planned) moves you forward.",
+    "unlockedAt": "✓ Unlocked at {{count}} movies",
+    "unlockedAtOne": "✓ Unlocked at 1 movie",
+    "stops": {
+      "shire": "The Shire",
+      "hobbiton": "Hobbiton",
+      "buckland": "Buckland",
+      "old_forest": "The Old Forest",
+      "bree": "Bree",
+      "weathertop": "Weathertop",
+      "fords_of_bruinen": "Fords of Bruinen",
+      "rivendell": "Rivendell",
+      "caradhras": "Caradhras",
+      "moria": "Mines of Moria",
+      "lothlorien": "Lothlorien",
+      "anduin": "The Anduin River",
+      "amon_hen": "Amon Hen",
+      "emyn_muil": "Emyn Muil",
+      "dead_marshes": "The Dead Marshes",
+      "black_gate": "The Black Gate",
+      "ithilien": "Ithilien",
+      "cirith_ungol": "Cirith Ungol",
+      "gorgoroth": "Plateau of Gorgoroth",
+      "mount_doom": "Mount Doom"
+    }
   }
 }

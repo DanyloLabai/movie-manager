@@ -46,6 +46,7 @@ import ProfileFavoritesPanel from '../../components/profile/ProfileFavoritesPane
 import ProfileWrappedPanel from '../../components/profile/ProfileWrappedPanel';
 import ProfileChartsPanel from '../../components/profile/ProfileChartsPanel';
 import ProfileQuizStatsPanel from '../../components/profile/ProfileQuizStatsPanel';
+import JourneyPath from '../../components/journey/JourneyPath';
 import { colors, spacing, radius } from '../../theme';
 import type { AppTabsParamList } from '../../navigation/AppTabs';
 import type { MainStackParamList } from '../../navigation/MainStack';
@@ -319,6 +320,10 @@ export default function ProfileScreen({ route, navigation }: Props) {
             onPressMovie={goToMovie}
             onViewAllFavorites={() => setActiveTab('favorites')}
           />
+        </View>
+
+        <View style={styles.section}>
+          <JourneyPath totalCount={totalCount} />
         </View>
 
         <View style={hasQuizStats ? styles.section : undefined}>

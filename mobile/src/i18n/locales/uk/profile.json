@@ -138,5 +138,42 @@
     "solved": "Розгадано",
     "perfect": "Ідеально",
     "monthTotal": "Разом за місяць"
+  },
+  "journey": {
+    "sectionTitle": "Твоя подорож",
+    "someoneTitle": "Подорож {{name}}",
+    "youAreHere": "Ти",
+    "lockedName": "???",
+    "oneMovieToGo": "фільм до розблокування",
+    "moviesToGo": "фільмів до розблокування",
+    "expandHint": "Роздивитись карту",
+    "zoomReset": "Скинути",
+    "realmLotr": "Середзем'я",
+    "zoomHint": "Щоб наблизити карту — розведи пальці або перетягуй її.",
+    "howItWorks": "Кожен фільм, доданий у твій список (переглянутий чи запланований), просуває тебе вперед.",
+    "unlockedAt": "✓ Розблоковано при {{count}} фільмах",
+    "unlockedAtOne": "✓ Розблоковано при 1 фільмі",
+    "stops": {
+      "shire": "Шир",
+      "hobbiton": "Гобітон",
+      "buckland": "Бакленд",
+      "old_forest": "Старий Ліс",
+      "bree": "Брі",
+      "weathertop": "Заверть",
+      "fords_of_bruinen": "Броди Бруїнена",
+      "rivendell": "Рівендел",
+      "caradhras": "Карадрас",
+      "moria": "Копальні Морії",
+      "lothlorien": "Лотлорієн",
+      "anduin": "Ріка Андуїн",
+      "amon_hen": "Амон Хен",
+      "emyn_muil": "Емін Мьюл",
+      "dead_marshes": "Мертві Драговини",
+      "black_gate": "Чорна Брама",
+      "ithilien": "Ітілієн",
+      "cirith_ungol": "Кіріт Унгол",
+      "gorgoroth": "Плато Горгорот",
+      "mount_doom": "Гора Приречення"
+    }
   }
 }

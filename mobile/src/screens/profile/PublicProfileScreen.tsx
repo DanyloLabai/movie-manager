@@ -25,6 +25,7 @@ import ProfileFavoritesPanel from '../../components/profile/ProfileFavoritesPane
 import ProfileWrappedPanel from '../../components/profile/ProfileWrappedPanel';
 import ProfileChartsPanel from '../../components/profile/ProfileChartsPanel';
 import ProfileQuizStatsPanel from '../../components/profile/ProfileQuizStatsPanel';
+import JourneyPath from '../../components/journey/JourneyPath';
 import PublicFriendsModal from '../../components/profile/PublicFriendsModal';
 import TasteMatchModal from '../../components/profile/TasteMatchModal';
 import { colors, spacing, fontWeight } from '../../theme';
@@ -320,6 +321,10 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
                 />
               </View>
             ) : null}
+
+            <View style={styles.section}>
+              <JourneyPath totalCount={totalCount} ownerName={profile.username ?? undefined} />
+            </View>
 
             <View style={hasQuizStats ? styles.section : undefined}>
               <ProfileQuizStatsPanel
