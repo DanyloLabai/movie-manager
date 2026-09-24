@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import * as usersApi from "../api/users.api";
 import * as aiApi from "../api/ai.api";
 import * as moviesApi from "../api/movies.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import { getUserRank } from "../utils/achievements";
 import ProfileHero, { FriendsPill } from "../components/profile/ProfileHero";
 import ProfileSection from "../components/profile/ProfileSection";
@@ -265,7 +265,7 @@ export default function PublicProfile() {
 
   if (isLoading) {
     return (
-      <div className="min-h-[100dvh] bg-[#0f0d0a] flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-[#14110d] border-t-[#d9ac54] rounded-full animate-spin" />
       </div>
     );
@@ -273,7 +273,7 @@ export default function PublicProfile() {
 
   if (needsAuth) {
     return (
-      <div className="min-h-[100dvh] bg-[#0f0d0a] flex flex-col items-center justify-center text-center p-4 font-ui">
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center text-center p-4 font-ui">
         <h1 className="text-lg font-bold text-[#f2ead9] uppercase tracking-widest mb-2">
           {t("auth_required_title")}
         </h1>
@@ -301,7 +301,7 @@ export default function PublicProfile() {
 
   if (error || !profileData) {
     return (
-      <div className="min-h-[100dvh] bg-[#0f0d0a] flex flex-col items-center justify-center text-center p-4 font-ui">
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center text-center p-4 font-ui">
         <h1 className="text-5xl font-bold text-[#d9ac54] mb-3">404</h1>
         <p className="text-[#8f8574] mb-6 text-base font-medium">
           {t("profile_not_found")}
@@ -368,7 +368,7 @@ export default function PublicProfile() {
   );
 
   return (
-    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
+    <div className="min-h-[100dvh] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
       <div className="sm:hidden sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-row items-center justify-between gap-3 py-4 px-4 w-full">
           <Link

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import JourneyPath from "../journey/JourneyPath";
 import type { WatchlistItem } from "../../types/movie.types";
 

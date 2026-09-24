@@ -97,6 +97,7 @@ export async function getWatchlist(
     offset?: number;
     sortBy?: "addedAt" | "rating";
     sortDir?: "asc" | "desc";
+    rating?: number;
   },
 ): Promise<WatchlistItem[]> {
   const res = await api.get(`/movies/${endpoint}`, { params });

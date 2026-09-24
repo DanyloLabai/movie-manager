@@ -1,4 +1,4 @@
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import { MovieCarousel } from "./MovieCarousel";
 import type { MovieResult } from "../../types/movie.types";
 import type { BecauseYouWatchedResponse } from "../../api/movies.api";

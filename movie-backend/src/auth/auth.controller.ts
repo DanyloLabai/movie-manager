@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
-import type { Request, Response } from 'express';
+import type { Request, Response, CookieOptions } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -50,13 +50,10 @@ interface AuthenticatedRequest extends Request {
 const REFRESH_COOKIE_NAME = 'refresh_token';
 const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
-const refreshCookieOptions = {
+const refreshCookieOptions: CookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-  sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as
-    | 'none'
-    | 'lax',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   path: '/api/auth',
 };
 
@@ -100,6 +97,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async signIn(
     @Body() signInDto: SignInDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<SignInResponseDto> {
     const result = await this.authService.signIn(signInDto);
@@ -109,7 +107,17 @@ export class AuthController {
       maxAge: REFRESH_COOKIE_MAX_AGE_MS,
     });
 
-    return result;
+    // Mobile has no cookie jar to read the httpOnly cookie above, so it needs
+    // the refresh token in the body instead — gated behind this header so
+    // web (which never sends it) keeps relying solely on the httpOnly
+    // cookie, same as before.
+    const isMobileClient = req.headers['x-client-platform'] === 'mobile';
+
+    return {
+      access_token: result.access_token,
+      user: result.user,
+      ...(isMobileClient ? { refresh_token: result.refresh_token } : {}),
+    };
   }
 
   @Public()
@@ -143,9 +151,12 @@ export class AuthController {
       maxAge: REFRESH_COOKIE_MAX_AGE_MS,
     });
 
+    const isMobileClient = req.headers['x-client-platform'] === 'mobile';
+
     return {
       access_token: result.access_token,
       user: result.user,
+      ...(isMobileClient ? { refresh_token: result.refresh_token } : {}),
     };
   }
 
@@ -166,7 +177,11 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<LogoutResponseDto> {
     const refreshToken =
-      (req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined) ?? null;
+      (req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined) ??
+      (req.body as { refresh_token?: string } | undefined)?.[
+        REFRESH_COOKIE_NAME
+      ] ??
+      null;
     const result = await this.authService.logout(req.user.userId, refreshToken);
     res.clearCookie(REFRESH_COOKIE_NAME, refreshCookieOptions);
     return result;

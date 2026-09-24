@@ -1,23 +1,9 @@
-import { createContext, useContext, useEffect, useReducer } from "react";
+import { useEffect, useReducer } from "react";
 import type { ReactNode } from "react";
 import { api } from "../api/index";
 import { updateTimezone } from "../api/users.api";
-
-export interface AuthUser {
-  id: number;
-  username: string;
-  email: string;
-}
-
-export interface AuthContextType {
-  user: AuthUser | null;
-  token: string | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  login: (token: string, user: AuthUser) => void;
-  logout: () => void;
-  setUser: (user: AuthUser | null) => void;
-}
+import { logError } from "../utils/logError";
+import { AuthContext, type AuthContextType, type AuthUser } from "./useAuth";
 
 type AuthAction =
   | { type: "SET_USER"; payload: { user: AuthUser; token: string } }
@@ -73,13 +59,11 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 function reportTimezone() {
   try {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (timezone) updateTimezone(timezone).catch(() => {});
+    if (timezone) updateTimezone(timezone).catch(logError("AuthContext: updateTimezone"));
   } catch {
     /* empty */
   }
 }
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
@@ -126,7 +110,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
-    api.post("/auth/logout").catch(() => {});
+    api.post("/auth/logout").catch(logError("AuthContext: logout"));
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     delete api.defaults.headers.common["Authorization"];
@@ -154,13 +138,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
-
-// eslint-disable-next-line react-refresh/only-export-components
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 };

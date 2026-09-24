@@ -1,0 +1,172 @@
+{
+  "tabs": {
+    "profile": "Profile",
+    "watchlist": "Watchlist",
+    "watched": "Watched",
+    "favorites": "Favorites"
+  },
+  "filters": {
+    "all": "All",
+    "movies": "Movies",
+    "tv": "TV"
+  },
+  "stats": {
+    "watched": "Watched",
+    "avg": "Avg",
+    "streak": "Streak",
+    "favorites": "Favorites",
+    "completion": "Completion",
+    "friends": "Friends"
+  },
+  "empty": "Nothing here yet.",
+  "upcoming": "Upcoming",
+  "markWatched": "Watched",
+  "remove": "Remove",
+  "notAvailable": "N/A",
+  "errors": {
+    "loadProfile": "Could not load your profile.",
+    "loadList": "Could not load your list.",
+    "updateFavorite": "Could not update favorite.",
+    "removeFailed": "Could not remove.",
+    "updateFailed": "Could not update.",
+    "updateRating": "Could not update rating.",
+    "loadPublicProfile": "Could not load this profile.",
+    "sendFriendRequest": "Could not send friend request.",
+    "favoriteLimit": "You can have at most 10 favorites. Remove one before adding another."
+  },
+  "toasts": {
+    "removed": "Removed.",
+    "movedToWatched": "Moved to watched."
+  },
+  "ratingPrompt": {
+    "title": "How was it?",
+    "subtitle": "Rate \"{{title}}\""
+  },
+  "hero": {
+    "sinceYear": "Since {{year}}",
+    "friendsCount_one": "{{count}} Friend",
+    "friendsCount_other": "{{count}} Friends",
+    "share": "Share"
+  },
+  "favorites": {
+    "topFavorites": "Top Favorites",
+    "noFavorites": "No favorites yet.",
+    "achievements": "Achievements",
+    "friendsLabel": "Friends",
+    "viewAll": "View all"
+  },
+  "charts": {
+    "genres": "Genres",
+    "rating": "Rating",
+    "avg": "Avg"
+  },
+  "wrapped": {
+    "title": "{{username}}'s Wrapped",
+    "timeSpent": "Time Spent",
+    "topGenre": "Top Genre",
+    "favDecade": "Fav Decade",
+    "moviesTv": "Movies / TV",
+    "longestMarathon": "Longest Marathon",
+    "runtimeMinutes": "{{count}} min",
+    "mostWatchedActor": "Most Watched Actor",
+    "inMoviesCount_one": "In {{count}} movie",
+    "inMoviesCount_other": "In {{count}} movies"
+  },
+  "masterpieces": {
+    "title": "Top 3 Masterpieces"
+  },
+  "ratingModal": {
+    "moviesCount_one": "{{count}} Movie",
+    "moviesCount_other": "{{count}} Movies",
+    "loadMore": "Load more"
+  },
+  "heatmap": {
+    "title": "Activity"
+  },
+  "activityDayModal": {
+    "moviesCount_one": "{{count}} Movie",
+    "moviesCount_other": "{{count}} Movies",
+    "actions": {
+      "watched": "Watched",
+      "addedWatchlist": "Added to watchlist",
+      "rated": "Rated",
+      "favorited": "Favorited",
+      "rewatched": "Rewatched"
+    }
+  },
+  "publicProfile": {
+    "notFound": "Not found.",
+    "friends": "Friends",
+    "requestSent": "Request sent",
+    "addFriend": "Add friend",
+    "friendAdded": "Added to friends!",
+    "loadMore": "Load more"
+  },
+  "sort": {
+    "rating": "Rating",
+    "added": "Date added",
+    "asc": "Ascending",
+    "desc": "Descending"
+  },
+  "compat": {
+    "title": "Taste Match",
+    "commonWatched": "You both watched {{count}} of the same titles",
+    "generate": "Find something to watch together",
+    "generating": "Thinking...",
+    "regenerate": "Try different picks",
+    "dailyLimit": "You've used all 3 taste-match tries for today. Come back tomorrow for new picks!",
+    "triesHint": "3 tries per day",
+    "error": "Something went wrong. Please try again.",
+    "added": "Added to watchlist.",
+    "addError": "Could not add to watchlist."
+  },
+  "publicFriends": {
+    "title": "{{name}}'s Friends",
+    "empty": "No friends to show yet.",
+    "loadError": "Could not load friends."
+  },
+  "quizStats": {
+    "title": "{{username}}'s Quiz Stats",
+    "avgScore": "Avg Score",
+    "solved": "Solved",
+    "perfect": "Perfect",
+    "monthTotal": "Month Total"
+  },
+  "journey": {
+    "sectionTitle": "Your Journey",
+    "someoneTitle": "{{name}}'s Journey",
+    "youAreHere": "You",
+    "lockedName": "???",
+    "oneMovieToGo": "movie to go",
+    "moviesToGo": "movies to go",
+    "expandHint": "Explore the map",
+    "zoomReset": "Reset",
+    "realmLotr": "Middle-earth",
+    "zoomHint": "Pinch or drag inside the full map to zoom.",
+    "howItWorks": "Every movie you add to your watchlist (watched or planned) moves you forward.",
+    "unlockedAt": "✓ Unlocked at {{count}} movies",
+    "unlockedAtOne": "✓ Unlocked at 1 movie",
+    "stops": {
+      "shire": "The Shire",
+      "hobbiton": "Hobbiton",
+      "buckland": "Buckland",
+      "old_forest": "The Old Forest",
+      "bree": "Bree",
+      "weathertop": "Weathertop",
+      "fords_of_bruinen": "Fords of Bruinen",
+      "rivendell": "Rivendell",
+      "caradhras": "Caradhras",
+      "moria": "Mines of Moria",
+      "lothlorien": "Lothlorien",
+      "anduin": "The Anduin River",
+      "amon_hen": "Amon Hen",
+      "emyn_muil": "Emyn Muil",
+      "dead_marshes": "The Dead Marshes",
+      "black_gate": "The Black Gate",
+      "ithilien": "Ithilien",
+      "cirith_ungol": "Cirith Ungol",
+      "gorgoroth": "Plateau of Gorgoroth",
+      "mount_doom": "Mount Doom"
+    }
+  }
+}

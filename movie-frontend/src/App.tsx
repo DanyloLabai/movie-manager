@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useEffectEvent } from "react";
 import {
   BrowserRouter,
   Routes,
@@ -6,8 +6,8 @@ import {
   Navigate,
   useLocation,
 } from "react-router-dom";
-import { useAuth } from "./context/AuthContext";
-import { useAuthPrompt } from "./context/AuthPromptContext";
+import { useAuth } from "./context/useAuth";
+import { useAuthPrompt } from "./context/useAuthPrompt";
 import AuthRequiredModal from "./components/AuthRequiredModal";
 import FeedbackPrompt from "./components/FeedbackPrompt";
 import Login from "./pages/Login";
@@ -36,17 +36,17 @@ import type { JSX } from "react";
 const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { isAuthenticated, isLoading } = useAuth();
   const { open } = useAuthPrompt();
+  const promptSignIn = useEffectEvent(() => open());
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      open();
+      promptSignIn();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, isAuthenticated]);
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#12100e]">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#c8963c]"></div>
       </div>
     );
@@ -190,7 +190,8 @@ function AppShell() {
   );
 
   return (
-    <div className="min-h-[100dvh] bg-[#12100e] text-[#f0e6cc] font-sans overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
+    <div className="relative isolate min-h-[100dvh] bg-[#12100e] text-[#f0e6cc] font-sans overscroll-none selection:bg-[#c8963c] selection:text-[#12100e]">
+      <div className="app-background" aria-hidden="true" />
       <ApiNotification />
       {!hideChrome && <Sidebar />}
       <div className={!hideChrome ? SIDEBAR_PADDING_CLASS : undefined}>

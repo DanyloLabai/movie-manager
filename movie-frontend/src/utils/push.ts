@@ -1,4 +1,5 @@
 import * as pushApi from "../api/push.api";
+import { logError } from "./logError";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -54,5 +55,5 @@ export async function disablePushNotifications(): Promise<void> {
 
   const endpoint = subscription.endpoint;
   await subscription.unsubscribe();
-  await pushApi.unsubscribe(endpoint).catch(() => {});
+  await pushApi.unsubscribe(endpoint).catch(logError("push: pushApi.unsubscribe"));
 }

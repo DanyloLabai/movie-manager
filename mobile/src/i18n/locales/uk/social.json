@@ -1,0 +1,50 @@
+{
+  "friendsModal": {
+    "title": "Друзі",
+    "tabs": {
+      "friends": "Друзі",
+      "requests": "Запити",
+      "feed": "Стрічка"
+    },
+    "searchPlaceholder": "Пошук за іменем користувача…",
+    "add": "Додати",
+    "sent": "Надіслано",
+    "friendsStatus": "Друзі",
+    "noUsersFound": "Користувачів не знайдено.",
+    "noPendingRequests": "Немає запитів у друзі.",
+    "noRecentActivity": "Немає нещодавньої активності.",
+    "noFriendsYet": "Поки що немає друзів — спробуйте пошук."
+  },
+  "top100": {
+    "movies": "Фільми",
+    "tvShows": "Серіали",
+    "added": "Додано",
+    "addLabel": "Додати",
+    "addedToWatchlist": "Додано до списку перегляду.",
+    "removedFromWatchlist": "Видалено зі списку перегляду.",
+    "loadError": "Не вдалося завантажити Топ 100.",
+    "addError": "Не вдалося додати до списку перегляду.",
+    "removeError": "Не вдалося видалити зі списку перегляду.",
+    "favoriteError": "Не вдалося оновити обране."
+  },
+  "notifications": {
+    "title": "Сповіщення",
+    "subtitle": "Слідкуйте за своєю кінематографічною подорожжю.",
+    "markAllRead": "Позначити все прочитаним",
+    "friendRequests": "Запити в друзі",
+    "nothingHereYet": "Поки що нічого немає.",
+    "view": "Переглянути",
+    "loadError": "Не вдалося завантажити сповіщення.",
+    "filters": {
+      "all": "Усі",
+      "friends": "Друзі",
+      "achievements": "Досягнення",
+      "releases": "Релізи"
+    },
+    "groups": {
+      "today": "Сьогодні",
+      "yesterday": "Учора",
+      "older": "Раніше"
+    }
+  }
+}

@@ -6,7 +6,7 @@ import type {
   AiUsageWindowStats,
   FeedbackEntry,
 } from "../api/admin.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import { formatTimeAgo } from "../utils/time";
 
 const WINDOWS: Array<{ key: keyof AiUsageStats; label: string }> = [
@@ -179,7 +179,7 @@ export default function Admin() {
   }, []);
 
   return (
-    <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] selection:bg-[#c8963c] selection:text-[#12100e]">
+    <div className="min-h-[100dvh] font-sans text-[#f0e6cc] selection:bg-[#c8963c] selection:text-[#12100e]">
       <header className="flex items-center justify-between py-4 px-4 sm:px-12 max-w-4xl mx-auto">
         <Link
           to="/watchlist"

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "../context/AuthContext";
-import { useLang } from "../context/LanguageContext";
+import { useAuth } from "../context/useAuth";
+import { useLang } from "../context/useLang";
 import { submitFeedback, getMyFeedbackStatus } from "../api/feedback.api";
 import { STORAGE_KEYS } from "../constants/storage";
 

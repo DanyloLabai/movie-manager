@@ -5,6 +5,7 @@ import App from "./App.tsx";
 import { LanguageProvider } from "./context/LanguageContext.tsx";
 import { AuthProvider } from "./context/AuthContext.tsx";
 import { AuthPromptProvider } from "./context/AuthPromptContext.tsx";
+import { logError } from "./utils/logError";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -20,6 +21,6 @@ createRoot(document.getElementById("root")!).render(
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker.register("/sw.js").catch(logError("main: navigator.serviceWorker.register"));
   });
 }

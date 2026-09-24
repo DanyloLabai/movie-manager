@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import * as usersApi from "../../api/users.api";
 import type { Friend } from "../../types/friend.types";
 

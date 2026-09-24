@@ -1,0 +1,1001 @@
+import { useEffect, useState, useEffectEvent } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import type { CompositeScreenProps } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { useTranslation } from "react-i18next";
+import type {
+  AiUsage,
+  MovieResult,
+  RecommendationReason,
+} from "@movie-manager/shared";
+import {
+  aiSearch,
+  getHistory,
+  getUsage,
+  identifyPhoto,
+  postHistory,
+} from "../../api/ai.api";
+import {
+  addToWatchlist,
+  getProfile,
+  markAsWatched,
+  rateMovie,
+} from "../../api/movies.api";
+import { getErrorMessage } from "../../utils/getErrorMessage";
+import { useToast } from "../../hooks/useToast";
+import AddMovieModal from "../../components/AddMovieModal";
+import ScreenHeader from "../../components/ScreenHeader";
+import Toast from "../../components/Toast";
+import { colors, spacing, radius, fontWeight } from "../../theme";
+import type { AppTabsParamList } from "../../navigation/AppTabs";
+import type { MainStackParamList } from "../../navigation/MainStack";
+import { logError } from "../../utils/logError";
+
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<AppTabsParamList, "AiChat">,
+  NativeStackScreenProps<MainStackParamList>
+>;
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  movies?: MovieResult[];
+  reasoning?: RecommendationReason[];
+  imageUrl?: string;
+}
+
+interface PendingPhoto {
+  uri: string;
+  name: string;
+  type: string;
+}
+
+const MAX_PHOTO_SIZE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const COOLDOWN_MS = 3000;
+const MAX_HISTORY = 20;
+
+const guessMimeType = (name: string): string => {
+  const ext = name.split(".").pop()?.toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  return "image/jpeg";
+};
+
+interface ProfileResponse {
+  watchedIds?: number[];
+  inPlansIds?: number[];
+}
+
+function WhyThisHint({ reasoning }: { reasoning: RecommendationReason[] }) {
+  const { t } = useTranslation("quiz");
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <View style={styles.whyThis}>
+      <Pressable
+        style={styles.whyThisToggle}
+        onPress={() => setIsOpen((v) => !v)}
+      >
+        <Ionicons
+          name={isOpen ? "chevron-down" : "chevron-forward"}
+          size={11}
+          color={colors.accentBright}
+        />
+        <Text style={styles.whyThisToggleText}>
+          {t("aiChatScreen.whyThis")}
+        </Text>
+      </Pressable>
+      {isOpen ? (
+        <View style={styles.whyThisList}>
+          {reasoning.map((r, i) => (
+            <Text key={i} style={styles.whyThisItem}>
+              {r.preferenceText}{" "}
+              <Text style={styles.whyThisScore}>
+                ({Math.round(r.similarityScore * 100)}%)
+              </Text>
+            </Text>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+export default function AiChatScreen({ navigation }: Props) {
+  const { t, i18n } = useTranslation("quiz");
+  const SUGGESTIONS = [
+    t("aiChatScreen.suggestion1"),
+    t("aiChatScreen.suggestion2"),
+    t("aiChatScreen.suggestion3"),
+    t("aiChatScreen.suggestion4"),
+  ];
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [draft, setDraft] = useState("");
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const [addedIds, setAddedIds] = useState<number[]>([]);
+  const [usage, setUsage] = useState<AiUsage | null>(null);
+  const [isUsageOpen, setIsUsageOpen] = useState(false);
+  const [isCoolingDown, setIsCoolingDown] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null);
+  const [addTarget, setAddTarget] = useState<MovieResult | null>(null);
+  const { toastMessage, showToast } = useToast();
+
+  const startCooldown = () => {
+    setIsCoolingDown(true);
+    setTimeout(() => setIsCoolingDown(false), COOLDOWN_MS);
+  };
+
+  const notifyHistoryError = useEffectEvent((err: unknown) =>
+    showToast(getErrorMessage(err, t("aiChatScreen.loadHistoryError"))),
+  );
+
+  useEffect(() => {
+    getHistory()
+      .then(setMessages)
+      .catch(notifyHistoryError)
+      .finally(() => setIsLoadingHistory(false));
+  }, []);
+
+  useEffect(() => {
+    getProfile()
+      .then((data) => {
+        const profile = data as typeof data & ProfileResponse;
+        const watchedIds = profile.watchedIds ?? [];
+        const inPlansIds = profile.inPlansIds ?? [];
+        setAddedIds(Array.from(new Set([...watchedIds, ...inPlansIds])));
+      })
+      .catch(logError("AiChatScreen: getProfile"));
+    getUsage().then(setUsage).catch(logError("AiChatScreen: getUsage"));
+  }, []);
+
+  const persist = (list: Message[]) => {
+    void postHistory(
+      list.map((m) => ({ role: m.role, content: m.content, movies: m.movies })),
+    ).catch(logError("AiChatScreen: postHistory"));
+  };
+
+  const handleSend = async (text: string) => {
+    if (pendingPhoto) {
+      await handleSendPhoto(text.trim());
+      return;
+    }
+    const trimmed = text.trim();
+    if (!trimmed || isSending || isCoolingDown) return;
+    setDraft("");
+
+    const userMessage: Message = { role: "user", content: trimmed };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    setIsSending(true);
+
+    try {
+      const recent = nextMessages.slice(-MAX_HISTORY);
+      const shownMovieIds = recent.flatMap((m) =>
+        (m.movies ?? []).map((movie) => movie.id),
+      );
+      const response = await aiSearch({
+        messages: recent.map((m) => {
+          let content = m.content;
+          if (m.role === "assistant" && m.movies && m.movies.length > 0) {
+            content += `\n[System note: I already showed these movies to the user: ${m.movies
+              .map((movie) => movie.title)
+              .join(", ")}. Do not repeat them in next suggestions.]`;
+          }
+          return { role: m.role, content };
+        }),
+        shownMovieIds,
+      });
+      const assistantMessage: Message = {
+        role: "assistant",
+        content: response.message ?? "",
+        movies: response.movies,
+        reasoning: response.reasoning,
+      };
+      const withReply = [...nextMessages, assistantMessage];
+      setMessages(withReply);
+      persist(withReply);
+    } catch (err) {
+      const httpStatus = (err as { response?: { status?: number } }).response
+        ?.status;
+      if (httpStatus === 429) {
+        setMessages([
+          ...nextMessages,
+          { role: "assistant", content: t("aiChatScreen.dailyLimit") },
+        ]);
+      } else {
+        showToast(getErrorMessage(err, t("aiChatScreen.sendError")));
+      }
+    } finally {
+      setIsSending(false);
+      startCooldown();
+      getUsage().then(setUsage).catch(logError("AiChatScreen: getUsage"));
+    }
+  };
+
+  const handlePickPhoto = async () => {
+    if (isSending || isCoolingDown) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      showToast(t("aiChatScreen.photoPermission"));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    const name = asset.fileName ?? asset.uri.split("/").pop() ?? "photo.jpg";
+    const type = asset.mimeType ?? guessMimeType(name);
+    if (!ALLOWED_PHOTO_TYPES.has(type)) {
+      showToast(t("aiChatScreen.photoInvalidType"));
+      return;
+    }
+    if (asset.fileSize && asset.fileSize > MAX_PHOTO_SIZE_BYTES) {
+      showToast(t("aiChatScreen.photoTooLarge"));
+      return;
+    }
+    setPendingPhoto({ uri: asset.uri, name, type });
+  };
+
+  const handleSendPhoto = async (note: string) => {
+    if (!pendingPhoto || isSending || isCoolingDown) return;
+    const photo = pendingPhoto;
+    setPendingPhoto(null);
+    setDraft("");
+
+    const userMessage: Message = {
+      role: "user",
+      content: note || t("aiChatScreen.photoSent"),
+      imageUrl: photo.uri,
+    };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    setIsSending(true);
+
+    try {
+      const response = await identifyPhoto(photo, note, i18n.language);
+      const withReply: Message[] = [
+        ...nextMessages,
+        {
+          role: "assistant",
+          content: response.message ?? "",
+          movies: response.movies,
+        },
+      ];
+      setMessages(withReply);
+      persist(withReply);
+    } catch (err) {
+      const httpStatus = (err as { response?: { status?: number } }).response
+        ?.status;
+      setMessages([
+        ...nextMessages,
+        {
+          role: "assistant",
+          content:
+            httpStatus === 429
+              ? t("aiChatScreen.photoDailyLimit")
+              : t("aiChatScreen.photoError"),
+        },
+      ]);
+    } finally {
+      setIsSending(false);
+      startCooldown();
+      getUsage().then(setUsage).catch(logError("AiChatScreen: getUsage"));
+    }
+  };
+
+  const handleClearChat = () => {
+    setMessages([]);
+    void postHistory([]).catch(logError("AiChatScreen: postHistory"));
+    showToast(t("aiChatScreen.chatCleared"));
+  };
+
+  const handleMarkWatchedFromChat = async (
+    movie: MovieResult,
+    rating: number | null,
+  ) => {
+    try {
+      try {
+        await addToWatchlist({
+          tmdbId: movie.id,
+          title: movie.title,
+          posterUrl: movie.posterUrl,
+          mediaType: movie.mediaType,
+          releaseDate: movie.releaseDate,
+        });
+      } catch (err) {
+        if (
+          (err as { response?: { status?: number } }).response?.status !== 400
+        )
+          throw err;
+      }
+      await markAsWatched(movie.id);
+      if (rating) await rateMovie(movie.id, rating);
+      setAddedIds((prev) => [...prev, movie.id]);
+      showToast(t("aiChatScreen.addedToWatchlist"));
+    } catch (err) {
+      showToast(getErrorMessage(err, t("aiChatScreen.addWatchlistError")));
+    }
+  };
+
+  const handleAddFromChat = async (movie: MovieResult) => {
+    try {
+      await addToWatchlist({
+        tmdbId: movie.id,
+        title: movie.title,
+        posterUrl: movie.posterUrl,
+        mediaType: movie.mediaType,
+        releaseDate: movie.releaseDate,
+      });
+      setAddedIds((prev) => [...prev, movie.id]);
+      showToast(t("aiChatScreen.addedToWatchlist"));
+    } catch (err) {
+      const apiError = err as { response?: { status?: number } };
+      if (apiError.response?.status === 400) {
+        setAddedIds((prev) => [...prev, movie.id]);
+        showToast(t("aiChatScreen.addedToWatchlist"));
+      } else {
+        showToast(getErrorMessage(err, t("aiChatScreen.addWatchlistError")));
+      }
+    }
+  };
+
+  const formatTokenCount = (n: number) =>
+    n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : String(n);
+
+  if (isLoadingHistory) {
+    return (
+      <SafeAreaView style={styles.center} edges={["top", "left", "right"]}>
+        <ActivityIndicator color={colors.accent} size="large" />
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
+      >
+        <ScreenHeader
+          title={t("aiChatScreen.headerTitle").toUpperCase()}
+          rightSlot={
+            usage ? (
+              <Pressable
+                style={styles.usageButton}
+                onPress={() => setIsUsageOpen(true)}
+              >
+                <Ionicons
+                  name="stats-chart-outline"
+                  size={15}
+                  color={colors.textSubtle}
+                />
+              </Pressable>
+            ) : null
+          }
+        />
+
+        <FlatList
+          data={messages}
+          keyExtractor={(_, index) => String(index)}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyBadge}>
+                <Ionicons
+                  name="bulb-outline"
+                  size={24}
+                  color={colors.accentBright}
+                />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {t("aiChatScreen.emptyTitle").toUpperCase()}
+              </Text>
+              <Text style={styles.empty}>{t("aiChatScreen.emptyMessage")}</Text>
+              <View style={styles.suggestions}>
+                {SUGGESTIONS.map((chip) => (
+                  <Pressable
+                    key={chip}
+                    style={styles.suggestionChip}
+                    onPress={() => void handleSend(chip)}
+                  >
+                    <Text style={styles.suggestionChipText}>{chip}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          }
+          renderItem={({ item }) =>
+            item.role === "user" ? (
+              <View style={[styles.bubble, styles.bubbleUser]}>
+                {item.imageUrl ? (
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={styles.bubbleImage}
+                  />
+                ) : null}
+                <Text style={[styles.bubbleText, styles.bubbleTextUser]}>
+                  {item.content}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.assistantBlock}>
+                {item.content ? (
+                  <Text style={styles.assistantText}>{item.content}</Text>
+                ) : null}
+
+                {item.movies && item.movies.length > 0 ? (
+                  <View style={styles.movieList}>
+                    {item.movies.map((movie) => {
+                      const added = addedIds.includes(movie.id);
+                      return (
+                        <View key={movie.id} style={styles.movieCard}>
+                          <Pressable
+                            onPress={() =>
+                              navigation.navigate("MovieDetail", {
+                                movieId: movie.id,
+                                title: movie.title,
+                                mediaType: movie.mediaType,
+                              })
+                            }
+                          >
+                            {movie.posterUrl ? (
+                              <Image
+                                source={{ uri: movie.posterUrl }}
+                                style={styles.moviePoster}
+                              />
+                            ) : (
+                              <View
+                                style={[
+                                  styles.moviePoster,
+                                  styles.moviePosterPlaceholder,
+                                ]}
+                              />
+                            )}
+                          </Pressable>
+                          <View style={styles.movieBody}>
+                            <View style={styles.movieHeaderRow}>
+                              <Text style={styles.movieTitle} numberOfLines={1}>
+                                {movie.title}
+                              </Text>
+                              <Text style={styles.movieYear}>
+                                {movie.releaseYear}
+                              </Text>
+                            </View>
+                            {movie.rating ? (
+                              <Text style={styles.movieRating}>
+                                ★ {Number(movie.rating).toFixed(1)}
+                              </Text>
+                            ) : null}
+                            {movie.description ? (
+                              <Text
+                                style={styles.movieDescription}
+                                numberOfLines={2}
+                              >
+                                {movie.description}
+                              </Text>
+                            ) : null}
+                            <View style={styles.movieActions}>
+                              {added ? (
+                                <View style={styles.addedPill}>
+                                  <Text style={styles.addedPillText}>
+                                    ✓ {t("aiChatScreen.added").toUpperCase()}
+                                  </Text>
+                                </View>
+                              ) : (
+                                <Pressable
+                                  style={styles.addButton}
+                                  onPress={() => setAddTarget(movie)}
+                                >
+                                  <Text style={styles.addButtonText}>
+                                    + {t("aiChatScreen.add").toUpperCase()}
+                                  </Text>
+                                </Pressable>
+                              )}
+                              <Pressable
+                                style={styles.detailsButton}
+                                onPress={() =>
+                                  navigation.navigate("MovieDetail", {
+                                    movieId: movie.id,
+                                    title: movie.title,
+                                    mediaType: movie.mediaType,
+                                  })
+                                }
+                              >
+                                <Text style={styles.detailsButtonText}>
+                                  {t("aiChatScreen.details").toUpperCase()}
+                                </Text>
+                              </Pressable>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : null}
+
+                {item.reasoning && item.reasoning.length > 0 ? (
+                  <WhyThisHint reasoning={item.reasoning} />
+                ) : null}
+              </View>
+            )
+          }
+        />
+
+        {pendingPhoto ? (
+          <View style={styles.pendingPhotoRow}>
+            <Image
+              source={{ uri: pendingPhoto.uri }}
+              style={styles.pendingPhotoThumb}
+            />
+            <Text style={styles.pendingPhotoHint} numberOfLines={2}>
+              {t("aiChatScreen.photoAttachedHint")}
+            </Text>
+            <Pressable
+              onPress={() => setPendingPhoto(null)}
+              hitSlop={8}
+              accessibilityLabel={t("aiChatScreen.photoRemove")}
+            >
+              <Ionicons
+                name="close-circle"
+                size={20}
+                color={colors.textMuted}
+              />
+            </Pressable>
+          </View>
+        ) : null}
+
+        <View style={styles.inputRow}>
+          <Pressable
+            style={styles.clearButton}
+            onPress={handleClearChat}
+            disabled={messages.length === 0}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={16}
+              color={messages.length === 0 ? colors.textFaint : colors.danger}
+            />
+          </Pressable>
+          <Pressable
+            style={styles.clearButton}
+            onPress={() => void handlePickPhoto()}
+            disabled={isSending || isCoolingDown}
+            accessibilityLabel={t("aiChatScreen.photoButton")}
+          >
+            <Ionicons
+              name="image-outline"
+              size={16}
+              color={
+                isSending || isCoolingDown
+                  ? colors.textFaint
+                  : colors.textSubtle
+              }
+            />
+          </Pressable>
+          <TextInput
+            style={styles.input}
+            placeholder={
+              pendingPhoto
+                ? t("aiChatScreen.photoPlaceholder")
+                : t("aiChatScreen.inputPlaceholder")
+            }
+            placeholderTextColor={colors.textMuted}
+            value={draft}
+            onChangeText={setDraft}
+            onSubmitEditing={() => void handleSend(draft)}
+            editable={!isSending}
+          />
+          <Pressable
+            style={[
+              styles.sendButton,
+              isCoolingDown && styles.sendButtonDisabled,
+            ]}
+            onPress={() => void handleSend(draft)}
+            disabled={isSending || isCoolingDown}
+          >
+            {isSending ? (
+              <ActivityIndicator color={colors.textOnAccent} size="small" />
+            ) : (
+              <Ionicons name="arrow-up" size={18} color={colors.textOnAccent} />
+            )}
+          </Pressable>
+        </View>
+        <Text style={styles.disclaimer}>{t("aiChatScreen.disclaimer")}</Text>
+      </KeyboardAvoidingView>
+
+      <Modal
+        visible={isUsageOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsUsageOpen(false)}
+      >
+        <Pressable
+          style={styles.usageBackdrop}
+          onPress={() => setIsUsageOpen(false)}
+        >
+          <Pressable
+            style={styles.usageCard}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <Text style={styles.usageCardTitle}>
+              {t("aiChatScreen.usageTitle").toUpperCase()}
+            </Text>
+            {usage ? (
+              <View style={styles.usageRows}>
+                <View style={styles.usageRow}>
+                  <View style={styles.usageRowHeader}>
+                    <Text style={styles.usageRowLabel}>
+                      {t("aiChatScreen.requests").toUpperCase()}
+                    </Text>
+                    <Text style={styles.usageRowValue}>
+                      {usage.requestCount}/{usage.requestLimit}
+                    </Text>
+                  </View>
+                  <View style={styles.usageTrack}>
+                    <View
+                      style={[
+                        styles.usageFill,
+                        {
+                          width: `${Math.min(100, (usage.requestCount / usage.requestLimit) * 100)}%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+                <View style={styles.usageRow}>
+                  <View style={styles.usageRowHeader}>
+                    <Text style={styles.usageRowLabel}>
+                      {t("aiChatScreen.tokens").toUpperCase()}
+                    </Text>
+                    <Text style={styles.usageRowValue}>
+                      {formatTokenCount(usage.totalTokens)}/
+                      {formatTokenCount(usage.tokenLimit)}
+                    </Text>
+                  </View>
+                  <View style={styles.usageTrack}>
+                    <View
+                      style={[
+                        styles.usageFill,
+                        {
+                          width: `${Math.min(100, (usage.totalTokens / usage.tokenLimit) * 100)}%`,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+                {usage.photoRequestLimit ? (
+                  <View style={styles.usageRow}>
+                    <View style={styles.usageRowHeader}>
+                      <Text style={styles.usageRowLabel}>
+                        {t("aiChatScreen.photoIds").toUpperCase()}
+                      </Text>
+                      <Text style={styles.usageRowValue}>
+                        {usage.photoRequestCount}/{usage.photoRequestLimit}
+                      </Text>
+                    </View>
+                    <View style={styles.usageTrack}>
+                      <View
+                        style={[
+                          styles.usageFill,
+                          {
+                            width: `${Math.min(100, (usage.photoRequestCount / usage.photoRequestLimit) * 100)}%`,
+                          },
+                        ]}
+                      />
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <AddMovieModal
+        visible={addTarget !== null}
+        title={addTarget?.title ?? ""}
+        onClose={() => setAddTarget(null)}
+        onAddToWatchlist={() => {
+          const movie = addTarget;
+          setAddTarget(null);
+          if (movie) void handleAddFromChat(movie);
+        }}
+        onMarkWatched={(rating) => {
+          const movie = addTarget;
+          setAddTarget(null);
+          if (movie) void handleMarkWatchedFromChat(movie, rating);
+        }}
+      />
+
+      <Toast message={toastMessage} />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1, backgroundColor: colors.background },
+  center: {
+    flex: 1,
+    backgroundColor: colors.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  listContent: { paddingHorizontal: spacing.lg, gap: spacing.md, flexGrow: 1 },
+  usageButton: {
+    width: 30,
+    height: 30,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.sm,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingBottom: spacing.xl,
+  },
+  emptyBadge: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "rgba(217,172,84,.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.xs,
+  },
+  emptyTitle: {
+    color: colors.textPrimary,
+    fontSize: 20,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 3,
+  },
+  empty: {
+    color: colors.textMuted,
+    textAlign: "center",
+    fontSize: 13,
+    maxWidth: 260,
+  },
+  suggestions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs + 2,
+    justifyContent: "center",
+    marginTop: spacing.sm,
+  },
+  suggestionChip: {
+    borderWidth: 1,
+    borderColor: "rgba(217,172,84,.3)",
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  suggestionChipText: { color: colors.textSubtle, fontSize: 12 },
+  bubble: { maxWidth: "85%", borderRadius: radius.md, padding: spacing.sm + 4 },
+  bubbleUser: {
+    backgroundColor: "rgba(217,172,84,.13)",
+    borderWidth: 1,
+    borderColor: "rgba(217,172,84,.25)",
+    alignSelf: "flex-end",
+  },
+  bubbleImage: {
+    width: 180,
+    height: 180,
+    borderRadius: radius.sm,
+    marginBottom: spacing.xs + 2,
+  },
+  pendingPhotoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  pendingPhotoThumb: { width: 44, height: 44, borderRadius: radius.sm },
+  pendingPhotoHint: { flex: 1, color: colors.textMuted, fontSize: 12 },
+  sendButtonDisabled: { opacity: 0.4 },
+  bubbleText: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
+  bubbleTextUser: { color: colors.textPrimary },
+  assistantBlock: { gap: spacing.sm },
+  assistantText: { color: colors.textSubtle, fontSize: 14, lineHeight: 20 },
+  movieList: { gap: spacing.sm },
+  movieCard: {
+    flexDirection: "row",
+    gap: spacing.sm + 2,
+    padding: spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: "rgba(217,172,84,.2)",
+    borderRadius: radius.md,
+    backgroundColor: "rgba(217,172,84,.04)",
+  },
+  moviePoster: { width: 72, height: 108, borderRadius: radius.sm },
+  moviePosterPlaceholder: { backgroundColor: colors.backgroundDeep },
+  movieBody: { flex: 1, minWidth: 0, gap: 3 },
+  movieHeaderRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: spacing.xs,
+  },
+  movieTitle: {
+    flexShrink: 1,
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: fontWeight.bold,
+  },
+  movieYear: { color: colors.textMuted, fontSize: 11 },
+  movieRating: {
+    color: colors.accentBright,
+    fontSize: 11,
+    fontWeight: fontWeight.semibold,
+  },
+  movieDescription: { color: colors.textMuted, fontSize: 11, lineHeight: 15 },
+  movieActions: { flexDirection: "row", gap: spacing.xs + 2, marginTop: 2 },
+  addButton: {
+    backgroundColor: colors.accentBright,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 6,
+  },
+  addButtonText: {
+    color: colors.textOnAccent,
+    fontSize: 9.5,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.5,
+  },
+  addedPill: {
+    borderWidth: 1,
+    borderColor: "rgba(217,172,84,.45)",
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 6,
+  },
+  addedPillText: {
+    color: colors.accentBright,
+    fontSize: 9.5,
+    fontWeight: fontWeight.bold,
+  },
+  detailsButton: {
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 6,
+  },
+  detailsButtonText: {
+    color: colors.textSubtle,
+    fontSize: 9.5,
+    fontWeight: fontWeight.semibold,
+  },
+  whyThis: { marginLeft: 2 },
+  whyThisToggle: { flexDirection: "row", alignItems: "center", gap: 3 },
+  whyThisToggleText: {
+    color: "rgba(217,172,84,.75)",
+    fontSize: 10,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: 0.5,
+  },
+  whyThisList: {
+    marginTop: 4,
+    gap: 3,
+    borderLeftWidth: 1,
+    borderLeftColor: "rgba(217,172,84,.2)",
+    paddingLeft: spacing.sm,
+  },
+  whyThisItem: { color: colors.textMuted, fontSize: 10.5 },
+  whyThisScore: {
+    color: "rgba(217,172,84,.7)",
+    fontWeight: fontWeight.semibold,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderSubtle,
+  },
+  clearButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.borderSubtle,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  input: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,.03)",
+    color: colors.textPrimary,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    fontSize: 14,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.full,
+    backgroundColor: colors.accentBright,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  disclaimer: {
+    color: colors.textFaint,
+    fontSize: 9.5,
+    textAlign: "center",
+    paddingVertical: spacing.sm,
+  },
+  usageBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,.8)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.lg,
+  },
+  usageCard: {
+    width: "100%",
+    maxWidth: 320,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+  },
+  usageCardTitle: {
+    color: colors.textPrimary,
+    fontSize: 12,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    marginBottom: spacing.md,
+  },
+  usageRows: { gap: spacing.md },
+  usageRow: { gap: spacing.xs + 2 },
+  usageRowHeader: { flexDirection: "row", justifyContent: "space-between" },
+  usageRowLabel: { color: colors.textMuted, fontSize: 9.5, letterSpacing: 1.5 },
+  usageRowValue: {
+    color: colors.textPrimary,
+    fontSize: 11.5,
+    fontWeight: fontWeight.semibold,
+  },
+  usageTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,.08)",
+    overflow: "hidden",
+  },
+  usageFill: {
+    height: "100%",
+    backgroundColor: colors.accentBright,
+    borderRadius: 3,
+  },
+});

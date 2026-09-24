@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import AddMovieModal from "./AddMovieModal";
 import type { MovieCardProps } from "../../types/movie.types";
 

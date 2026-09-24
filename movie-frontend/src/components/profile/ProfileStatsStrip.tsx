@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 
 export interface ProfileStatTile {
   value: string | number;

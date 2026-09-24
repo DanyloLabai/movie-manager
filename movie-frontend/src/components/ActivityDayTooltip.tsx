@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import { ACTIVITY_ACTION_ICONS, type HeatmapDay } from "../utils/activity";
 
 const MAX_VISIBLE = 5;

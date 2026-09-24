@@ -1,25 +1,20 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent,
-} from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState, type PointerEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as swipeApi from "../api/swipe.api";
 import type { SwipeActionType, SwipeCard } from "../api/swipe.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import StarRating from "../components/StarRating";
 import LogoIcon from "../components/LogoIcon";
+import { logError } from "../utils/logError";
 
 const DRAG_THRESHOLD_PX = 100;
 const EXIT_ANIMATION_MS = 260;
 
 type ExitState = { dir: "left" | "right" | "fade" } | null;
 
-function formatCountdown(resetAt: string | null): string {
+function formatCountdown(resetAt: string | null, now: number): string {
   if (!resetAt) return "";
-  const ms = Math.max(0, new Date(resetAt).getTime() - Date.now());
+  const ms = Math.max(0, new Date(resetAt).getTime() - now);
   const totalSeconds = Math.floor(ms / 1000);
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
@@ -37,7 +32,7 @@ export default function Discover() {
   const [resetAt, setResetAt] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [countdown, setCountdown] = useState("");
+  const [now, setNow] = useState(() => Date.now());
 
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -47,23 +42,25 @@ export default function Discover() {
   const [ratingCard, setRatingCard] = useState<SwipeCard | null>(null);
   const [ratingValue, setRatingValue] = useState(0);
 
-  const loadFeed = useCallback(async () => {
-    setLoadError(false);
-    try {
-      const res = await swipeApi.getSwipeFeed();
-      if (res.movies.length === 0 && res.remainingToday > 0) {
-        setLoadError(true);
-        return;
-      }
-      setDailyLimit(res.dailyLimit);
-      setRemainingToday(res.remainingToday);
-      setResetAt(res.resetAt);
-      setFeed(res.movies);
-      setIsDone(res.movies.length === 0);
-    } catch {
-      setLoadError(true);
-    }
-  }, []);
+  const loadFeed = useCallback(
+    () =>
+      swipeApi
+        .getSwipeFeed()
+        .then((res) => {
+          if (res.movies.length === 0 && res.remainingToday > 0) {
+            setLoadError(true);
+            return;
+          }
+          setLoadError(false);
+          setDailyLimit(res.dailyLimit);
+          setRemainingToday(res.remainingToday);
+          setResetAt(res.resetAt);
+          setFeed(res.movies);
+          setIsDone(res.movies.length === 0);
+        })
+        .catch(() => setLoadError(true)),
+    [],
+  );
 
   useEffect(() => {
     loadFeed();
@@ -71,10 +68,16 @@ export default function Discover() {
 
   useEffect(() => {
     if (!isDone || !resetAt) return;
-    setCountdown(formatCountdown(resetAt));
-    const id = setInterval(() => setCountdown(formatCountdown(resetAt)), 1000);
+    const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [isDone, resetAt]);
+
+  const countdown = isDone ? formatCountdown(resetAt, now) : "";
+
+  const retryLoad = () => {
+    setLoadError(false);
+    void loadFeed();
+  };
 
   const currentCard = feed?.[0] ?? null;
   const nextCard = feed?.[1] ?? null;
@@ -95,7 +98,7 @@ export default function Discover() {
         action,
         rating,
       })
-      .catch(() => {});
+      .catch(logError("Discover: swipeApi.submitSwipeAction"));
   }
 
   function advance() {
@@ -165,17 +168,18 @@ export default function Discover() {
     triggerExit("fade", "watched", ratingValue);
   }
 
+  const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
+    if (!currentCard || exiting || ratingCard) return;
+    if (e.key === "ArrowLeft") triggerExit("left", "skip");
+    else if (e.key === "ArrowRight") triggerExit("right", "watchlist");
+    else if (e.key.toLowerCase() === "w") openRatingSheet();
+  });
+
   useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if (!currentCard || exiting || ratingCard) return;
-      if (e.key === "ArrowLeft") triggerExit("left", "skip");
-      else if (e.key === "ArrowRight") triggerExit("right", "watchlist");
-      else if (e.key.toLowerCase() === "w") openRatingSheet();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCard, exiting, ratingCard]);
+    const handler = (e: KeyboardEvent) => onKeyDown(e);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const cardTransform = exiting
     ? exiting.dir === "left"
@@ -187,7 +191,7 @@ export default function Discover() {
   const cardOpacity = exiting?.dir === "fade" ? 0 : 1;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] overscroll-none">
+    <div className="min-h-[100dvh] font-ui text-[#f2ead9] overscroll-none">
       <div className="max-w-3xl mx-auto px-4 sm:px-8 pt-[calc(env(safe-area-inset-top)+18px)] pb-10 flex flex-col min-h-[100dvh]">
         <button
           type="button"
@@ -216,7 +220,7 @@ export default function Discover() {
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-6">
             <p className="text-sm text-[#8f8574]">{t("discover_load_error")}</p>
             <button
-              onClick={loadFeed}
+              onClick={retryLoad}
               className="px-6 py-2.5 rounded-full bg-[#d9ac54] hover:bg-[#e8c377] text-[#14110c] font-bold text-xs uppercase tracking-[2px] transition"
             >
               {t("discover_retry")}

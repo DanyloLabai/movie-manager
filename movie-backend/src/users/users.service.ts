@@ -1,4 +1,5 @@
 import {
+  Logger,
   BadRequestException,
   ConflictException,
   Injectable,
@@ -25,6 +26,8 @@ import { APP_TIME_ZONE, isValidTimeZone } from 'src/common/timezone.util';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private configService: ConfigService,
     @InjectRepository(User)
@@ -113,6 +116,43 @@ export class UsersService {
       email: user.email,
       avatarUrl: user.avatarUrl,
     };
+  }
+
+  async removeAvatar(userId: number): Promise<UpdateUserProfileDto> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const previousUrl = user.avatarUrl;
+    await this.usersRepository.update({ id: userId }, {
+      avatarUrl: null,
+    } as unknown as Partial<User>);
+
+    const publicId = previousUrl ? this.getAvatarPublicId(previousUrl) : null;
+    if (publicId) {
+      cloudinary.uploader
+        .destroy(publicId)
+        .catch((err: unknown) =>
+          this.logger.warn(
+            `Could not delete old avatar ${publicId} from Cloudinary: ${String(err)}`,
+          ),
+        );
+    }
+
+    return {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      avatarUrl: null,
+    };
+  }
+
+  private getAvatarPublicId(url: string): string | null {
+    const match = url.match(
+      /\/upload\/(?:[^/]+\/)*?(?:v\d+\/)?(movie-tracker-avatars\/[^./]+)\.[a-z0-9]+$/i,
+    );
+    return match ? match[1] : null;
   }
 
   uploadImage(file: Express.Multer.File): Promise<CloudinaryUploadResponseDto> {
@@ -299,7 +339,11 @@ export class UsersService {
           body: `${currentUser.username} accepted your friend request`,
           url: '/watchlist',
         })
-        .catch(() => {});
+        .catch((err: unknown) =>
+          this.logger.warn(
+            `Could not send friend notification: ${String(err)}`,
+          ),
+        );
 
       return { message: 'Friend added successfully', status: 'accepted' };
     }
@@ -324,7 +368,9 @@ export class UsersService {
         body: `${currentUser.username} wants to be your friend`,
         url: '/notifications',
       })
-      .catch(() => {});
+      .catch((err: unknown) =>
+        this.logger.warn(`Could not send friend notification: ${String(err)}`),
+      );
 
     return { message: 'Friend request sent', status: 'pending' };
   }
@@ -366,7 +412,9 @@ export class UsersService {
         body: `${request.toUser.username} accepted your friend request`,
         url: '/watchlist',
       })
-      .catch(() => {});
+      .catch((err: unknown) =>
+        this.logger.warn(`Could not send friend notification: ${String(err)}`),
+      );
 
     return { message: 'Friend request accepted' };
   }

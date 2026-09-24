@@ -183,14 +183,53 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 @layer components {
-  /* Marquee redesign type stack- Manrope backstops Archivo's thin Cyrillic
-     coverage so UA copy never silently falls back to the browser serif. */
   .font-ui {
     font-family: "Archivo", "Manrope", sans-serif;
   }
 
   .font-mono-ui {
     font-family: "JetBrains Mono", monospace;
+  }
+
+  .app-background {
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        ellipse 45% 55% at 12% 0%,
+        rgba(200, 150, 60, 0.3) 0%,
+        rgba(200, 150, 60, 0) 70%
+      ),
+      radial-gradient(
+        ellipse 35% 45% at 92% 55%,
+        rgba(168, 100, 40, 0.24) 0%,
+        rgba(168, 100, 40, 0) 70%
+      ),
+      radial-gradient(
+        ellipse 50% 35% at 50% 105%,
+        rgba(217, 172, 84, 0.14) 0%,
+        rgba(217, 172, 84, 0) 70%
+      ),
+      #12100e;
+  }
+  .app-background::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 0.07;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .app-background::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      ellipse at center,
+      rgba(0, 0, 0, 0) 50%,
+      rgba(0, 0, 0, 0.45) 100%
+    );
   }
 
   .glass-panel {

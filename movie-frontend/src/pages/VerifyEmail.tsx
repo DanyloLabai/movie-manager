@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import * as authApi from "../api/auth.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import AuthLayout from "../components/auth/AuthLayout";
 
 const CheckIcon = () => (

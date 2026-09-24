@@ -1,6 +1,7 @@
 import * as aiApi from "../api/ai.api";
 import type { AIMessage, AiUsage, RecommendationReason } from "../api/ai.api";
 import type { MovieResult } from "../types/movie.types";
+import { logError } from "../utils/logError";
 
 export interface ChatMessage {
   role: "user" | "ai";
@@ -125,7 +126,7 @@ function schedulePersist() {
     }));
     aiApi
       .postHistory(aiMsgs)
-      .catch(() => undefined)
+      .catch(logError("aiChatStore: aiApi.postHistory"))
       .finally(() => writeLocalHistory(messages));
   }, PERSIST_DEBOUNCE_MS);
 }
@@ -221,7 +222,7 @@ export function clearChat(copy: AiChatCopy): void {
   conversationDirty = true;
   setState({ messages: [{ role: "ai", text: copy.cleared }] });
   localStorage.removeItem(CHAT_STORAGE_KEY);
-  aiApi.postHistory([]).catch(() => undefined);
+  aiApi.postHistory([]).catch(logError("aiChatStore: aiApi.postHistory"));
 }
 
 export async function sendMessage(

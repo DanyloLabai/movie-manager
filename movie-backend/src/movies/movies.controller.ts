@@ -309,6 +309,12 @@ export class MoviesController {
   @ApiQuery({ name: 'offset', required: false, type: Number })
   @ApiQuery({ name: 'sortBy', required: false, enum: ['addedAt', 'rating'] })
   @ApiQuery({ name: 'sortDir', required: false, enum: ['asc', 'desc'] })
+  @ApiQuery({
+    name: 'rating',
+    required: false,
+    type: Number,
+    description: 'Filter to only movies rated exactly this value',
+  })
   @ApiResponse({ status: 200, description: 'List of watched movies' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getWatchedMovies(
@@ -317,6 +323,7 @@ export class MoviesController {
     @Query('offset') offset?: string,
     @Query('sortBy') sortBy?: string,
     @Query('sortDir') sortDir?: string,
+    @Query('rating') rating?: string,
   ) {
     const userId = req.user.userId;
     return this.moviesService.getWatchedMovies(
@@ -325,6 +332,7 @@ export class MoviesController {
       offset !== undefined ? Number(offset) : 0,
       sortBy === 'rating' ? 'rating' : 'addedAt',
       sortDir === 'asc' ? 'ASC' : 'DESC',
+      rating !== undefined ? Number(rating) : undefined,
     );
   }
 

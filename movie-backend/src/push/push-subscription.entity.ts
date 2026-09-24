@@ -12,14 +12,21 @@ export class PushSubscription {
   @PrimaryGeneratedColumn()
   id: number;
 
+  // Web-push subscription URL, or an Expo push token
+  // (`ExponentPushToken[...]`) when provider === 'expo' — either way a
+  // unique opaque string identifying one delivery target.
   @Column({ type: 'text', unique: true })
   endpoint: string;
 
-  @Column({ type: 'text' })
-  p256dh: string;
+  @Column({ type: 'text', default: 'web' })
+  provider: 'web' | 'expo';
 
-  @Column({ type: 'text' })
-  auth: string;
+  // Only set for provider === 'web'.
+  @Column({ type: 'text', nullable: true })
+  p256dh: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  auth: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

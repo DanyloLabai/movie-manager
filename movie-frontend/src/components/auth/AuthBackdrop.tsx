@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import * as moviesApi from "../../api/movies.api";
+import { logError } from "../../utils/logError";
 
 function pickRandom<T>(arr: T[], n: number): T[] {
   const pool = [...arr];
@@ -25,7 +26,7 @@ export default function AuthBackdrop() {
           .filter((url): url is string => !!url);
         setImages(pickRandom(posters, 3));
       })
-      .catch(() => {});
+      .catch(logError("AuthBackdrop: moviesApi.getUpcoming"));
     return () => {
       cancelled = true;
     };

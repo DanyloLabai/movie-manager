@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties, MouseEvent } from "react";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import {
   ACTIVITY_LEVEL_CLASSES,
   getActivityLevel,

@@ -49,6 +49,7 @@ export class PushService {
   ) {
     const existing = await this.pushSubRepo.findOne({ where: { endpoint } });
     if (existing) {
+      existing.provider = 'web';
       existing.p256dh = p256dh;
       existing.auth = auth;
       existing.user = { id: userId } as User;
@@ -58,8 +59,34 @@ export class PushService {
     return this.pushSubRepo.save(
       this.pushSubRepo.create({
         endpoint,
+        provider: 'web',
         p256dh,
         auth,
+        user: { id: userId } as User,
+      }),
+    );
+  }
+
+  // Expo push tokens (from mobile's expo-notifications) have no p256dh/auth
+  // keys — the token itself, stored in `endpoint`, is all sendToUser needs.
+  async saveExpoSubscription(userId: number, token: string) {
+    const existing = await this.pushSubRepo.findOne({
+      where: { endpoint: token },
+    });
+    if (existing) {
+      existing.provider = 'expo';
+      existing.p256dh = null;
+      existing.auth = null;
+      existing.user = { id: userId } as User;
+      return this.pushSubRepo.save(existing);
+    }
+
+    return this.pushSubRepo.save(
+      this.pushSubRepo.create({
+        endpoint: token,
+        provider: 'expo',
+        p256dh: null,
+        auth: null,
         user: { id: userId } as User,
       }),
     );
@@ -71,15 +98,27 @@ export class PushService {
   }
 
   async sendToUser(userId: number, payload: PushPayload): Promise<void> {
-    if (!this.enabled) return;
-
     const subscriptions = await this.pushSubRepo.find({
       where: { user: { id: userId } as User },
     });
     if (subscriptions.length === 0) return;
 
+    const webSubs = subscriptions.filter((s) => s.provider !== 'expo');
+    const expoSubs = subscriptions.filter((s) => s.provider === 'expo');
+
+    await Promise.all([
+      this.enabled ? this.sendWebPush(webSubs, payload) : Promise.resolve(),
+      this.sendExpoPush(expoSubs, payload),
+    ]);
+  }
+
+  private async sendWebPush(
+    subscriptions: PushSubscription[],
+    payload: PushPayload,
+  ): Promise<void> {
     await Promise.all(
       subscriptions.map(async (sub) => {
+        if (!sub.p256dh || !sub.auth) return;
         try {
           await webpush.sendNotification(
             {
@@ -91,10 +130,16 @@ export class PushService {
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number }).statusCode;
           if (statusCode === 404 || statusCode === 410) {
-            await this.pushSubRepo.delete({ id: sub.id }).catch(() => {});
+            await this.pushSubRepo
+              .delete({ id: sub.id })
+              .catch((err: unknown) =>
+                this.logger.warn(
+                  `Could not delete expired web push subscription ${sub.id}: ${String(err)}`,
+                ),
+              );
           } else {
             this.logger.warn(
-              `Failed to send push to subscription ${sub.id}: ${
+              `Failed to send web push to subscription ${sub.id}: ${
                 error instanceof Error ? error.message : String(error)
               }`,
             );
@@ -102,5 +147,56 @@ export class PushService {
         }
       }),
     );
+  }
+
+  private async sendExpoPush(
+    subscriptions: PushSubscription[],
+    payload: PushPayload,
+  ): Promise<void> {
+    if (subscriptions.length === 0) return;
+
+    const messages = subscriptions.map((sub) => ({
+      to: sub.endpoint,
+      title: payload.title,
+      body: payload.body,
+      data: payload.url ? { url: payload.url } : undefined,
+    }));
+
+    try {
+      const res = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(messages),
+      });
+      const json = (await res.json()) as {
+        data?: Array<{ status: string; details?: { error?: string } }>;
+      };
+      const tickets = json.data ?? [];
+      await Promise.all(
+        tickets.map(async (ticket, i) => {
+          if (
+            ticket.status === 'error' &&
+            ticket.details?.error === 'DeviceNotRegistered'
+          ) {
+            await this.pushSubRepo
+              .delete({ id: subscriptions[i].id })
+              .catch((err: unknown) =>
+                this.logger.warn(
+                  `Could not delete stale Expo push token ${subscriptions[i].id}: ${String(err)}`,
+                ),
+              );
+          }
+        }),
+      );
+    } catch (error: unknown) {
+      this.logger.warn(
+        `Failed to send Expo push: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 }

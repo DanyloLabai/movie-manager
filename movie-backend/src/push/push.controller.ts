@@ -51,6 +51,21 @@ export class PushController {
     return { message: 'Subscribed' };
   }
 
+  @Post('subscribe-expo')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Register an Expo push token for the current user (mobile app)',
+  })
+  @ApiResponse({ status: 201, description: 'Subscription saved' })
+  async subscribeExpo(
+    @Req() req: RequestWithUser,
+    @Body() body: { token: string },
+  ) {
+    const userId = req.user.userId;
+    await this.pushService.saveExpoSubscription(userId, body.token);
+    return { message: 'Subscribed' };
+  }
+
   @Delete('subscribe')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Remove a push subscription for the current user' })

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import StarRating from "../StarRating";
 
 interface AddMovieModalProps {

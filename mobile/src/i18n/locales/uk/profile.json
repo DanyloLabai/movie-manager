@@ -1,0 +1,180 @@
+{
+  "tabs": {
+    "profile": "Профіль",
+    "watchlist": "Список перегляду",
+    "watched": "Переглянуто",
+    "favorites": "Улюблене"
+  },
+  "filters": {
+    "all": "Усі",
+    "movies": "Фільми",
+    "tv": "ТБ"
+  },
+  "stats": {
+    "watched": "Переглянуто",
+    "avg": "Серед.",
+    "streak": "Серія",
+    "favorites": "Улюблене",
+    "completion": "Виконано",
+    "friends": "Друзі"
+  },
+  "empty": "Тут поки нічого немає.",
+  "upcoming": "Скоро",
+  "markWatched": "Переглянуто",
+  "remove": "Видалити",
+  "notAvailable": "Н/Д",
+  "errors": {
+    "loadProfile": "Не вдалося завантажити ваш профіль.",
+    "loadList": "Не вдалося завантажити ваш список.",
+    "updateFavorite": "Не вдалося оновити улюблене.",
+    "removeFailed": "Не вдалося видалити.",
+    "updateFailed": "Не вдалося оновити.",
+    "updateRating": "Не вдалося оновити оцінку.",
+    "loadPublicProfile": "Не вдалося завантажити цей профіль.",
+    "sendFriendRequest": "Не вдалося надіслати запит у друзі.",
+    "favoriteLimit": "Можна мати щонайбільше 10 улюблених. Видаліть одне, перш ніж додавати інше."
+  },
+  "toasts": {
+    "removed": "Видалено.",
+    "movedToWatched": "Переміщено до переглянутих."
+  },
+  "ratingPrompt": {
+    "title": "Як вам фільм?",
+    "subtitle": "Оцініть «{{title}}»"
+  },
+  "hero": {
+    "sinceYear": "З {{year}} року",
+    "friendsCount_one": "{{count}} друг",
+    "friendsCount_few": "{{count}} друга",
+    "friendsCount_many": "{{count}} друзів",
+    "friendsCount_other": "{{count}} друга",
+    "share": "Поділитися"
+  },
+  "favorites": {
+    "topFavorites": "Топ улюблених",
+    "noFavorites": "Ще немає улюблених.",
+    "achievements": "Досягнення",
+    "friendsLabel": "Друзі",
+    "viewAll": "Переглянути всіх"
+  },
+  "charts": {
+    "genres": "Жанри",
+    "rating": "Оцінка",
+    "avg": "Серед."
+  },
+  "wrapped": {
+    "title": "Підсумки {{username}}",
+    "timeSpent": "Витрачений час",
+    "topGenre": "Улюблений жанр",
+    "favDecade": "Улюблене десятиліття",
+    "moviesTv": "Фільми / Серіали",
+    "longestMarathon": "Найдовший марафон",
+    "runtimeMinutes": "{{count}} хв",
+    "mostWatchedActor": "Найчастіший актор",
+    "inMoviesCount_one": "У {{count}} фільмі",
+    "inMoviesCount_few": "У {{count}} фільмах",
+    "inMoviesCount_many": "У {{count}} фільмах",
+    "inMoviesCount_other": "У {{count}} фільму"
+  },
+  "masterpieces": {
+    "title": "Топ-3 шедеври"
+  },
+  "ratingModal": {
+    "moviesCount_one": "{{count}} фільм",
+    "moviesCount_few": "{{count}} фільми",
+    "moviesCount_many": "{{count}} фільмів",
+    "moviesCount_other": "{{count}} фільму",
+    "loadMore": "Завантажити ще"
+  },
+  "heatmap": {
+    "title": "Активність"
+  },
+  "activityDayModal": {
+    "moviesCount_one": "{{count}} фільм",
+    "moviesCount_few": "{{count}} фільми",
+    "moviesCount_many": "{{count}} фільмів",
+    "moviesCount_other": "{{count}} фільму",
+    "actions": {
+      "watched": "Переглянуто",
+      "addedWatchlist": "Додано до списку перегляду",
+      "rated": "Оцінено",
+      "favorited": "Додано в улюблене",
+      "rewatched": "Передивився(-лась)"
+    }
+  },
+  "publicProfile": {
+    "notFound": "Не знайдено.",
+    "friends": "Друзі",
+    "requestSent": "Запит надіслано",
+    "addFriend": "Додати в друзі",
+    "friendAdded": "Додано до друзів!",
+    "loadMore": "Завантажити ще"
+  },
+  "sort": {
+    "rating": "Оцінка",
+    "added": "Дата додавання",
+    "asc": "За зростанням",
+    "desc": "За спаданням"
+  },
+  "compat": {
+    "title": "Збіг смаків",
+    "commonWatched": "Ви обидва дивились {{count}} однакових фільмів/серіалів",
+    "generate": "Знайти, що подивитись разом",
+    "generating": "Думаю...",
+    "regenerate": "Інші варіанти",
+    "dailyLimit": "Ти використав усі 3 спроби збігу смаків на сьогодні. Повертайся завтра за новими варіантами!",
+    "triesHint": "3 спроби на день",
+    "error": "Щось пішло не так. Спробуй ще раз.",
+    "added": "Додано до списку перегляду.",
+    "addError": "Не вдалося додати до списку перегляду."
+  },
+  "publicFriends": {
+    "title": "Друзі {{name}}",
+    "empty": "Друзів поки немає.",
+    "loadError": "Не вдалося завантажити друзів."
+  },
+  "quizStats": {
+    "title": "Квіз-статистика {{username}}",
+    "avgScore": "Серед. рахунок",
+    "solved": "Розгадано",
+    "perfect": "Ідеально",
+    "monthTotal": "Разом за місяць"
+  },
+  "journey": {
+    "sectionTitle": "Твоя подорож",
+    "someoneTitle": "Подорож {{name}}",
+    "youAreHere": "Ти",
+    "lockedName": "???",
+    "oneMovieToGo": "фільм до розблокування",
+    "moviesToGo": "фільмів до розблокування",
+    "expandHint": "Роздивитись карту",
+    "zoomReset": "Скинути",
+    "realmLotr": "Середзем'я",
+    "zoomHint": "Щоб наблизити карту — розведи пальці або перетягуй її.",
+    "howItWorks": "Кожен фільм, доданий у твій список (переглянутий чи запланований), просуває тебе вперед.",
+    "unlockedAt": "✓ Розблоковано при {{count}} фільмах",
+    "unlockedAtOne": "✓ Розблоковано при 1 фільмі",
+    "stops": {
+      "shire": "Шир",
+      "hobbiton": "Гобітон",
+      "buckland": "Бакленд",
+      "old_forest": "Старий Ліс",
+      "bree": "Брі",
+      "weathertop": "Заверть",
+      "fords_of_bruinen": "Броди Бруїнена",
+      "rivendell": "Рівендел",
+      "caradhras": "Карадрас",
+      "moria": "Копальні Морії",
+      "lothlorien": "Лотлорієн",
+      "anduin": "Ріка Андуїн",
+      "amon_hen": "Амон Хен",
+      "emyn_muil": "Емін Мьюл",
+      "dead_marshes": "Мертві Драговини",
+      "black_gate": "Чорна Брама",
+      "ithilien": "Ітілієн",
+      "cirith_ungol": "Кіріт Унгол",
+      "gorgoroth": "Плато Горгорот",
+      "mount_doom": "Гора Приречення"
+    }
+  }
+}

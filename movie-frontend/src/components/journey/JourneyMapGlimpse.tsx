@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { LOTR_STOPS, JOURNEY_VIEWBOX } from "../../data/journeyLotr";
 import { getCurrentStopIndex } from "../../utils/journey";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import lotrMapImg from "../../assets/journey/lotr-map.jpg";
 
 interface JourneyMapGlimpseProps {

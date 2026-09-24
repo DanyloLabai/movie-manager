@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { useLang } from "../context/LanguageContext";
-import { useAuthPrompt } from "../context/AuthPromptContext";
+import { useLang } from "../context/useLang";
+import { useAuthPrompt } from "../context/useAuthPrompt";
 
 export default function AuthRequiredModal() {
   const { isOpen, close } = useAuthPrompt();

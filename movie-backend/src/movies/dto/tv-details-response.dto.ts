@@ -14,6 +14,7 @@ export class TmdbTvDetailsResponse {
   poster_path: string | null;
   backdrop_path: string | null;
   episode_run_time?: number[];
+  last_episode_to_air?: { runtime: number | null } | null;
   genres: { id: number; name: string }[];
   seasons?: TmdbTvSeasonSummary[];
 }

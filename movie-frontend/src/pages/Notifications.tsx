@@ -5,9 +5,10 @@ import * as usersApi from "../api/users.api";
 import * as moviesApi from "../api/movies.api";
 import type { FriendRequest } from "../api/users.api";
 import type { AppNotification } from "../api/movies.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import type { TranslationKey } from "../context/LanguageContext";
 import LogoIcon from "../components/LogoIcon";
+import { logError } from "../utils/logError";
 
 const NOTIFICATIONS_PAGE_SIZE = 30;
 
@@ -121,7 +122,7 @@ export default function Notifications() {
 
   const handleNotificationClick = (n: AppNotification) => {
     if (!n.isRead) {
-      moviesApi.markNotificationRead(n.id).catch(() => {});
+      moviesApi.markNotificationRead(n.id).catch(logError("Notifications: moviesApi.markNotificationRead"));
       setNotifications((prev) =>
         prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)),
       );
@@ -192,7 +193,7 @@ export default function Notifications() {
     requests.length > 0 && (activeFilter === "all" || activeFilter === "friends");
 
   return (
-    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative selection:bg-[#d9ac54] selection:text-[#14110c]">
+    <div className="min-h-[100dvh] font-ui text-[#f2ead9] relative selection:bg-[#d9ac54] selection:text-[#14110c]">
       <div className="sm:hidden sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-row items-center justify-between gap-3 py-4 px-4 w-full">
           <Link

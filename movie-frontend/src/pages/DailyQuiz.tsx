@@ -1,14 +1,21 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useCallback,
+} from "react";
 import { Link } from "react-router-dom";
 import * as quizApi from "../api/quiz.api";
 import * as moviesApi from "../api/movies.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import { useToast } from "../hooks/useToast";
 import NotificationBell from "../components/NotificationBell";
 import LogoIcon from "../components/LogoIcon";
 import AddMovieModal from "../components/movie/AddMovieModal";
 import type { MovieResult } from "../types/movie.types";
 import type { QuizState, QuizLeaderboardEntry } from "../api/quiz.api";
+import { logError } from "../utils/logError";
 
 const TOTAL_HINTS = 5;
 
@@ -95,6 +102,8 @@ export default function DailyQuiz() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isDone = !!quiz && (quiz.isSolved || quiz.isFailed);
+  const quizDate = quiz?.date;
+  const hintsRevealed = quiz?.hintsRevealed;
 
   useEffect(() => {
     if (!isDone) return;
@@ -108,7 +117,7 @@ export default function DailyQuiz() {
   // While unsolved, the poster is fetched pre-blurred from the server (the
   // sharp original never reaches the browser)- refetched as hints unlock.
   useEffect(() => {
-    if (!quiz || isDone) return;
+    if (!quizDate || isDone) return;
     let cancelled = false;
     quizApi
       .getPosterImage()
@@ -120,14 +129,11 @@ export default function DailyQuiz() {
           return url;
         });
       })
-      .catch(() => {
-        /* poster stays hidden if the fetch fails */
-      });
+      .catch(logError("DailyQuiz: quizApi.getPosterImage"));
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quiz?.date, quiz?.hintsRevealed, isDone]);
+  }, [quizDate, hintsRevealed, isDone]);
 
   // Revoke the object URL only on final unmount- the setter above already
   // revokes the previous one each time a new poster blob is fetched.
@@ -139,6 +145,8 @@ export default function DailyQuiz() {
       });
     };
   }, []);
+
+  const notifyLoadError = useEffectEvent(() => showToast(t("quiz_load_error")));
 
   useEffect(() => {
     let cancelled = false;
@@ -152,7 +160,7 @@ export default function DailyQuiz() {
         }
       })
       .catch(() => {
-        if (!cancelled) showToast(t("quiz_load_error"));
+        if (!cancelled) notifyLoadError();
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -160,7 +168,6 @@ export default function DailyQuiz() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
   useEffect(() => {
@@ -319,13 +326,10 @@ export default function DailyQuiz() {
 
   const revealedHints = quiz?.hints ?? [];
   const lockedHintCount = Math.max(TOTAL_HINTS - revealedHints.length, 0);
-  // Solved/failed: the real poster (already revealed in the JSON answer).
-  // Otherwise: the server-blurred poster fetched via getPosterImage above-
-  // never the raw TMDB URL, which would let devtools reveal the answer.
   const posterUrl = isDone ? quiz?.answer?.posterUrl : posterBlobUrl;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
+    <div className="min-h-[100dvh] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
       <div className="sm:hidden sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex flex-row items-center justify-between gap-3 py-4 px-4 w-full">
           <Link
