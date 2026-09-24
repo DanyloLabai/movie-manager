@@ -107,7 +107,7 @@ export default function GenreDonut({ genreDistribution, size }: GenreDonutProps)
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 20 },
   centerLabel: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#100d08',
   },
   stopBox: { position: 'absolute', alignItems: 'center' },
-  glow: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  glow: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   youBadge: {
     marginTop: 4,
     backgroundColor: GOLD,

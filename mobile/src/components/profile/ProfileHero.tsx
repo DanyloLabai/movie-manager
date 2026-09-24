@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   bannerImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.55,
   },
   bannerContent: {

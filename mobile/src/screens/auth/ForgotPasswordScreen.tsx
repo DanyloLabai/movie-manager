@@ -55,12 +55,12 @@ export default function ForgotPasswordScreen({ navigation }: Props) {
       {backdropUri ? (
         <Image
           source={{ uri: backdropUri }}
-          style={StyleSheet.absoluteFillObject}
+          style={StyleSheet.absoluteFill}
           resizeMode="cover"
           blurRadius={14}
         />
       ) : null}
-      <View style={[StyleSheet.absoluteFillObject, styles.scrim]} />
+      <View style={[StyleSheet.absoluteFill, styles.scrim]} />
 
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom', 'left', 'right']}>
         <KeyboardAvoidingView

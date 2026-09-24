@@ -122,7 +122,7 @@ export default function JourneyMap({
 
 const styles = StyleSheet.create({
   stopBox: { position: 'absolute', alignItems: 'center' },
-  ringWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  ringWrap: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
   youBadge: {
     position: 'absolute',
     bottom: -8,
