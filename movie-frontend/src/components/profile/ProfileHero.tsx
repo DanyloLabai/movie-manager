@@ -68,7 +68,7 @@ function SharePill({
 }
 
 const HERO_BACKDROP_MASK =
-  "linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%)";
+  "linear-gradient(to bottom, #000 0%, #000 40%, transparent 100%)";
 
 function HeroBackdrop({
   avatarUrl,
@@ -80,7 +80,7 @@ function HeroBackdrop({
   return (
     <div
       aria-hidden="true"
-      className="absolute left-1/2 -translate-x-1/2 w-screen sm:w-[calc(100vw-15rem)] top-0 sm:-top-9 -bottom-32 -z-[1] overflow-hidden pointer-events-none"
+      className="fixed top-0 left-0 sm:left-60 right-0 h-[75vh] -z-[1] overflow-hidden pointer-events-none"
       style={{
         maskImage: HERO_BACKDROP_MASK,
         WebkitMaskImage: HERO_BACKDROP_MASK,
