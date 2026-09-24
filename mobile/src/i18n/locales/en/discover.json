@@ -71,7 +71,15 @@
       "tvShow": "TV Show"
     },
     "favoriteLimit": "You can have at most 10 favorites. Remove one before adding another.",
-    "similarTo": "Similar to"
+    "similarTo": "Similar to",
+    "scope": {
+      "all": "All",
+      "movies": "Movies",
+      "tv": "TV"
+    },
+    "upcomingAdd": "Watchlist",
+    "upcomingAdded": "In list",
+    "promoDone": "Come back tomorrow for new picks"
   },
   "filterBar": {
     "genre": "Genre",

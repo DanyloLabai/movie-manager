@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +14,6 @@ import {
   type TasteCompatibility,
 } from '../../api/users.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
-import { getAchievementsList } from '../../utils/achievements';
 import { useToast } from '../../hooks/useToast';
 import MoviePosterCard from '../../components/MoviePosterCard';
 import SegmentedTabs from '../../components/SegmentedTabs';
@@ -166,11 +165,6 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
   const stats = profile?.stats;
   const hasStats = Boolean(stats?.genreDistribution && stats.genreDistribution.length > 0);
 
-  const achievements = useMemo(
-    () => getAchievementsList({ favoritesCount, watchedCount, totalCount }),
-    [favoritesCount, watchedCount, totalCount],
-  );
-
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -293,15 +287,14 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
             <View style={styles.section}>
               <ProfileFavoritesPanel
                 favorites={profile.favorites ?? []}
-                achievements={achievements}
-                friends={[]}
-                friendsCount={0}
                 onToggleFavorite={() => {}}
-                onOpenFriends={() => {}}
                 onPressMovie={goToMovie}
                 readOnly
-                showFriends={false}
               />
+            </View>
+
+            <View style={styles.section}>
+              <JourneyPath totalCount={totalCount} ownerName={profile.username ?? undefined} />
             </View>
 
             {hasStats && stats ? (
@@ -309,6 +302,14 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
                 <ProfileWrappedPanel username={profile.username ?? ''} stats={stats} />
               </View>
             ) : null}
+
+            <View style={hasQuizStats ? styles.section : undefined}>
+              <ProfileQuizStatsPanel
+                username={profile.username ?? ''}
+                userId={profile.id ?? userId}
+                onAvailabilityChange={setHasQuizStats}
+              />
+            </View>
 
             {hasStats && stats ? (
               <View style={styles.section}>
@@ -321,18 +322,6 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
                 />
               </View>
             ) : null}
-
-            <View style={styles.section}>
-              <JourneyPath totalCount={totalCount} ownerName={profile.username ?? undefined} />
-            </View>
-
-            <View style={hasQuizStats ? styles.section : undefined}>
-              <ProfileQuizStatsPanel
-                username={profile.username ?? ''}
-                userId={profile.id ?? userId}
-                onAvailabilityChange={setHasQuizStats}
-              />
-            </View>
 
             <View style={styles.tabsWrap}>
               <SegmentedTabs

@@ -1,28 +1,28 @@
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
-import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import { JOURNEY_VIEWBOX, LOTR_STOPS } from '../../data/journeyLotr';
-import { buildRoutePath, getCurrentStopIndex, isStopRevealed } from '../../utils/journey';
-import JourneyPin, { GOLD, PulseRing } from './JourneyPin';
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import { JOURNEY_VIEWBOX, LOTR_STOPS } from "../../data/journeyLotr";
+import {
+  buildRoutePath,
+  getCurrentStopIndex,
+  isStopRevealed,
+} from "../../utils/journey";
+import JourneyPin, { GOLD, PulseRing } from "./JourneyPin";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-export const lotrMapImage = require('../../../assets/journey/lotr-map.jpg');
+export const lotrMapImage = require("../../../assets/journey/lotr-map.jpg");
+export const LOTR_MAP_ASPECT = 2528 / 1694;
 
 interface JourneyMapProps {
   totalCount: number;
-  /** Rendered width in px; height follows the artwork's aspect ratio. */
   width: number;
   openStopId?: string | null;
   onStopClick?: (id: string) => void;
-  /** Stop names are hidden at low zoom to keep the map readable. */
   zoomedIn?: boolean;
   youLabel?: string;
 }
 
-// Ported from movie-frontend's JourneyMap.tsx (expanded variant): the map
-// artwork, the dashed route, and a tappable pin per stop that shows its name
-// and how many movies remain to unlock it.
 export default function JourneyMap({
   totalCount,
   width,
@@ -31,7 +31,7 @@ export default function JourneyMap({
   zoomedIn = true,
   youLabel,
 }: JourneyMapProps) {
-  const { t } = useTranslation('profile');
+  const { t } = useTranslation("profile");
   const height = (width * JOURNEY_VIEWBOX.h) / JOURNEY_VIEWBOX.w;
   const sx = width / JOURNEY_VIEWBOX.w;
   const sy = height / JOURNEY_VIEWBOX.h;
@@ -41,10 +41,26 @@ export default function JourneyMap({
 
   return (
     <View style={{ width, height }}>
-      <Image source={lotrMapImage} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <Image
+        source={lotrMapImage}
+        style={[styles.image, { width, height }]}
+        resizeMode="contain"
+      />
 
-      <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Path d={routeD} fill="none" stroke={GOLD} strokeWidth={3} strokeDasharray="7 6" opacity={0.8} />
+      <Svg
+        width={width}
+        height={height}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      >
+        <Path
+          d={routeD}
+          fill="none"
+          stroke={GOLD}
+          strokeWidth={3}
+          strokeDasharray="7 6"
+          opacity={0.8}
+        />
       </Svg>
 
       {LOTR_STOPS.map((stop, i) => {
@@ -55,14 +71,20 @@ export default function JourneyMap({
         const size = stop.isFinale ? 40 : 26;
         const iconSize = stop.isFinale ? 19 : 13;
         const iconName =
-          !revealed || !isUnlocked ? 'lock-closed-outline' : stop.isFinale ? 'business-outline' : 'star';
-        const iconColor = isUnlocked ? '#14110c' : 'rgba(242,234,217,.4)';
-        const name = revealed ? t(`journey.stops.${stop.id}`) : t('journey.lockedName');
+          !revealed || !isUnlocked
+            ? "lock-closed-outline"
+            : stop.isFinale
+              ? "business-outline"
+              : "star";
+        const iconColor = isUnlocked ? "#14110c" : "rgba(242,234,217,.4)";
+        const name = revealed
+          ? t(`journey.stops.${stop.id}`)
+          : t("journey.lockedName");
         const progressText = isUnlocked
           ? stop.threshold === 1
-            ? t('journey.unlockedAtOne')
-            : t('journey.unlockedAt', { count: stop.threshold })
-          : `${remaining} ${remaining === 1 ? t('journey.oneMovieToGo') : t('journey.moviesToGo')}`;
+            ? t("journey.unlockedAtOne")
+            : t("journey.unlockedAt", { count: stop.threshold })
+          : `${remaining} ${remaining === 1 ? t("journey.oneMovieToGo") : t("journey.moviesToGo")}`;
         const isOpen = openStopId === stop.id;
         const left = stop.x * sx;
         const top = stop.y * sy;
@@ -77,7 +99,11 @@ export default function JourneyMap({
               { zIndex: isOpen ? 50 : isCurrent ? 6 : 3 },
             ]}
           >
-            <Pressable onPress={() => onStopClick?.(stop.id)} accessibilityLabel={name} hitSlop={8}>
+            <Pressable
+              onPress={() => onStopClick?.(stop.id)}
+              accessibilityLabel={name}
+              hitSlop={8}
+            >
               <View style={{ width: size, height: size }}>
                 {isCurrent ? (
                   <View style={styles.ringWrap} pointerEvents="none">
@@ -90,7 +116,9 @@ export default function JourneyMap({
               </View>
               {isCurrent ? (
                 <View style={styles.youBadge}>
-                  <Text style={styles.youBadgeText}>{(youLabel ?? t('journey.youAreHere')).toUpperCase()}</Text>
+                  <Text style={styles.youBadgeText}>
+                    {(youLabel ?? t("journey.youAreHere")).toUpperCase()}
+                  </Text>
                 </View>
               ) : null}
             </Pressable>
@@ -98,7 +126,10 @@ export default function JourneyMap({
             {zoomedIn || isCurrent ? (
               <Text
                 numberOfLines={1}
-                style={[styles.stopName, { color: isUnlocked ? '#f2ead9' : '#8f8574' }]}
+                style={[
+                  styles.stopName,
+                  { color: isUnlocked ? "#f2ead9" : "#8f8574" },
+                ]}
               >
                 {name}
               </Text>
@@ -106,7 +137,10 @@ export default function JourneyMap({
 
             {isOpen ? (
               <View
-                style={[styles.tooltip, stop.y < 200 ? styles.tooltipBelow : styles.tooltipAbove]}
+                style={[
+                  styles.tooltip,
+                  stop.y < 200 ? styles.tooltipBelow : styles.tooltipAbove,
+                ]}
                 pointerEvents="none"
               >
                 <Text style={styles.tooltipName}>{name}</Text>
@@ -121,44 +155,64 @@ export default function JourneyMap({
 }
 
 const styles = StyleSheet.create({
-  stopBox: { position: 'absolute', alignItems: 'center' },
-  ringWrap: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  image: { position: "absolute", left: 0, top: 0 },
+  stopBox: { position: "absolute", alignItems: "center" },
+  ringWrap: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   youBadge: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -8,
-    alignSelf: 'center',
+    alignSelf: "center",
     backgroundColor: GOLD,
     borderRadius: 999,
     paddingHorizontal: 5,
     paddingVertical: 2,
   },
-  youBadgeText: { color: '#14110c', fontSize: 7.5, fontWeight: '700', letterSpacing: 0.4 },
+  youBadgeText: {
+    color: "#14110c",
+    fontSize: 7.5,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+  },
   stopName: {
     marginTop: 8,
     maxWidth: 110,
     fontSize: 10.5,
-    textAlign: 'center',
-    backgroundColor: 'rgba(15,13,10,.7)',
+    textAlign: "center",
+    backgroundColor: "rgba(15,13,10,.7)",
     borderRadius: 4,
     paddingHorizontal: 5,
     paddingVertical: 1,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   tooltip: {
-    position: 'absolute',
+    position: "absolute",
     minWidth: 120,
     maxWidth: 170,
-    alignSelf: 'center',
-    backgroundColor: '#1c1712',
+    alignSelf: "center",
+    backgroundColor: "#1c1712",
     borderWidth: 1,
-    borderColor: 'rgba(217,172,84,.35)',
+    borderColor: "rgba(217,172,84,.35)",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  tooltipAbove: { bottom: '100%', marginBottom: 10 },
-  tooltipBelow: { top: '100%', marginTop: 10 },
-  tooltipName: { color: '#f2ead9', fontSize: 13, fontWeight: '600', textAlign: 'center' },
-  tooltipProgress: { color: '#8f8574', fontSize: 11, marginTop: 2, textAlign: 'center' },
+  tooltipAbove: { bottom: "100%", marginBottom: 10 },
+  tooltipBelow: { top: "100%", marginTop: 10 },
+  tooltipName: {
+    color: "#f2ead9",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  tooltipProgress: {
+    color: "#8f8574",
+    fontSize: 11,
+    marginTop: 2,
+    textAlign: "center",
+  },
 });

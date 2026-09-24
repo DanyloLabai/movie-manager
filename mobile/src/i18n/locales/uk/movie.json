@@ -19,6 +19,7 @@
   "addToWatchlist": "+ Додати",
   "watched": "✓ Переглянуто",
   "markWatched": "✓ Позначити переглянутим",
+  "inWatchlist": "⋯ У планах",
   "trailer": "Трейлер",
   "removeFromWatchlist": "Видалити зі списку перегляду",
   "yourRating": "Ваша оцінка",
@@ -49,11 +50,27 @@
   "addModal": {
     "choiceDesc": "Додати у список перегляду, чи позначити як уже переглянуте?",
     "toWatchlist": "У список",
-    "watched": "Переглянуто"
+    "watched": "Переглянуто",
+    "title": "Додати «{{title}}»",
+    "subtitle": "Куди додати?",
+    "watchlistDesc": "Збережи на потім",
+    "watchedTitle": "Вже переглянуто",
+    "watchedDesc": "Познач переглянутим і оціни"
   },
   "toasts": {
     "ratingSaved": "Оцінку збережено!",
     "ratingCleared": "Оцінку скасовано."
   },
-  "findSimilar": "Знайти схожі"
+  "findSimilar": "Знайти схожі",
+  "actions": {
+    "addToList": "Додати до списку",
+    "favorite": "Улюблене",
+    "trailer": "Трейлер",
+    "rewatch": "Ще раз",
+    "similar": "Схожі",
+    "watchedBadge": "Переглянуто",
+    "markWatched": "Позначити переглянутим",
+    "inWatchlist": "У твоєму списку",
+    "removeFromLists": "Видалити зі списків"
+  }
 }

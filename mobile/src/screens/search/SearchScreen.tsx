@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -9,15 +9,17 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { useTranslation } from 'react-i18next';
-import type { CompositeScreenProps } from '@react-navigation/native';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { MovieResult } from '@movie-manager/shared';
+  useWindowDimensions,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import type { CompositeScreenProps } from "@react-navigation/native";
+import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { MovieResult } from "@movie-manager/shared";
 import {
   addToWatchlist,
   markAsWatched,
@@ -34,33 +36,30 @@ import {
   toggleFavorite,
   type BecauseYouWatchedResponse,
   type SmartSearchFilters,
-} from '../../api/movies.api';
+} from "../../api/movies.api";
 import {
   getFriendsLastWatched,
   getSearchHistory,
   clearSearchHistory,
   type FriendLastWatched,
-} from '../../api/users.api';
-import { getSwipeStatus, type SwipeStatus } from '../../api/swipe.api';
-import { getErrorMessage } from '../../utils/getErrorMessage';
-import { formatTimeAgo } from '../../utils/time';
-import { useToast } from '../../hooks/useToast';
-import ScreenHeader from '../../components/ScreenHeader';
-import MoviePosterCard from '../../components/MoviePosterCard';
-import SearchFilterBar from '../../components/SearchFilterBar';
-import Toast from '../../components/Toast';
-import AddMovieModal from '../../components/AddMovieModal';
-import { colors, spacing, radius, fontWeight } from '../../theme';
-import type { AppTabsParamList } from '../../navigation/AppTabs';
-import type { MainStackParamList } from '../../navigation/MainStack';
+} from "../../api/users.api";
+import { getSwipeStatus, type SwipeStatus } from "../../api/swipe.api";
+import { getErrorMessage } from "../../utils/getErrorMessage";
+import { formatShortDate, formatTimeAgo } from "../../utils/time";
+import { useToast } from "../../hooks/useToast";
+import ScreenHeader from "../../components/ScreenHeader";
+import SearchFilterBar from "../../components/SearchFilterBar";
+import Toast from "../../components/Toast";
+import AddMovieModal from "../../components/AddMovieModal";
+import { colors, spacing, radius, fontWeight } from "../../theme";
+import type { AppTabsParamList } from "../../navigation/AppTabs";
+import type { MainStackParamList } from "../../navigation/MainStack";
 
 type Props = CompositeScreenProps<
-  BottomTabScreenProps<AppTabsParamList, 'Search'>,
+  BottomTabScreenProps<AppTabsParamList, "Search">,
   NativeStackScreenProps<MainStackParamList>
 >;
 
-// getProfileData() returns more than the shared ProfileData type declares —
-// see the same cast in AiChatScreen.tsx.
 interface ProfileResponse {
   favorites?: { tmdbId: number }[];
   watchedIds?: number[];
@@ -69,33 +68,202 @@ interface ProfileResponse {
 
 const isReleased = (movie: MovieResult): boolean => {
   if (movie.releaseDate) return new Date(movie.releaseDate) <= new Date();
-  if (movie.releaseYear && movie.releaseYear !== 'N/A') {
+  if (movie.releaseYear && movie.releaseYear !== "N/A") {
     return parseInt(movie.releaseYear, 10) <= new Date().getFullYear();
   }
   return true;
 };
 
-function AddFooter({
-  added,
-  onAdd,
-  onRemove,
-}: {
-  added: boolean;
+type MediaScope = "all" | "movie" | "tv";
+
+const H_PAD = spacing.md;
+const POSTER_RATIO = 1.485;
+
+function GlassLayer() {
+  return (
+    <>
+      <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={styles.glassSheen} pointerEvents="none" />
+    </>
+  );
+}
+
+interface PosterTileProps {
+  item: MovieResult;
+  width: number;
+  isFavorite: boolean;
+  isAdded: boolean;
+  onPress: () => void;
   onAdd: () => void;
   onRemove: () => void;
-}) {
-  const { t } = useTranslation('discover');
-  if (added) {
-    return (
-      <Pressable style={styles.footerLink} onPress={onRemove}>
-        <Text style={styles.footerLinkText}>✓ {t('search.footer.added').toUpperCase()}</Text>
-      </Pressable>
-    );
-  }
+  onToggleFavorite: () => void;
+}
+
+function PosterTile({
+  item,
+  width,
+  isFavorite,
+  isAdded,
+  onPress,
+  onAdd,
+  onRemove,
+  onToggleFavorite,
+}: PosterTileProps) {
+  const released = isReleased(item);
   return (
-    <Pressable style={styles.footerLink} onPress={onAdd}>
-      <Text style={styles.footerLinkText}>+ {t('search.footer.add').toUpperCase()}</Text>
+    <View style={{ width, gap: spacing.sm }}>
+      <Pressable
+        onPress={onPress}
+        style={[
+          styles.poster,
+          { width, height: Math.round(width * POSTER_RATIO) },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={item.title}
+      >
+        {item.posterUrl ? (
+          <Image source={{ uri: item.posterUrl }} style={styles.posterImage} />
+        ) : (
+          <View style={styles.posterPlaceholder}>
+            <Text style={styles.posterPlaceholderText} numberOfLines={3}>
+              {item.title}
+            </Text>
+          </View>
+        )}
+        {released ? (
+          <Pressable
+            style={[styles.glass, styles.posterHeart]}
+            onPress={onToggleFavorite}
+            hitSlop={6}
+          >
+            <GlassLayer />
+            <Ionicons
+              name={isFavorite ? "heart" : "heart-outline"}
+              size={15}
+              color={isFavorite ? colors.danger : colors.textPrimary}
+            />
+          </Pressable>
+        ) : (
+          <View style={[styles.glass, styles.posterClock]}>
+            <GlassLayer />
+            <Ionicons
+              name="time-outline"
+              size={14}
+              color={colors.accentBright}
+            />
+          </View>
+        )}
+        <Pressable
+          style={[styles.glass, styles.posterAdd]}
+          onPress={isAdded ? onRemove : onAdd}
+          hitSlop={6}
+          accessibilityRole="button"
+        >
+          <GlassLayer />
+          <Ionicons
+            name={isAdded ? "checkmark" : "add"}
+            size={22}
+            color={isAdded ? colors.accentBright : colors.textPrimary}
+          />
+        </Pressable>
+      </Pressable>
+      <Pressable onPress={onPress} style={styles.posterText}>
+        <Text style={styles.posterTitle} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={styles.posterMeta} numberOfLines={1}>
+          {item.releaseYear || "—"} · ★ {item.rating.toFixed(1)}
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+interface UpcomingCardProps {
+  item: MovieResult;
+  isAdded: boolean;
+  onPress: () => void;
+  onAdd: () => void;
+  onRemove: () => void;
+}
+
+function UpcomingCard({
+  item,
+  isAdded,
+  onPress,
+  onAdd,
+  onRemove,
+}: UpcomingCardProps) {
+  const { t, i18n } = useTranslation("discover");
+  return (
+    <Pressable style={styles.upcomingCard} onPress={onPress}>
+      {item.posterUrl ? (
+        <Image source={{ uri: item.posterUrl }} style={styles.upcomingPoster} />
+      ) : (
+        <View style={[styles.upcomingPoster, styles.posterPlaceholder]} />
+      )}
+      <View style={styles.upcomingBody}>
+        {item.releaseDate ? (
+          <View style={styles.dateChip}>
+            <Text style={styles.dateChipText}>
+              {formatShortDate(item.releaseDate, i18n.language).toUpperCase()}
+            </Text>
+          </View>
+        ) : null}
+        <Text style={styles.upcomingTitle} numberOfLines={2}>
+          {item.title}
+        </Text>
+        <Text style={styles.posterMeta}>
+          {item.mediaType === "tv"
+            ? t("search.friends.tvShow")
+            : t("search.friends.movie")}
+        </Text>
+        <Pressable
+          style={[styles.upcomingButton, isAdded && styles.upcomingButtonAdded]}
+          onPress={isAdded ? onRemove : onAdd}
+          hitSlop={4}
+        >
+          <Ionicons
+            name={isAdded ? "checkmark" : "add"}
+            size={14}
+            color={isAdded ? colors.textMuted : colors.accentBright}
+          />
+          <Text
+            style={[
+              styles.upcomingButtonText,
+              isAdded && styles.upcomingButtonTextAdded,
+            ]}
+          >
+            {isAdded ? t("search.upcomingAdded") : t("search.upcomingAdd")}
+          </Text>
+        </Pressable>
+      </View>
     </Pressable>
+  );
+}
+
+function SectionHeader({
+  title,
+  badge,
+  badgeColor,
+}: {
+  title: string;
+  badge?: string;
+  badgeColor?: string;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle} numberOfLines={2}>
+        {title}
+      </Text>
+      {badge ? (
+        <View style={[styles.sectionBadge, { borderColor: badgeColor }]}>
+          <Text style={[styles.sectionBadgeText, { color: badgeColor }]}>
+            {badge}
+          </Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -104,6 +272,7 @@ interface CarouselProps {
   badge?: string;
   badgeColor?: string;
   data: MovieResult[];
+  variant?: "poster" | "upcoming";
   onPressItem: (item: MovieResult) => void;
   favoriteIds: Set<number>;
   addedIds: Set<number>;
@@ -118,6 +287,7 @@ function Carousel({
   badge,
   badgeColor = colors.danger,
   data,
+  variant = "poster",
   onPressItem,
   favoriteIds,
   addedIds,
@@ -128,44 +298,40 @@ function Carousel({
 }: CarouselProps) {
   if (data.length === 0 && !emptyHint) return null;
   return (
-    <View style={styles.carouselSection}>
-      <View style={styles.carouselHeader}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {badge ? (
-          <View style={[styles.sectionBadge, { borderColor: badgeColor }]}>
-            <Text style={[styles.sectionBadgeText, { color: badgeColor }]}>{badge}</Text>
-          </View>
-        ) : null}
-      </View>
+    <View style={styles.section}>
+      <SectionHeader title={title} badge={badge} badgeColor={badgeColor} />
       {data.length === 0 ? (
         <Text style={styles.carouselEmptyHint}>{emptyHint}</Text>
       ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.carouselRow}>
-            {data.map((item, index) => {
-              const released = isReleased(item);
-              return (
-              <MoviePosterCard
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.carouselRow}
+        >
+          {data.map((item, index) =>
+            variant === "upcoming" ? (
+              <UpcomingCard
                 key={`${item.id}-${index}`}
-                width={110}
-                posterUrl={item.posterUrl}
-                title={item.title}
-                subtitle={`${item.releaseYear || '—'} · ★ ${item.rating.toFixed(1)}`}
+                item={item}
+                isAdded={addedIds.has(item.id)}
                 onPress={() => onPressItem(item)}
-                topLeftBadge={released ? undefined : '⏱'}
-                isFavorite={favoriteIds.has(item.id)}
-                onToggleFavorite={released ? () => onToggleFavorite(item) : undefined}
-                footer={
-                  <AddFooter
-                    added={addedIds.has(item.id)}
-                    onAdd={() => onAdd(item)}
-                    onRemove={() => onRemove(item)}
-                  />
-                }
+                onAdd={() => onAdd(item)}
+                onRemove={() => onRemove(item)}
               />
-              );
-            })}
-          </View>
+            ) : (
+              <PosterTile
+                key={`${item.id}-${index}`}
+                item={item}
+                width={132}
+                isFavorite={favoriteIds.has(item.id)}
+                isAdded={addedIds.has(item.id)}
+                onPress={() => onPressItem(item)}
+                onAdd={() => onAdd(item)}
+                onRemove={() => onRemove(item)}
+                onToggleFavorite={() => onToggleFavorite(item)}
+              />
+            ),
+          )}
         </ScrollView>
       )}
     </View>
@@ -173,8 +339,8 @@ function Carousel({
 }
 
 export default function SearchScreen({ navigation, route }: Props) {
-  const { t } = useTranslation('discover');
-  const [query, setQuery] = useState('');
+  const { t } = useTranslation("discover");
+  const [query, setQuery] = useState("");
   const [results, setResults] = useState<MovieResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -182,8 +348,11 @@ export default function SearchScreen({ navigation, route }: Props) {
   const [trending, setTrending] = useState<MovieResult[]>([]);
   const [upcoming, setUpcoming] = useState<MovieResult[]>([]);
   const [recommendations, setRecommendations] = useState<MovieResult[]>([]);
-  const [becauseYouWatched, setBecauseYouWatched] = useState<BecauseYouWatchedResponse | null>(null);
-  const [friendsActivity, setFriendsActivity] = useState<FriendLastWatched[]>([]);
+  const [becauseYouWatched, setBecauseYouWatched] =
+    useState<BecauseYouWatchedResponse | null>(null);
+  const [friendsActivity, setFriendsActivity] = useState<FriendLastWatched[]>(
+    [],
+  );
   const [isLoadingHome, setIsLoadingHome] = useState(true);
 
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
@@ -195,12 +364,15 @@ export default function SearchScreen({ navigation, route }: Props) {
   const [swipeStatus, setSwipeStatus] = useState<SwipeStatus | null>(null);
   const [filters, setFilters] = useState<SmartSearchFilters>({});
   const [showFilters, setShowFilters] = useState(false);
-  // Set when results come from a "Find similar" action rather than a typed query.
+  const [mediaScope, setMediaScope] = useState<MediaScope>("all");
+  const { width: windowWidth } = useWindowDimensions();
   const [similarToTitle, setSimilarToTitle] = useState<string | null>(null);
   const similarActiveRef = useRef(false);
   const { toastMessage, showToast } = useToast();
 
-  const hasActiveFilters = Object.values(filters).some((v) => v !== undefined && v !== false);
+  const hasActiveFilters = Object.values(filters).some(
+    (v) => v !== undefined && v !== false,
+  );
 
   useEffect(() => {
     Promise.all([
@@ -229,8 +401,12 @@ export default function SearchScreen({ navigation, route }: Props) {
       })
       .finally(() => setIsLoadingHome(false));
 
-    getSwipeStatus().then(setSwipeStatus).catch(() => {});
-    getSearchHistory().then((items) => setSearchHistory(items.map((i) => i.queryText))).catch(() => {});
+    getSwipeStatus()
+      .then(setSwipeStatus)
+      .catch(() => {});
+    getSearchHistory()
+      .then((items) => setSearchHistory(items.map((i) => i.queryText)))
+      .catch(() => {});
   }, []);
 
   const runSearch = (q: string) => {
@@ -238,13 +414,17 @@ export default function SearchScreen({ navigation, route }: Props) {
     if (!trimmed) return;
     setIsSearching(true);
     setError(null);
-    const request = hasActiveFilters ? smartSearchMovies(trimmed, filters) : searchMovies(trimmed);
+    const request = hasActiveFilters
+      ? smartSearchMovies(trimmed, filters)
+      : searchMovies(trimmed);
     request
       .then((res) => {
         setResults(res);
-        getSearchHistory().then((items) => setSearchHistory(items.map((i) => i.queryText))).catch(() => {});
+        getSearchHistory()
+          .then((items) => setSearchHistory(items.map((i) => i.queryText)))
+          .catch(() => {});
       })
-      .catch((err) => setError(getErrorMessage(err, t('search.searchFailed'))))
+      .catch((err) => setError(getErrorMessage(err, t("search.searchFailed"))))
       .finally(() => setIsSearching(false));
   };
 
@@ -270,20 +450,20 @@ export default function SearchScreen({ navigation, route }: Props) {
     similarActiveRef.current = true;
     setFilters({});
     setShowFilters(false);
-    setQuery('');
+    setQuery("");
     setSimilarToTitle(similarTo.title);
     setIsSearching(true);
     setError(null);
     findSimilarMoviesSemantic(similarTo.tmdbId)
       .then(setResults)
-      .catch((err) => setError(getErrorMessage(err, t('search.searchFailed'))))
+      .catch((err) => setError(getErrorMessage(err, t("search.searchFailed"))))
       .finally(() => setIsSearching(false));
     navigation.setParams({ similarTo: undefined });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [similarTo]);
 
   const goToMovie = (item: MovieResult) => {
-    navigation.navigate('MovieDetail', {
+    navigation.navigate("MovieDetail", {
       movieId: item.id,
       title: item.title,
       mediaType: item.mediaType,
@@ -293,7 +473,7 @@ export default function SearchScreen({ navigation, route }: Props) {
   const handleClearSearch = () => {
     similarActiveRef.current = false;
     setSimilarToTitle(null);
-    setQuery('');
+    setQuery("");
     setResults([]);
     setError(null);
   };
@@ -303,13 +483,16 @@ export default function SearchScreen({ navigation, route }: Props) {
     try {
       await clearSearchHistory();
     } catch {
-      getSearchHistory().then((items) => setSearchHistory(items.map((i) => i.queryText))).catch(() => {});
+      getSearchHistory()
+        .then((items) => setSearchHistory(items.map((i) => i.queryText)))
+        .catch(() => {});
     }
   };
 
-  // Tapping "+" opens AddMovieModal (watchlist vs already-watched + rating),
-  // mirroring movie-frontend's Search.tsx.
-  const handleAdd = (item: MovieResult) => setAddTarget(item);
+  const handleAdd = (item: MovieResult) => {
+    if (isReleased(item)) setAddTarget(item);
+    else void addToWatchlistOnly(item);
+  };
 
   const addToWatchlistOnly = async (item: MovieResult) => {
     setAddedIds((prev) => new Set(prev).add(item.id));
@@ -321,7 +504,7 @@ export default function SearchScreen({ navigation, route }: Props) {
         mediaType: item.mediaType,
         releaseDate: item.releaseDate,
       });
-      showToast(t('search.addedToWatchlist'));
+      showToast(t("search.addedToWatchlist"));
     } catch (err) {
       const apiError = err as { response?: { status?: number } };
       if (apiError.response?.status !== 400) {
@@ -330,12 +513,15 @@ export default function SearchScreen({ navigation, route }: Props) {
           next.delete(item.id);
           return next;
         });
-        showToast(getErrorMessage(err, t('search.addToWatchlistError')));
+        showToast(getErrorMessage(err, t("search.addToWatchlistError")));
       }
     }
   };
 
-  const handleMarkWatched = async (item: MovieResult, rating: number | null) => {
+  const handleMarkWatched = async (
+    item: MovieResult,
+    rating: number | null,
+  ) => {
     try {
       await addToWatchlist({
         tmdbId: item.id,
@@ -347,7 +533,7 @@ export default function SearchScreen({ navigation, route }: Props) {
     } catch (err) {
       const apiError = err as { response?: { status?: number } };
       if (apiError.response?.status !== 400) {
-        showToast(getErrorMessage(err, t('search.addToWatchlistError')));
+        showToast(getErrorMessage(err, t("search.addToWatchlistError")));
         return;
       }
     }
@@ -356,9 +542,9 @@ export default function SearchScreen({ navigation, route }: Props) {
       if (rating) await rateMovie(item.id, rating);
       setAddedIds((prev) => new Set(prev).add(item.id));
       setWatchedIds((prev) => new Set(prev).add(item.id));
-      showToast(t('search.addedToWatchlist'));
+      showToast(t("search.addedToWatchlist"));
     } catch (err) {
-      showToast(getErrorMessage(err, t('search.addToWatchlistError')));
+      showToast(getErrorMessage(err, t("search.addToWatchlistError")));
     }
   };
 
@@ -370,18 +556,16 @@ export default function SearchScreen({ navigation, route }: Props) {
     });
     try {
       await removeFromWatchlist(item.id);
-      showToast(t('search.removedFromWatchlist'));
+      showToast(t("search.removedFromWatchlist"));
     } catch (err) {
       setAddedIds((prev) => new Set(prev).add(item.id));
-      showToast(getErrorMessage(err, t('search.removeFromWatchlistError')));
+      showToast(getErrorMessage(err, t("search.removeFromWatchlistError")));
     }
   };
 
-  // Mirrors movie-frontend's Search.tsx handleToggleFavorite: favoriting an
-  // item not yet in the watchlist 404s, so add it first and retry.
   const handleToggleFavorite = async (item: MovieResult) => {
     if (!isReleased(item)) {
-      showToast(t('search.notReleasedYet'));
+      showToast(t("search.notReleasedYet"));
       return;
     }
     const wasFavorite = favoriteIds.has(item.id);
@@ -409,93 +593,127 @@ export default function SearchScreen({ navigation, route }: Props) {
           setFavoriteIds((prev) => new Set(prev).add(item.id));
           setAddedIds((prev) => new Set(prev).add(item.id));
         } catch {
-          showToast(t('search.favoriteUpdateError'));
+          showToast(t("search.favoriteUpdateError"));
         }
       } else if (apiError.response?.status === 400) {
-        showToast(t('search.favoriteLimit'));
+        showToast(t("search.favoriteLimit"));
       } else {
-        showToast('Could not update favorite.');
+        showToast("Could not update favorite.");
       }
     }
   };
 
   const isSearchMode = query.trim().length >= 2 || similarToTitle !== null;
   const isIdle = !isSearchMode && !isSearching;
-  const visibleRecommendations = recommendations.filter((m) => !addedIds.has(m.id)).slice(0, 20);
+  const inScope = (m: MovieResult) =>
+    mediaScope === "all" || m.mediaType === mediaScope;
+  const visibleRecommendations = recommendations
+    .filter((m) => !addedIds.has(m.id) && inScope(m))
+    .slice(0, 20);
   const visibleBecauseYouWatched = becauseYouWatched
-    ? becauseYouWatched.similarMovies.filter((m) => !watchedIds.has(m.id))
+    ? becauseYouWatched.similarMovies.filter(
+        (m) => !watchedIds.has(m.id) && inScope(m),
+      )
     : [];
+  const visibleResults = results.filter(inScope);
+  const gridTileWidth = Math.floor(
+    (windowWidth - H_PAD * 2 - GRID_GAP * 2) / 3,
+  );
+  const showMovies = mediaScope !== "tv";
+  const showTv = mediaScope !== "movie";
+
+  const carouselHandlers = {
+    onPressItem: goToMovie,
+    favoriteIds,
+    addedIds,
+    onAdd: (item: MovieResult) => void handleAdd(item),
+    onRemove: (item: MovieResult) => void handleRemove(item),
+    onToggleFavorite: (item: MovieResult) => void handleToggleFavorite(item),
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <ScreenHeader />
 
-      <View style={styles.searchRow}>
-        <View style={styles.searchBarWrap}>
-          <Ionicons name="search" size={16} color={colors.textMuted} />
+      <View style={styles.searchBlock}>
+        <View style={styles.searchField}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder={t('search.placeholder')}
+            placeholder={t("search.placeholder")}
             placeholderTextColor={colors.textFaint}
             value={query}
             onChangeText={setQuery}
             autoCapitalize="none"
+            returnKeyType="search"
             onSubmitEditing={() => runSearch(query)}
           />
           {query.length > 0 ? (
-            <Pressable onPress={handleClearSearch} hitSlop={8}>
-              <Ionicons name="close-circle" size={16} color={colors.textFaint} />
-            </Pressable>
-          ) : null}
-          {query.trim().length > 0 ? (
             <Pressable
-              style={[styles.filterToggle, (showFilters || hasActiveFilters) && styles.filterToggleActive]}
-              onPress={() => setShowFilters((v) => !v)}
-              hitSlop={6}
+              onPress={handleClearSearch}
+              hitSlop={10}
+              accessibilityLabel={t("search.clear")}
             >
               <Ionicons
-                name="options-outline"
-                size={16}
-                color={showFilters || hasActiveFilters ? colors.backgroundDeep : colors.textMuted}
+                name="close-circle"
+                size={18}
+                color={colors.textFaint}
               />
             </Pressable>
           ) : null}
           <Pressable
-            style={styles.findButton}
-            onPress={() => runSearch(query)}
-            disabled={isSearching || !query.trim()}
+            style={[
+              styles.filterButton,
+              (showFilters || hasActiveFilters) && styles.filterButtonActive,
+            ]}
+            onPress={() => setShowFilters((v) => !v)}
+            accessibilityLabel="Filters"
           >
-            <Text style={styles.findButtonText}>{isSearching ? '…' : t('search.find').toUpperCase()}</Text>
+            <Ionicons
+              name="options-outline"
+              size={19}
+              color={
+                showFilters || hasActiveFilters
+                  ? colors.textOnAccent
+                  : colors.accentBright
+              }
+            />
           </Pressable>
         </View>
-        <Pressable style={styles.discoverButton} onPress={() => navigation.navigate('Discover')}>
-          <Ionicons name="albums-outline" size={18} color={colors.accentBright} />
-          {swipeStatus?.remainingToday ? (
-            <View style={styles.discoverBadge}>
-              <Text style={styles.discoverBadgeText}>{swipeStatus.remainingToday}</Text>
-            </View>
-          ) : null}
-        </Pressable>
+
+        <View style={styles.scopeRow}>
+          {(["all", "movie", "tv"] as const).map((scope) => (
+            <Pressable
+              key={scope}
+              style={[
+                styles.scopeChip,
+                mediaScope === scope && styles.scopeChipActive,
+              ]}
+              onPress={() => setMediaScope(scope)}
+            >
+              <Text
+                style={[
+                  styles.scopeChipText,
+                  mediaScope === scope && styles.scopeChipTextActive,
+                ]}
+              >
+                {scope === "all"
+                  ? t("search.scope.all")
+                  : scope === "movie"
+                    ? t("search.scope.movies")
+                    : t("search.scope.tv")}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
-      {swipeStatus?.showPromo ? (
-        <Pressable style={styles.promoBanner} onPress={() => navigation.navigate('Discover')}>
-          <Ionicons name="albums-outline" size={20} color={colors.accentBright} />
-          <View style={styles.promoTextGroup}>
-            <Text style={styles.promoTitle}>{t('search.promo.title')}</Text>
-            <Text style={styles.promoSubtitle}>
-              {t('search.promo.subtitle', {
-                remaining: swipeStatus.remainingToday,
-                dailyLimit: swipeStatus.dailyLimit,
-              })}
-            </Text>
-          </View>
-          <Text style={styles.promoLink}>{t('search.promo.link').toUpperCase()} →</Text>
-        </Pressable>
-      ) : null}
-
-      {showFilters && query.trim().length > 0 ? (
-        <SearchFilterBar filters={filters} onChange={setFilters} onApply={() => runSearch(query)} />
+      {showFilters ? (
+        <SearchFilterBar
+          filters={filters}
+          onChange={setFilters}
+          onApply={() => runSearch(query)}
+        />
       ) : null}
 
       {isSearchMode ? (
@@ -505,43 +723,50 @@ export default function SearchScreen({ navigation, route }: Props) {
           <ActivityIndicator color={colors.accent} style={styles.spinner} />
         ) : (
           <FlatList
-            data={results}
+            data={visibleResults}
             key="search-results"
             numColumns={3}
             keyExtractor={(item, index) => `${item.id}-${index}`}
             contentContainerStyle={styles.grid}
             columnWrapperStyle={styles.gridColumn}
             ListHeaderComponent={
-              results.length > 0 ? (
+              visibleResults.length > 0 ? (
                 <View style={styles.resultsHeader}>
-                  <Text style={styles.resultsHeaderTitle}>
-                    {(similarToTitle
-                      ? `${t('search.similarTo')} "${similarToTitle}"`
-                      : t('search.resultsTitle')
-                    ).toUpperCase()}
+                  <Text style={styles.resultsHeaderTitle} numberOfLines={2}>
+                    {similarToTitle
+                      ? `${t("search.similarTo")} "${similarToTitle}"`
+                      : t("search.resultsTitle")}
                   </Text>
-                  <Pressable onPress={handleClearSearch}>
-                    <Text style={styles.resultsHeaderBack}>← {t('search.goBack').toUpperCase()}</Text>
+                  <Pressable
+                    onPress={handleClearSearch}
+                    hitSlop={8}
+                    style={styles.resultsHeaderBack}
+                  >
+                    <Ionicons
+                      name="arrow-back"
+                      size={14}
+                      color={colors.accentBright}
+                    />
+                    <Text style={styles.resultsHeaderBackText}>
+                      {t("search.goBack")}
+                    </Text>
                   </Pressable>
                 </View>
               ) : null
             }
-            ListEmptyComponent={<Text style={styles.emptyText}>{t('search.noResults')}</Text>}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>{t("search.noResults")}</Text>
+            }
             renderItem={({ item }) => (
-              <MoviePosterCard
-                posterUrl={item.posterUrl}
-                title={item.title}
-                subtitle={item.releaseYear}
+              <PosterTile
+                item={item}
+                width={gridTileWidth}
                 isFavorite={favoriteIds.has(item.id)}
-                onToggleFavorite={() => void handleToggleFavorite(item)}
+                isAdded={addedIds.has(item.id)}
                 onPress={() => goToMovie(item)}
-                footer={
-                  <AddFooter
-                    added={addedIds.has(item.id)}
-                    onAdd={() => void handleAdd(item)}
-                    onRemove={() => void handleRemove(item)}
-                  />
-                }
+                onAdd={() => void handleAdd(item)}
+                onRemove={() => void handleRemove(item)}
+                onToggleFavorite={() => void handleToggleFavorite(item)}
               />
             )}
           />
@@ -552,181 +777,267 @@ export default function SearchScreen({ navigation, route }: Props) {
         <ScrollView contentContainerStyle={styles.homeContent}>
           {searchHistory.length > 0 ? (
             <View style={styles.historySection}>
-              <Text style={styles.historyLabel}>{t('search.recent').toUpperCase()}</Text>
-              <View style={styles.historyChips}>
+              <Text style={styles.historyLabel}>
+                {t("search.recent").toUpperCase()}
+              </Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.historyChips}
+              >
                 {searchHistory.map((q) => (
-                  <Pressable key={q} style={styles.historyChip} onPress={() => setQuery(q)}>
+                  <Pressable
+                    key={q}
+                    style={styles.historyChip}
+                    onPress={() => setQuery(q)}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={13}
+                      color={colors.textMuted}
+                    />
                     <Text style={styles.historyChipText}>{q}</Text>
                   </Pressable>
                 ))}
-                <Pressable style={styles.historyClear} onPress={() => void handleClearHistory()}>
-                  <Text style={styles.historyClearText}>✕ {t('search.clear').toUpperCase()}</Text>
+                <Pressable
+                  style={styles.historyChip}
+                  onPress={() => void handleClearHistory()}
+                >
+                  <Ionicons
+                    name="close"
+                    size={13}
+                    color={colors.accentBright}
+                  />
+                  <Text style={styles.historyClearText}>
+                    {t("search.clear")}
+                  </Text>
                 </Pressable>
-              </View>
+              </ScrollView>
             </View>
           ) : null}
 
           {isIdle ? (
-            <View style={styles.top100Row}>
+            <View style={styles.introBlock}>
               <Pressable
-                style={styles.top100Card}
-                onPress={() => navigation.navigate('Top100', { type: 'movie' })}
+                style={styles.discoverCard}
+                onPress={() => navigation.navigate("Discover")}
               >
-                {trending[0]?.posterUrl ? (
-                  <Image source={{ uri: trending[0].posterUrl }} style={styles.top100Image} />
-                ) : null}
-                <LinearGradient colors={['transparent', colors.backgroundDeep]} style={styles.top100Overlay} />
-                <View style={styles.top100Content}>
-                  <View style={styles.top100Tag}>
-                    <Text style={styles.top100TagText}>{t('search.top100.collection').toUpperCase()}</Text>
+                <View style={styles.discoverStack}>
+                  <View
+                    style={[styles.discoverStackCard, styles.discoverStackBack]}
+                  />
+                  <View
+                    style={[
+                      styles.discoverStackCard,
+                      styles.discoverStackFront,
+                    ]}
+                  >
+                    {trending[1]?.posterUrl ? (
+                      <Image
+                        source={{ uri: trending[1].posterUrl }}
+                        style={styles.posterImage}
+                      />
+                    ) : null}
                   </View>
-                  <Text style={styles.top100Title}>{t('search.top100.moviesTitle')}</Text>
-                  <Text style={styles.top100Subtitle}>{t('search.top100.moviesSubtitle')}</Text>
+                </View>
+                <View style={styles.discoverText}>
+                  <Text style={styles.discoverTitle}>
+                    {t("search.promo.title")}
+                  </Text>
+                  <Text style={styles.discoverSubtitle}>
+                    {swipeStatus && swipeStatus.remainingToday > 0
+                      ? t("search.promo.subtitle", {
+                          remaining: swipeStatus.remainingToday,
+                          dailyLimit: swipeStatus.dailyLimit,
+                        })
+                      : t("search.promoDone")}
+                  </Text>
+                </View>
+                <View style={styles.discoverArrow}>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={18}
+                    color={colors.textOnAccent}
+                  />
                 </View>
               </Pressable>
-              <Pressable
-                style={styles.top100Card}
-                onPress={() => navigation.navigate('Top100', { type: 'tv' })}
-              >
-                {upcoming[0]?.posterUrl ? (
-                  <Image source={{ uri: upcoming[0].posterUrl }} style={styles.top100Image} />
-                ) : null}
-                <LinearGradient colors={['transparent', colors.backgroundDeep]} style={styles.top100Overlay} />
-                <View style={styles.top100Content}>
-                  <View style={styles.top100Tag}>
-                    <Text style={styles.top100TagText}>{t('search.top100.curated').toUpperCase()}</Text>
-                  </View>
-                  <Text style={styles.top100Title}>{t('search.top100.tvTitle')}</Text>
-                  <Text style={styles.top100Subtitle}>{t('search.top100.tvSubtitle')}</Text>
-                </View>
-              </Pressable>
+
+              <View style={styles.top100Row}>
+                {(
+                  [
+                    {
+                      type: "movie",
+                      tag: t("search.top100.collection"),
+                      title: t("search.top100.moviesTitle"),
+                      poster: trending[0]?.posterUrl,
+                    },
+                    {
+                      type: "tv",
+                      tag: t("search.top100.curated"),
+                      title: t("search.top100.tvTitle"),
+                      poster: upcoming[0]?.posterUrl,
+                    },
+                  ] as const
+                ).map((card) => (
+                  <Pressable
+                    key={card.type}
+                    style={styles.top100Card}
+                    onPress={() =>
+                      navigation.navigate("Top100", { type: card.type })
+                    }
+                  >
+                    {card.poster ? (
+                      <Image
+                        source={{ uri: card.poster }}
+                        style={styles.top100Image}
+                      />
+                    ) : null}
+                    <LinearGradient
+                      colors={["rgba(15,13,10,.2)", "rgba(15,13,10,.95)"]}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <Text style={styles.top100Watermark}>100</Text>
+                    <Text style={styles.top100Tag}>
+                      {card.tag.toUpperCase()}
+                    </Text>
+                    <Text style={styles.top100Title} numberOfLines={2}>
+                      {card.title}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           ) : null}
 
-          <Carousel
-            title={t('search.carousels.trendingMovies').toUpperCase()}
-            badge={t('search.carousels.hot').toUpperCase()}
-            badgeColor={colors.danger}
-            data={trending.filter((m) => m.mediaType === 'movie')}
-            onPressItem={goToMovie}
-            favoriteIds={favoriteIds}
-            addedIds={addedIds}
-            onAdd={(item) => void handleAdd(item)}
-            onRemove={(item) => void handleRemove(item)}
-            onToggleFavorite={(item) => void handleToggleFavorite(item)}
-          />
+          {showMovies ? (
+            <Carousel
+              title={t("search.carousels.trendingMovies")}
+              badge={t("search.carousels.hot").toUpperCase()}
+              badgeColor={colors.danger}
+              data={trending.filter((m) => m.mediaType === "movie")}
+              {...carouselHandlers}
+            />
+          ) : null}
+
+          {showTv ? (
+            <Carousel
+              title={t("search.carousels.trendingTv")}
+              badge={t("search.carousels.hot").toUpperCase()}
+              badgeColor={colors.danger}
+              data={trending.filter((m) => m.mediaType === "tv")}
+              {...carouselHandlers}
+            />
+          ) : null}
+
+          {showMovies ? (
+            <Carousel
+              title={t("search.carousels.comingSoonMovies")}
+              badge={t("search.carousels.new").toUpperCase()}
+              badgeColor={colors.accentBright}
+              variant="upcoming"
+              data={upcoming
+                .filter((m) => m.mediaType === "movie")
+                .slice(0, 10)}
+              {...carouselHandlers}
+            />
+          ) : null}
+
+          {showTv ? (
+            <Carousel
+              title={t("search.carousels.comingSoonTv")}
+              badge={t("search.carousels.new").toUpperCase()}
+              badgeColor={colors.accentBright}
+              variant="upcoming"
+              data={upcoming.filter((m) => m.mediaType === "tv").slice(0, 10)}
+              {...carouselHandlers}
+            />
+          ) : null}
 
           <Carousel
-            title={t('search.carousels.trendingTv').toUpperCase()}
-            badge={t('search.carousels.hot').toUpperCase()}
-            badgeColor={colors.danger}
-            data={trending.filter((m) => m.mediaType === 'tv')}
-            onPressItem={goToMovie}
-            favoriteIds={favoriteIds}
-            addedIds={addedIds}
-            onAdd={(item) => void handleAdd(item)}
-            onRemove={(item) => void handleRemove(item)}
-            onToggleFavorite={(item) => void handleToggleFavorite(item)}
-          />
-
-          <Carousel
-            title={t('search.carousels.comingSoonMovies').toUpperCase()}
-            badge={t('search.carousels.new').toUpperCase()}
-            badgeColor={colors.accentBright}
-            data={upcoming.filter((m) => m.mediaType === 'movie').slice(0, 10)}
-            onPressItem={goToMovie}
-            favoriteIds={favoriteIds}
-            addedIds={addedIds}
-            onAdd={(item) => void handleAdd(item)}
-            onRemove={(item) => void handleRemove(item)}
-            onToggleFavorite={(item) => void handleToggleFavorite(item)}
-          />
-
-          <Carousel
-            title={t('search.carousels.comingSoonTv').toUpperCase()}
-            badge={t('search.carousels.new').toUpperCase()}
-            badgeColor={colors.accentBright}
-            data={upcoming.filter((m) => m.mediaType === 'tv').slice(0, 10)}
-            onPressItem={goToMovie}
-            favoriteIds={favoriteIds}
-            addedIds={addedIds}
-            onAdd={(item) => void handleAdd(item)}
-            onRemove={(item) => void handleRemove(item)}
-            onToggleFavorite={(item) => void handleToggleFavorite(item)}
-          />
-
-          <Carousel
-            title={t('search.carousels.recommendedForYou')}
-            badge={t('search.carousels.ai').toUpperCase()}
+            title={t("search.carousels.recommendedForYou")}
+            badge={t("search.carousels.ai").toUpperCase()}
             badgeColor={colors.accentBright}
             data={visibleRecommendations}
-            onPressItem={goToMovie}
-            favoriteIds={favoriteIds}
-            addedIds={addedIds}
-            onAdd={(item) => void handleAdd(item)}
-            onRemove={(item) => void handleRemove(item)}
-            onToggleFavorite={(item) => void handleToggleFavorite(item)}
-            emptyHint={t('search.carousels.recommendationsEmptyHint')}
+            emptyHint={t("search.carousels.recommendationsEmptyHint")}
+            {...carouselHandlers}
           />
 
           {becauseYouWatched && visibleBecauseYouWatched.length > 0 ? (
             <Carousel
-              title={t('search.carousels.becauseYouWatched', { title: becauseYouWatched.basedOnMovie.title })}
+              title={t("search.carousels.becauseYouWatched", {
+                title: becauseYouWatched.basedOnMovie.title,
+              })}
               data={visibleBecauseYouWatched}
-              onPressItem={goToMovie}
-              favoriteIds={favoriteIds}
-              addedIds={addedIds}
-              onAdd={(item) => void handleAdd(item)}
-              onRemove={(item) => void handleRemove(item)}
-              onToggleFavorite={(item) => void handleToggleFavorite(item)}
+              {...carouselHandlers}
             />
           ) : null}
 
           {friendsActivity.length > 0 ? (
-            <View style={styles.carouselSection}>
-              <Text style={styles.sectionTitle}>{t('search.friends.sectionTitle').toUpperCase()}</Text>
-              {friendsActivity.slice(0, 6).map((entry) => (
-                <Pressable
-                  key={`${entry.user.id}-${entry.tmdbId}`}
-                  style={styles.friendRow}
-                  onPress={() =>
-                    navigation.navigate('MovieDetail', {
-                      movieId: entry.tmdbId,
-                      title: entry.title,
-                      mediaType: entry.mediaType === 'tv' ? 'tv' : 'movie',
-                    })
-                  }
-                >
-                  {entry.posterUrl ? (
-                    <Image source={{ uri: entry.posterUrl }} style={styles.friendPoster} />
-                  ) : (
-                    <View style={[styles.friendPoster, styles.friendPosterPlaceholder]} />
-                  )}
-                  <View style={styles.friendTextGroup}>
-                    <View style={styles.friendUserRow}>
-                      {entry.user.avatarUrl ? (
-                        <Image source={{ uri: entry.user.avatarUrl }} style={styles.friendAvatar} />
-                      ) : (
-                        <View style={[styles.friendAvatar, styles.friendAvatarFallback]}>
-                          <Text style={styles.friendAvatarInitial}>
-                            {entry.user.username.charAt(0).toUpperCase()}
-                          </Text>
-                        </View>
-                      )}
-                      <Text style={styles.friendUsername} numberOfLines={1}>
-                        {t('search.friends.userWatched', { username: entry.user.username })}
+            <View style={styles.section}>
+              <SectionHeader title={t("search.friends.sectionTitle")} />
+              <View style={styles.friendList}>
+                {friendsActivity.slice(0, 6).map((entry) => (
+                  <Pressable
+                    key={`${entry.user.id}-${entry.tmdbId}`}
+                    style={styles.friendRow}
+                    onPress={() =>
+                      navigation.navigate("MovieDetail", {
+                        movieId: entry.tmdbId,
+                        title: entry.title,
+                        mediaType: entry.mediaType === "tv" ? "tv" : "movie",
+                      })
+                    }
+                  >
+                    {entry.user.avatarUrl ? (
+                      <Image
+                        source={{ uri: entry.user.avatarUrl }}
+                        style={styles.friendAvatar}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.friendAvatar,
+                          styles.friendAvatarFallback,
+                        ]}
+                      >
+                        <Text style={styles.friendAvatarInitial}>
+                          {entry.user.username.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={styles.friendTextGroup}>
+                      <Text style={styles.friendLine} numberOfLines={2}>
+                        <Text style={styles.friendUsername}>
+                          {t("search.friends.userWatched", {
+                            username: entry.user.username,
+                          })}
+                        </Text>{" "}
+                        <Text style={styles.friendMovieTitle}>
+                          {entry.title}
+                        </Text>
+                      </Text>
+                      <Text style={styles.friendMeta}>
+                        {entry.mediaType === "tv"
+                          ? t("search.friends.tvShow")
+                          : t("search.friends.movie")}
+                        {entry.watchedAt
+                          ? ` · ${formatTimeAgo(entry.watchedAt)}`
+                          : ""}
                       </Text>
                     </View>
-                    <Text style={styles.friendMovieTitle} numberOfLines={1}>
-                      {entry.title}
-                    </Text>
-                    <Text style={styles.friendMeta}>
-                      {entry.mediaType === 'tv' ? t('search.friends.tvShow') : t('search.friends.movie')}
-                      {entry.watchedAt ? ` · ${formatTimeAgo(entry.watchedAt)}` : ''}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
+                    {entry.posterUrl ? (
+                      <Image
+                        source={{ uri: entry.posterUrl }}
+                        style={styles.friendPoster}
+                      />
+                    ) : (
+                      <View
+                        style={[styles.friendPoster, styles.posterPlaceholder]}
+                      />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
             </View>
           ) : null}
         </ScrollView>
@@ -734,7 +1045,7 @@ export default function SearchScreen({ navigation, route }: Props) {
 
       <AddMovieModal
         visible={addTarget !== null}
-        title={addTarget?.title ?? ''}
+        title={addTarget?.title ?? ""}
         onClose={() => setAddTarget(null)}
         onAddToWatchlist={() => {
           const item = addTarget;
@@ -753,157 +1064,369 @@ export default function SearchScreen({ navigation, route }: Props) {
   );
 }
 
+const GRID_GAP = spacing.sm + 2;
+
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  searchRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
-  searchBarWrap: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,.03)',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.full,
-    paddingLeft: spacing.md,
-    paddingRight: 4,
-    paddingVertical: 4,
-  },
-  searchInput: { flex: 1, color: colors.textPrimary, fontSize: 14 },
-  filterToggle: {
-    width: 28,
-    height: 28,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterToggleActive: { backgroundColor: colors.accentBright, borderColor: colors.accentBright },
-  findButton: {
-    backgroundColor: colors.accentBright,
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-  },
-  findButtonText: { color: colors.textOnAccent, fontSize: 10.5, fontWeight: fontWeight.bold, letterSpacing: 1 },
-  discoverButton: {
-    width: 46,
-    height: 46,
-    borderRadius: radius.full,
-    borderWidth: 1,
-    borderColor: 'rgba(217,172,84,.45)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  discoverBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 16,
-    height: 16,
-    paddingHorizontal: 3,
-    borderRadius: 8,
-    backgroundColor: colors.accentBright,
-    borderWidth: 2,
-    borderColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  discoverBadgeText: { color: colors.textOnAccent, fontSize: 9, fontWeight: fontWeight.bold },
-  promoBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm + 2,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(217,172,84,.2)',
-  },
-  promoTextGroup: { flex: 1, minWidth: 0, gap: 2 },
-  promoTitle: { color: colors.textPrimary, fontSize: 13, fontWeight: fontWeight.semibold },
-  promoSubtitle: { color: colors.textMuted, fontSize: 11 },
-  promoLink: { color: colors.accentBright, fontSize: 10.5, fontWeight: fontWeight.bold, letterSpacing: 1 },
-  spinner: { marginTop: spacing.xl },
-  error: { color: colors.danger, fontSize: 13, textAlign: 'center', marginTop: spacing.lg },
-  emptyText: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: spacing.xl },
-  grid: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl },
-  gridColumn: { gap: spacing.sm, marginBottom: spacing.md },
-  resultsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  searchBlock: {
+    paddingHorizontal: H_PAD,
+    gap: spacing.sm + 4,
     marginBottom: spacing.md,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderSubtle,
   },
-  resultsHeaderTitle: { color: colors.accentBright, fontSize: 11, fontWeight: fontWeight.black, letterSpacing: 1.5 },
-  resultsHeaderBack: { color: colors.textSubtle, fontSize: 10, fontWeight: fontWeight.bold, letterSpacing: 1 },
-  homeContent: { paddingBottom: spacing.xl },
-  historySection: { marginBottom: spacing.lg },
-  historyLabel: { color: colors.textFaint, fontSize: 9.5, fontWeight: fontWeight.medium, letterSpacing: 2, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
-  historyChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs + 2, paddingHorizontal: spacing.lg },
-  historyChip: { borderWidth: 1, borderColor: 'rgba(255,255,255,.12)', borderRadius: radius.full, paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.xs + 2 },
-  historyChipText: { color: colors.textSubtle, fontSize: 11 },
-  historyClear: { borderWidth: 1, borderColor: 'rgba(217,172,84,.5)', borderRadius: radius.full, paddingHorizontal: spacing.sm + 2, paddingVertical: spacing.xs + 2 },
-  historyClearText: { color: colors.accentBright, fontSize: 10, fontWeight: fontWeight.bold },
-  top100Row: { gap: spacing.sm, paddingHorizontal: spacing.lg, marginBottom: spacing.lg },
-  top100Card: { height: 110, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surfaceMuted },
-  top100Image: { ...StyleSheet.absoluteFill, opacity: 0.4 },
-  top100Overlay: { ...StyleSheet.absoluteFill },
-  top100Content: { flex: 1, justifyContent: 'flex-end', padding: spacing.md, gap: 3 },
-  top100Tag: { alignSelf: 'flex-start', borderWidth: 1, borderColor: 'rgba(217,172,84,.45)', borderRadius: radius.full, paddingHorizontal: spacing.sm, paddingVertical: 3, marginBottom: 2 },
-  top100TagText: { color: colors.accentBright, fontSize: 8.5, fontWeight: fontWeight.semibold, letterSpacing: 1.5 },
-  top100Title: { color: colors.textPrimary, fontSize: 18, fontWeight: fontWeight.bold },
-  top100Subtitle: { color: colors.textMuted, fontSize: 11 },
-  carouselSection: { marginBottom: spacing.lg + spacing.xs },
-  carouselHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
-  sectionTitle: {
+  searchField: {
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm + 2,
+    paddingLeft: spacing.md,
+    paddingRight: 6,
+    borderRadius: 16,
+    backgroundColor: "#18150f",
+    borderWidth: 1,
+    borderColor: "rgba(217,172,84,.28)",
+  },
+  searchInput: {
+    flex: 1,
+    height: "100%",
+    color: colors.textPrimary,
+    fontSize: 15,
+  },
+  filterButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(217,172,84,.12)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterButtonActive: { backgroundColor: colors.accent },
+  scopeRow: { flexDirection: "row", gap: spacing.sm },
+  scopeChip: {
+    height: 34,
+    paddingHorizontal: 14,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,.14)",
+    justifyContent: "center",
+  },
+  scopeChipActive: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  scopeChipText: {
+    color: colors.textSubtle,
+    fontSize: 12.5,
+    fontWeight: fontWeight.semibold,
+  },
+  scopeChipTextActive: {
+    color: colors.textOnAccent,
+    fontWeight: fontWeight.bold,
+  },
+  spinner: { marginTop: spacing.xl },
+  error: {
+    color: colors.danger,
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: spacing.lg,
+  },
+  emptyText: {
+    color: colors.textMuted,
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: spacing.xl,
+  },
+  grid: { paddingHorizontal: H_PAD, paddingBottom: spacing.xl },
+  gridColumn: { gap: GRID_GAP, marginBottom: spacing.md + 2 },
+  resultsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  resultsHeaderTitle: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: 19,
+    fontWeight: fontWeight.bold,
+  },
+  resultsHeaderBack: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    height: 32,
+  },
+  resultsHeaderBackText: {
     color: colors.accentBright,
-    fontSize: 11.5,
+    fontSize: 13,
+    fontWeight: fontWeight.semibold,
+  },
+  homeContent: { paddingBottom: spacing.xl, gap: 28 },
+  historySection: { gap: spacing.sm },
+  historyLabel: {
+    color: colors.textFaint,
+    fontSize: 10,
     fontWeight: fontWeight.semibold,
     letterSpacing: 2,
-    textTransform: 'uppercase',
+    paddingHorizontal: H_PAD,
   },
-  sectionBadge: { borderWidth: 1, borderRadius: radius.full, paddingHorizontal: spacing.xs + 2, paddingVertical: 2 },
-  sectionBadgeText: { fontSize: 8.5, fontWeight: fontWeight.bold, letterSpacing: 1 },
+  historyChips: { gap: spacing.sm, paddingHorizontal: H_PAD },
+  historyChip: {
+    height: 32,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,.12)",
+  },
+  historyChipText: { color: colors.textSubtle, fontSize: 12.5 },
+  historyClearText: {
+    color: colors.accentBright,
+    fontSize: 12.5,
+    fontWeight: fontWeight.semibold,
+  },
+  introBlock: { paddingHorizontal: H_PAD, gap: spacing.md },
+  discoverCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: spacing.md,
+    borderRadius: 18,
+    backgroundColor: "#1a160f",
+    borderWidth: 1,
+    borderColor: "rgba(217,172,84,.3)",
+  },
+  discoverStack: { width: 52, height: 64 },
+  discoverStackCard: {
+    position: "absolute",
+    width: 40,
+    height: 58,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+  discoverStackBack: {
+    left: 10,
+    top: 0,
+    backgroundColor: "#4a3a22",
+    transform: [{ rotate: "8deg" }],
+  },
+  discoverStackFront: {
+    left: 0,
+    top: 4,
+    backgroundColor: "#7a5c2c",
+    borderWidth: 1,
+    borderColor: "rgba(242,234,217,.2)",
+  },
+  discoverText: { flex: 1, minWidth: 0, gap: 4 },
+  discoverTitle: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontWeight: fontWeight.bold,
+  },
+  discoverSubtitle: { color: "#a89d88", fontSize: 12.5 },
+  discoverArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  top100Row: { flexDirection: "row", gap: spacing.sm + 4 },
+  top100Card: {
+    flex: 1,
+    height: 112,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#2a2116",
+    borderWidth: 1,
+    borderColor: "rgba(217,172,84,.16)",
+    justifyContent: "flex-end",
+    padding: 14,
+  },
+  top100Image: { ...StyleSheet.absoluteFill, opacity: 0.45 },
+  top100Watermark: {
+    position: "absolute",
+    right: 10,
+    top: 2,
+    color: "rgba(217,172,84,.22)",
+    fontSize: 40,
+    fontWeight: fontWeight.black,
+  },
+  top100Tag: {
+    color: colors.accentBright,
+    fontSize: 10,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 1.6,
+  },
+  top100Title: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: fontWeight.bold,
+    marginTop: 4,
+  },
+  section: { gap: 14 },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: H_PAD,
+  },
+  sectionTitle: {
+    flexShrink: 1,
+    color: colors.textPrimary,
+    fontSize: 19,
+    fontWeight: fontWeight.bold,
+  },
+  sectionBadge: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  sectionBadgeText: {
+    fontSize: 9.5,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 1.2,
+  },
   carouselEmptyHint: {
-    marginHorizontal: spacing.lg,
+    marginHorizontal: H_PAD,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(217,172,84,.2)',
-    borderStyle: 'dashed',
+    borderColor: "rgba(217,172,84,.2)",
+    borderStyle: "dashed",
     borderRadius: radius.md,
     color: colors.textMuted,
-    fontSize: 12,
-    textAlign: 'center',
+    fontSize: 12.5,
+    textAlign: "center",
   },
-  carouselRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg },
-  footerLink: {
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(217,172,84,.16)',
-    alignItems: 'center',
+  carouselRow: { gap: spacing.sm + 4, paddingHorizontal: H_PAD },
+  poster: {
+    borderRadius: 12,
+    overflow: "hidden",
+    backgroundColor: colors.backgroundElevated,
+    borderWidth: 1,
+    borderColor: "rgba(242,234,217,.08)",
   },
-  footerLinkText: {
-    color: colors.accentBright,
-    fontSize: 9.5,
+  posterImage: { width: "100%", height: "100%" },
+  posterPlaceholder: {
+    flex: 1,
+    backgroundColor: colors.backgroundElevated,
+    justifyContent: "flex-end",
+    padding: 10,
+  },
+  posterPlaceholderText: {
+    color: "rgba(242,234,217,.5)",
+    fontSize: 13,
+    fontWeight: fontWeight.bold,
+  },
+  glass: {
+    position: "absolute",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(255,255,255,.35)",
+    backgroundColor: "rgba(20,17,12,.25)",
+  },
+  glassSheen: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: "rgba(255,255,255,.08)",
+  },
+  posterHeart: { top: 8, right: 8, width: 32, height: 32, borderRadius: 16 },
+  posterClock: { top: 8, left: 8, width: 30, height: 30, borderRadius: 15 },
+  posterAdd: { right: 8, bottom: 8, width: 38, height: 38, borderRadius: 19 },
+  posterText: { gap: 2 },
+  posterTitle: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: fontWeight.semibold,
+  },
+  posterMeta: { color: colors.textMuted, fontSize: 12 },
+  upcomingCard: {
+    width: 250,
+    flexDirection: "row",
+    gap: spacing.sm + 4,
+    padding: 10,
+    borderRadius: 16,
+    backgroundColor: "#17140f",
+    borderWidth: 1,
+    borderColor: "rgba(217,172,84,.14)",
+  },
+  upcomingPoster: {
+    width: 72,
+    height: 106,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  upcomingBody: { flex: 1, minWidth: 0, gap: 6 },
+  dateChip: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.accentBright,
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  dateChipText: {
+    color: colors.textOnAccent,
+    fontSize: 10.5,
     fontWeight: fontWeight.bold,
     letterSpacing: 1,
   },
-  friendRow: { flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm },
-  friendPoster: { width: 48, height: 72, borderRadius: radius.sm },
-  friendPosterPlaceholder: { backgroundColor: colors.backgroundElevated },
-  friendTextGroup: { flex: 1, minWidth: 0, gap: 2, justifyContent: 'center' },
-  friendUserRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  friendAvatar: { width: 18, height: 18, borderRadius: 9 },
-  friendAvatarFallback: { backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  friendAvatarInitial: { color: colors.textOnAccent, fontSize: 9, fontWeight: fontWeight.bold },
-  friendUsername: { color: colors.textMuted, fontSize: 11 },
-  friendMovieTitle: { color: colors.textPrimary, fontSize: 13.5, fontWeight: fontWeight.semibold },
-  friendMeta: { color: colors.textFaint, fontSize: 10.5 },
+  upcomingTitle: {
+    color: colors.textPrimary,
+    fontSize: 14,
+    fontWeight: fontWeight.semibold,
+    lineHeight: 18,
+  },
+  upcomingButton: {
+    marginTop: "auto",
+    alignSelf: "flex-start",
+    height: 30,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "rgba(217,172,84,.45)",
+  },
+  upcomingButtonAdded: { borderColor: "rgba(255,255,255,.14)" },
+  upcomingButtonText: {
+    color: colors.accentBright,
+    fontSize: 11.5,
+    fontWeight: fontWeight.bold,
+  },
+  upcomingButtonTextAdded: { color: colors.textMuted },
+  friendList: { paddingHorizontal: H_PAD },
+  friendRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm + 4,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(217,172,84,.1)",
+  },
+  friendAvatar: { width: 36, height: 36, borderRadius: 18 },
+  friendAvatarFallback: {
+    backgroundColor: colors.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  friendAvatarInitial: {
+    color: colors.textOnAccent,
+    fontSize: 14,
+    fontWeight: fontWeight.bold,
+  },
+  friendTextGroup: { flex: 1, minWidth: 0, gap: 2 },
+  friendLine: { fontSize: 13.5 },
+  friendUsername: { color: colors.textMuted },
+  friendMovieTitle: {
+    color: colors.accentBright,
+    fontWeight: fontWeight.semibold,
+  },
+  friendMeta: { color: colors.textMuted, fontSize: 11.5 },
+  friendPoster: { width: 34, height: 50, borderRadius: 5, overflow: "hidden" },
 });

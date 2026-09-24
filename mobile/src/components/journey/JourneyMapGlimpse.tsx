@@ -54,7 +54,11 @@ export default function JourneyMapGlimpse({ totalCount, onExpand, youLabel }: Jo
     >
       {containerWidth > 0 ? (
         <View style={{ position: 'absolute', left: offsetLeft, top: offsetTop, width: contentW, height: contentH }}>
-          <Image source={lotrMapImage} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <Image
+            source={lotrMapImage}
+            style={{ position: 'absolute', left: 0, top: 0, width: contentW, height: contentH }}
+            resizeMode="cover"
+          />
 
           <Svg width={contentW} height={contentH} style={StyleSheet.absoluteFill} pointerEvents="none">
             <Path d={routeD} fill="none" stroke={GOLD} strokeWidth={3} strokeDasharray="8 7" opacity={0.8} />

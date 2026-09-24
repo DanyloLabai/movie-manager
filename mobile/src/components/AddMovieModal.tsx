@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import StarRating from './StarRating';
-import { colors, spacing, radius, fontWeight } from '../theme';
+import { useEffect, useState } from "react";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { useTranslation } from "react-i18next";
+import StarRating from "./StarRating";
+import { colors, spacing, radius, fontWeight } from "../theme";
 
 interface AddMovieModalProps {
   visible: boolean;
@@ -10,22 +12,20 @@ interface AddMovieModalProps {
   onClose: () => void;
   onAddToWatchlist: () => void;
   onMarkWatched: (rating: number | null) => void;
-  initialStep?: 'choose' | 'rating';
+  initialStep?: "choose" | "rating";
 }
 
-// Mirrors movie-frontend's AddMovieModal.tsx: step 1 asks "watchlist or
-// already watched?", step 2 (only for "watched") collects an optional rating.
-// Reused by Search, AI chat and Because You Watched.
 export default function AddMovieModal({
   visible,
   title,
   onClose,
   onAddToWatchlist,
   onMarkWatched,
-  initialStep = 'choose',
+  initialStep = "choose",
 }: AddMovieModalProps) {
-  const { t } = useTranslation('movie');
-  const [step, setStep] = useState<'choose' | 'rating'>(initialStep);
+  const { t } = useTranslation("movie");
+  const insets = useSafeAreaInsets();
+  const [step, setStep] = useState<"choose" | "rating">(initialStep);
   const [rating, setRating] = useState(0);
 
   useEffect(() => {
@@ -36,41 +36,95 @@ export default function AddMovieModal({
   }, [visible, initialStep]);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.card} onPress={() => {}}>
-          {step === 'choose' ? (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <Pressable
+        style={styles.backdrop}
+        onPress={onClose}
+        accessibilityLabel={t("common:cancel")}
+      >
+        <Pressable
+          style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }]}
+          onPress={() => {}}
+          accessibilityViewIsModal
+        >
+          <View style={styles.handle} />
+          {step === "choose" ? (
             <>
-              <Text style={styles.title} numberOfLines={1}>
-                {title}
-              </Text>
-              <Text style={styles.subtitle}>{t('addModal.choiceDesc')}</Text>
-              <Pressable style={styles.primary} onPress={onAddToWatchlist}>
-                <Text style={styles.primaryText}>+ {t('addModal.toWatchlist').toUpperCase()}</Text>
+              <View style={styles.header}>
+                <Text style={styles.title} numberOfLines={2}>
+                  {t("addModal.title", { title })}
+                </Text>
+                <Text style={styles.subtitle}>{t("addModal.subtitle")}</Text>
+              </View>
+              <Pressable
+                style={[styles.option, styles.optionPrimary]}
+                onPress={onAddToWatchlist}
+              >
+                <View style={[styles.optionIcon, styles.optionIconFilled]}>
+                  <Ionicons name="list" size={20} color={colors.textOnAccent} />
+                </View>
+                <View style={styles.optionText}>
+                  <Text style={styles.optionTitle}>
+                    {t("addModal.toWatchlist")}
+                  </Text>
+                  <Text style={styles.optionDesc}>
+                    {t("addModal.watchlistDesc")}
+                  </Text>
+                </View>
               </Pressable>
-              <Pressable style={styles.secondary} onPress={() => setStep('rating')}>
-                <Text style={styles.secondaryText}>✓ {t('addModal.watched').toUpperCase()}</Text>
+              <Pressable
+                style={styles.option}
+                onPress={() => setStep("rating")}
+              >
+                <View style={[styles.optionIcon, styles.optionIconOutline]}>
+                  <Ionicons
+                    name="eye-outline"
+                    size={20}
+                    color={colors.accentBright}
+                  />
+                </View>
+                <View style={styles.optionText}>
+                  <Text style={styles.optionTitle}>
+                    {t("addModal.watchedTitle")}
+                  </Text>
+                  <Text style={styles.optionDesc}>
+                    {t("addModal.watchedDesc")}
+                  </Text>
+                </View>
               </Pressable>
-              <Pressable onPress={onClose} hitSlop={8}>
-                <Text style={styles.cancel}>{t('common:cancel').toUpperCase()}</Text>
+              <Pressable style={styles.cancel} onPress={onClose}>
+                <Text style={styles.cancelText}>{t("common:cancel")}</Text>
               </Pressable>
             </>
           ) : (
             <>
-              <Text style={styles.title}>{t('ratingModal.title')}</Text>
-              <Text style={styles.subtitle}>{t('ratingModal.subtitle', { title })}</Text>
+              <View style={styles.header}>
+                <Text style={styles.title}>{t("ratingModal.title")}</Text>
+                <Text style={styles.subtitle} numberOfLines={2}>
+                  {t("ratingModal.subtitle", { title })}
+                </Text>
+              </View>
               <View style={styles.stars}>
                 <StarRating size="lg" value={rating} onRate={setRating} />
               </View>
               <View style={styles.actions}>
-                <Pressable style={[styles.secondary, styles.flex]} onPress={onClose}>
-                  <Text style={styles.secondaryText}>{t('common:cancel').toUpperCase()}</Text>
+                <Pressable
+                  style={[styles.secondary, styles.flex]}
+                  onPress={onClose}
+                >
+                  <Text style={styles.secondaryText}>{t("common:cancel")}</Text>
                 </Pressable>
                 <Pressable
                   style={[styles.primary, styles.flex]}
                   onPress={() => onMarkWatched(rating > 0 ? rating : null)}
                 >
-                  <Text style={styles.primaryText}>{t('common:ok').toUpperCase()}</Text>
+                  <Text style={styles.primaryText}>{t("common:ok")}</Text>
                 </Pressable>
               </View>
             </>
@@ -81,52 +135,99 @@ export default function AddMovieModal({
   );
 }
 
+const BUTTON_H = 50;
+
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
+    backgroundColor: "rgba(0,0,0,.62)",
+    justifyContent: "flex-end",
   },
-  card: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radius.lg,
+  sheet: {
+    backgroundColor: "#17140f",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderColor: "rgba(217,172,84,.3)",
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm + 4,
+    gap: spacing.sm + 4,
+  },
+  handle: {
+    alignSelf: "center",
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(242,234,217,.2)",
+  },
+  header: { gap: 4, paddingTop: 4, paddingBottom: 6 },
+  title: {
+    color: colors.textPrimary,
+    fontSize: 19,
+    fontWeight: fontWeight.bold,
+  },
+  subtitle: { color: colors.textMuted, fontSize: 13 },
+  option: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: spacing.md,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    alignItems: 'center',
-    gap: spacing.sm,
+    borderColor: "rgba(255,255,255,.14)",
   },
-  title: { color: colors.textPrimary, fontSize: 16, fontWeight: fontWeight.bold, maxWidth: '100%' },
-  subtitle: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginBottom: spacing.sm },
-  stars: { marginBottom: spacing.sm },
-  actions: { flexDirection: 'row', gap: spacing.sm, width: '100%' },
+  optionPrimary: {
+    borderColor: "rgba(217,172,84,.5)",
+    backgroundColor: "rgba(217,172,84,.1)",
+  },
+  optionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  optionIconFilled: { backgroundColor: colors.accent },
+  optionIconOutline: { borderWidth: 1, borderColor: "rgba(217,172,84,.5)" },
+  optionText: { flex: 1, gap: 2 },
+  optionTitle: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: fontWeight.bold,
+  },
+  optionDesc: { color: "#a89d88", fontSize: 12.5 },
+  cancel: { height: 48, alignItems: "center", justifyContent: "center" },
+  cancelText: {
+    color: colors.textMuted,
+    fontSize: 14,
+    fontWeight: fontWeight.semibold,
+  },
+  stars: { alignItems: "center", paddingVertical: spacing.sm },
+  actions: { flexDirection: "row", gap: spacing.sm },
   flex: { flex: 1 },
   primary: {
-    width: '100%',
-    alignItems: 'center',
-    paddingVertical: spacing.sm + 4,
+    height: BUTTON_H,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: radius.full,
     backgroundColor: colors.accent,
   },
-  primaryText: { color: colors.textOnAccent, fontSize: 12, fontWeight: fontWeight.bold, letterSpacing: 1 },
+  primaryText: {
+    color: colors.textOnAccent,
+    fontSize: 14,
+    fontWeight: fontWeight.bold,
+  },
   secondary: {
-    width: '100%',
-    alignItems: 'center',
-    paddingVertical: spacing.sm + 4,
+    height: BUTTON_H,
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
   },
-  secondaryText: { color: colors.textPrimary, fontSize: 12, fontWeight: fontWeight.bold, letterSpacing: 1 },
-  cancel: {
-    color: colors.textMuted,
-    fontSize: 10.5,
+  secondaryText: {
+    color: colors.textPrimary,
+    fontSize: 14,
     fontWeight: fontWeight.semibold,
-    letterSpacing: 1.5,
-    marginTop: spacing.xs,
   },
 });

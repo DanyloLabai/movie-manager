@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useTranslation } from 'react-i18next';
-import { colors, spacing, fontWeight } from '../../theme';
+import { StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useTranslation } from "react-i18next";
+import { colors, spacing, fontWeight } from "../../theme";
 
 export interface ProfileStatTile {
   value: string | number;
@@ -15,15 +15,13 @@ interface ProfileStatsStripProps {
   totalCount: number;
 }
 
-// Ported from movie-frontend's ProfileStatsStrip.tsx (mobile/`md:hidden`
-// variant): a 3-up stat grid with dividers, then a completion-rate bar.
 export default function ProfileStatsStrip({
   stats,
   watchedCount,
   completionRate,
   totalCount,
 }: ProfileStatsStripProps) {
-  const { t } = useTranslation('profile');
+  const { t } = useTranslation("profile");
   const clampedRate = Math.max(0, Math.min(100, completionRate));
 
   return (
@@ -32,27 +30,32 @@ export default function ProfileStatsStrip({
         {stats.map((s, i) => (
           <View
             key={s.label}
-            style={[
-              styles.statItem,
-              i > 0 && i < stats.length - 1 && styles.statItemBordered,
-            ]}
+            style={[styles.statItem, i > 0 && styles.statItemBordered]}
           >
             <Text style={styles.statValue}>{s.value}</Text>
-            <Text style={styles.statLabel}>{s.label}</Text>
+            <Text
+              style={styles.statLabel}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {s.label}
+            </Text>
           </View>
         ))}
       </View>
 
       <View style={styles.completion}>
         <View style={styles.completionHeader}>
-          <Text style={styles.completionLabel}>{t('stats.completion').toUpperCase()}</Text>
+          <Text style={styles.completionLabel}>
+            {t("stats.completion").toUpperCase()}
+          </Text>
           <Text style={styles.completionValue}>
             {completionRate}% · {watchedCount}/{totalCount}
           </Text>
         </View>
         <View style={styles.completionTrack}>
           <LinearGradient
-            colors={['#a87c2e', '#d9ac54']}
+            colors={["#a87c2e", "#d9ac54"]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[styles.completionFill, { width: `${clampedRate}%` }]}
@@ -69,16 +72,16 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   statItem: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 2,
+    paddingHorizontal: 2,
   },
   statItemBordered: {
     borderLeftWidth: 1,
-    borderRightWidth: 1,
     borderColor: colors.borderSubtle,
   },
   statValue: {
@@ -91,23 +94,23 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: fontWeight.medium,
     letterSpacing: 1.5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   completion: {
     marginTop: spacing.md,
     gap: spacing.xs + 2,
   },
   completionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "baseline",
   },
   completionLabel: {
     color: colors.textMuted,
     fontSize: 10,
     fontWeight: fontWeight.medium,
     letterSpacing: 2,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   completionValue: {
     color: colors.accentBright,
@@ -117,11 +120,11 @@ const styles = StyleSheet.create({
   completionTrack: {
     height: 3,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,.08)',
-    overflow: 'hidden',
+    backgroundColor: "rgba(255,255,255,.08)",
+    overflow: "hidden",
   },
   completionFill: {
-    height: '100%',
+    height: "100%",
     borderRadius: 2,
   },
 });

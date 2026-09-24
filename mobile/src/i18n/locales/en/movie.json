@@ -19,6 +19,7 @@
   "addToWatchlist": "+ Add",
   "watched": "✓ Watched",
   "markWatched": "✓ Mark Watched",
+  "inWatchlist": "⋯ In Plans",
   "trailer": "Trailer",
   "removeFromWatchlist": "Remove From Watchlist",
   "yourRating": "Your Rating",
@@ -49,11 +50,27 @@
   "addModal": {
     "choiceDesc": "Add it to your watchlist, or mark it as already watched?",
     "toWatchlist": "To watchlist",
-    "watched": "Watched"
+    "watched": "Watched",
+    "title": "Add “{{title}}”",
+    "subtitle": "Where should it go?",
+    "watchlistDesc": "Save it for later",
+    "watchedTitle": "Already watched",
+    "watchedDesc": "Mark it watched and rate it"
   },
   "toasts": {
     "ratingSaved": "Rating saved!",
     "ratingCleared": "Rating cleared."
   },
-  "findSimilar": "Find similar"
+  "findSimilar": "Find similar",
+  "actions": {
+    "addToList": "Add to my list",
+    "favorite": "Favorite",
+    "trailer": "Trailer",
+    "rewatch": "Rewatch",
+    "similar": "Similar",
+    "watchedBadge": "Watched",
+    "markWatched": "Mark watched",
+    "inWatchlist": "In your watchlist",
+    "removeFromLists": "Remove from my lists"
+  }
 }
