@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useEffectEvent } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -37,6 +37,10 @@ export default function DiscoverScreen() {
   const { toastMessage, showToast } = useToast();
   const position = useRef(new Animated.ValueXY()).current;
 
+  const notifyLoadError = useEffectEvent((err: unknown) =>
+    showToast(getErrorMessage(err, t('discoverScreen.loadError'))),
+  );
+
   useEffect(() => {
     getSwipeFeed()
       .then((feed) => {
@@ -44,9 +48,8 @@ export default function DiscoverScreen() {
         setRemainingToday(feed.remainingToday);
         setDailyLimit(feed.dailyLimit);
       })
-      .catch((err) => showToast(getErrorMessage(err, t('discoverScreen.loadError'))))
+      .catch(notifyLoadError)
       .finally(() => setIsLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const current = cards[index];

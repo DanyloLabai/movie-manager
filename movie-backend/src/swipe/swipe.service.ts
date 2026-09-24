@@ -205,7 +205,12 @@ export class SwipeService {
   ): Promise<number[]> {
     const details = await Promise.all(
       tmdbIds.map((id) =>
-        this.moviesService.getMovieDetails(id, 'movie').catch(() => null),
+        this.moviesService
+          .getMovieDetails(id, 'movie')
+          .catch((err: unknown) => {
+            this.logger.warn(`No details for movie ${id}: ${String(err)}`);
+            return null;
+          }),
       ),
     );
 

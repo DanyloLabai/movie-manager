@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -9,11 +9,11 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useTranslation } from 'react-i18next';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   acceptFriendRequest,
   declineFriendRequest,
@@ -26,11 +26,12 @@ import {
   type FriendRequest,
   type FeedItem,
   type SearchUser,
-} from '../api/users.api';
-import { colors, spacing, radius } from '../theme';
-import type { MainStackParamList } from '../navigation/MainStack';
+} from "../api/users.api";
+import { colors, spacing, radius } from "../theme";
+import type { MainStackParamList } from "../navigation/MainStack";
+import { logError } from "../utils/logError";
 
-type Mode = 'list' | 'requests' | 'feed' | 'search';
+type Mode = "list" | "requests" | "feed" | "search";
 
 interface FriendsModalProps {
   visible: boolean;
@@ -39,9 +40,20 @@ interface FriendsModalProps {
   onFriendsChange: (friends: Friend[]) => void;
 }
 
-function Avatar({ url, name, size = 38 }: { url: string | null; name: string; size?: number }) {
+function Avatar({
+  url,
+  name,
+  size = 38,
+}: {
+  url: string | null;
+  name: string;
+  size?: number;
+}) {
   return url ? (
-    <Image source={{ uri: url }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+    <Image
+      source={{ uri: url }}
+      style={{ width: size, height: size, borderRadius: size / 2 }}
+    />
   ) : (
     <View
       style={[
@@ -54,16 +66,22 @@ function Avatar({ url, name, size = 38 }: { url: string | null; name: string; si
   );
 }
 
-export default function FriendsModal({ visible, friends, onClose, onFriendsChange }: FriendsModalProps) {
-  const { t } = useTranslation('social');
-  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  const [mode, setMode] = useState<Mode>('list');
+export default function FriendsModal({
+  visible,
+  friends,
+  onClose,
+  onFriendsChange,
+}: FriendsModalProps) {
+  const { t } = useTranslation("social");
+  const navigation =
+    useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const [mode, setMode] = useState<Mode>("list");
   const [requests, setRequests] = useState<FriendRequest[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [feedItems, setFeedItems] = useState<FeedItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(false);
   const [feedLoaded, setFeedLoaded] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchUser[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -72,16 +90,16 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
     if (!visible) return;
     getFriendRequests()
       .then(setRequests)
-      .catch(() => {})
+      .catch(logError("FriendsModal: getFriendRequests"))
       .finally(() => setRequestsLoading(false));
   }, [visible]);
 
   useEffect(() => {
-    if (mode !== 'feed' || feedLoaded) return;
+    if (mode !== "feed" || feedLoaded) return;
     setFeedLoading(true);
     getFriendsFeed()
       .then(setFeedItems)
-      .catch(() => {})
+      .catch(logError("FriendsModal: getFriendsFeed"))
       .finally(() => {
         setFeedLoading(false);
         setFeedLoaded(true);
@@ -89,7 +107,7 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
   }, [mode, feedLoaded]);
 
   useEffect(() => {
-    if (mode !== 'search') return;
+    if (mode !== "search") return;
     const trimmed = searchQuery.trim();
     if (trimmed.length < 2) {
       setSearchResults([]);
@@ -99,7 +117,7 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
     const timeout = setTimeout(() => {
       searchUsers(trimmed)
         .then(setSearchResults)
-        .catch(() => {})
+        .catch(logError("FriendsModal: searchUsers"))
         .finally(() => setSearchLoading(false));
     }, 350);
     return () => clearTimeout(timeout);
@@ -110,9 +128,6 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
     try {
       await acceptFriendRequest(id);
       setRequests((prev) => prev.filter((r) => r.id !== id));
-      // Best-effort refresh — the accepted requester isn't in `friends` yet
-      // locally, so refetching would need another round trip; the parent
-      // will pick it up next time it reloads the profile.
     } finally {
       setBusyId(null);
     }
@@ -142,11 +157,15 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
     setBusyId(userId);
     try {
       const result = await addFriend(userId);
-      const accepted = result.status === 'accepted';
+      const accepted = result.status === "accepted";
       setSearchResults((prev) =>
         prev.map((u) =>
           u.id === userId
-            ? { ...u, isFriend: accepted || u.isFriend, requestPending: !accepted }
+            ? {
+                ...u,
+                isFriend: accepted || u.isFriend,
+                requestPending: !accepted,
+              }
             : u,
         ),
       );
@@ -157,22 +176,32 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
 
   const goToUser = (userId: number) => {
     onClose();
-    navigation.navigate('PublicProfile', { userId });
+    navigation.navigate("PublicProfile", { userId });
   };
 
   const tabs: Array<{ key: Mode; label: string; count?: number }> = [
-    { key: 'list', label: t('friendsModal.tabs.friends') },
-    { key: 'requests', label: t('friendsModal.tabs.requests'), count: requests.length || undefined },
-    { key: 'feed', label: t('friendsModal.tabs.feed') },
+    { key: "list", label: t("friendsModal.tabs.friends") },
+    {
+      key: "requests",
+      label: t("friendsModal.tabs.requests"),
+      count: requests.length || undefined,
+    },
+    { key: "feed", label: t("friendsModal.tabs.feed") },
   ];
 
   return (
-    <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent
+      onRequestClose={onClose}
+    >
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>
-              {t('friendsModal.title').toUpperCase()} <Text style={styles.headerCount}>· {friends.length}</Text>
+              {t("friendsModal.title").toUpperCase()}{" "}
+              <Text style={styles.headerCount}>· {friends.length}</Text>
             </Text>
             <Pressable onPress={onClose} hitSlop={8}>
               <Ionicons name="close" size={22} color={colors.textMuted} />
@@ -183,59 +212,82 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
             {tabs.map((tab) => (
               <Pressable
                 key={tab.key}
-                style={[styles.tabPill, mode === tab.key && styles.tabPillActive]}
+                style={[
+                  styles.tabPill,
+                  mode === tab.key && styles.tabPillActive,
+                ]}
                 onPress={() => setMode(tab.key)}
               >
-                <Text style={[styles.tabPillText, mode === tab.key && styles.tabPillTextActive]}>
+                <Text
+                  style={[
+                    styles.tabPillText,
+                    mode === tab.key && styles.tabPillTextActive,
+                  ]}
+                >
                   {tab.label}
-                  {tab.count ? ` ${tab.count}` : ''}
+                  {tab.count ? ` ${tab.count}` : ""}
                 </Text>
               </Pressable>
             ))}
             <Pressable
-              style={[styles.searchButton, mode === 'search' && styles.searchButtonActive]}
-              onPress={() => setMode('search')}
+              style={[
+                styles.searchButton,
+                mode === "search" && styles.searchButtonActive,
+              ]}
+              onPress={() => setMode("search")}
             >
               <Ionicons
                 name="search"
                 size={16}
-                color={mode === 'search' ? colors.accent : colors.textMuted}
+                color={mode === "search" ? colors.accent : colors.textMuted}
               />
             </Pressable>
           </View>
 
           <View style={styles.body}>
-            {mode === 'search' ? (
+            {mode === "search" ? (
               <View style={styles.flexFill}>
                 <TextInput
                   style={styles.searchInput}
-                  placeholder={t('friendsModal.searchPlaceholder')}
+                  placeholder={t("friendsModal.searchPlaceholder")}
                   placeholderTextColor={colors.textFaint}
                   value={searchQuery}
                   onChangeText={setSearchQuery}
                   autoFocus
                 />
                 {searchLoading ? (
-                  <ActivityIndicator color={colors.accent} style={styles.loadingSpacer} />
+                  <ActivityIndicator
+                    color={colors.accent}
+                    style={styles.loadingSpacer}
+                  />
                 ) : (
                   <FlatList
                     data={searchResults}
                     keyExtractor={(u) => String(u.id)}
                     ListEmptyComponent={
                       searchQuery.trim().length < 2 ? null : (
-                        <Text style={styles.emptyText}>{t('friendsModal.noUsersFound')}</Text>
+                        <Text style={styles.emptyText}>
+                          {t("friendsModal.noUsersFound")}
+                        </Text>
                       )
                     }
                     renderItem={({ item }) => (
                       <View style={styles.row}>
-                        <Pressable style={styles.rowMain} onPress={() => goToUser(item.id)}>
+                        <Pressable
+                          style={styles.rowMain}
+                          onPress={() => goToUser(item.id)}
+                        >
                           <Avatar url={item.avatarUrl} name={item.username} />
                           <Text style={styles.rowName}>{item.username}</Text>
                         </Pressable>
                         {item.isFriend ? (
-                          <Text style={styles.rowStatusText}>✓ {t('friendsModal.friendsStatus')}</Text>
+                          <Text style={styles.rowStatusText}>
+                            ✓ {t("friendsModal.friendsStatus")}
+                          </Text>
                         ) : item.requestPending ? (
-                          <Text style={styles.rowStatusTextMuted}>{t('friendsModal.sent')}</Text>
+                          <Text style={styles.rowStatusTextMuted}>
+                            {t("friendsModal.sent")}
+                          </Text>
                         ) : (
                           <Pressable
                             style={styles.smallButton}
@@ -243,7 +295,9 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
                             disabled={busyId === item.id}
                           >
                             <Text style={styles.smallButtonText}>
-                              {busyId === item.id ? '…' : t('friendsModal.add').toUpperCase()}
+                              {busyId === item.id
+                                ? "…"
+                                : t("friendsModal.add").toUpperCase()}
                             </Text>
                           </Pressable>
                         )}
@@ -252,22 +306,34 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
                   />
                 )}
               </View>
-            ) : mode === 'requests' ? (
+            ) : mode === "requests" ? (
               requestsLoading ? (
-                <ActivityIndicator color={colors.accent} style={styles.loadingSpacer} />
+                <ActivityIndicator
+                  color={colors.accent}
+                  style={styles.loadingSpacer}
+                />
               ) : (
                 <FlatList
                   data={requests}
                   keyExtractor={(r) => String(r.id)}
-                  ListEmptyComponent={<Text style={styles.emptyText}>{t('friendsModal.noPendingRequests')}</Text>}
+                  ListEmptyComponent={
+                    <Text style={styles.emptyText}>
+                      {t("friendsModal.noPendingRequests")}
+                    </Text>
+                  }
                   renderItem={({ item }) => (
                     <View style={styles.row}>
                       <Pressable
                         style={styles.rowMain}
                         onPress={() => goToUser(item.fromUser.id)}
                       >
-                        <Avatar url={item.fromUser.avatarUrl} name={item.fromUser.username} />
-                        <Text style={styles.rowName}>{item.fromUser.username}</Text>
+                        <Avatar
+                          url={item.fromUser.avatarUrl}
+                          name={item.fromUser.username}
+                        />
+                        <Text style={styles.rowName}>
+                          {item.fromUser.username}
+                        </Text>
                       </Pressable>
                       <View style={styles.requestActions}>
                         <Pressable
@@ -275,62 +341,90 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
                           onPress={() => void handleAccept(item.id)}
                           disabled={busyId === item.id}
                         >
-                          <Ionicons name="checkmark" size={14} color={colors.textOnAccent} />
+                          <Ionicons
+                            name="checkmark"
+                            size={14}
+                            color={colors.textOnAccent}
+                          />
                         </Pressable>
                         <Pressable
                           onPress={() => void handleDecline(item.id)}
                           disabled={busyId === item.id}
                           hitSlop={6}
                         >
-                          <Ionicons name="close" size={18} color={colors.textFaint} />
+                          <Ionicons
+                            name="close"
+                            size={18}
+                            color={colors.textFaint}
+                          />
                         </Pressable>
                       </View>
                     </View>
                   )}
                 />
               )
-            ) : mode === 'feed' ? (
+            ) : mode === "feed" ? (
               feedLoading ? (
-                <ActivityIndicator color={colors.accent} style={styles.loadingSpacer} />
+                <ActivityIndicator
+                  color={colors.accent}
+                  style={styles.loadingSpacer}
+                />
               ) : (
                 <FlatList
                   data={feedItems}
                   keyExtractor={(f) => String(f.id)}
-                  ListEmptyComponent={<Text style={styles.emptyText}>{t('friendsModal.noRecentActivity')}</Text>}
+                  ListEmptyComponent={
+                    <Text style={styles.emptyText}>
+                      {t("friendsModal.noRecentActivity")}
+                    </Text>
+                  }
                   renderItem={({ item }) => (
                     <Pressable
                       style={styles.row}
                       onPress={() => {
                         onClose();
-                        navigation.navigate('MovieDetail', {
+                        navigation.navigate("MovieDetail", {
                           movieId: item.tmdbId,
                           title: item.title,
-                          mediaType: item.mediaType === 'tv' ? 'tv' : 'movie',
+                          mediaType: item.mediaType === "tv" ? "tv" : "movie",
                         });
                       }}
                     >
-                      <Avatar url={item.user.avatarUrl} name={item.user.username} />
+                      <Avatar
+                        url={item.user.avatarUrl}
+                        name={item.user.username}
+                      />
                       <Text style={styles.feedText} numberOfLines={2}>
-                        <Text style={styles.rowName}>{item.user.username}</Text>{' '}
-                        <Text style={styles.rowStatusTextMuted}>{item.type.replace('_', ' ')}</Text>{' '}
+                        <Text style={styles.rowName}>{item.user.username}</Text>{" "}
+                        <Text style={styles.rowStatusTextMuted}>
+                          {item.type.replace("_", " ")}
+                        </Text>{" "}
                         <Text style={styles.rowStatusText}>{item.title}</Text>
                       </Text>
                       {item.posterUrl ? (
-                        <Image source={{ uri: item.posterUrl }} style={styles.feedPoster} />
+                        <Image
+                          source={{ uri: item.posterUrl }}
+                          style={styles.feedPoster}
+                        />
                       ) : null}
                     </Pressable>
                   )}
                 />
               )
             ) : friends.length === 0 ? (
-              <Text style={styles.emptyText}>{t('friendsModal.noFriendsYet')}</Text>
+              <Text style={styles.emptyText}>
+                {t("friendsModal.noFriendsYet")}
+              </Text>
             ) : (
               <FlatList
                 data={friends}
                 keyExtractor={(f) => String(f.id)}
                 renderItem={({ item }) => (
                   <View style={styles.row}>
-                    <Pressable style={styles.rowMain} onPress={() => goToUser(item.id)}>
+                    <Pressable
+                      style={styles.rowMain}
+                      onPress={() => goToUser(item.id)}
+                    >
                       <Avatar url={item.avatarUrl} name={item.username} />
                       <Text style={styles.rowName}>{item.username}</Text>
                     </Pressable>
@@ -339,7 +433,11 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
                       disabled={busyId === item.id}
                       hitSlop={6}
                     >
-                      <Ionicons name="close" size={18} color={colors.textFaint} />
+                      <Ionicons
+                        name="close"
+                        size={18}
+                        color={colors.textFaint}
+                      />
                     </Pressable>
                   </View>
                 )}
@@ -355,25 +453,25 @@ export default function FriendsModal({ visible, friends, onClose, onFriendsChang
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0,0,0,0.8)",
+    alignItems: "center",
+    justifyContent: "center",
     padding: spacing.lg,
   },
   sheet: {
-    width: '100%',
+    width: "100%",
     maxWidth: 420,
     backgroundColor: colors.surfaceMuted,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    maxHeight: '80%',
+    maxHeight: "80%",
     paddingBottom: spacing.lg,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
@@ -382,14 +480,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: colors.textPrimary,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: 2,
   },
   headerCount: {
     color: colors.accentBright,
   },
   tabRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.xs,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm + 4,
@@ -408,22 +506,22 @@ const styles = StyleSheet.create({
   tabPillText: {
     color: colors.textMuted,
     fontSize: 10.5,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 1,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   tabPillTextActive: {
     color: colors.textOnAccent,
   },
   searchButton: {
-    marginLeft: 'auto',
+    marginLeft: "auto",
     width: 30,
     height: 30,
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: colors.borderSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   searchButtonActive: {
     borderColor: colors.accent,
@@ -453,13 +551,13 @@ const styles = StyleSheet.create({
   emptyText: {
     color: colors.textFaint,
     fontSize: 13,
-    textAlign: 'center',
-    fontStyle: 'italic',
+    textAlign: "center",
+    fontStyle: "italic",
     paddingVertical: spacing.lg,
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
     paddingVertical: spacing.sm + 4,
     borderBottomWidth: 1,
@@ -467,28 +565,28 @@ const styles = StyleSheet.create({
   },
   rowMain: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
   rowName: {
     color: colors.textPrimary,
     fontSize: 13.5,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   rowStatusText: {
     color: colors.accentBright,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   rowStatusTextMuted: {
     color: colors.textFaint,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   requestActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: spacing.sm,
   },
   acceptButton: {
@@ -496,8 +594,8 @@ const styles = StyleSheet.create({
     height: 26,
     borderRadius: 13,
     backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   smallButton: {
     backgroundColor: colors.accent,
@@ -508,7 +606,7 @@ const styles = StyleSheet.create({
   smallButtonText: {
     color: colors.textOnAccent,
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   feedText: {
     flex: 1,
@@ -521,12 +619,12 @@ const styles = StyleSheet.create({
   },
   avatarPlaceholder: {
     backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarInitial: {
     color: colors.textOnAccent,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });

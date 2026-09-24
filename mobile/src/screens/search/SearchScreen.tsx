@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useEffectEvent } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -54,6 +54,7 @@ import AddMovieModal from "../../components/AddMovieModal";
 import { colors, spacing, radius, fontWeight } from "../../theme";
 import type { AppTabsParamList } from "../../navigation/AppTabs";
 import type { MainStackParamList } from "../../navigation/MainStack";
+import { logError, logFallback } from "../../utils/logError";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<AppTabsParamList, "Search">,
@@ -376,12 +377,12 @@ export default function SearchScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     Promise.all([
-      getTrending().catch(() => []),
-      getUpcomingMovies().catch(() => []),
-      getRecommendations().catch(() => []),
-      getBecauseYouWatched().catch(() => null),
-      getFriendsLastWatched().catch(() => []),
-      getProfile().catch(() => null),
+      getTrending().catch(logFallback("SearchScreen: getTrending", [])),
+      getUpcomingMovies().catch(logFallback("SearchScreen: getUpcomingMovies", [])),
+      getRecommendations().catch(logFallback("SearchScreen: getRecommendations", [])),
+      getBecauseYouWatched().catch(logFallback("SearchScreen: getBecauseYouWatched", null)),
+      getFriendsLastWatched().catch(logFallback("SearchScreen: getFriendsLastWatched", [])),
+      getProfile().catch(logFallback("SearchScreen: getProfile", null)),
     ])
       .then(([t, u, r, b, f, profile]) => {
         setTrending(t);
@@ -403,10 +404,10 @@ export default function SearchScreen({ navigation, route }: Props) {
 
     getSwipeStatus()
       .then(setSwipeStatus)
-      .catch(() => {});
+      .catch(logError("SearchScreen: getSwipeStatus"));
     getSearchHistory()
       .then((items) => setSearchHistory(items.map((i) => i.queryText)))
-      .catch(() => {});
+      .catch(logError("SearchScreen: getSearchHistory"));
   }, []);
 
   const runSearch = (q: string) => {
@@ -422,11 +423,13 @@ export default function SearchScreen({ navigation, route }: Props) {
         setResults(res);
         getSearchHistory()
           .then((items) => setSearchHistory(items.map((i) => i.queryText)))
-          .catch(() => {});
+          .catch(logError("SearchScreen: getSearchHistory"));
       })
       .catch((err) => setError(getErrorMessage(err, t("search.searchFailed"))))
       .finally(() => setIsSearching(false));
   };
+
+  const runSearchForQuery = useEffectEvent((q: string) => runSearch(q));
 
   useEffect(() => {
     const trimmed = query.trim();
@@ -439,9 +442,8 @@ export default function SearchScreen({ navigation, route }: Props) {
     }
     similarActiveRef.current = false;
     setSimilarToTitle(null);
-    const timeout = setTimeout(() => runSearch(trimmed), 350);
+    const timeout = setTimeout(() => runSearchForQuery(trimmed), 350);
     return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
   const similarTo = route.params?.similarTo;
@@ -459,8 +461,7 @@ export default function SearchScreen({ navigation, route }: Props) {
       .catch((err) => setError(getErrorMessage(err, t("search.searchFailed"))))
       .finally(() => setIsSearching(false));
     navigation.setParams({ similarTo: undefined });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [similarTo]);
+  }, [similarTo, navigation, t]);
 
   const goToMovie = (item: MovieResult) => {
     navigation.navigate("MovieDetail", {
@@ -485,7 +486,7 @@ export default function SearchScreen({ navigation, route }: Props) {
     } catch {
       getSearchHistory()
         .then((items) => setSearchHistory(items.map((i) => i.queryText)))
-        .catch(() => {});
+        .catch(logError("SearchScreen: getSearchHistory"));
     }
   };
 

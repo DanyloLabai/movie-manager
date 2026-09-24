@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
-import type { Request, Response } from 'express';
+import type { Request, Response, CookieOptions } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -50,13 +50,10 @@ interface AuthenticatedRequest extends Request {
 const REFRESH_COOKIE_NAME = 'refresh_token';
 const REFRESH_COOKIE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
-const refreshCookieOptions = {
+const refreshCookieOptions: CookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-  sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as
-    | 'none'
-    | 'lax',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   path: '/api/auth',
 };
 

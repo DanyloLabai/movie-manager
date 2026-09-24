@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useEffectEvent, useCallback, useRef } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { saveScrollState, consumeScrollState } from "../utils/scrollRestoration";
 import * as moviesApi from "../api/movies.api";
@@ -6,7 +6,7 @@ import * as usersApi from "../api/users.api";
 import type { FriendRequest } from "../api/users.api";
 import * as quizApi from "../api/quiz.api";
 import type { QuizStats } from "../api/quiz.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import { getUserRank } from "../utils/achievements";
 import { formatTimeAgo } from "../utils/time";
 import NotificationBell from "../components/NotificationBell";
@@ -26,6 +26,7 @@ import type {
   ProfileData as ProfileDataType,
 } from "../types/movie.types";
 import type { Friend } from "../types/friend.types";
+import { logError } from "../utils/logError";
 
 const WATCHLIST_PAGE_SIZE = 30;
 const FRIENDS_FEED_PAGE_SIZE = 30;
@@ -84,7 +85,7 @@ export default function Watchlist() {
     quizApi
       .getMyStats()
       .then(setQuizStats)
-      .catch(() => {});
+      .catch(logError("Watchlist: quizApi.getMyStats"));
   }, []);
 
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -93,10 +94,10 @@ export default function Watchlist() {
     usersApi
       .getFriends()
       .then(setFriends)
-      .catch(() => {});
+      .catch(logError("Watchlist: usersApi.getFriends"));
   }, []);
 
-  useEffect(() => {
+  const loadHeaderForListTab = useEffectEvent(() => {
     if (activeTab === "profile") return;
     moviesApi
       .getProfile()
@@ -105,8 +106,11 @@ export default function Watchlist() {
         if (data.avatarUrl !== undefined) setAvatarUrl(data.avatarUrl ?? null);
         setProfileData((prev) => prev ?? data);
       })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch(logError("Watchlist: moviesApi.getProfile"));
+  });
+
+  useEffect(() => {
+    loadHeaderForListTab();
   }, []);
 
   const [ratingModalData, setRatingModalData] = useState<{
@@ -497,7 +501,7 @@ export default function Watchlist() {
   const handleMovieLinkClick = () => saveScrollState(activeTab, movies.length);
 
   return (
-    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
+    <div className="min-h-[100dvh] font-ui text-[#f2ead9] relative overscroll-none selection:bg-[#d9ac54] selection:text-[#14110c]">
       <div className="sm:hidden sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] pt-[env(safe-area-inset-top)]">
         <header className="flex flex-row items-center justify-between gap-3 py-4 px-4 w-full">
           <Link
@@ -958,7 +962,7 @@ function FriendsModal({ onClose }: FriendsModalProps) {
     usersApi
       .getFriendRequests()
       .then(setRequests)
-      .catch(() => {})
+      .catch(logError("Watchlist: usersApi.getFriendRequests"))
       .finally(() => setRequestsLoading(false));
   }, []);
 

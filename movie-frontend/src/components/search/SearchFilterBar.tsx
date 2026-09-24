@@ -1,5 +1,5 @@
 import { TMDB_GENRES } from "../../constants/genres";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import type { SmartSearchFilters } from "../../api/movies.api";
 
 interface SearchFilterBarProps {

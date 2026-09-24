@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import * as moviesApi from "../../api/movies.api";
 import type { WatchlistItem } from "../../types/movie.types";
+import { logError } from "../../utils/logError";
 
 const PAGE_SIZE = 20;
 
@@ -29,7 +30,7 @@ export default function RatingMoviesModal({ rating, onClose }: RatingMoviesModal
         setItems(res || []);
         setHasMore((res?.length || 0) === PAGE_SIZE);
       })
-      .catch(() => {})
+      .catch(logError("RatingMoviesModal: moviesApi.getWatchlist"))
       .finally(() => !cancelled && setIsLoading(false));
     return () => {
       cancelled = true;

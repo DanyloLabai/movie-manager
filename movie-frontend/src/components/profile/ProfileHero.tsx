@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import { formatTimeAgo } from "../../utils/time";
 import type { WatchlistItem } from "../../types/movie.types";
 
@@ -67,6 +67,40 @@ function SharePill({
   );
 }
 
+const HERO_BACKDROP_MASK =
+  "linear-gradient(to bottom, #000 0%, #000 45%, transparent 100%)";
+
+function HeroBackdrop({
+  avatarUrl,
+  opacity,
+}: {
+  avatarUrl: string;
+  opacity: number;
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className="absolute left-1/2 -translate-x-1/2 w-screen sm:w-[calc(100vw-15rem)] top-0 sm:-top-9 -bottom-32 -z-[1] overflow-hidden pointer-events-none"
+      style={{
+        maskImage: HERO_BACKDROP_MASK,
+        WebkitMaskImage: HERO_BACKDROP_MASK,
+      }}
+    >
+      <div
+        className="absolute inset-0"
+        style={{
+          filter: "blur(28px) saturate(1.1)",
+          opacity,
+          transform: "scale(1.15)",
+        }}
+      >
+        <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+      </div>
+      <div className="absolute inset-0 bg-[#12100e]/30" />
+    </div>
+  );
+}
+
 export default function ProfileHero({
   username,
   avatarUrl,
@@ -112,41 +146,24 @@ export default function ProfileHero({
   if (compact) {
     return (
       <div className="-mx-4 sm:-mx-8 font-ui">
-        <div className="relative overflow-hidden h-[180px]">
-          {avatarUrl ? (
-            <div
-              className="absolute inset-0"
-              style={{
-                filter: "blur(28px) saturate(1.1)",
-                opacity: 0.35,
-                transform: "scale(1.15)",
-              }}
-            >
-              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
-            </div>
-          ) : (
-            <div className="absolute inset-0 bg-[#0f0d0a]" />
-          )}
-          {avatarUrl && (
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(180deg, rgba(15,13,10,.4) 0%, #0f0d0a 100%)",
-              }}
-            />
-          )}
+        <div className="relative h-[180px]">
+          {avatarUrl && <HeroBackdrop avatarUrl={avatarUrl} opacity={0.35} />}
 
           <div className="absolute left-0 right-0 bottom-0 px-5 md:px-14 pb-[18px] flex items-end gap-[18px]">
             <div
               className="w-16 h-16 rounded-full shrink-0 flex items-center justify-center font-bold text-[26px] text-[#14110c] overflow-hidden"
               style={{
-                background: "radial-gradient(circle at 35% 30%, #e8c377, #a87c2e)",
+                background:
+                  "radial-gradient(circle at 35% 30%, #e8c377, #a87c2e)",
                 boxShadow: "0 0 0 3px #0f0d0a, 0 0 0 4px rgba(217,172,84,.5)",
               }}
             >
               {avatarUrl ? (
-                <img src={avatarUrl} alt={username} className="w-full h-full object-cover" />
+                <img
+                  src={avatarUrl}
+                  alt={username}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 username.charAt(0).toUpperCase()
               )}
@@ -177,40 +194,15 @@ export default function ProfileHero({
 
   return (
     <div className="-mx-4 sm:-mx-8 font-ui">
-      <div className="relative overflow-hidden h-[230px] md:h-[330px]">
-        {avatarUrl ? (
-          <div
-            className="absolute inset-0"
-            style={{
-              filter: "blur(28px) saturate(1.1)",
-              opacity: 0.55,
-              transform: "scale(1.15)",
-            }}
-          >
-            <img
-              src={avatarUrl}
-              alt=""
-              className="w-full h-full object-cover"
-            />
-          </div>
-        ) : (
-          <div className="absolute inset-0 bg-[#0f0d0a]" />
-        )}
-        {avatarUrl && (
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(180deg, rgba(15,13,10,.28) 0%, rgba(15,13,10,.68) 55%, #0f0d0a 100%)",
-            }}
-          />
-        )}
+      <div className="relative h-[230px] md:h-[330px]">
+        {avatarUrl && <HeroBackdrop avatarUrl={avatarUrl} opacity={0.55} />}
 
         <div className="absolute left-0 right-0 bottom-0 px-5 md:px-14 pb-4 md:pb-7 flex items-end gap-3.5 md:gap-6">
           <div
             className="w-[68px] h-[68px] md:w-24 md:h-24 rounded-full shrink-0 flex items-center justify-center font-bold text-[28px] md:text-[38px] text-[#14110c] overflow-hidden"
             style={{
-              background: "radial-gradient(circle at 35% 30%, #e8c377, #a87c2e)",
+              background:
+                "radial-gradient(circle at 35% 30%, #e8c377, #a87c2e)",
               boxShadow: "0 0 0 3px #0f0d0a, 0 0 0 4px rgba(217,172,84,.5)",
             }}
           >
@@ -262,7 +254,10 @@ export default function ProfileHero({
                   friendsLabel={t("profile_friends")}
                   onOpenFriends={onOpenFriends}
                 />
-                <SharePill shareLabel={t("profile_share")} onShare={handleShare} />
+                <SharePill
+                  shareLabel={t("profile_share")}
+                  onShare={handleShare}
+                />
               </>
             )}
           </div>

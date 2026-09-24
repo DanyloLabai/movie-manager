@@ -54,6 +54,7 @@ import JourneyPath from "../../components/journey/JourneyPath";
 import { colors, spacing, radius } from "../../theme";
 import type { AppTabsParamList } from "../../navigation/AppTabs";
 import type { MainStackParamList } from "../../navigation/MainStack";
+import { logError } from "../../utils/logError";
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<AppTabsParamList, "Profile">,
@@ -103,10 +104,10 @@ export default function ProfileScreen({ route, navigation }: Props) {
   useEffect(() => {
     getFriends()
       .then(setFriends)
-      .catch(() => {});
+      .catch(logError("ProfileScreen: getFriends"));
     getMyStats()
       .then(setQuizStats)
-      .catch(() => {});
+      .catch(logError("ProfileScreen: getMyStats"));
   }, []);
 
   const fetchProfile = useCallback(async () => {
@@ -118,8 +119,7 @@ export default function ProfileScreen({ route, navigation }: Props) {
     } finally {
       setIsLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showToast]);
 
   const fetchPage = useCallback(
     (offset: number) => {
@@ -152,8 +152,7 @@ export default function ProfileScreen({ route, navigation }: Props) {
     } finally {
       setIsLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchPage]);
+  }, [fetchPage, showToast, t]);
 
   useFocusEffect(
     useCallback(() => {

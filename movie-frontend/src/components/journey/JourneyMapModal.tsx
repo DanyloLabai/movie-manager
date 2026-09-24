@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import JourneyMap from "./JourneyMap";
 const MAP_W = 1400;
 const MAP_H = Math.round((MAP_W * 740) / 960);

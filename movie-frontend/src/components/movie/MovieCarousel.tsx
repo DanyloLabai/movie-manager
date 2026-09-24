@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import type { ReactNode } from "react";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import { MovieCard } from "./MovieCard";
 import type { MovieResult } from "../../types/movie.types";
 

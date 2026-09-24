@@ -10,6 +10,11 @@ export async function updateProfile(formData: FormData) {
   return res.data;
 }
 
+export async function removeAvatar() {
+  const res = await api.delete(`/users/me/avatar`);
+  return res.data;
+}
+
 export async function getFriends() {
   const res = await api.get(`/users/friends`);
   return res.data;
@@ -156,6 +161,7 @@ export async function updateTimezone(timezone: string) {
 export default {
   getPublicProfile,
   updateProfile,
+  removeAvatar,
   getFriends,
   addFriend,
   removeFriend,

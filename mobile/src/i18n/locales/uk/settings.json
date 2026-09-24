@@ -34,5 +34,7 @@
     "passwordChanged": "Пароль змінено.",
     "changeError": "Не вдалося змінити пароль.",
     "save": "Зберегти"
-  }
+  },
+  "removeAvatar": "Видалити фото",
+  "avatarRemoved": "Фото видалено"
 }

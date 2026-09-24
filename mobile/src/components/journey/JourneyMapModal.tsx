@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useEffectEvent } from "react";
 import {
   Animated,
   Modal,
@@ -154,11 +154,16 @@ export default function JourneyMapModal({
     });
   }, [viewport, apply, totalCount]);
 
+  const resetView = useEffectEvent(() => reset());
+
   useEffect(() => {
-    if (visible && viewport) reset();
-    if (!visible) setOpenStopId(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (visible && viewport) resetView();
   }, [visible, viewport]);
+
+  const handleClose = () => {
+    setOpenStopId(null);
+    onClose();
+  };
 
   const panResponder = useMemo(
     () =>
@@ -247,7 +252,7 @@ export default function JourneyMapModal({
     <Modal
       visible={visible}
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
       statusBarTranslucent
     >
       <SafeAreaView
@@ -291,7 +296,7 @@ export default function JourneyMapModal({
             styles.closeButton,
             { top: insets.top + 12 },
           ]}
-          onPress={onClose}
+          onPress={handleClose}
           hitSlop={8}
         >
           <Ionicons name="close" size={20} color="#8f8574" />

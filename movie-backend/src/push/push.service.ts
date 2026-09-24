@@ -130,7 +130,13 @@ export class PushService {
         } catch (error: unknown) {
           const statusCode = (error as { statusCode?: number }).statusCode;
           if (statusCode === 404 || statusCode === 410) {
-            await this.pushSubRepo.delete({ id: sub.id }).catch(() => {});
+            await this.pushSubRepo
+              .delete({ id: sub.id })
+              .catch((err: unknown) =>
+                this.logger.warn(
+                  `Could not delete expired web push subscription ${sub.id}: ${String(err)}`,
+                ),
+              );
           } else {
             this.logger.warn(
               `Failed to send web push to subscription ${sub.id}: ${
@@ -143,8 +149,6 @@ export class PushService {
     );
   }
 
-  // Expo's HTTP push API takes no API key for basic sending — just POST the
-  // messages and inspect the returned tickets for delivery errors.
   private async sendExpoPush(
     subscriptions: PushSubscription[],
     payload: PushPayload,
@@ -179,7 +183,11 @@ export class PushService {
           ) {
             await this.pushSubRepo
               .delete({ id: subscriptions[i].id })
-              .catch(() => {});
+              .catch((err: unknown) =>
+                this.logger.warn(
+                  `Could not delete stale Expo push token ${subscriptions[i].id}: ${String(err)}`,
+                ),
+              );
           }
         }),
       );

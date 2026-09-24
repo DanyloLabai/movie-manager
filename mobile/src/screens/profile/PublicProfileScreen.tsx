@@ -73,8 +73,7 @@ export default function PublicProfileScreen({ route, navigation }: Props) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, navigation, t]);
 
   const isLoaded = profile !== null;
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import { LOTR_STOPS } from "../../data/journeyLotr";
 import { getCurrentStopIndex } from "../../utils/journey";
 import JourneyMapGlimpse from "./JourneyMapGlimpse";

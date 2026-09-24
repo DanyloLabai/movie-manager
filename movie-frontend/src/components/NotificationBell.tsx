@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { apiEventBus } from "../api/index";
 import * as usersApi from "../api/users.api";
 import * as moviesApi from "../api/movies.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 
 const POLL_INTERVAL_MS = 60000;
 

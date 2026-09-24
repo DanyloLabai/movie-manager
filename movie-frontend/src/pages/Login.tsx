@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import * as authApi from "../api/auth.api";
-import { useLang } from "../context/LanguageContext";
-import { useAuth } from "../context/AuthContext";
+import { useLang } from "../context/useLang";
+import { useAuth } from "../context/useAuth";
 import { STORAGE_KEYS } from "../constants/storage";
 import AuthLayout from "../components/auth/AuthLayout";
 import { AuthTextField } from "../components/auth/AuthTextField";

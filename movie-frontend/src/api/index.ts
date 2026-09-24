@@ -1,6 +1,7 @@
 import axios from "axios";
 import type { AxiosRequestHeaders } from "axios";
 import { STORAGE_KEYS } from "../constants/storage";
+import { logFallback } from "../utils/logError";
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -40,7 +41,7 @@ async function refreshAccessToken(): Promise<string | null> {
         }
         return null;
       })
-      .catch(() => null)
+      .catch(logFallback("api: refresh token", null))
       .finally(() => {
         refreshPromise = null;
       });

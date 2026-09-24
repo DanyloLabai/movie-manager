@@ -1,5 +1,5 @@
 import type { TranslationKey } from "../../context/LanguageContext";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import { LOTR_STOPS, JOURNEY_VIEWBOX } from "../../data/journeyLotr";
 import { getCurrentStopIndex, isStopRevealed } from "../../utils/journey";
 import lotrMapImg from "../../assets/journey/lotr-map.jpg";

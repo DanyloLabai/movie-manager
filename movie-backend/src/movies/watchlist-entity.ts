@@ -49,6 +49,18 @@ export class WatchlistItem {
   @Column({ default: false })
   notified: boolean;
 
+  @Column({ type: 'int', nullable: true })
+  runtimeMinutes: number | null;
+
+  @Column({ type: 'int', nullable: true })
+  episodeCount: number | null;
+
+  @Column('text', { array: true, nullable: true })
+  genres: string[] | null;
+
+  @Column({ type: 'int', default: 0 })
+  rewatchCount: number;
+
   @CreateDateColumn()
   addedAt: Date;
 

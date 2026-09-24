@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import ReCAPTCHA from "react-google-recaptcha";
 import * as authApi from "../api/auth.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import AuthLayout from "../components/auth/AuthLayout";
 import { AuthTextField } from "../components/auth/AuthTextField";
 import { AuthPasswordField } from "../components/auth/AuthPasswordField";

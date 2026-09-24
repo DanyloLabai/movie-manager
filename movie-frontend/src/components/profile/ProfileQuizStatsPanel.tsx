@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLang } from "../../context/LanguageContext";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
+import { useLang } from "../../context/useLang";
 import * as quizApi from "../../api/quiz.api";
 import type { QuizMonthlyStatsEntry } from "../../api/quiz.api";
 
@@ -34,6 +34,10 @@ export default function ProfileQuizStatsPanel({
   );
   const [index, setIndex] = useState(0);
 
+  const reportAvailability = useEffectEvent((hasData: boolean) =>
+    onAvailabilityChange?.(hasData),
+  );
+
   useEffect(() => {
     let cancelled = false;
     quizApi
@@ -42,19 +46,18 @@ export default function ProfileQuizStatsPanel({
         if (!cancelled) {
           setEntries(data);
           setIndex(0);
-          onAvailabilityChange?.(data.length > 0);
+          reportAvailability(data.length > 0);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setEntries([]);
-          onAvailabilityChange?.(false);
+          reportAvailability(false);
         }
       });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const locale = lang === "uk" ? "uk-UA" : "en-US";

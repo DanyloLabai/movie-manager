@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useEffectEvent } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -37,6 +37,7 @@ import AddMovieModal from '../../components/AddMovieModal';
 import { colors, spacing, radius, fontWeight } from '../../theme';
 import type { AppTabsParamList } from '../../navigation/AppTabs';
 import type { MainStackParamList } from '../../navigation/MainStack';
+import { logError } from '../../utils/logError';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<AppTabsParamList, 'Quiz'>,
@@ -80,6 +81,8 @@ export default function QuizScreen({ navigation }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isDone = !!quiz && (quiz.isSolved || quiz.isFailed);
+  const hasQuiz = !!quiz;
+  const hintsRevealed = quiz?.hintsRevealed;
 
   const statusLabel = (entry: QuizLeaderboardEntry): string => {
     if (entry.todayStatus === 'solved') return t('quizScreen.statusSolved', { score: entry.todayScore });
@@ -88,13 +91,16 @@ export default function QuizScreen({ navigation }: Props) {
     return t('quizScreen.statusNotPlayed');
   };
 
+  const notifyLoadError = useEffectEvent((err: unknown) =>
+    showToast(getErrorMessage(err, t('quizScreen.loadError'))),
+  );
+
   useEffect(() => {
     getTodayQuiz()
       .then(setQuiz)
-      .catch((err) => showToast(getErrorMessage(err, t('quizScreen.loadError'))))
+      .catch(notifyLoadError)
       .finally(() => setIsLoading(false));
-    getFriendsLeaderboard().then(setLeaderboard).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    getFriendsLeaderboard().then(setLeaderboard).catch(logError('QuizScreen: getFriendsLeaderboard'));
   }, []);
 
   useEffect(() => {
@@ -104,18 +110,17 @@ export default function QuizScreen({ navigation }: Props) {
   }, [isDone]);
 
   useEffect(() => {
-    if (!quiz || isDone) return;
+    if (!hasQuiz || isDone) return;
     let cancelled = false;
     getPosterImageBase64()
       .then((uri) => {
         if (!cancelled) setPosterUri(uri);
       })
-      .catch(() => {});
+      .catch(logError('QuizScreen: getPosterImageBase64'));
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quiz?.hintsRevealed, isDone]);
+  }, [hasQuiz, hintsRevealed, isDone]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -127,7 +132,7 @@ export default function QuizScreen({ navigation }: Props) {
     debounceRef.current = setTimeout(() => {
       searchMovies(trimmed, { skipHistory: true })
         .then((results) => setSuggestions(results.slice(0, 6)))
-        .catch(() => {});
+        .catch(logError('QuizScreen: searchMovies'));
     }, 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);

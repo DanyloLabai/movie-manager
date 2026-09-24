@@ -1,4 +1,4 @@
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 
 export default function LangToggle() {
   const { lang, toggleLang } = useLang();

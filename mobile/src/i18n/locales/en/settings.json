@@ -34,5 +34,7 @@
     "passwordChanged": "Password changed.",
     "changeError": "Could not change password.",
     "save": "Save"
-  }
+  },
+  "removeAvatar": "Remove photo",
+  "avatarRemoved": "Photo removed"
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useEffectEvent } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { getMonthlyStats, type QuizMonthlyStatsEntry } from '../../api/quiz.api';
@@ -37,6 +37,10 @@ export default function ProfileQuizStatsPanel({
   const [entries, setEntries] = useState<QuizMonthlyStatsEntry[] | null>(null);
   const [index, setIndex] = useState(0);
 
+  const reportAvailability = useEffectEvent((hasData: boolean) =>
+    onAvailabilityChange?.(hasData),
+  );
+
   useEffect(() => {
     let cancelled = false;
     getMonthlyStats(userId)
@@ -44,18 +48,17 @@ export default function ProfileQuizStatsPanel({
         if (cancelled) return;
         setEntries(data);
         setIndex(0);
-        onAvailabilityChange?.(data.length > 0);
+        reportAvailability(data.length > 0);
       })
       .catch(() => {
         if (!cancelled) {
           setEntries([]);
-          onAvailabilityChange?.(false);
+          reportAvailability(false);
         }
       });
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const locale = i18n.language === 'uk' ? 'uk-UA' : 'en-US';

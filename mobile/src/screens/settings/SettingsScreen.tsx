@@ -11,7 +11,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { getProfile } from '../../api/movies.api';
-import { deleteAccount, updateProfile } from '../../api/users.api';
+import { deleteAccount, removeAvatar, updateProfile } from '../../api/users.api';
 import { getErrorMessage } from '../../utils/getErrorMessage';
 import { isPushSupported, isPushSubscribed, enablePushNotifications, disablePushNotifications } from '../../utils/push';
 import { useToast } from '../../hooks/useToast';
@@ -22,6 +22,7 @@ import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS } from '../../i18n';
 import type { SupportedLanguage } from '../../i18n';
 import type { AppTabsParamList } from '../../navigation/AppTabs';
 import type { MainStackParamList } from '../../navigation/MainStack';
+import { logError } from '../../utils/logError';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<AppTabsParamList, 'Settings'>,
@@ -58,7 +59,7 @@ export default function SettingsScreen({ navigation }: Props) {
         setCurrentUsername(data.username ?? '');
         setAvatarUrl(data.avatarUrl ?? null);
       })
-      .catch(() => {});
+      .catch(logError('SettingsScreen: getProfile'));
   }, []);
 
   useEffect(() => {
@@ -121,6 +122,23 @@ export default function SettingsScreen({ navigation }: Props) {
       );
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
+
+  const handleRemoveAvatar = async () => {
+    setProfileError('');
+    setIsRemovingAvatar(true);
+    try {
+      await removeAvatar();
+      setAvatarUrl(null);
+      setPickedImageUri(null);
+      showToast(t('avatarRemoved'));
+    } catch (err) {
+      setProfileError(getErrorMessage(err, t('profileUpdateError')));
+    } finally {
+      setIsRemovingAvatar(false);
     }
   };
 
@@ -192,6 +210,13 @@ export default function SettingsScreen({ navigation }: Props) {
             </View>
           </Pressable>
           <Text style={styles.avatarHint}>{t('avatarHint').toUpperCase()}</Text>
+          {previewUri ? (
+            <Pressable onPress={() => void handleRemoveAvatar()} disabled={isRemovingAvatar} hitSlop={8}>
+              <Text style={styles.removeAvatarText}>
+                {isRemovingAvatar ? '…' : t('removeAvatar').toUpperCase()}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <Text style={styles.inputLabel}>{t('usernameLabel').toUpperCase()}</Text>
@@ -363,6 +388,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarHint: { color: colors.textMuted, fontSize: 9, fontWeight: fontWeight.semibold, letterSpacing: 1, marginTop: spacing.sm },
+  removeAvatarText: {
+    color: colors.danger,
+    fontSize: 10,
+    fontWeight: fontWeight.semibold,
+    letterSpacing: 1,
+    marginTop: spacing.sm,
+    opacity: 0.85,
+  },
   inputLabel: { color: colors.accentBright, fontSize: 10, fontWeight: fontWeight.bold, letterSpacing: 1, marginBottom: spacing.xs },
   input: {
     color: colors.textPrimary,

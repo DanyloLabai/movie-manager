@@ -1,5 +1,5 @@
-import type { ProfileData, WatchlistItem } from '@movie-manager/shared';
-import { api } from './client';
+import type { ProfileData, WatchlistItem } from "@movie-manager/shared";
+import { api } from "./client";
 
 export interface Friend {
   id: number;
@@ -8,13 +8,15 @@ export interface Friend {
 }
 
 export async function getFriends(): Promise<Friend[]> {
-  const res = await api.get('/users/friends');
+  const res = await api.get("/users/friends");
   return res.data as Friend[];
 }
 
-export async function addFriend(userId: number): Promise<{ status: 'pending' | 'accepted' }> {
+export async function addFriend(
+  userId: number,
+): Promise<{ status: "pending" | "accepted" }> {
   const res = await api.post(`/users/friends/${userId}`);
-  return res.data as { status: 'pending' | 'accepted' };
+  return res.data as { status: "pending" | "accepted" };
 }
 
 export async function removeFriend(friendId: number): Promise<void> {
@@ -30,16 +32,16 @@ export interface SearchUser {
 }
 
 export async function searchUsers(query: string): Promise<SearchUser[]> {
-  const res = await api.get('/users/search', { params: { query } });
+  const res = await api.get("/users/search", { params: { query } });
   return (res.data as SearchUser[]) ?? [];
 }
 
 export type ActivityActionType =
-  | 'watched'
-  | 'rated'
-  | 'added_watchlist'
-  | 'favorited'
-  | 'rewatched';
+  | "watched"
+  | "rated"
+  | "added_watchlist"
+  | "favorited"
+  | "rewatched";
 
 export interface ActivityDayAction {
   tmdbId: number;
@@ -57,7 +59,7 @@ export interface ActivityDay {
 }
 
 export async function getActivityHeatmap(year: number): Promise<ActivityDay[]> {
-  const res = await api.get('/users/me/activity', { params: { year } });
+  const res = await api.get("/users/me/activity", { params: { year } });
   return (res.data as ActivityDay[]) ?? [];
 }
 
@@ -74,7 +76,9 @@ export interface FeedItem {
 }
 
 export async function getFriendsFeed(before?: string): Promise<FeedItem[]> {
-  const res = await api.get('/users/friends/feed', { params: before ? { before } : undefined });
+  const res = await api.get("/users/friends/feed", {
+    params: before ? { before } : undefined,
+  });
   return (res.data as FeedItem[]) ?? [];
 }
 
@@ -85,7 +89,7 @@ export interface FriendRequest {
 }
 
 export async function getFriendRequests(): Promise<FriendRequest[]> {
-  const res = await api.get('/users/friend-requests');
+  const res = await api.get("/users/friend-requests");
   return (res.data as FriendRequest[]) ?? [];
 }
 
@@ -97,8 +101,6 @@ export async function declineFriendRequest(requestId: number): Promise<void> {
   await api.post(`/users/friend-requests/${requestId}/decline`);
 }
 
-// GET /users/public/:id returns the same shape as getProfileData()
-// (movie-backend/src/movies/movies.service.ts) plus these two fields.
 export type PublicProfile = ProfileData & {
   isFriend: boolean;
   requestPending: boolean;
@@ -110,8 +112,6 @@ export async function getPublicProfile(userId: number): Promise<PublicProfile> {
   return res.data as PublicProfile;
 }
 
-// Watched/favorites are paginated separately on public profiles (web
-// PublicProfile.tsx) instead of relying on the truncated `recent` list.
 export async function getPublicWatched(
   userId: number,
   params?: { limit?: number; offset?: number },
@@ -144,19 +144,23 @@ export interface TasteCompatibility {
   }>;
 }
 
-export async function getTasteCompatibility(userId: number): Promise<TasteCompatibility> {
+export async function getTasteCompatibility(
+  userId: number,
+): Promise<TasteCompatibility> {
   const res = await api.get(`/users/public/${userId}/compatibility`);
   return res.data as TasteCompatibility;
 }
 
-// Reported on login/session restore so daily resets follow the user's own
-// midnight (see backend per-user timezone support).
 export async function updateTimezone(timezone: string): Promise<void> {
-  await api.patch('/users/me/timezone', { timezone });
+  await api.patch("/users/me/timezone", { timezone });
+}
+
+export async function removeAvatar(): Promise<void> {
+  await api.delete("/users/me/avatar");
 }
 
 export async function deleteAccount(): Promise<void> {
-  await api.delete('/users/me');
+  await api.delete("/users/me");
 }
 
 export interface SearchHistoryItem {
@@ -164,13 +168,15 @@ export interface SearchHistoryItem {
   createdAt: string;
 }
 
-export async function getSearchHistory(limit = 10): Promise<SearchHistoryItem[]> {
-  const res = await api.get('/users/me/search-history', { params: { limit } });
+export async function getSearchHistory(
+  limit = 10,
+): Promise<SearchHistoryItem[]> {
+  const res = await api.get("/users/me/search-history", { params: { limit } });
   return (res.data as SearchHistoryItem[]) ?? [];
 }
 
 export async function clearSearchHistory(): Promise<void> {
-  await api.delete('/users/me/search-history');
+  await api.delete("/users/me/search-history");
 }
 
 export interface FriendLastWatched {
@@ -184,15 +190,15 @@ export interface FriendLastWatched {
 }
 
 export async function getFriendsLastWatched(): Promise<FriendLastWatched[]> {
-  const res = await api.get('/users/friends/last-watched');
+  const res = await api.get("/users/friends/last-watched");
   return (res.data as FriendLastWatched[]) ?? [];
 }
 
 export async function updateProfile(
   formData: FormData,
-): Promise<Pick<ProfileData, 'username' | 'avatarUrl'>> {
-  const res = await api.patch('/users/profile', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+): Promise<Pick<ProfileData, "username" | "avatarUrl">> {
+  const res = await api.patch("/users/profile", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
   });
-  return res.data as Pick<ProfileData, 'username' | 'avatarUrl'>;
+  return res.data as Pick<ProfileData, "username" | "avatarUrl">;
 }

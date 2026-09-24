@@ -4,7 +4,8 @@ import * as moviesApi from "../api/movies.api";
 import { MovieCard } from "../components/movie/MovieCard";
 import type { MovieResult } from "../types/movie.types";
 import LogoImg from "../assets/logo.png";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
+import { logFallback } from "../utils/logError";
 
 type ProfileResponse = {
   favorites?: Array<{ tmdbId: number }>;
@@ -33,7 +34,7 @@ export default function Top100() {
       try {
         const [topData, profileData] = await Promise.all([
           moviesApi.getTop100(type || "movie"),
-          moviesApi.getProfile().catch(() => null),
+          moviesApi.getProfile().catch(logFallback("Top100: moviesApi.getProfile", null)),
         ]);
 
         setItems(topData);
@@ -173,7 +174,7 @@ export default function Top100() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] relative selection:bg-[#c8963c] selection:text-[#12100e]">
+    <div className="min-h-[100dvh] font-sans text-[#f0e6cc] relative selection:bg-[#c8963c] selection:text-[#12100e]">
       <div className="sticky top-0 z-40 bg-[#12100e]/95 backdrop-blur-md border-b border-[#c8963c]/10 mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex items-center justify-between py-4 px-6 sm:px-12 w-full">
           <Link

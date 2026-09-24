@@ -9,9 +9,10 @@ import {
   isStopRevealed,
 } from "../../utils/journey";
 import JourneyPin, { GOLD, PulseRing } from "./JourneyPin";
+import lotrMapImage from "../../../assets/journey/lotr-map.jpg";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-export const lotrMapImage = require("../../../assets/journey/lotr-map.jpg");
+export { lotrMapImage };
+
 export const LOTR_MAP_ASPECT = 2528 / 1694;
 
 interface JourneyMapProps {

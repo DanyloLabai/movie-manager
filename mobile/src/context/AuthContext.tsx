@@ -5,13 +5,14 @@ import {
   useEffect,
   useMemo,
   useState,
-} from 'react';
-import type { ReactNode } from 'react';
-import type { AuthUser } from '@movie-manager/shared';
-import { secureTokenStorage } from '../storage/secureTokenStorage';
-import { setForceLogoutHandler } from '../api/client';
-import { logout as logoutRequest } from '../api/auth.api';
-import { updateTimezone } from '../api/users.api';
+} from "react";
+import type { ReactNode } from "react";
+import type { AuthUser } from "@movie-manager/shared";
+import { secureTokenStorage } from "../storage/secureTokenStorage";
+import { setForceLogoutHandler } from "../api/client";
+import { logout as logoutRequest } from "../api/auth.api";
+import { updateTimezone } from "../api/users.api";
+import { logError } from "../utils/logError";
 
 interface LoginParams {
   accessToken: string;
@@ -29,12 +30,11 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-// Same as movie-frontend's AuthContext: tell the backend the device timezone on
-// login and session restore so daily resets follow the user's own midnight.
 function reportTimezone() {
   try {
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (timezone) updateTimezone(timezone).catch(() => {});
+    if (timezone)
+      updateTimezone(timezone).catch(logError("AuthContext: updateTimezone"));
   } catch {
     // Best-effort — a missing timezone just leaves the server default.
   }
@@ -42,9 +42,6 @@ function reportTimezone() {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
-  // Starts true — RootNavigator waits for this before rendering Auth vs Main,
-  // otherwise a returning user would flash the login screen every launch
-  // while secure storage is read.
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -61,13 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
-  const login = useCallback(async ({ accessToken, refreshToken, user: newUser }: LoginParams) => {
-    await secureTokenStorage.setAccessToken(accessToken);
-    if (refreshToken) await secureTokenStorage.setRefreshToken(refreshToken);
-    await secureTokenStorage.setUser(newUser);
-    setUser(newUser);
-    reportTimezone();
-  }, []);
+  const login = useCallback(
+    async ({ accessToken, refreshToken, user: newUser }: LoginParams) => {
+      await secureTokenStorage.setAccessToken(accessToken);
+      if (refreshToken) await secureTokenStorage.setRefreshToken(refreshToken);
+      await secureTokenStorage.setUser(newUser);
+      setUser(newUser);
+      reportTimezone();
+    },
+    [],
+  );
 
   const logout = useCallback(async () => {
     try {
@@ -80,10 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  // Wires the shared api client's onForceLogout (fired when a 401 survives a
-  // refresh attempt) back into this context. Module-level indirection
-  // because the client is a plain singleton created outside React — see
-  // mobile/src/api/client.ts.
   useEffect(() => {
     setForceLogoutHandler(() => {
       void secureTokenStorage.clear();
@@ -102,6 +98,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within an AuthProvider');
+  if (!ctx) throw new Error("useAuth must be used within an AuthProvider");
   return ctx;
 }

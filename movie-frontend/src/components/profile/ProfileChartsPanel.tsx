@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { useLang } from "../../context/LanguageContext";
+import { useLang } from "../../context/useLang";
 import ProfileRatingBars from "./ProfileRatingBars";
 import RatingMoviesModal from "./RatingMoviesModal";
 import type { WatchlistItem } from "../../types/movie.types";

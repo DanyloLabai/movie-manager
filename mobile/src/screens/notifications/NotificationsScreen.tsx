@@ -15,6 +15,7 @@ import { getErrorMessage } from '../../utils/getErrorMessage';
 import { formatTimeAgo } from '../../utils/time';
 import { colors, spacing, radius, fontWeight } from '../../theme';
 import type { MainStackParamList } from '../../navigation/MainStack';
+import { logError } from '../../utils/logError';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Notifications'>;
 
@@ -103,7 +104,7 @@ export default function NotificationsScreen({ navigation }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -114,7 +115,7 @@ export default function NotificationsScreen({ navigation }: Props) {
   const handlePress = async (item: AppNotification) => {
     if (!item.isRead) {
       setItems((prev) => prev.map((n) => (n.id === item.id ? { ...n, isRead: true } : n)));
-      void markNotificationRead(item.id).catch(() => {});
+      void markNotificationRead(item.id).catch(logError('NotificationsScreen: markNotificationRead'));
     }
     if (item.tmdbId && item.mediaType) {
       navigation.navigate('MovieDetail', {

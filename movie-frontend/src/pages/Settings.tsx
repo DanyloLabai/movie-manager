@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useLang } from "../context/LanguageContext";
-import { useAuth } from "../context/AuthContext";
+import { useLang } from "../context/useLang";
+import { useAuth } from "../context/useAuth";
 import LangToggle from "../components/LangToggle";
 import LogoIcon from "../components/LogoIcon";
 import * as usersApi from "../api/users.api";
@@ -12,6 +12,7 @@ import {
   enablePushNotifications,
   disablePushNotifications,
 } from "../utils/push";
+import { logError } from "../utils/logError";
 
 export default function Settings() {
   const { t } = useLang();
@@ -49,7 +50,7 @@ export default function Settings() {
         setCurrentUsername(data.username || "");
         setPreviewUrl(data.avatarUrl || null);
       })
-      .catch(() => {});
+      .catch(logError("Settings: moviesApi.getProfile"));
   }, []);
 
   const showToast = (msg: string) => {
@@ -125,6 +126,24 @@ export default function Settings() {
     }
   };
 
+  const [isRemovingAvatar, setIsRemovingAvatar] = useState(false);
+
+  const handleRemoveAvatar = async () => {
+    setProfileError("");
+    setIsRemovingAvatar(true);
+    try {
+      await usersApi.removeAvatar();
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      showToast(t("edit_avatar_removed"));
+    } catch {
+      setProfileError(t("edit_error"));
+    } finally {
+      setIsRemovingAvatar(false);
+    }
+  };
+
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     setDeleteError("");
@@ -142,7 +161,7 @@ export default function Settings() {
     selectedFile !== null || username.trim() !== currentUsername;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative selection:bg-[#d9ac54] selection:text-[#14110c]">
+    <div className="min-h-[100dvh] font-ui text-[#f2ead9] relative selection:bg-[#d9ac54] selection:text-[#14110c]">
       <div className="sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] mb-6 pt-[env(safe-area-inset-top)]">
         <header className="flex items-center justify-between py-4 px-4 sm:px-12 w-full">
           <Link
@@ -241,6 +260,16 @@ export default function Settings() {
             <p className="text-[9px] text-[#8f8574] mt-2 font-semibold uppercase tracking-wider">
               {t("edit_image")}
             </p>
+            {previewUrl && (
+              <button
+                type="button"
+                onClick={handleRemoveAvatar}
+                disabled={isRemovingAvatar}
+                className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-[#e0554d]/80 hover:text-[#e0554d] transition disabled:opacity-40"
+              >
+                {isRemovingAvatar ? "..." : t("edit_remove_avatar")}
+              </button>
+            )}
           </div>
 
           <div className="mb-4">

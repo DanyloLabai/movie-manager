@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useEffectEvent, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { useLang } from "../context/LanguageContext";
-import { useAuth } from "../context/AuthContext";
-import { useAuthPrompt } from "../context/AuthPromptContext";
+import { useLang } from "../context/useLang";
+import { useAuth } from "../context/useAuth";
+import { useAuthPrompt } from "../context/useAuthPrompt";
 import { NAV_ICONS as ICONS } from "./navIcons";
 
 const VISIBLE_ROUTES = [
@@ -76,6 +76,21 @@ export default function BottomNav() {
 
   const isVisible = VISIBLE_ROUTES.some((r) => location.pathname.startsWith(r));
 
+  const navigateBySwipe = useEffectEvent((dx: number) => {
+    const currentIndex = tabs.findIndex((tab) =>
+      location.pathname.startsWith(tab.to),
+    );
+    if (currentIndex === -1) return;
+    const nextIndex = dx < 0 ? currentIndex + 1 : currentIndex - 1;
+    if (nextIndex < 0 || nextIndex >= tabs.length) return;
+    const nextTab = tabs[nextIndex];
+    if (nextTab.requiresAuth && !isAuthenticated) {
+      open();
+      return;
+    }
+    navigate(nextTab.to);
+  });
+
   useEffect(() => {
     if (!isVisible || isKeyboardOpen) return;
 
@@ -98,18 +113,7 @@ export default function BottomNav() {
       const startEl = start.target instanceof Element ? start.target : null;
       if (startEl?.closest(".overflow-x-auto, input, textarea")) return;
 
-      const currentIndex = tabs.findIndex((tab) =>
-        location.pathname.startsWith(tab.to),
-      );
-      if (currentIndex === -1) return;
-      const nextIndex = dx < 0 ? currentIndex + 1 : currentIndex - 1;
-      if (nextIndex < 0 || nextIndex >= tabs.length) return;
-      const nextTab = tabs[nextIndex];
-      if (nextTab.requiresAuth && !isAuthenticated) {
-        open();
-        return;
-      }
-      navigate(nextTab.to);
+      navigateBySwipe(dx);
     };
 
     document.addEventListener("touchstart", handleTouchStart, { passive: true });
@@ -118,8 +122,7 @@ export default function BottomNav() {
       document.removeEventListener("touchstart", handleTouchStart);
       document.removeEventListener("touchend", handleTouchEnd);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isVisible, isKeyboardOpen, location.pathname, isAuthenticated]);
+  }, [isVisible, isKeyboardOpen]);
 
   if (isKeyboardOpen || !isVisible) {
     return null;

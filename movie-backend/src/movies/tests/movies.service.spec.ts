@@ -7,6 +7,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { of } from 'rxjs';
 import { MoviesService } from '../movies.service';
 import { WatchlistItem } from '../watchlist-entity';
+import { MovieDetailsExtendedDto } from '../dto/movie-details-extended.dto';
 import { User } from '../../users/users.entity';
 import { VectorService } from '../../vector/vector.service';
 import { ActivityService } from '../../activity/activity.service';
@@ -48,6 +49,7 @@ const mockWatchlistRepo = {
   delete: jest.fn(),
   exist: jest.fn(),
   count: jest.fn(),
+  update: jest.fn(),
 };
 
 const mockUsersRepo = {
@@ -77,7 +79,7 @@ const mockConfigService = {
       CAST_LIMIT: 12,
       PROFILE_RECENT_LIMIT: 10,
       PROFILE_FAVORITES_LIMIT: 5,
-      PROFILE_ANALYZE_LIMIT: 30,
+      PROFILE_DETAILS_CONCURRENCY: 8,
       PROFILE_TOP_RATED_LIMIT: 3,
       RECOMMENDATIONS_LIMIT: 20,
       RECOMMENDATIONS_REFERENCE_LIMIT: 10,
@@ -553,6 +555,147 @@ describe('MoviesService', () => {
       await service.searchMovies('fight club');
 
       expect(mockCacheManager.set).toHaveBeenCalled();
+    });
+  });
+
+  describe('getProfileData stats', () => {
+    const detail = (overrides: Partial<MovieDetailsExtendedDto>) =>
+      ({
+        runtime: 100,
+        genres: [{ id: 1, name: 'Drama' }],
+        mediaType: 'movie',
+        ...overrides,
+      }) as MovieDetailsExtendedDto;
+
+    const setupWatched = (watched: WatchlistItem[]) => {
+      mockUsersRepo.findOne.mockResolvedValue({ id: 1, username: 'bob' });
+      mockWatchlistRepo.count.mockResolvedValue(watched.length);
+      mockWatchlistRepo.update.mockResolvedValue(undefined);
+      mockWatchlistRepo.find.mockImplementation(
+        ({ where }: { where: { isWatched?: boolean } }) =>
+          Promise.resolve(where.isWatched === true ? watched : []),
+      );
+    };
+
+    it('uses stored facts for every watched title without calling TMDB', async () => {
+      const watched = Array.from({ length: 35 }, (_, i) =>
+        mockWatchlistItem({
+          id: i + 1,
+          tmdbId: 1000 + i,
+          isWatched: true,
+          runtimeMinutes: 100,
+          episodeCount: 1,
+          genres: ['Drama'],
+          rewatchCount: 0,
+        }),
+      );
+      setupWatched(watched);
+      const detailsSpy = jest.spyOn(service, 'getMovieDetails');
+
+      const { stats } = await service.getProfileData(1);
+
+      expect(detailsSpy).not.toHaveBeenCalled();
+      expect(stats.totalMinutes).toBe(35 * 100);
+      expect(stats.genreDistribution[0]).toEqual({ name: 'Drama', value: 35 });
+    });
+
+    it('fills unfilled rows once and counts a show as runtime x episodes', async () => {
+      setupWatched([
+        mockWatchlistItem({
+          id: 7,
+          tmdbId: 1,
+          mediaType: 'tv',
+          isWatched: true,
+          runtimeMinutes: null,
+        }),
+      ]);
+      jest.spyOn(service, 'getMovieDetails').mockResolvedValue(
+        detail({
+          mediaType: 'tv',
+          runtime: 40,
+          seasons: [
+            { seasonNumber: 1, name: 'S1', episodeCount: 10 },
+            { seasonNumber: 2, name: 'S2', episodeCount: 8 },
+          ],
+        }),
+      );
+
+      const { stats } = await service.getProfileData(1);
+
+      expect(mockWatchlistRepo.update).toHaveBeenCalledWith(
+        { id: 7 },
+        { runtimeMinutes: 40, episodeCount: 18, genres: ['Drama'] },
+      );
+      expect(stats.totalMinutes).toBe(40 * 18);
+    });
+
+    it('counts each rewatch as another full watch', async () => {
+      setupWatched([
+        mockWatchlistItem({
+          isWatched: true,
+          runtimeMinutes: 120,
+          episodeCount: 1,
+          genres: ['Drama'],
+          rewatchCount: 2,
+        }),
+      ]);
+
+      const { stats } = await service.getProfileData(1);
+
+      expect(stats.totalMinutes).toBe(120 * 3);
+    });
+
+    it('stores TV composite genres as their movie genres', async () => {
+      setupWatched([
+        mockWatchlistItem({
+          id: 1,
+          tmdbId: 1,
+          isWatched: true,
+          runtimeMinutes: 100,
+          episodeCount: 1,
+          genres: ['Science Fiction'],
+        }),
+        mockWatchlistItem({
+          id: 2,
+          tmdbId: 2,
+          mediaType: 'tv',
+          isWatched: true,
+          runtimeMinutes: null,
+        }),
+      ]);
+      jest.spyOn(service, 'getMovieDetails').mockResolvedValue(
+        detail({
+          mediaType: 'tv',
+          genres: [{ id: 10765, name: 'Sci-Fi & Fantasy' }],
+          seasons: [{ seasonNumber: 1, name: 'S1', episodeCount: 1 }],
+        }),
+      );
+
+      const { stats } = await service.getProfileData(1);
+
+      expect(stats.genreDistribution).toEqual(
+        expect.arrayContaining([
+          { name: 'Science Fiction', value: 2 },
+          { name: 'Fantasy', value: 1 },
+        ]),
+      );
+      expect(
+        stats.genreDistribution.find((g) => g.name === 'Sci-Fi & Fantasy'),
+      ).toBeUndefined();
+    });
+
+    it('leaves a row unfilled when TMDB fails, without breaking stats', async () => {
+      setupWatched([
+        mockWatchlistItem({ isWatched: true, runtimeMinutes: null }),
+      ]);
+      jest
+        .spyOn(service, 'getMovieDetails')
+        .mockRejectedValue(new Error('TMDB down'));
+
+      const { stats } = await service.getProfileData(1);
+
+      expect(mockWatchlistRepo.update).not.toHaveBeenCalled();
+      expect(stats.totalMinutes).toBe(0);
     });
   });
 });

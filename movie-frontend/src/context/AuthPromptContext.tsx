@@ -1,15 +1,6 @@
-import { createContext, useContext, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
-
-interface AuthPromptContextType {
-  isOpen: boolean;
-  open: () => void;
-  close: () => void;
-}
-
-const AuthPromptContext = createContext<AuthPromptContextType | undefined>(
-  undefined,
-);
+import { AuthPromptContext, type AuthPromptContextType } from "./useAuthPrompt";
 
 export function AuthPromptProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -25,13 +16,4 @@ export function AuthPromptProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthPromptContext.Provider>
   );
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useAuthPrompt() {
-  const ctx = useContext(AuthPromptContext);
-  if (!ctx) {
-    throw new Error("useAuthPrompt must be used within an AuthPromptProvider");
-  }
-  return ctx;
 }

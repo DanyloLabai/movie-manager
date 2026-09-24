@@ -35,8 +35,7 @@ export default function ActorDetailScreen({ route, navigation }: Props) {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actorId]);
+  }, [actorId, navigation, t]);
 
   if (isLoading) {
     return (

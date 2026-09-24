@@ -1,20 +1,32 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { MovieResult, ProfileData } from '@movie-manager/shared';
-import { addToWatchlist, getProfile, getTop100, removeFromWatchlist, toggleFavorite } from '../../api/movies.api';
-import { getErrorMessage } from '../../utils/getErrorMessage';
-import { useToast } from '../../hooks/useToast';
-import MoviePosterCard from '../../components/MoviePosterCard';
-import Toast from '../../components/Toast';
-import { colors, spacing } from '../../theme';
-import type { MainStackParamList } from '../../navigation/MainStack';
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useTranslation } from "react-i18next";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { MovieResult, ProfileData } from "@movie-manager/shared";
+import {
+  addToWatchlist,
+  getProfile,
+  getTop100,
+  removeFromWatchlist,
+  toggleFavorite,
+} from "../../api/movies.api";
+import { getErrorMessage } from "../../utils/getErrorMessage";
+import { useToast } from "../../hooks/useToast";
+import MoviePosterCard from "../../components/MoviePosterCard";
+import Toast from "../../components/Toast";
+import { colors, spacing } from "../../theme";
+import type { MainStackParamList } from "../../navigation/MainStack";
+import { logError } from "../../utils/logError";
 
-type Props = NativeStackScreenProps<MainStackParamList, 'Top100'>;
+type Props = NativeStackScreenProps<MainStackParamList, "Top100">;
 
-// getProfileData() returns more than the shared ProfileData type declares —
-// see the same cast in SearchScreen.tsx/AiChatScreen.tsx.
 interface ProfileResponse {
   favorites?: { tmdbId: number }[];
   watchedIds?: number[];
@@ -30,23 +42,27 @@ function AddFooter({
   onAdd: () => void;
   onRemove: () => void;
 }) {
-  const { t } = useTranslation('social');
+  const { t } = useTranslation("social");
   if (added) {
     return (
       <Pressable style={styles.footerLink} onPress={onRemove}>
-        <Text style={styles.footerLinkText}>✓ {t('top100.added').toUpperCase()}</Text>
+        <Text style={styles.footerLinkText}>
+          ✓ {t("top100.added").toUpperCase()}
+        </Text>
       </Pressable>
     );
   }
   return (
     <Pressable style={styles.footerLink} onPress={onAdd}>
-      <Text style={styles.footerLinkText}>+ {t('top100.addLabel').toUpperCase()}</Text>
+      <Text style={styles.footerLinkText}>
+        + {t("top100.addLabel").toUpperCase()}
+      </Text>
     </Pressable>
   );
 }
 
 export default function Top100Screen({ route, navigation }: Props) {
-  const { t } = useTranslation('social');
+  const { t } = useTranslation("social");
   const [type, setType] = useState(route.params.type);
   const [items, setItems] = useState<MovieResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +80,7 @@ export default function Top100Screen({ route, navigation }: Props) {
         if (!cancelled) setItems(data);
       })
       .catch((err) => {
-        if (!cancelled) setError(getErrorMessage(err, t('top100.loadError')));
+        if (!cancelled) setError(getErrorMessage(err, t("top100.loadError")));
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -72,7 +88,7 @@ export default function Top100Screen({ route, navigation }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [type]);
+  }, [type, t]);
 
   useEffect(() => {
     getProfile()
@@ -84,7 +100,7 @@ export default function Top100Screen({ route, navigation }: Props) {
         setFavoriteIds(new Set(favs));
         setAddedIds(new Set([...favs, ...watched, ...inPlans]));
       })
-      .catch(() => {});
+      .catch(logError("Top100Screen: getProfile"));
   }, []);
 
   const handleAdd = async (item: MovieResult) => {
@@ -97,7 +113,7 @@ export default function Top100Screen({ route, navigation }: Props) {
         mediaType: item.mediaType,
         releaseDate: item.releaseDate,
       });
-      showToast(t('top100.addedToWatchlist'));
+      showToast(t("top100.addedToWatchlist"));
     } catch (err) {
       const apiError = err as { response?: { status?: number } };
       if (apiError.response?.status !== 400) {
@@ -106,7 +122,7 @@ export default function Top100Screen({ route, navigation }: Props) {
           next.delete(item.id);
           return next;
         });
-        showToast(getErrorMessage(err, t('top100.addError')));
+        showToast(getErrorMessage(err, t("top100.addError")));
       }
     }
   };
@@ -119,10 +135,10 @@ export default function Top100Screen({ route, navigation }: Props) {
     });
     try {
       await removeFromWatchlist(item.id);
-      showToast(t('top100.removedFromWatchlist'));
+      showToast(t("top100.removedFromWatchlist"));
     } catch (err) {
       setAddedIds((prev) => new Set(prev).add(item.id));
-      showToast(getErrorMessage(err, t('top100.removeError')));
+      showToast(getErrorMessage(err, t("top100.removeError")));
     }
   };
 
@@ -152,10 +168,10 @@ export default function Top100Screen({ route, navigation }: Props) {
           setFavoriteIds((prev) => new Set(prev).add(item.id));
           setAddedIds((prev) => new Set(prev).add(item.id));
         } catch {
-          showToast(t('top100.favoriteError'));
+          showToast(t("top100.favoriteError"));
         }
       } else {
-        showToast(t('top100.favoriteError'));
+        showToast(t("top100.favoriteError"));
       }
     }
   };
@@ -163,14 +179,22 @@ export default function Top100Screen({ route, navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={styles.filterRow}>
-        {(['movie', 'tv'] as const).map((mediaType) => (
+        {(["movie", "tv"] as const).map((mediaType) => (
           <Pressable
             key={mediaType}
-            style={[styles.filterPill, type === mediaType && styles.filterPillActive]}
+            style={[
+              styles.filterPill,
+              type === mediaType && styles.filterPillActive,
+            ]}
             onPress={() => setType(mediaType)}
           >
-            <Text style={[styles.filterText, type === mediaType && styles.filterTextActive]}>
-              {mediaType === 'movie' ? t('top100.movies') : t('top100.tvShows')}
+            <Text
+              style={[
+                styles.filterText,
+                type === mediaType && styles.filterTextActive,
+              ]}
+            >
+              {mediaType === "movie" ? t("top100.movies") : t("top100.tvShows")}
             </Text>
           </Pressable>
         ))}
@@ -198,7 +222,7 @@ export default function Top100Screen({ route, navigation }: Props) {
               isFavorite={favoriteIds.has(item.id)}
               onToggleFavorite={() => void handleToggleFavorite(item)}
               onPress={() =>
-                navigation.navigate('MovieDetail', {
+                navigation.navigate("MovieDetail", {
                   movieId: item.id,
                   title: item.title,
                   mediaType: item.mediaType,
@@ -228,11 +252,11 @@ const styles = StyleSheet.create({
   },
   center: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
     padding: spacing.lg,
   },
@@ -250,8 +274,8 @@ const styles = StyleSheet.create({
   filterText: {
     color: colors.textMuted,
     fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
+    fontWeight: "700",
+    textTransform: "uppercase",
     letterSpacing: 1,
   },
   filterTextActive: {
@@ -260,7 +284,7 @@ const styles = StyleSheet.create({
   error: {
     color: colors.danger,
     fontSize: 13,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: spacing.sm,
   },
   grid: {
@@ -276,13 +300,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(217,172,84,.16)',
-    alignItems: 'center',
+    borderTopColor: "rgba(217,172,84,.16)",
+    alignItems: "center",
   },
   footerLinkText: {
     color: colors.accentBright,
     fontSize: 10.5,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 1,
   },
 });

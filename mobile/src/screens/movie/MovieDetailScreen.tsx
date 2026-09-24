@@ -47,6 +47,7 @@ import AddMovieModal from "../../components/AddMovieModal";
 import { useToast } from "../../hooks/useToast";
 import { colors, spacing, radius, fontWeight } from "../../theme";
 import type { MainStackParamList } from "../../navigation/MainStack";
+import { logError } from "../../utils/logError";
 
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 const TMDB_BACKDROP_BASE = "https://image.tmdb.org/t/p/original";
@@ -160,13 +161,13 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
       setStatus(statusResult);
       getSimilar(movieId, mediaType)
         .then(setSimilar)
-        .catch(() => {});
+        .catch(logError("MovieDetailScreen: getSimilar"));
       getFriendsWatched(movieId, mediaType)
         .then(setFriendsWatched)
-        .catch(() => {});
+        .catch(logError("MovieDetailScreen: getFriendsWatched"));
       getRatingHistory(movieId)
         .then(setRatingHistory)
-        .catch(() => {});
+        .catch(logError("MovieDetailScreen: getRatingHistory"));
     } catch (err) {
       setError(getErrorMessage(err, t("errors.loadTitle")));
     } finally {
@@ -186,7 +187,7 @@ export default function MovieDetailScreen({ route, navigation }: Props) {
   const refreshHistory = () => {
     getRatingHistory(movieId)
       .then(setRatingHistory)
-      .catch(() => {});
+      .catch(logError("MovieDetailScreen: getRatingHistory"));
   };
 
   const handleAddWatchlist = async () => {

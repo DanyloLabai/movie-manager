@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
 import LogoImg from "../assets/logo.png";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 
 interface KnownFor {
   id: number;
@@ -62,7 +62,7 @@ export default function ActorDetails() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#12100e] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-[#c8963c] border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -70,7 +70,7 @@ export default function ActorDetails() {
 
   if (!actor) {
     return (
-      <div className="min-h-screen bg-[#12100e] text-[#f0e6cc] flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen text-[#f0e6cc] flex flex-col items-center justify-center gap-4">
         <p className="text-base">{t("actor_not_found")}</p>
         <button
           onClick={() => navigate(-1)}
@@ -87,7 +87,7 @@ export default function ActorDetails() {
     : [];
 
   return (
-    <div className="min-h-[100dvh] bg-[#12100e] font-sans text-[#f0e6cc] pb-10 selection:bg-[#c8963c] selection:text-[#12100e]">
+    <div className="min-h-[100dvh] font-sans text-[#f0e6cc] pb-10 selection:bg-[#c8963c] selection:text-[#12100e]">
       <header className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-[#c8963c]/20 bg-[#12100e]/90 backdrop-blur-md sticky top-0 z-40 shadow-lg shadow-[#c8963c]/5 pt-[env(safe-area-inset-top,12px)]">
         <Link
           to="/search"

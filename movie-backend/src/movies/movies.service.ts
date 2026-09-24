@@ -79,7 +79,7 @@ export class MoviesService {
   private readonly CAST_LIMIT: number;
   private readonly PROFILE_RECENT_LIMIT: number;
   private readonly PROFILE_FAVORITES_LIMIT: number;
-  private readonly PROFILE_ANALYZE_LIMIT: number;
+  private readonly PROFILE_DETAILS_CONCURRENCY: number;
   private readonly PROFILE_TOP_RATED_LIMIT: number;
   private readonly RECOMMENDATIONS_LIMIT: number;
   private readonly RECOMMENDATIONS_REFERENCE_LIMIT: number;
@@ -89,11 +89,13 @@ export class MoviesService {
   private readonly MAX_RATING = 10;
   private readonly RATING_STEP = 0.5;
 
-  private readonly EXCLUDED_TV_GENRE_IDS = new Set([
-    10763, // News
-    10764, // Reality
-    10767, // Talk
-  ]);
+  private readonly TV_GENRE_ALIASES: Record<string, string[]> = {
+    'Sci-Fi & Fantasy': ['Science Fiction', 'Fantasy'],
+    'Action & Adventure': ['Action', 'Adventure'],
+    'War & Politics': ['War'],
+  };
+
+  private readonly EXCLUDED_TV_GENRE_IDS = new Set([10763, 10764, 10767]);
 
   constructor(
     private readonly httpService: HttpService,
@@ -140,8 +142,9 @@ export class MoviesService {
       this.configService.get<number>('PROFILE_RECENT_LIMIT') || 10;
     this.PROFILE_FAVORITES_LIMIT =
       this.configService.get<number>('PROFILE_FAVORITES_LIMIT') || 5;
-    this.PROFILE_ANALYZE_LIMIT =
-      this.configService.get<number>('PROFILE_ANALYZE_LIMIT') || 30;
+    this.PROFILE_DETAILS_CONCURRENCY =
+      Number(this.configService.get<number>('PROFILE_DETAILS_CONCURRENCY')) ||
+      8;
     this.PROFILE_TOP_RATED_LIMIT =
       this.configService.get<number>('PROFILE_TOP_RATED_LIMIT') || 3;
 
@@ -152,6 +155,13 @@ export class MoviesService {
       this.configService.get<number>('RECOMMENDATIONS_REFERENCE_LIMIT') || 10;
     this.GENRE_DISTRIBUTION_LIMIT =
       this.configService.get<number>('GENRE_DISTRIBUTION_LIMIT') || 5;
+  }
+
+  private warnAndReturnNull(context: string) {
+    return (err: unknown): null => {
+      this.logger.warn(`${context} failed: ${getErrorMessage(err)}`);
+      return null;
+    };
   }
 
   private async makeRequestWithRetry<T>(
@@ -193,7 +203,7 @@ export class MoviesService {
             headers: { Authorization: `Bearer ${this.tmdbToken}` },
           },
         ),
-      ).catch(() => null),
+      ).catch(this.warnAndReturnNull('TMDB /search/multi')),
     );
 
     const responses = await Promise.all(requests);
@@ -659,7 +669,7 @@ export class MoviesService {
               headers: { Authorization: `Bearer ${this.tmdbToken}` },
             },
           ),
-        ).catch(() => null),
+        ).catch(this.warnAndReturnNull('TMDB /trending/movie/week')),
         firstValueFrom(
           this.httpService.get<TmdbMultiSearchResponseDto>(
             `${this.baseUrl}/trending/tv/week`,
@@ -668,7 +678,7 @@ export class MoviesService {
               headers: { Authorization: `Bearer ${this.tmdbToken}` },
             },
           ),
-        ).catch(() => null),
+        ).catch(this.warnAndReturnNull('TMDB /trending/tv/week')),
       ]);
 
       const trendingMovies = (movieRes?.data.results || [])
@@ -721,7 +731,7 @@ export class MoviesService {
               headers: { Authorization: `Bearer ${this.tmdbToken}` },
             },
           ),
-        ).catch(() => null),
+        ).catch(this.warnAndReturnNull('TMDB /discover/movie')),
         firstValueFrom(
           this.httpService.get<TmdbMultiSearchResponseDto>(
             `${this.baseUrl}/discover/tv`,
@@ -737,7 +747,7 @@ export class MoviesService {
               headers: { Authorization: `Bearer ${this.tmdbToken}` },
             },
           ),
-        ).catch(() => null),
+        ).catch(this.warnAndReturnNull('TMDB /discover/tv')),
       ]);
 
       const upcomingMovies = (movieRes?.data.results || [])
@@ -777,7 +787,7 @@ export class MoviesService {
     tmdbId: number,
     type: string = 'movie',
   ): Promise<MovieDetailsExtendedDto> {
-    const cacheKey = `details_v3:${type}:${tmdbId}`;
+    const cacheKey = `details_v4:${type}:${tmdbId}`;
     const cached =
       await this.cacheManager.get<MovieDetailsExtendedDto>(cacheKey);
     if (cached) return cached;
@@ -785,16 +795,19 @@ export class MoviesService {
     try {
       const endpoint = type === 'tv' ? 'tv' : 'movie';
 
-      const { data } = await firstValueFrom(
-        this.httpService.get<
-          (MovieDetailsResponse | TmdbTvDetailsResponse) & TmdbAppendedFieldsDto
-        >(`${this.baseUrl}/${endpoint}/${tmdbId}`, {
-          params: {
-            language: 'en-US',
-            append_to_response: 'videos,watch/providers,credits',
-          },
-          headers: { Authorization: `Bearer ${this.tmdbToken}` },
-        }),
+      const { data } = await this.makeRequestWithRetry(() =>
+        firstValueFrom(
+          this.httpService.get<
+            (MovieDetailsResponse | TmdbTvDetailsResponse) &
+              TmdbAppendedFieldsDto
+          >(`${this.baseUrl}/${endpoint}/${tmdbId}`, {
+            params: {
+              language: 'en-US',
+              append_to_response: 'videos,watch/providers,credits',
+            },
+            headers: { Authorization: `Bearer ${this.tmdbToken}` },
+          }),
+        ),
       );
 
       const videos: TmdbVideoDto[] = data.videos?.results ?? [];
@@ -842,7 +855,10 @@ export class MoviesService {
           voteAverage: tvData.vote_average,
           posterPath: tvData.poster_path,
           backdropPath: tvData.backdrop_path,
-          runtime: tvData.episode_run_time?.[0] || 0,
+          runtime:
+            tvData.episode_run_time?.[0] ||
+            tvData.last_episode_to_air?.runtime ||
+            0,
           genres: tvData.genres,
           mediaType: 'tv',
           trailerUrl,
@@ -1000,6 +1016,42 @@ export class MoviesService {
     }
   }
 
+  private async fillStatsFacts(item: WatchlistItem): Promise<boolean> {
+    try {
+      const detail = await this.getMovieDetails(item.tmdbId, item.mediaType);
+      const genres = new Set<string>();
+      detail.genres?.forEach((g: GenreDto) =>
+        (this.TV_GENRE_ALIASES[g.name] ?? [g.name]).forEach((name) =>
+          genres.add(name),
+        ),
+      );
+      const facts = {
+        runtimeMinutes: detail.runtime || 0,
+        episodeCount:
+          detail.mediaType === 'tv'
+            ? (detail.seasons ?? []).reduce(
+                (sum, season) => sum + (season.episodeCount || 0),
+                0,
+              ) || 1
+            : 1,
+        genres: [...genres],
+      };
+      await this.watchlistRepo.update({ id: item.id }, facts);
+      Object.assign(item, facts);
+      return true;
+    } catch (err: unknown) {
+      this.logger.warn(
+        `Stats facts: no details for ${item.mediaType} ${item.tmdbId}: ${getErrorMessage(err)}`,
+      );
+      return false;
+    }
+  }
+
+  private fillStatsFactsInBackground(item: WatchlistItem): void {
+    if ((item.runtimeMinutes ?? null) !== null) return;
+    void this.fillStatsFacts(item);
+  }
+
   async getProfileData(userId: number) {
     const [
       user,
@@ -1046,25 +1098,31 @@ export class MoviesService {
       })
       .slice(0, this.PROFILE_TOP_RATED_LIMIT);
 
+    const unfilled = watchedItems.filter(
+      (item) => (item.runtimeMinutes ?? null) === null,
+    );
+    for (
+      let i = 0;
+      i < unfilled.length;
+      i += this.PROFILE_DETAILS_CONCURRENCY
+    ) {
+      await Promise.all(
+        unfilled
+          .slice(i, i + this.PROFILE_DETAILS_CONCURRENCY)
+          .map((item) => this.fillStatsFacts(item)),
+      );
+    }
+
     let totalMinutes = 0;
     const genreCounts: Record<string, number> = {};
 
-    // Most-recently-watched slice (watchedItems is ordered watchedAt DESC)
-    // analyzed to bound the number of TMDB detail lookups per profile load.
-    const itemsToAnalyze = watchedItems.slice(0, this.PROFILE_ANALYZE_LIMIT);
-
-    const detailsResults = await Promise.all(
-      itemsToAnalyze.map((item) =>
-        this.getMovieDetails(item.tmdbId, item.mediaType).catch(() => null),
-      ),
-    );
-
-    detailsResults.forEach((detail) => {
-      if (!detail) return;
-
-      totalMinutes += detail.runtime || 0;
-      detail.genres?.forEach((g: GenreDto) => {
-        genreCounts[g.name] = (genreCounts[g.name] || 0) + 1;
+    watchedItems.forEach((item) => {
+      totalMinutes +=
+        (item.runtimeMinutes ?? 0) *
+        Math.max(item.episodeCount ?? 1, 1) *
+        (1 + (item.rewatchCount ?? 0));
+      item.genres?.forEach((name) => {
+        genreCounts[name] = (genreCounts[name] || 0) + 1;
       });
     });
 
@@ -1299,6 +1357,7 @@ export class MoviesService {
       );
 
     const savedItem = await this.watchlistRepo.save(item);
+    this.fillStatsFactsInBackground(savedItem);
 
     this.achievementsService
       .checkAndNotify(userId)
@@ -1345,7 +1404,9 @@ export class MoviesService {
         this.logger.error(`Failed to log activity: ${getErrorMessage(err)}`),
       );
 
-    return this.watchlistRepo.save(item);
+    const savedItem = await this.watchlistRepo.save(item);
+    this.fillStatsFactsInBackground(savedItem);
+    return savedItem;
   }
 
   async rewatchMovie(userId: number, tmdbId: number, rating?: number) {
@@ -1365,6 +1426,7 @@ export class MoviesService {
 
     item.watchedAt = new Date();
     item.updatedAt = new Date();
+    item.rewatchCount = (item.rewatchCount ?? 0) + 1;
     if (normalizedRating !== null) item.rating = normalizedRating;
 
     this.activityService

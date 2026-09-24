@@ -49,6 +49,19 @@ export class UsersController {
     return this.usersService.updateUserProfile(userId, newUsername, file);
   }
 
+  @Delete('me/avatar')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Remove avatar',
+    description:
+      "Clear the current user's avatar so the initial-letter placeholder is shown (requires authentication)",
+  })
+  @ApiResponse({ status: 200, description: 'Avatar removed' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async removeAvatar(@Req() req: AuthenticatedRequest) {
+    return this.usersService.removeAvatar(req.user.userId);
+  }
+
   @Patch('me/timezone')
   @ApiBearerAuth()
   @ApiOperation({

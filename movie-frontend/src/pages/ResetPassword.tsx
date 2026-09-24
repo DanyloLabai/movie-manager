@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import * as authApi from "../api/auth.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import AuthLayout from "../components/auth/AuthLayout";
 import { AuthPasswordField } from "../components/auth/AuthPasswordField";
 
@@ -59,7 +59,7 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center bg-[#0f0d0a] px-6 text-center font-ui">
+      <div className="min-h-[100dvh] flex items-center justify-center px-6 text-center font-ui">
         <p className="text-red-500 font-bold uppercase tracking-widest text-sm">
           {t("password_new_invalid")}
         </p>

@@ -6,9 +6,9 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import * as moviesApi from "../api/movies.api";
-import { useLang } from "../context/LanguageContext";
-import { useAuth } from "../context/AuthContext";
-import { useAuthPrompt } from "../context/AuthPromptContext";
+import { useLang } from "../context/useLang";
+import { useAuth } from "../context/useAuth";
+import { useAuthPrompt } from "../context/useAuthPrompt";
 import StarRating from "../components/StarRating";
 import LogoIcon from "../components/LogoIcon";
 import type {
@@ -21,6 +21,7 @@ import type {
   FriendWatched as FriendWatchedType,
   SeasonInfo as SeasonInfoType,
 } from "../types/movie.types";
+import { logFallback } from "../utils/logError";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p";
 
@@ -68,8 +69,18 @@ function SectionHeader({
               disabled={!canScrollLeft}
               className="w-[26px] h-[26px] flex items-center justify-center rounded-full border border-white/[.15] text-[#8f8574] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] transition active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
             </button>
           )}
@@ -79,8 +90,18 @@ function SectionHeader({
               disabled={!canScrollRight}
               className="w-[26px] h-[26px] flex items-center justify-center rounded-full border border-white/[.15] text-[#8f8574] hover:border-[#d9ac54]/45 hover:text-[#d9ac54] transition active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 5l7 7-7 7"
+                />
               </svg>
             </button>
           )}
@@ -171,16 +192,16 @@ export default function MovieDetails() {
             ),
             (await import("../api/movies.api"))
               .getStatus(tmdbId)
-              .catch(() => null),
+              .catch(logFallback("MovieDetails: getStatus", null)),
             (await import("../api/movies.api"))
               .getSimilar(tmdbId, mediaType)
-              .catch(() => []),
+              .catch(logFallback("MovieDetails: getSimilar", [])),
             (await import("../api/movies.api"))
               .getFriendsWatched(tmdbId, mediaType)
-              .catch(() => []),
+              .catch(logFallback("MovieDetails: getFriendsWatched", [])),
             (await import("../api/movies.api"))
               .getRatingHistory(tmdbId)
-              .catch(() => []),
+              .catch(logFallback("MovieDetails: getRatingHistory", [])),
           ]);
         if (details) {
           setMovie(details);
@@ -206,9 +227,9 @@ export default function MovieDetails() {
     try {
       const [details, statusRes, recs, ratingHistoryRes] = await Promise.all([
         moviesApi.getMovieDetails(tmdbId, mediaType),
-        moviesApi.getStatus(tmdbId).catch(() => null),
-        moviesApi.getSimilar(tmdbId, mediaType).catch(() => []),
-        moviesApi.getRatingHistory(tmdbId).catch(() => []),
+        moviesApi.getStatus(tmdbId).catch(logFallback("MovieDetails: moviesApi.getStatus", null)),
+        moviesApi.getSimilar(tmdbId, mediaType).catch(logFallback("MovieDetails: moviesApi.getSimilar", [])),
+        moviesApi.getRatingHistory(tmdbId).catch(logFallback("MovieDetails: moviesApi.getRatingHistory", [])),
       ]);
       if (details) {
         setMovie(details);
@@ -420,7 +441,7 @@ export default function MovieDetails() {
       return;
     }
     setPendingAction("rewatch");
-    setModalRating(0); // чистий старт, а не стара оцінка
+    setModalRating(0);
     setIsRatingModalOpen(true);
   };
 
@@ -432,14 +453,14 @@ export default function MovieDetails() {
 
   if (isLoading)
     return (
-      <div className="min-h-screen bg-[#0f0d0a] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-[#14110d] border-t-[#d9ac54] rounded-full animate-spin" />
       </div>
     );
 
   if (!movie)
     return (
-      <div className="min-h-screen bg-[#0f0d0a] text-[#f2ead9] flex items-center justify-center font-ui">
+      <div className="min-h-screen text-[#f2ead9] flex items-center justify-center font-ui">
         <Link to="/search" className="text-[#d9ac54] font-bold hover:underline">
           {t("movie_not_found")}
         </Link>
@@ -465,7 +486,7 @@ export default function MovieDetails() {
     : t("common_na");
 
   return (
-    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative pb-24 overscroll-none selection:bg-[#d9ac54] selection:text-[#0f0d0a]">
+    <div className="min-h-[100dvh] font-ui text-[#f2ead9] relative pb-24 overscroll-none selection:bg-[#d9ac54] selection:text-[#0f0d0a]">
       <div className="sm:hidden sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] pt-[env(safe-area-inset-top)]">
         <header className="flex flex-row items-center justify-between gap-3 py-4 px-4 w-full">
           <Link
@@ -647,8 +668,18 @@ export default function MovieDetails() {
                   className="w-[44px] h-[44px] rounded-full border border-[#d9ac54]/20 flex items-center justify-center text-[#d9ac54]"
                   title={t("common_unreleased")}
                 >
-                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-4.5 h-4.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
               )}
@@ -670,7 +701,10 @@ export default function MovieDetails() {
                     {t("movie_your_rating")}
                   </span>
                   <div className="w-[180px]">
-                    <StarRating value={status.rating || 0} onRate={handleRate} />
+                    <StarRating
+                      value={status.rating || 0}
+                      onRate={handleRate}
+                    />
                   </div>
                   <span className="font-semibold text-[13px] text-[#f2ead9]">
                     {status.rating || 0}/10
@@ -691,7 +725,9 @@ export default function MovieDetails() {
           </div>
         </div>
 
-        {(hasProviders || (movie.productionCountries && movie.productionCountries.length > 0) || status) && (
+        {(hasProviders ||
+          (movie.productionCountries && movie.productionCountries.length > 0) ||
+          status) && (
           <div className="hidden sm:flex gap-9 mt-6">
             <div className="w-[240px] shrink-0" />
             <div className="flex-1 flex items-center gap-9 py-6 border-b border-[rgba(217,172,84,.16)]">
@@ -710,19 +746,22 @@ export default function MovieDetails() {
                   </span>
                 </div>
               )}
-              {movie.productionCountries && movie.productionCountries.length > 0 && (
-                <>
-                  {firstProvider && <div className="w-px h-6 bg-[rgba(217,172,84,.16)]" />}
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-mono-ui text-[10px] font-medium tracking-[2px] text-[#8f8574] uppercase">
-                      {t("movie_production_countries")}
-                    </span>
-                    <span className="text-[12px] text-[#c9c0ac]">
-                      {movie.productionCountries.join(", ")}
-                    </span>
-                  </div>
-                </>
-              )}
+              {movie.productionCountries &&
+                movie.productionCountries.length > 0 && (
+                  <>
+                    {firstProvider && (
+                      <div className="w-px h-6 bg-[rgba(217,172,84,.16)]" />
+                    )}
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono-ui text-[10px] font-medium tracking-[2px] text-[#8f8574] uppercase">
+                        {t("movie_production_countries")}
+                      </span>
+                      <span className="text-[12px] text-[#c9c0ac]">
+                        {movie.productionCountries.join(", ")}
+                      </span>
+                    </div>
+                  </>
+                )}
               {status?.isWatched && (
                 <button
                   onClick={handleRemove}
@@ -740,7 +779,9 @@ export default function MovieDetails() {
             movie.productionCountries.length > 0 && (
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-[#8f8574]">
                 <span>{t("movie_production_countries")}:</span>
-                <span className="text-[#c9c0ac]">{movie.productionCountries.join(", ")}</span>
+                <span className="text-[#c9c0ac]">
+                  {movie.productionCountries.join(", ")}
+                </span>
               </div>
             )}
 

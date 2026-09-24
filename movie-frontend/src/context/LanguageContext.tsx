@@ -1,7 +1,8 @@
-import { createContext, useContext, useState } from "react";
+import { useState } from "react";
 import type { ReactNode } from "react";
+import { LangContext } from "./useLang";
 
-type Lang = "en" | "uk";
+export type Lang = "en" | "uk";
 
 const translations = {
   en: {
@@ -164,6 +165,9 @@ const translations = {
     search_empty: "No movies found.",
     search_recent_label: "Recent",
     search_clear_recent: "clear",
+    search_clear_query: "Clear search",
+    search_hero_eyebrow: "Movie search",
+    search_hero_title: "What are we watching today?",
     search_history_cleared: "Search history cleared",
     search_filters_toggle: "Filters",
     filter_genre: "Genre",
@@ -180,7 +184,8 @@ const translations = {
     search_add: "Add",
     search_added_btn: "Added",
     search_add_menu_watchlist: "To watchlist",
-    search_add_choice_desc: "Add it to your watchlist, or mark it as already watched?",
+    search_add_choice_desc:
+      "Add it to your watchlist, or mark it as already watched?",
     search_added_toast: "Added to list",
     search_already: "Already in list",
     search_no_poster: "No poster",
@@ -193,7 +198,8 @@ const translations = {
     search_fav_added: "Added to list and favorites",
     search_fav_error: "Failed to favorite movie",
     search_fav_error2: "Failed to update favorite status",
-    search_fav_limit: "You can have at most 10 favorites. Remove one before adding another.",
+    search_fav_limit:
+      "You can have at most 10 favorites. Remove one before adding another.",
     search_all_time: "All-Time Classics",
     search_highest_rated: "Highest Rated",
     search_collection_tag: "Collection",
@@ -379,6 +385,8 @@ const translations = {
     edit_save: "Save Changes",
     edit_saving: "Saving...",
     edit_image: "Click image to change (Max 5MB)",
+    edit_remove_avatar: "Remove photo",
+    edit_avatar_removed: "Photo removed",
     edit_username_taken: "That username is already taken by another user!",
     edit_error:
       "An error occurred while updating your profile. Please try again.",
@@ -738,6 +746,9 @@ const translations = {
     search_empty: "Фільмів не знайдено.",
     search_recent_label: "Нещодавні",
     search_clear_recent: "очистити",
+    search_clear_query: "Очистити пошук",
+    search_hero_eyebrow: "Пошук фільмів",
+    search_hero_title: "Що подивимось сьогодні?",
     search_history_cleared: "Історію пошуку очищено",
     search_filters_toggle: "Фільтри",
     filter_genre: "Жанр",
@@ -754,7 +765,8 @@ const translations = {
     search_add: "Додати",
     search_added_btn: "Додано",
     search_add_menu_watchlist: "У список",
-    search_add_choice_desc: "Додати у список перегляду, чи позначити як уже переглянуте?",
+    search_add_choice_desc:
+      "Додати у список перегляду, чи позначити як уже переглянуте?",
     search_added_toast: "Додано до списку",
     search_already: "Вже у списку",
     search_no_poster: "Без постера",
@@ -833,7 +845,8 @@ const translations = {
     journey_expand_hint: "Роздивитись карту",
     journey_zoom_reset: "Скинути",
     journey_realm_lotr: "Середзем'я",
-    journey_zoom_hint: "Щоб наблизити карту — використайте pinch, колесо миші або перетягування.",
+    journey_zoom_hint:
+      "Щоб наблизити карту — використайте pinch, колесо миші або перетягування.",
     journey_how_it_works:
       "Кожен фільм, доданий у твій список (переглянутий чи запланований), просуває тебе вперед.",
     journey_someone_title: "Подорож {name}",
@@ -959,6 +972,8 @@ const translations = {
     edit_save: "Зберегти зміни",
     edit_saving: "Зберігаємо...",
     edit_image: "Натисни, щоб змінити (макс 5МБ)",
+    edit_remove_avatar: "Видалити фото",
+    edit_avatar_removed: "Фото видалено",
     edit_username_taken: "Це ім'я користувача вже займає інший користувач!",
     edit_error: "Помилка при оновленні профілю. Спробуй знову.",
 
@@ -1163,13 +1178,6 @@ const translations = {
 
 export type TranslationKey = keyof typeof translations.en;
 
-interface LangContextType {
-  lang: Lang;
-  toggleLang: () => void;
-  t: (key: TranslationKey) => string;
-}
-
-const LangContext = createContext<LangContextType | null>(null);
 
 const LANG_STORAGE_KEY = "app_lang";
 
@@ -1191,11 +1199,4 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       {children}
     </LangContext.Provider>
   );
-}
-
-// eslint-disable-next-line react-refresh/only-export-components
-export function useLang() {
-  const ctx = useContext(LangContext);
-  if (!ctx) throw new Error("useLang must be used inside LanguageProvider");
-  return ctx;
 }

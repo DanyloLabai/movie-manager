@@ -11,7 +11,7 @@ import * as moviesApi from "../api/movies.api";
 import * as aiChatStore from "../store/aiChatStore";
 import type { AiChatCopy } from "../store/aiChatStore";
 import LogoImg from "../assets/logo.png";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import NotificationBell from "../components/NotificationBell";
 import LogoIcon from "../components/LogoIcon";
 import AddMovieModal from "../components/movie/AddMovieModal";

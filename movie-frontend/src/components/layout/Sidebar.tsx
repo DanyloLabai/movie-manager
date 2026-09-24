@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import LogoImg from "../../assets/logo.png";
-import { useLang } from "../../context/LanguageContext";
-import { useAuth } from "../../context/AuthContext";
-import { useAuthPrompt } from "../../context/AuthPromptContext";
+import { useLang } from "../../context/useLang";
+import { useAuth } from "../../context/useAuth";
+import { useAuthPrompt } from "../../context/useAuthPrompt";
 import { getUserRank } from "../../utils/achievements";
 import * as moviesApi from "../../api/movies.api";
 import NotificationBell from "../NotificationBell";
 import { NAV_ICONS } from "../navIcons";
+import { logError } from "../../utils/logError";
 
 export const SIDEBAR_WIDTH_CLASS = "sm:w-60";
 export const SIDEBAR_PADDING_CLASS = "sm:pl-60";
@@ -74,12 +75,9 @@ export default function Sidebar() {
           totalCount: data.totalCount || 0,
         }),
       )
-      .catch(() => {});
+      .catch(logError("Sidebar: moviesApi.getProfile"));
   }, [isAuthenticated]);
 
-  // Don't show stale data from a previous session once logged out- the
-  // effect above only clears `profile` on its next run, which would let a
-  // guest briefly see the last logged-in user's avatar/goal bar.
   const visibleProfile = isAuthenticated ? profile : null;
 
   const guardClick = (requiresAuth: boolean) => (e: React.MouseEvent) => {
@@ -138,7 +136,7 @@ export default function Sidebar() {
 
   return (
     <aside
-      className={`hidden sm:flex ${SIDEBAR_WIDTH_CLASS} fixed left-0 top-0 bottom-0 z-40 flex-col bg-[#0f0d0a] border-r border-[rgba(217,172,84,.16)] pt-[env(safe-area-inset-top)]`}
+      className={`hidden sm:flex ${SIDEBAR_WIDTH_CLASS} fixed left-0 top-0 bottom-0 z-40 flex-col bg-[#12100e]/60 backdrop-blur-xl border-r border-[rgba(217,172,84,.16)] pt-[env(safe-area-inset-top)]`}
     >
       <Link
         to="/search"
@@ -210,7 +208,8 @@ export default function Sidebar() {
             <div
               className="w-[34px] h-[34px] rounded-full flex items-center justify-center font-ui font-bold text-[13px] text-[#14110c] overflow-hidden shrink-0"
               style={{
-                background: "radial-gradient(circle at 35% 30%, #e8c377, #a87c2e)",
+                background:
+                  "radial-gradient(circle at 35% 30%, #e8c377, #a87c2e)",
               }}
             >
               {visibleProfile?.avatarUrl ? (
@@ -242,7 +241,12 @@ export default function Sidebar() {
             title={t("nav_settings")}
             onClick={guardClick(true)}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               {NAV_ICONS.settings}
             </svg>
           </Link>

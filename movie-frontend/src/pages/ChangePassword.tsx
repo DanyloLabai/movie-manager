@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import * as authApi from "../api/auth.api";
-import { useLang } from "../context/LanguageContext";
+import { useLang } from "../context/useLang";
 import EyeIcon from "../components/auth/EyeIcon";
 
 function passwordStrength(pw: string): 0 | 1 | 2 | 3 {
@@ -72,7 +72,7 @@ export default function ChangePassword() {
     }`;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0f0d0a] font-ui text-[#f2ead9] relative selection:bg-[#d9ac54] selection:text-[#14110c]">
+    <div className="min-h-[100dvh] font-ui text-[#f2ead9] relative selection:bg-[#d9ac54] selection:text-[#14110c]">
       <div className="sticky top-0 z-40 bg-[#0f0d0a]/95 backdrop-blur-md border-b border-[rgba(217,172,84,.16)] pt-[env(safe-area-inset-top)]">
         <header className="flex items-center justify-between py-9 px-4 sm:px-12 w-full">
           <div className="flex flex-col gap-1">
