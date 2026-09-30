@@ -135,14 +135,7 @@ export default function Search() {
   });
 
   const [becauseYouWatched, setBecauseYouWatched] =
-    useState<BecauseYouWatchedResponse | null>(() => {
-      try {
-        const c = localStorage.getItem(BECAUSE_YOU_WATCHED_CACHE_KEY);
-        return c ? JSON.parse(c) : null;
-      } catch {
-        return null;
-      }
-    });
+    useState<BecauseYouWatchedResponse | null>(null);
 
   const [friendsActivity, setFriendsActivity] = useState<FriendLastWatched[]>(
     () => {
@@ -322,6 +315,14 @@ export default function Search() {
   }, [results, visibleCount]);
 
   useEffect(() => {
+    localStorage.removeItem(BECAUSE_YOU_WATCHED_CACHE_KEY);
+    moviesApi
+      .getBecauseYouWatched()
+      .then(setBecauseYouWatched)
+      .catch(logError("Search: moviesApi.getBecauseYouWatched"));
+  }, []);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         const [
@@ -329,15 +330,23 @@ export default function Search() {
           profileData,
           recsData,
           upcomingData,
-          becauseYouWatchedData,
           friendsActivityData,
         ] = await Promise.all([
-          moviesApi.getTrending().catch(logFallback("Search: moviesApi.getTrending", [])),
-          moviesApi.getProfile().catch(logFallback("Search: moviesApi.getProfile", null)),
-          moviesApi.getRecommendations().catch(logFallback("Search: moviesApi.getRecommendations", [])),
-          moviesApi.getUpcoming().catch(logFallback("Search: moviesApi.getUpcoming", [])),
-          moviesApi.getBecauseYouWatched().catch(logFallback("Search: moviesApi.getBecauseYouWatched", null)),
-          usersApi.getFriendsLastWatched().catch(logFallback("Search: usersApi.getFriendsLastWatched", [])),
+          moviesApi
+            .getTrending()
+            .catch(logFallback("Search: moviesApi.getTrending", [])),
+          moviesApi
+            .getProfile()
+            .catch(logFallback("Search: moviesApi.getProfile", null)),
+          moviesApi
+            .getRecommendations()
+            .catch(logFallback("Search: moviesApi.getRecommendations", [])),
+          moviesApi
+            .getUpcoming()
+            .catch(logFallback("Search: moviesApi.getUpcoming", [])),
+          usersApi
+            .getFriendsLastWatched()
+            .catch(logFallback("Search: usersApi.getFriendsLastWatched", [])),
         ]);
 
         if (trendingData?.length > 0) {
@@ -361,15 +370,6 @@ export default function Search() {
             JSON.stringify(recsData),
           );
         }
-        setBecauseYouWatched(becauseYouWatchedData);
-        if (becauseYouWatchedData) {
-          localStorage.setItem(
-            BECAUSE_YOU_WATCHED_CACHE_KEY,
-            JSON.stringify(becauseYouWatchedData),
-          );
-        } else {
-          localStorage.removeItem(BECAUSE_YOU_WATCHED_CACHE_KEY);
-        }
         setFriendsActivity(friendsActivityData);
         localStorage.setItem(
           FRIENDS_ACTIVITY_CACHE_KEY,
@@ -382,7 +382,7 @@ export default function Search() {
           const inPlans = profile.inPlansIds || [];
 
           setFavoriteIds(favs);
-          setWatchedIds(watched);
+          setWatchedIds((prev) => Array.from(new Set([...prev, ...watched])));
           setAddedIds(Array.from(new Set([...favs, ...watched, ...inPlans])));
           localStorage.setItem(FAVORITES_CACHE_KEY, JSON.stringify(favs));
         }
@@ -716,7 +716,10 @@ export default function Search() {
             </h1>
           </div>
 
-          <div ref={searchBarRef} className="flex items-center gap-2.5 sm:gap-3">
+          <div
+            ref={searchBarRef}
+            className="flex items-center gap-2.5 sm:gap-3"
+          >
             <form onSubmit={handleSearch} className="group relative flex-1">
               <div
                 aria-hidden="true"
@@ -986,7 +989,6 @@ export default function Search() {
             </span>
           </Link>
         )}
-
 
         {showFilters && searchQuery.trim() !== "" && (
           <div className="max-w-3xl mx-auto">

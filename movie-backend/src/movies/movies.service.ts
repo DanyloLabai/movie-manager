@@ -66,6 +66,7 @@ export class MoviesService {
   private readonly frontendUrl: string;
   private groq: Groq;
   private readonly BECAUSE_YOU_WATCHED_RATING_THRESHOLD = 6;
+  private readonly BECAUSE_YOU_WATCHED_LIMIT = 12;
 
   private readonly TTL_24H: number;
   private readonly TTL_1H: number;
@@ -454,12 +455,33 @@ export class MoviesService {
 
     if (!recentGoodWatch) return null;
 
-    const similarMovies = await this.findSimilarBySemantic(
-      recentGoodWatch.tmdbId,
-      { excludeWatched: true },
-      userId,
-      12,
-    );
+    const [candidates, watchedRows] = await Promise.all([
+      this.findSimilarBySemantic(
+        recentGoodWatch.tmdbId,
+        { excludeWatched: true },
+        userId,
+        this.BECAUSE_YOU_WATCHED_LIMIT * 2,
+      ),
+      this.watchlistRepo
+        .createQueryBuilder('w')
+        .select('w."tmdbId"', 'tmdbId')
+        .where('w."userId" = :userId', { userId })
+        .andWhere('w."isWatched" = true')
+        .getRawMany<{ tmdbId: number }>(),
+    ]);
+
+    const watchedIds = new Set(watchedRows.map((r) => Number(r.tmdbId)));
+    const seen = new Set<number>();
+    const similarMovies = candidates
+      .filter((m) => {
+        if (watchedIds.has(m.id) || m.id === recentGoodWatch.tmdbId) {
+          return false;
+        }
+        if (seen.has(m.id)) return false;
+        seen.add(m.id);
+        return true;
+      })
+      .slice(0, this.BECAUSE_YOU_WATCHED_LIMIT);
 
     if (similarMovies.length === 0) return null;
 
