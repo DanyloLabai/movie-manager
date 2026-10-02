@@ -25,6 +25,9 @@ import { logFallback } from "../utils/logError";
 
 const TMDB_IMG = "https://image.tmdb.org/t/p";
 
+const BACKDROP_MASK =
+  "linear-gradient(to bottom, #000 0%, #000 35%, transparent 100%)";
+
 const resolveImage = (
   path: string | null | undefined,
   size: string,
@@ -507,18 +510,24 @@ export default function MovieDetails() {
         </header>
       </div>
 
-      <div className="relative w-full h-[280px] sm:h-[420px] bg-[#14110d] overflow-hidden">
+      <div className="relative w-full h-[280px] sm:h-[420px]">
         {backdropUrl && (
-          <>
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 overflow-hidden pointer-events-none"
+            style={{
+              maskImage: BACKDROP_MASK,
+              WebkitMaskImage: BACKDROP_MASK,
+            }}
+          >
             <img
               src={backdropUrl}
               alt=""
-              aria-hidden="true"
               className="w-full h-full object-cover scale-105 blur-sm opacity-70"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0f0d0a] via-[#0f0d0a]/80 to-transparent" />
+            <div className="absolute inset-0 bg-[#0f0d0a]/40" />
             <div className="hidden sm:block absolute inset-0 bg-gradient-to-r from-[#0f0d0a]/75 via-[#0f0d0a]/30 to-transparent" />
-          </>
+          </div>
         )}
         <button
           onClick={goBack}
